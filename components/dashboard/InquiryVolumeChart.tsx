@@ -1,0 +1,1 @@
+export function InquiryVolumeChart() { return <div>InquiryVolumeChart</div>; }

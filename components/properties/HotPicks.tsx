@@ -1,0 +1,1 @@
+export function HotPicks() { return <div>HotPicks</div>; }

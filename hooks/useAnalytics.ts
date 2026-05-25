@@ -1,0 +1,1 @@
+export function useAnalytics() { return { track: (_event: string) => null }; }

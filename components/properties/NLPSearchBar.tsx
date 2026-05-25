@@ -1,0 +1,1 @@
+export function NLPSearchBar() { return <div>NLPSearchBar</div>; }

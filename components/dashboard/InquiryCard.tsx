@@ -1,0 +1,1 @@
+export function InquiryCard() { return <div>InquiryCard</div>; }

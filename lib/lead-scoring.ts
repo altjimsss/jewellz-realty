@@ -1,0 +1,1 @@
+export function computeLeadScore(features: number[]) { return 1 / (1 + Math.exp(-features.reduce((a, b) => a + b, 0))); }

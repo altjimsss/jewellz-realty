@@ -1,0 +1,1 @@
+export type Inquiry = { id: string; propertyId: string; fullName: string; status: string };

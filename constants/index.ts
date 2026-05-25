@@ -1,0 +1,1 @@
+export const CATEGORIES = ["Condo", "House", "Lot", "Farm", "Memorial"] as const; export const PROVINCES = ["Batangas", "Laguna", "Cavite"] as const; export const PRICE_RANGES = ["0-1M", "1M-3M", "3M-5M", "5M+"] as const;

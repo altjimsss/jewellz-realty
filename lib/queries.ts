@@ -1,0 +1,1 @@
+export const queries = { properties: "properties", inquiries: "inquiries" } as const;

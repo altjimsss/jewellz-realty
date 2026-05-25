@@ -1,0 +1,1 @@
+export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(dashboard)\admin\inquiries\page.tsx</main>; }

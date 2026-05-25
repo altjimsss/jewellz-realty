@@ -1,0 +1,1 @@
+export function PropertyCard() { return <div>PropertyCard</div>; }

@@ -1,0 +1,1 @@
+export function SiteStats() { return <div>SiteStats</div>; }
