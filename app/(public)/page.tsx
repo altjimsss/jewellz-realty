@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -233,6 +233,7 @@ export default function Page() {
   const [serviceVisualIndex, setServiceVisualIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hotPicksPage, setHotPicksPage] = useState(0);
+  const [hotPicksLoading, setHotPicksLoading] = useState(false);
   const [agentsMarqueeDuration, setAgentsMarqueeDuration] = useState(28);
   const [agentsMarqueeDirection, setAgentsMarqueeDirection] = useState<"normal" | "reverse">("normal");
   const [serviceVisualsLoaded, setServiceVisualsLoaded] = useState<boolean[]>(
@@ -241,6 +242,7 @@ export default function Page() {
   const serviceVisualIndexRef = useRef(0);
   const serviceVisualsLoadedRef = useRef<boolean[]>(serviceVisuals.map(() => false));
   const agentsSpeedResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hotPicksTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTotal((v) => (v > 0 ? v - 1 : 0)), 1000);
@@ -251,6 +253,9 @@ export default function Page() {
     return () => {
       if (agentsSpeedResetTimeoutRef.current) {
         clearTimeout(agentsSpeedResetTimeoutRef.current);
+      }
+      if (hotPicksTransitionTimeoutRef.current) {
+        clearTimeout(hotPicksTransitionTimeoutRef.current);
       }
     };
   }, []);
@@ -317,10 +322,29 @@ export default function Page() {
   const formatCurrency = (value: number) => `â‚±${value.toLocaleString("en-PH")}`;
   const hotPicksPerPage = 6;
   const hotPicksPageCount = Math.ceil(hotPicks.length / hotPicksPerPage);
+  const hotPicksSkeletonCount = hotPicksPerPage;
   const visibleHotPicks = hotPicks.slice(
     hotPicksPage * hotPicksPerPage,
     hotPicksPage * hotPicksPerPage + hotPicksPerPage
   );
+  const changeHotPicksPage = (direction: "prev" | "next") => {
+    if (hotPicksLoading) return;
+
+    setHotPicksLoading(true);
+    const nextPage =
+      direction === "prev"
+        ? (hotPicksPage - 1 + hotPicksPageCount) % hotPicksPageCount
+        : (hotPicksPage + 1) % hotPicksPageCount;
+
+    if (hotPicksTransitionTimeoutRef.current) {
+      clearTimeout(hotPicksTransitionTimeoutRef.current);
+    }
+
+    hotPicksTransitionTimeoutRef.current = setTimeout(() => {
+      setHotPicksPage(nextPage);
+      setHotPicksLoading(false);
+    }, 220);
+  };
   const boostAgentsMarquee = (direction: "normal" | "reverse") => {
     setAgentsMarqueeDirection(direction);
     setAgentsMarqueeDuration(10);
@@ -340,8 +364,7 @@ export default function Page() {
         <p className="whitespace-nowrap">Premium but Affordable (deals) Properties on Sale.</p>
         <a className="underline" href="#">BrowseNow</a>
       </div>
-
-            <nav className="sticky top-0 z-50 border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
+      <nav className="sticky inset-x-0 top-0 z-[100] border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
         <div className="mx-auto flex max-w-[1200px] items-center">
           <div className="hidden min-w-[170px] items-center md:flex">
             <img src="/assets/jewellz-logo.png" alt="Jewellz Realty Logo" className="h-14 w-auto object-contain" />
@@ -363,17 +386,32 @@ export default function Page() {
               type="button"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobileMenuOpen((v) => !v)}
-              className="grid h-10 w-10 place-items-center text-black"
+              className={`grid h-10 w-10 place-items-center rounded-md text-black transition-colors duration-200 ${
+                mobileMenuOpen ? "bg-black/5" : ""
+              }`}
             >
-              {mobileMenuOpen ? (
-                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+              <span className="relative block h-7 w-7">
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`absolute inset-0 h-7 w-7 transform-gpu transition-all duration-200 ease-out ${
+                    mobileMenuOpen ? "rotate-45 opacity-0" : "rotate-0 opacity-100"
+                  }`}
+                  fill="none"
+                  aria-hidden="true"
+                >
                   <path d="M3 7h18M3 12h18M3 17h18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
                 </svg>
-              )}
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`absolute inset-0 h-7 w-7 transform-gpu transition-all duration-200 ease-out ${
+                    mobileMenuOpen ? "rotate-0 opacity-100" : "-rotate-45 opacity-0"
+                  }`}
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                </svg>
+              </span>
             </button>
           </div>
           <div className={`ml-28 hidden items-center gap-8 text-sm md:flex ${poppins.className}`}>
@@ -412,9 +450,17 @@ export default function Page() {
             </label>
           </div>
         </div>
-        {mobileMenuOpen && (
-          <div className="mt-3 border-t border-black/10 pt-3 md:hidden">
-            <div className="flex flex-col">
+        <div
+          className={`absolute left-0 right-0 top-full z-[110] transform-gpu md:hidden transition-all duration-200 ${
+            mobileMenuOpen
+              ? "pointer-events-auto translate-y-0 opacity-100 ease-out"
+              : "pointer-events-none -translate-y-3 opacity-0 ease-in"
+          }`}
+        >
+          <div
+            className="relative mx-4 mt-2 overflow-hidden rounded-[20px] border border-black/10 bg-white/95 shadow-lg backdrop-blur-md"
+          >
+            <div className="flex flex-col p-1.5">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
@@ -422,7 +468,9 @@ export default function Page() {
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`border-b border-black/5 px-1 py-3 text-sm font-medium ${
+                    className={`rounded-lg px-2.5 py-3 text-sm font-medium transition-colors duration-150 hover:bg-[#DE141C]/10 hover:text-[#DE141C] ${
+                      mobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
+                    } ${
                       isActive ? "text-[#DE141C]" : "text-black/80"
                     }`}
                   >
@@ -432,7 +480,7 @@ export default function Page() {
               })}
             </div>
           </div>
-        )}
+        </div>
       </nav>
 
       <section className="relative overflow-hidden bg-black md:h-[520px]">
@@ -722,7 +770,7 @@ export default function Page() {
               <div className="h-full bg-[#DE141C] transition-[width] duration-75 ease-linear" style={{ width: `${heroProgress}%` }} />
             </div>
           </div>
-          <div className="space-y-2 bg-black px-3 pb-3 pt-2.5">
+          <div className="space-y-2 bg-black px-[15px] pb-[15px] pt-5">
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
                 <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
@@ -827,7 +875,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="grid gap-8 px-6 py-16 lg:grid-cols-2 lg:px-28">
+      <section className="grid gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-28">
         <div className="md:hidden">
           <h2 className="mb-2 text-2xl font-semibold">Welcome to <span className="text-[#DE141C]">Jewellz Realty</span></h2>
           <p className="text-sm leading-7">
@@ -950,10 +998,10 @@ export default function Page() {
 
       <section className="px-6 py-14 lg:px-24">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex flex-wrap items-center gap-10">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-10">
             <div>
               <p className="text-xs font-bold tracking-wide text-gray-500">TODAY&apos;S</p>
-              <h2 className="text-4xl font-bold leading-none">HOT PICKS</h2>
+              <h2 className="text-3xl font-bold leading-none sm:text-4xl">HOT PICKS</h2>
               <div className="mt-2 h-[3px] w-16 bg-[#DE141C]" />
             </div>
             <div className="flex items-end gap-5">
@@ -966,15 +1014,17 @@ export default function Page() {
               <div><p className="text-[10px] font-semibold uppercase text-black/70">Seconds</p><p className="text-3xl font-bold leading-none">{s}</p></div>
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="ml-auto flex items-center justify-end">
             <button
-              onClick={() => setHotPicksPage((p) => (p - 1 + hotPicksPageCount) % hotPicksPageCount)}
+              onClick={() => changeHotPicksPage("prev")}
+              disabled={hotPicksLoading}
               className="grid h-9 w-8 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white"
             >
               ‹
             </button>
             <button
-              onClick={() => setHotPicksPage((p) => (p + 1) % hotPicksPageCount)}
+              onClick={() => changeHotPicksPage("next")}
+              disabled={hotPicksLoading}
               className="grid h-9 w-8 place-items-center bg-[#DE141C] text-lg leading-none text-white"
             >
               ›
@@ -982,29 +1032,41 @@ export default function Page() {
             <button className="h-9 bg-black px-5 text-xs font-semibold text-white">View All</button>
           </div>
         </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {visibleHotPicks.map((pick) => (
+        <div className={`grid grid-cols-2 gap-3 transition-opacity duration-300 sm:gap-5 md:grid-cols-3 ${hotPicksLoading ? "opacity-80" : "opacity-100"}`}>
+          {hotPicksLoading ? Array.from({ length: hotPicksSkeletonCount }).map((_, idx) => (
+            <article key={`hotpick-skeleton-${idx}`} className="overflow-hidden bg-white shadow-sm">
+              <div className="h-32 animate-pulse bg-[#E7E7E7] sm:h-44" />
+              <div className="flex h-[118px] flex-col bg-[#F4F4F4] p-2.5 sm:h-[158px] sm:p-3.5">
+                <div className="h-4 w-[88%] animate-pulse rounded bg-[#DFDFDF] sm:h-5" />
+                <div className="mt-1 h-4 w-[62%] animate-pulse rounded bg-[#E5E5E5]" />
+                <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-4 sm:pt-3">
+                  <div className="h-4 w-20 animate-pulse rounded bg-[#DCDCDC] sm:w-28" />
+                  <div className="h-6 w-12 animate-pulse rounded bg-[#CFCFCF] sm:h-9 sm:w-20" />
+                </div>
+              </div>
+            </article>
+          )) : visibleHotPicks.map((pick) => (
             <article key={pick.title} className="group overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-              <div className="h-44 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.04]" style={{ backgroundImage: `url('https://images.unsplash.com/photo-${pick.imageId}?w=700&q=80')` }} />
-              <div className="bg-[#F4F4F4] p-3.5">
-                <h3 className="text-[18px] font-semibold leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C]">{pick.title}</h3>
-                <p className="mt-1 text-[13px] text-gray-500">{pick.location}</p>
-                <div className="mt-3 flex items-end justify-between">
-                  <div className="flex items-center gap-3 text-[13px] text-[#1F2328]">
+              <div className="h-32 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.04] sm:h-44" style={{ backgroundImage: `url('https://images.unsplash.com/photo-${pick.imageId}?w=700&q=80')` }} />
+              <div className="flex h-[118px] flex-col bg-[#F4F4F4] p-2.5 sm:h-[158px] sm:p-3.5">
+                <h3 className="line-clamp-2 min-h-[34px] text-[14px] font-semibold leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C] sm:min-h-[44px] sm:text-[18px]">{pick.title}</h3>
+                <p className="mt-1 text-[11px] text-gray-500 sm:text-[13px]">{pick.location}</p>
+                <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-4 sm:pt-3">
+                  <div className="flex items-center gap-1.5 text-[11px] text-[#1F2328] sm:gap-3 sm:text-[13px]">
                     <span className="flex items-center gap-1.5">
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-black/75" fill="none" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" className="h-3 w-3 text-black/75 sm:h-3.5 sm:w-3.5" fill="none" aria-hidden="true">
                         <path d="M3 18v-7h18v7M3 14h18M6 11V7h6v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       {pick.beds}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-black/75" fill="none" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" className="h-3 w-3 text-black/75 sm:h-3.5 sm:w-3.5" fill="none" aria-hidden="true">
                         <path d="M4 13h16v1a5 5 0 01-5 5H9a5 5 0 01-5-5v-1zM7 13V8a2 2 0 114 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       {pick.baths}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-black/75" fill="none" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" className="h-3 w-3 text-black/75 sm:h-3.5 sm:w-3.5" fill="none" aria-hidden="true">
                         <rect x="3.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
                         <rect x="13.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
                         <rect x="3.5" y="13.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
@@ -1013,7 +1075,7 @@ export default function Page() {
                       {pick.area}
                     </span>
                   </div>
-                  <p className="inline-flex h-9 items-center bg-[#11141C] px-4 text-[15px] font-semibold text-white">{pick.price}</p>
+                  <p className="ml-1 inline-flex h-6 shrink-0 items-center bg-[#11141C] px-2 text-[10px] font-semibold text-white sm:ml-3 sm:h-9 sm:px-4 sm:text-[15px]">{pick.price}</p>
                 </div>
               </div>
             </article>
@@ -1021,31 +1083,33 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="border-y px-6 py-16 lg:px-28">
+      <section className="border-y px-4 py-12 sm:px-6 sm:py-16 lg:px-28">
         <p className="text-center text-sm font-bold text-gray-500">FIND YOUR WAY EASIER</p>
-        <h2 className="text-center text-4xl font-bold">BROWSE CATEGORIES</h2>
+        <h2 className="text-center text-3xl font-bold sm:text-4xl">BROWSE CATEGORIES</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
-        <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 md:grid-cols-5">
           {categories.map((c) => (
             <button
               key={c.label}
               onClick={() => setActiveCat(c.label)}
-              className={`group flex h-36 flex-col items-center justify-center gap-2 rounded border transition-all duration-200 ${
+              className={`group flex h-24 flex-col items-center justify-center gap-1.5 rounded border transition-all duration-200 sm:h-36 sm:gap-2 ${
+                c.label === "Memorial" ? "col-span-2 mx-auto w-[48%] sm:col-span-1 sm:w-full" : ""
+              } ${
                 activeCat === c.label
                   ? "border-[#DE141C] bg-[#DE141C] text-white"
                   : "border-black/10 bg-white text-black hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white"
               }`}
             >
-              <span>{c.icon}</span>
-              <span className="text-sm font-semibold">{c.label}</span>
+              <span className="scale-90 sm:scale-100">{c.icon}</span>
+              <span className="text-xs font-semibold sm:text-sm">{c.label}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="px-6 py-16 lg:px-24">
+      <section className="px-4 py-12 sm:px-6 sm:py-16 lg:px-24">
         <p className="text-center text-sm font-bold text-gray-500">WE HAVE PROFESSIONAL AGENTS</p>
-        <h2 className="text-center text-4xl font-bold">MEET OUR AGENTS</h2>
+        <h2 className="text-center text-3xl font-bold sm:text-4xl">MEET OUR AGENTS</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="relative mt-10">
           <button
@@ -1112,63 +1176,63 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="border-y px-6 py-16 text-center">
+      <section className="border-y px-4 py-12 text-center sm:px-6 sm:py-16">
         <p className="text-sm font-bold text-gray-500">WHAT OUR CLIENTS SAY</p>
-        <h2 className="text-4xl font-bold">TESTIMONIALS</h2>
+        <h2 className="text-3xl font-bold sm:text-4xl">TESTIMONIALS</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="mt-8">
           <Testimonial />
         </div>
       </section>
 
-      <section className="px-6 py-16 lg:px-28">
+      <section className="px-4 py-12 sm:px-6 sm:py-16 lg:px-28">
         <p className="text-center text-sm font-bold text-gray-500">KNOW US BETTER</p>
-        <h2 className="text-center text-4xl font-bold">BROWSE OUR GALLERY</h2>
+        <h2 className="text-center text-3xl font-bold sm:text-4xl">BROWSE OUR GALLERY</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
-        <div className="mt-8 grid gap-2 lg:grid-cols-3">
-          <div className="group relative h-[30rem] overflow-hidden">
+        <div className="mt-8 grid grid-cols-3 gap-2">
+          <div className="group relative h-[22rem] overflow-hidden sm:h-[26rem] lg:h-[30rem]">
             <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1544531585-9847b68c8c86?w=800&q=80')" }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
-            <div className="absolute bottom-5 left-5 flex items-stretch gap-3 text-white">
+            <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-5 sm:left-5 sm:gap-3">
               <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-              <div>
-                <p className="text-5xl font-bold leading-none">ACHIEVEMENTS</p>
-                <p className="mt-1 text-sm font-semibold uppercase tracking-[0.06em]">SEE OUR MILESTONES</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">ACHIEVEMENTS</p>
+                <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">SEE OUR MILESTONES</p>
               </div>
             </div>
           </div>
-          <div className="space-y-2 lg:col-span-2">
-            <div className="group relative h-[14.75rem] overflow-hidden">
+          <div className="col-span-2 space-y-2">
+            <div className="group relative h-[10.75rem] overflow-hidden sm:h-[12.5rem] lg:h-[14.75rem]">
               <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80')" }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
-              <div className="absolute bottom-4 left-5 flex items-stretch gap-3 text-white">
+              <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-5 sm:gap-3">
                 <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-                <div>
-                  <p className="text-5xl font-bold leading-none">EVENTS</p>
-                  <p className="mt-1 text-sm font-semibold uppercase tracking-[0.06em]">MEMORABLE TIMES</p>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">EVENTS</p>
+                  <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">MEMORABLE TIMES</p>
                 </div>
               </div>
             </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <div className="group relative h-[14.75rem] overflow-hidden">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="group relative h-[10.75rem] overflow-hidden sm:h-[12.5rem] lg:h-[14.75rem]">
                 <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=500&q=80')" }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
-                <div className="absolute bottom-4 left-4 flex items-stretch gap-3 text-white">
+                <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
                   <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-                  <div>
-                    <p className="text-5xl font-bold leading-none">TRAININGS</p>
-                    <p className="mt-1 text-sm font-semibold uppercase tracking-[0.06em]">ENHANCING OUR SKILLS</p>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">TRAININGS</p>
+                    <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">ENHANCING OUR SKILLS</p>
                   </div>
                 </div>
               </div>
-              <div className="group relative h-[14.75rem] overflow-hidden">
+              <div className="group relative h-[10.75rem] overflow-hidden sm:h-[12.5rem] lg:h-[14.75rem]">
                 <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=500&q=80')" }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
-                <div className="absolute bottom-4 left-4 flex items-stretch gap-3 text-white">
+                <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
                   <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-                  <div>
-                    <p className="text-5xl font-bold leading-none">SERVICE</p>
-                    <p className="mt-1 text-sm font-semibold uppercase tracking-[0.06em]">FOR THE PEOPLE</p>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">SERVICE</p>
+                    <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">FOR THE PEOPLE</p>
                   </div>
                 </div>
               </div>
@@ -1177,22 +1241,22 @@ export default function Page() {
         </div>
       </section>
 
-      <footer className="bg-[#0F0F10] px-6 py-14 text-white lg:px-28">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <h3 className="text-2xl font-bold">Jewellz Realty</h3>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-white/70">
+      <footer className="bg-[#0F0F10] px-4 py-10 text-white sm:px-6 lg:px-28">
+        <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="col-span-2 text-center md:col-span-1 md:text-left">
+            <h3 className="text-2xl font-bold sm:text-3xl">Jewellz Realty</h3>
+            <p className="mt-2 max-w-sm text-center text-xs leading-5 text-white/70 sm:mt-3 sm:text-sm sm:leading-6">
               Your trusted real estate partner for buying, selling, and investing in premium but affordable properties.
             </p>
-            <div className="mt-5 flex items-center gap-2">
+            <div className="mt-3 flex items-center justify-center gap-2 sm:mt-5">
               <span className="h-2 w-2 rounded-full bg-[#DE141C]" />
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70">Licensed Brokerage Team</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 sm:text-xs">Licensed Brokerage Team</p>
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-[0.08em] text-white/90">Quick Links</h4>
-            <ul className="mt-4 space-y-2 text-sm text-white/70">
+            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Quick Links</h4>
+            <ul className="mt-2 space-y-1.5 text-xs text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
               <li><a href="/" className="transition-colors hover:text-[#DE141C]">Home</a></li>
               <li><a href="/project-list" className="transition-colors hover:text-[#DE141C]">Project List</a></li>
               <li><a href="/gallery" className="transition-colors hover:text-[#DE141C]">Gallery</a></li>
@@ -1202,8 +1266,8 @@ export default function Page() {
           </div>
 
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-[0.08em] text-white/90">Contact</h4>
-            <ul className="mt-4 space-y-2 text-sm text-white/70">
+            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Contact</h4>
+            <ul className="mt-2 space-y-1.5 text-xs text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
               <li>Batangas, Philippines</li>
               <li>+63 917 123 4567</li>
               <li>inquiries@jewellzrealty.com</li>
@@ -1211,21 +1275,21 @@ export default function Page() {
             </ul>
           </div>
 
-          <div>
-            <h4 className="text-sm font-bold uppercase tracking-[0.08em] text-white/90">Follow Us</h4>
-            <div className="mt-4 flex items-center gap-2">
-              <a href="#" className="grid h-9 w-9 place-items-center border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white">f</a>
-              <a href="#" className="grid h-9 w-9 place-items-center border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white">ig</a>
-              <a href="#" className="grid h-9 w-9 place-items-center border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white">in</a>
-              <a href="#" className="grid h-9 w-9 place-items-center border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white">yt</a>
+          <div className="col-span-2 text-center md:col-span-1 md:text-left">
+            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Follow Us</h4>
+            <div className="mt-2 flex items-center justify-center gap-2 sm:mt-4 md:justify-start">
+              <a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">f</a>
+              <a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">ig</a>
+              <a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">in</a>
+              <a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">yt</a>
             </div>
-            <p className="mt-4 text-sm text-white/65">Stay updated with listings, open houses, and real estate tips.</p>
+            <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm md:mx-0">Stay updated with listings, open houses, and real estate tips.</p>
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-white/15 pt-5 text-xs text-white/55 md:flex-row md:items-center md:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border-t border-white/15 pt-4 text-center text-[11px] text-white/55 sm:mt-10 sm:gap-3 sm:pt-5 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
           <p>Copyright Jewellz Realty 2026. All rights reserved.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center gap-4 md:justify-start">
             <a href="#" className="hover:text-[#DE141C]">Privacy Policy</a>
             <a href="#" className="hover:text-[#DE141C]">Terms & Conditions</a>
           </div>
@@ -1234,14 +1298,5 @@ export default function Page() {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
 
 
