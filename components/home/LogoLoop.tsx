@@ -290,6 +290,9 @@ const LogoLoop = memo(function LogoLoop({
           {item.node}
         </span>
       ) : (
+        // Intentionally using <img> here because this component supports arbitrary
+        // `srcSet`/`sizes` inputs (which are not a 1:1 fit for next/image).
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={item.src}
           srcSet={item.srcSet}
