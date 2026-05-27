@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Poppins } from "next/font/google";
 import LogoLoop from "@/components/home/LogoLoop";
@@ -118,6 +118,13 @@ const heroProperties = [
   },
 ];
 const HERO_DURATION_MS = 5000;
+const AGENTS_AUTO_SLIDE_MS = 2600;
+const agents = [
+  { name: "CINDY HERMOSO", top: true },
+  { name: "JOHN A. SMITH", top: false },
+  { name: "LINDA WALKER", top: false },
+  { name: "EVAN YU", top: false },
+];
 const HERO_TICK_MS = 50;
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 const navLinks = [
@@ -234,15 +241,14 @@ export default function Page() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hotPicksPage, setHotPicksPage] = useState(0);
   const [hotPicksLoading, setHotPicksLoading] = useState(false);
-  const [agentsMarqueeDuration, setAgentsMarqueeDuration] = useState(28);
-  const [agentsMarqueeDirection, setAgentsMarqueeDirection] = useState<"normal" | "reverse">("normal");
+  const [agentsAutoPaused, setAgentsAutoPaused] = useState(false);
   const [serviceVisualsLoaded, setServiceVisualsLoaded] = useState<boolean[]>(
     () => serviceVisuals.map(() => false)
   );
   const serviceVisualIndexRef = useRef(0);
   const serviceVisualsLoadedRef = useRef<boolean[]>(serviceVisuals.map(() => false));
-  const agentsSpeedResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hotPicksTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const agentsRailRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTotal((v) => (v > 0 ? v - 1 : 0)), 1000);
@@ -251,9 +257,6 @@ export default function Page() {
 
   useEffect(() => {
     return () => {
-      if (agentsSpeedResetTimeoutRef.current) {
-        clearTimeout(agentsSpeedResetTimeoutRef.current);
-      }
       if (hotPicksTransitionTimeoutRef.current) {
         clearTimeout(hotPicksTransitionTimeoutRef.current);
       }
@@ -345,18 +348,49 @@ export default function Page() {
       setHotPicksLoading(false);
     }, 220);
   };
-  const boostAgentsMarquee = (direction: "normal" | "reverse") => {
-    setAgentsMarqueeDirection(direction);
-    setAgentsMarqueeDuration(10);
 
-    if (agentsSpeedResetTimeoutRef.current) {
-      clearTimeout(agentsSpeedResetTimeoutRef.current);
+    const scrollAgents = useCallback((direction: "prev" | "next") => {
+    const rail = agentsRailRef.current;
+    if (!rail) return;
+
+    const step = 280 + 24; // card width + gap-6
+    const maxLeft = rail.scrollWidth - rail.clientWidth;
+
+    if (maxLeft <= 0) return;
+
+    const isAtStart = rail.scrollLeft <= 4;
+    const isAtEnd = rail.scrollLeft >= maxLeft - 4;
+
+    if (direction === "prev" && isAtStart) {
+      rail.scrollTo({ left: maxLeft, behavior: "smooth" });
+      return;
     }
 
-    agentsSpeedResetTimeoutRef.current = setTimeout(() => {
-      setAgentsMarqueeDuration(28);
-    }, 1800);
-  };
+    if (direction === "next" && isAtEnd) {
+      rail.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+
+    const nextLeft =
+      direction === "next"
+        ? Math.min(rail.scrollLeft + step, maxLeft)
+        : Math.max(rail.scrollLeft - step, 0);
+
+    rail.scrollTo({ left: nextLeft, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (agentsAutoPaused) return;
+    if (typeof window === "undefined") return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    const t = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      scrollAgents("next");
+    }, AGENTS_AUTO_SLIDE_MS);
+
+    return () => window.clearInterval(t);
+  }, [agentsAutoPaused, scrollAgents]);
 
   return (
     <main className={`${poppins.className} bg-white text-[#181A20]`}>
@@ -1115,7 +1149,7 @@ export default function Page() {
           <button
             type="button"
             aria-label="Previous agents"
-            onClick={() => boostAgentsMarquee("reverse")}
+            onClick={() => scrollAgents("prev")}
             className="absolute left-0 top-1/2 z-20 grid h-10 w-9 -translate-y-1/2 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white"
           >
             &lsaquo;
@@ -1123,31 +1157,24 @@ export default function Page() {
           <button
             type="button"
             aria-label="Next agents"
-            onClick={() => boostAgentsMarquee("normal")}
+            onClick={() => scrollAgents("next")}
             className="absolute right-0 top-1/2 z-20 grid h-10 w-9 -translate-y-1/2 place-items-center bg-[#DE141C] text-lg leading-none text-white"
           >
             &rsaquo;
           </button>
-          <div className="mx-12 overflow-hidden">
-            <div
-              className="flex w-max animate-[agents-marquee_28s_linear_infinite] gap-6 hover:[animation-play-state:paused]"
-              style={{
-                animationDuration: `${agentsMarqueeDuration}s`,
-                animationDirection: agentsMarqueeDirection,
-              }}
-            >
-              {[...[
-                { name: "CINDY HERMOSO", top: true },
-                { name: "JOHN A. SMITH", top: false },
-                { name: "LINDA WALKER", top: false },
-                { name: "EVAN YU", top: false },
-              ], ...[
-                { name: "CINDY HERMOSO", top: true },
-                { name: "JOHN A. SMITH", top: false },
-                { name: "LINDA WALKER", top: false },
-                { name: "EVAN YU", top: false },
-              ]].map((agent, idx) => (
-                <article key={`${agent.name}-${idx}`} className="w-[280px] shrink-0 overflow-hidden rounded-sm border border-black/10 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+          <div
+            ref={agentsRailRef}
+            className="mx-12 overflow-x-auto scroll-smooth snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onMouseEnter={() => setAgentsAutoPaused(true)}
+            onMouseLeave={() => setAgentsAutoPaused(false)}
+            onTouchStart={() => setAgentsAutoPaused(true)}
+            onTouchEnd={() => setAgentsAutoPaused(false)}
+            onFocusCapture={() => setAgentsAutoPaused(true)}
+            onBlurCapture={() => setAgentsAutoPaused(false)}
+          >
+            <div className="flex w-max gap-6">
+              {agents.map((agent, idx) => (
+                <article key={agent.name} className="w-[280px] shrink-0 snap-start overflow-hidden rounded-sm border border-black/10 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   <div className={`relative h-60 ${idx % 2 === 0 ? "bg-[#DE141C]" : "bg-white"}`}>
                     {agent.top && (
                       <span className="absolute right-3 top-3 z-10 rounded-md bg-black px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-white">TOP AGENT</span>
