@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Poppins } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { PropertyFilters, type PropertyFiltersState } from "@/components/properties/PropertyFilters";
+import { PropertyFilters, type PropertyFiltersState } from "../../../components/properties/PropertyFilters";
 import { PropertyGrid } from "@/components/properties/PropertyGrid";
+import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
 import { SparkleSvg } from "@/components/ui/SparkleSvg";
 import type { Property } from "@/types/property";
 
@@ -20,14 +21,15 @@ const navLinks = [
   { label: "Career", href: "/career" },
 ];
 
-const CATEGORY_TABS = ["All", "Featured", "For Sale", "For Rent", "Pre-selling", "Commercial"] as const;
+const CATEGORY_TABS = ["All", "Condo", "House", "Lot", "Farm", "Memorial"] as const;
 
 const SAMPLE_PROPERTIES: Property[] = [
   {
     id: "p1",
     slug: "luxury-family-home",
     title: "Luxury Family Home",
-    location: "151 Tompkins Ave",
+    location: "Batangas City, Batangas",
+    coordinates: [13.7562, 121.0583],
     price: 2850000,
     beds: 4,
     baths: 1,
@@ -41,7 +43,8 @@ const SAMPLE_PROPERTIES: Property[] = [
     id: "p2",
     slug: "skyper-pool-apartment",
     title: "Skyper Pool Apartment",
-    location: "88 Lakeview Dr",
+    location: "Lipa City, Batangas",
+    coordinates: [13.9411, 121.1633],
     price: 2650000,
     beds: 3,
     baths: 2,
@@ -55,7 +58,8 @@ const SAMPLE_PROPERTIES: Property[] = [
     id: "p3",
     slug: "house-on-the-hollywood",
     title: "House on the Hollywood",
-    location: "42 Sunset Blvd",
+    location: "Nasugbu, Batangas",
+    coordinates: [14.0725, 120.6339],
     price: 3450000,
     beds: 5,
     baths: 3,
@@ -203,120 +207,213 @@ type BannerSlide = {
 
 function BannerSvgOne() {
   return (
-    <div className="relative flex h-full w-full items-center rounded-[18px] bg-black">
-      {/* Content */}
+    <div className="relative flex h-full w-full items-center rounded-[18px] bg-transparent">
       <div className="relative z-20 flex items-stretch gap-3 pl-4 md:pl-8">
-        <span className="w-[3px] bg-[#DE141C]" />
+        {/* Red line fades in first */}
+        <span
+          className="w-[3px] bg-[#DE141C]"
+          style={{ animation: "banner-fade-in 0.4s ease-out both" }}
+        />
 
         <div className="relative">
-          <p className="text-[11px] font-bold leading-none tracking-[0.18em] text-[#7F7F7F] md:text-[13px]">
-            DISCOVER YOUR
-          </p>
+          {/* Subtitle slides out from behind the line */}
+          <div className="overflow-hidden">
+            <p
+              className="text-[11px] font-bold leading-none tracking-[0.18em] text-[#7F7F7F] md:text-[13px]"
+              style={{ animation: "banner-slide-right 0.45s ease-out both", animationDelay: "0.35s" }}
+            >
+              DISCOVER YOUR
+            </p>
+          </div>
 
-          <h2 className="mt-1 text-[40px] font-bold leading-[0.95] text-white md:text-[54px]">
-            DREAM
-            <br />
-            PROPERTY
-          </h2>
+          {/* Heading slides out from behind the line */}
+          <div className="overflow-hidden">
+            <h2
+              className="mt-1 text-[40px] font-bold leading-[0.95] text-white md:text-[54px]"
+              style={{ animation: "banner-slide-right 0.5s ease-out both", animationDelay: "0.45s" }}
+            >
+              DREAM
+              <br />
+              PROPERTY
+            </h2>
+          </div>
 
-          <SparkleSvg
-            showExtra
-            className="pointer-events-none absolute -right-[145px] top-1 h-auto w-[132px] md:-right-[165px] md:w-[150px]"
-          />
+          {/* Sparkle fades in last */}
+          <div
+            className="pointer-events-none absolute z-0 -right-[145px] top-1 w-[132px] md:-right-[165px] md:w-[150px]"
+            style={{ animation: "banner-fade-in 0.5s ease-out both", animationDelay: "0.6s" }}
+          >
+            <SparkleSvg showExtra className="h-auto w-full" />
+          </div>
         </div>
       </div>
 
-      {/* IMAGE */}
       <img
-  src="/assets/housebanner1.png"
-  alt="House banner"
-  className="
-    absolute
-    right-[-30px]
-top-[46%] -translate-y-1/2    z-10
-    h-[260px]
-    md:h-[360px]
-    max-w-none
-    -translate-y-1/2
-    object-contain
-  "
-/>
+        src="/assets/housebanner1.png"
+        alt="House banner"
+        className="absolute right-[-30px] top-[46%] -translate-y-1/2 z-20 h-[260px] md:h-[360px] max-w-none object-contain"
+        style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
+      />
     </div>
   );
 }
 
-
 function BannerSvgTwo() {
   return (
-    <svg viewBox="0 0 520 360" className="h-full w-full" fill="none" aria-hidden="true">
-      <defs>
-        <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(380 120) rotate(140) scale(320 260)">
-          <stop offset="0" stopColor="#DE141C" stopOpacity="0.8" />
-          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <rect x="24" y="24" width="472" height="312" rx="18" fill="#ffffff" opacity="0.06" />
-      <rect x="24" y="24" width="472" height="312" rx="18" fill="url(#g2)" opacity="0.32" />
-      <path d="M74 102h250" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="6" strokeLinecap="round" />
-      <path d="M74 140h200" stroke="#ffffff" strokeOpacity="0.22" strokeWidth="6" strokeLinecap="round" />
-      <path d="M74 178h160" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="6" strokeLinecap="round" />
-      <path d="M128 274l48-66 42 36 62-90 92 120" stroke="#DE141C" strokeOpacity="0.65" strokeWidth="4" strokeLinejoin="round" />
-      <circle cx="128" cy="274" r="6" fill="#ffffff" fillOpacity="0.7" />
-      <circle cx="176" cy="208" r="6" fill="#ffffff" fillOpacity="0.7" />
-      <circle cx="218" cy="244" r="6" fill="#ffffff" fillOpacity="0.7" />
-      <circle cx="280" cy="154" r="6" fill="#ffffff" fillOpacity="0.7" />
-      <circle cx="372" cy="274" r="6" fill="#ffffff" fillOpacity="0.7" />
-    </svg>
+    <div className="relative flex h-full w-full items-center rounded-[18px] bg-transparent">
+      <div className="relative z-20 flex items-stretch gap-3 pl-4 md:pl-8">
+        <span
+          className="w-[3px] bg-[#DE141C]"
+          style={{ animation: "banner-fade-in 0.4s ease-out both" }}
+        />
+        <div className="relative">
+          <div className="overflow-hidden">
+            <p
+              className="text-[11px] font-bold leading-none tracking-[0.18em] text-[#7F7F7F] md:text-[13px]"
+              style={{ animation: "banner-slide-right 0.45s ease-out both", animationDelay: "0.35s" }}
+            >
+              LISTINGS &amp; SELLING
+            </p>
+          </div>
+          <div className="overflow-hidden">
+            <h2
+              className="mt-1 text-[40px] font-bold leading-[0.95] text-white md:text-[54px]"
+              style={{ animation: "banner-slide-right 0.5s ease-out both", animationDelay: "0.45s" }}
+            >
+              EXPERT BROKER
+              <br />
+              ASSISTANCE
+            </h2>
+          </div>
+          <div
+            className="pointer-events-none absolute z-0 -right-[145px] top-1 w-[132px] md:-right-[165px] md:w-[150px]"
+            style={{ animation: "banner-fade-in 0.5s ease-out both", animationDelay: "0.6s" }}
+          >
+            <SparkleSvg showExtra className="h-auto w-full" />
+          </div>
+        </div>
+      </div>
+
+      <img
+        src="/assets/bannerprofessional.png"
+        alt="Listings and selling banner"
+        className="absolute right-[-40px] top-[40%] -translate-y-1/2 z-20 h-[220px] md:h-[300px] max-w-none object-contain"
+        style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
+      />
+    </div>
   );
 }
 
 function BannerSvgThree() {
   return (
-    <svg viewBox="0 0 520 360" className="h-full w-full" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="g3" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.1" />
-          <stop offset="0.55" stopColor="#DE141C" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <rect x="30" y="40" width="460" height="280" rx="18" fill="#ffffff" opacity="0.06" />
-      <path d="M64 92h392" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="2" />
-      <path d="M64 144h392" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="2" />
-      <path d="M64 196h392" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="2" />
-      <path d="M64 248h392" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="2" />
-      <path d="M96 268c60-20 104-74 156-104 62-34 122-10 184 32" stroke="url(#g3)" strokeWidth="10" strokeLinecap="round" />
-      <path d="M382 78l22 22m0-22-22 22" stroke="#DE141C" strokeOpacity="0.7" strokeWidth="5" strokeLinecap="round" />
-      <path d="M420 110l16 16m0-16-16 16" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="4" strokeLinecap="round" />
-    </svg>
+    <div className="relative flex h-full w-full items-center rounded-[18px] bg-transparent">
+      <div className="relative z-20 flex items-stretch gap-3 pl-4 md:pl-8">
+        <span
+          className="w-[3px] bg-[#DE141C]"
+          style={{ animation: "banner-fade-in 0.4s ease-out both" }}
+        />
+        <div className="relative">
+          <div className="overflow-hidden">
+            <p
+              className="text-[11px] font-bold leading-none tracking-[0.18em] text-[#7F7F7F] md:text-[13px]"
+              style={{ animation: "banner-slide-right 0.45s ease-out both", animationDelay: "0.35s" }}
+            >
+              INVEST &amp; GROW
+            </p>
+          </div>
+          <div className="overflow-hidden">
+            <h2
+              className="mt-1 text-[40px] font-bold leading-[0.95] text-white md:text-[54px]"
+              style={{ animation: "banner-slide-right 0.5s ease-out both", animationDelay: "0.45s" }}
+            >
+              CONSULTATION
+              <br />
+              &amp; GROWTH
+            </h2>
+          </div>
+          <div
+            className="pointer-events-none absolute z-0 -right-[145px] top-1 w-[132px] md:-right-[165px] md:w-[150px]"
+            style={{ animation: "banner-fade-in 0.5s ease-out both", animationDelay: "0.6s" }}
+          >
+            <SparkleSvg showExtra className="h-auto w-full" />
+          </div>
+        </div>
+      </div>
+
+      <img
+        src="/assets/bannerconsult.png"
+        alt="Investment consultation banner"
+        className="absolute right-[-40px] top-[40%] -translate-y-1/2 z-20 h-[220px] md:h-[300px] max-w-none object-contain"
+        style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
+      />
+    </div>
   );
 }
 
 const BANNER_SLIDES: BannerSlide[] = [
-  {
-    key: "discover",
-    Svg: BannerSvgOne,
-  },
-  {
-    key: "invest",
-    Svg: BannerSvgTwo,
-  },
-  {
-    key: "featured",
-    Svg: BannerSvgThree,
-  },
+  { key: "discover", Svg: BannerSvgOne },
+  { key: "invest", Svg: BannerSvgTwo },
+  { key: "featured", Svg: BannerSvgThree },
 ];
+
+function getFilteredProperties(
+  properties: Property[],
+  activeCategory: (typeof CATEGORY_TABS)[number],
+  filters: PropertyFiltersState
+) {
+  const keyword = filters.keyword.trim().toLowerCase();
+  const lookingFor = filters.lookingFor.trim().toLowerCase();
+  const location = filters.location.trim().toLowerCase();
+  const subLocation = filters.subLocation.trim().toLowerCase();
+  const priceMin = filters.priceMin === "" ? undefined : Number(filters.priceMin);
+  const priceMax = filters.priceMax === "" ? undefined : Number(filters.priceMax);
+
+  return properties.filter((property) => {
+    const matchesTab = activeCategory === "All" ? true : (property.type ?? "") === activeCategory;
+    if (!matchesTab) return false;
+    if (keyword) {
+      const haystack = `${property.title} ${property.location ?? ""}`.toLowerCase();
+      if (!haystack.includes(keyword)) return false;
+    }
+    if (lookingFor) {
+      const propType = (property.type ?? "").toLowerCase();
+      if (!propType.includes(lookingFor)) return false;
+    }
+    if (location) {
+      const propLoc = (property.location ?? "").toLowerCase();
+      if (!propLoc.includes(location)) return false;
+    }
+    if (subLocation) {
+      const propLoc = (property.location ?? "").toLowerCase();
+      if (!propLoc.includes(subLocation)) return false;
+    }
+    if (Number.isFinite(priceMin) && property.price < (priceMin as number)) return false;
+    if (Number.isFinite(priceMax) && property.price > (priceMax as number)) return false;
+    return true;
+  });
+}
 
 export default function Page() {
   const [activeCategory, setActiveCategory] = useState<(typeof CATEGORY_TABS)[number]>("All");
-  const [filters, setFilters] = useState<PropertyFiltersState>({
+  const [draftFilters, setDraftFilters] = useState<PropertyFiltersState>({
     keyword: "",
     lookingFor: "",
     location: "",
+    subLocation: "",
     priceMin: "",
     priceMax: "",
+    status: "",
   });
-
+  const [appliedFilters, setAppliedFilters] = useState<PropertyFiltersState>({
+    keyword: "",
+    lookingFor: "",
+    location: "",
+    subLocation: "",
+    priceMin: "",
+    priceMax: "",
+    status: "",
+  });
+  const [hasSearched, setHasSearched] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerElapsed, setBannerElapsed] = useState(0);
 
@@ -331,53 +428,42 @@ export default function Page() {
         return next;
       });
     }, BANNER_TICK_MS);
-
     return () => window.clearInterval(id);
   }, []);
 
   const bannerProgress = Math.min(100, (bannerElapsed / BANNER_DURATION_MS) * 100);
+  void bannerProgress;
 
   const filteredProperties = useMemo(() => {
-    const keyword = filters.keyword.trim().toLowerCase();
-    const lookingFor = filters.lookingFor.trim().toLowerCase();
-    const location = filters.location.trim().toLowerCase();
-    const priceMin = filters.priceMin === "" ? undefined : Number(filters.priceMin);
-    const priceMax = filters.priceMax === "" ? undefined : Number(filters.priceMax);
+    return getFilteredProperties(SAMPLE_PROPERTIES, activeCategory, appliedFilters);
+  }, [activeCategory, appliedFilters]);
 
-    return SAMPLE_PROPERTIES.filter((p) => {
-      const matchesTab =
-        activeCategory === "All"
-          ? true
-          : activeCategory === "Featured"
-            ? !!p.featured
-            : (p.category ?? "") === activeCategory;
+  const hasSearchCriteria =
+    activeCategory !== "All" ||
+    appliedFilters.keyword.trim() !== "" ||
+    appliedFilters.lookingFor.trim() !== "" ||
+    appliedFilters.location.trim() !== "" ||
+    appliedFilters.subLocation.trim() !== "" ||
+    appliedFilters.priceMin.trim() !== "" ||
+    appliedFilters.priceMax.trim() !== "" ||
+    appliedFilters.status.trim() !== "";
 
-      if (!matchesTab) return false;
-
-      if (keyword) {
-        const haystack = `${p.title} ${p.location ?? ""}`.toLowerCase();
-        if (!haystack.includes(keyword)) return false;
-      }
-
-      if (lookingFor) {
-        const propType = (p.type ?? "").toLowerCase();
-        if (!propType.includes(lookingFor)) return false;
-      }
-
-      if (location) {
-        const propLoc = (p.location ?? "").toLowerCase();
-        if (!propLoc.includes(location)) return false;
-      }
-
-      if (Number.isFinite(priceMin) && p.price < (priceMin as number)) return false;
-      if (Number.isFinite(priceMax) && p.price > (priceMax as number)) return false;
-
-      return true;
-    });
-  }, [activeCategory, filters]);
+  const primaryProperty = filteredProperties[0] ?? null;
+  const showMapPreview = hasSearched && hasSearchCriteria && Boolean(primaryProperty);
 
   return (
     <main className={`${poppins.className} bg-white text-[#181A20]`}>
+      <style>{`
+        @keyframes banner-fade-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes banner-slide-right {
+          from { opacity: 0; transform: translateX(-60px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+
       <div className="flex h-7 items-center justify-center gap-1 bg-black px-2 text-[10px] text-[#FAFAFA] sm:h-8 sm:gap-2 sm:text-sm">
         <p className="whitespace-nowrap">Premium but Affordable (deals) Properties on Sale.</p>
         <a className="underline" href="#">
@@ -387,37 +473,47 @@ export default function Page() {
 
       <Navbar links={navLinks} fontClassName={poppins.className} />
 
-<section className="relative overflow-hidden bg-black">
-  <div className="mx-auto max-w-[1200px] px-4 py-6 md:py-8">
-    <div className="relative h-[150px] md:h-[190px]">
-      {BANNER_SLIDES.map((slide, idx) => {
-        const Svg = slide.Svg;
-        const isActive = idx === bannerIndex;
+      <section className="relative isolate overflow-hidden bg-black">
+        {/* Gradient — left side */}
+        <img
+          src="/assets/Gradient V25.svg"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-8 top-1/2 -translate-y-1/2 z-0 h-80 w-80 md:h-[34rem] md:w-[34rem]"
+        />
+        {/* Gradient — right side, flipped + rotated */}
+        
 
-        return (
-          <div
-            key={slide.key}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              isActive ? "opacity-100" : "pointer-events-none opacity-0"
-            }`}
-          >
-            {/* IMPORTANT CHANGE */}
-            <div className="relative mx-auto h-full w-full max-w-[860px] overflow-visible">
-              <Svg />
-            </div>
+        <div className="relative mx-auto max-w-[1200px] px-4 py-6 md:py-8">
+          <div className="relative h-[150px] md:h-[190px]">
+            {BANNER_SLIDES.map((slide, idx) => {
+              const Svg = slide.Svg;
+              const isActive = idx === bannerIndex;
+
+              return (
+                <div
+                  key={`${slide.key}-${isActive ? "active" : "inactive"}`}
+                  className={`absolute inset-0 transition-opacity duration-700 ${
+                    isActive ? "opacity-100" : "pointer-events-none opacity-0"
+                  }`}
+                >
+                  <div className="relative mx-auto h-full w-full max-w-[860px] overflow-visible">
+                    <Svg />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
-    </div>
-  </div>
-</section>
+        </div>
+      </section>
 
       <section className="mx-auto mt-6 max-w-[1200px] px-4">
         <PropertyFilters
-          value={filters}
-          onChange={setFilters}
+          value={draftFilters}
+          onChange={setDraftFilters}
           onSubmit={() => {
-            // No-op: filtering is live; button is for UX parity.
+            setAppliedFilters(draftFilters);
+            setHasSearched(true);
           }}
         />
       </section>
@@ -450,8 +546,30 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="mt-7">
-          <PropertyGrid properties={filteredProperties} />
+        <div className={`mt-7 grid gap-6 ${showMapPreview ? "lg:grid-cols-[minmax(0,1fr)_380px]" : ""}`}>
+          <div>
+            {filteredProperties.length > 0 ? (
+              <PropertyGrid
+                properties={filteredProperties}
+                className={showMapPreview ? "grid grid-cols-2 gap-3 sm:gap-5" : undefined}
+              />
+            ) : (
+              <div className="rounded-[18px] border border-dashed border-black/15 bg-white p-8 text-center text-sm text-black/55">
+                No properties matched your search. Try a different keyword, location, or category.
+              </div>
+            )}
+          </div>
+
+          {showMapPreview && primaryProperty ? (
+            <aside className="overflow-hidden rounded-[18px] border border-black/10 bg-white shadow-sm">
+              <div className="border-b border-black/10 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/50">Map Preview</p>
+                <h3 className="mt-1 text-[18px] font-semibold leading-tight text-black">Results</h3>
+                <p className="mt-1 text-sm text-black/55">{filteredProperties.length} matched properties</p>
+              </div>
+              <PropertyMapPreview properties={filteredProperties} />
+            </aside>
+          ) : null}
         </div>
       </section>
 

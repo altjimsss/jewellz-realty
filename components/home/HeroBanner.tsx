@@ -190,113 +190,105 @@ export function HeroBanner({
 					<SparkleSvg className="mt-1 h-auto w-[120px] shrink-0" />
 				</div>
 
-				<div className="absolute left-10 top-52 hidden w-[370px] md:block">
-					<div className="grid grid-cols-2 gap-3.5">
-						<div className="relative">
-							<select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
-								<option value="">Location</option>
-								<option value="batangas">Batangas</option>
-								<option value="cavite">Cavite</option>
-								<option value="laguna">Laguna</option>
-								<option value="quezon-city">Quezon City</option>
-							</select>
-							<svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-white/90" fill="none">
-								<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						</div>
-						<div className="relative">
-							<select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
-								<option value="">Sub-Location</option>
-								<option value="lipa">Lipa</option>
-								<option value="nuvali">Nuvali</option>
-								<option value="tagaytay">Tagaytay</option>
-								<option value="alabang">Alabang</option>
-							</select>
-							<svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-white/90" fill="none">
-								<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						</div>
+				<div className="absolute left-0 right-0 top-52 hidden md:block">
+					<div className="mx-auto w-full max-w-[1020px] rounded-[24px] border border-black/5 bg-white/95 p-3.5 shadow-[0_-14px_28px_rgba(0,0,0,0.08),0_18px_40px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+						<div className="grid grid-cols-12 items-center gap-0">
+							{/* Search keywords */}
+							<div className="col-span-3 px-4 py-2.5">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Search</p>
+								<input placeholder="Enter Keywords" className="mt-1 h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" type="search" />
+							</div>
+							<div className="col-span-2 border-l border-black/10 px-4 py-2.5">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Looking For</p>
+								<div className="relative mt-1">
+									<select defaultValue="" className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-7 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
+										<option value="">Type</option>
+										<option value="House">House</option>
+										<option value="Apartment">Apartment</option>
+										<option value="Condo">Condo</option>
+										<option value="Townhouse">Townhouse</option>
+										<option value="Lot">Lot</option>
+										<option value="Commercial">Commercial</option>
+									</select>
+									<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
+										<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
+								</div>
+							</div>
 
-						<div className="relative">
-							<select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
-								<option value="">No. of Bathrooms</option>
-								<option value="1">1</option>
-								<option value="2">2</option>
-								<option value="3">3</option>
-								<option value="4">4+</option>
-							</select>
-							<svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-white/90" fill="none">
-								<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						</div>
-						<div className="relative">
-							<select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
-								<option value="">Status</option>
-								<option value="for-sale">For Sale</option>
-								<option value="pre-selling">Pre-Selling</option>
-								<option value="ready">Ready for Occupancy</option>
-							</select>
-							<svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-white/90" fill="none">
-								<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						</div>
+							{/* Location */}
+							<div className="col-span-2 border-l border-black/10 px-4 py-2.5">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Location</p>
+								<div className="relative mt-1">
+									<select defaultValue="" className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-7 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
+										<option value="">Location</option>
+										<option value="Batangas">Batangas</option>
+										<option value="Cavite">Cavite</option>
+										<option value="Laguna">Laguna</option>
+										<option value="Metro Manila">Metro Manila</option>
+										<option value="Tagaytay">Tagaytay</option>
+										<option value="Nuvali">Nuvali</option>
+									</select>
+									<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
+										<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
+								</div>
+							</div>
 
-						<div className="relative">
-							<select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
-								<option value="">No. of Guest</option>
-								<option value="1-2">1-2</option>
-								<option value="3-4">3-4</option>
-								<option value="5-6">5-6</option>
-								<option value="7+">7+</option>
-							</select>
-							<svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-white/90" fill="none">
-								<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						</div>
-						<div className="relative">
-							<select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
-								<option value="">No. of Bedrooms</option>
-								<option value="1">1</option>
-								<option value="2">2</option>
-								<option value="3">3</option>
-								<option value="4">4+</option>
-							</select>
-							<svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-white/90" fill="none">
-								<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
+							{/* Sub-Location */}
+							<div className="col-span-1 border-l border-black/10 px-4 py-2.5">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Sub-Location</p>
+								<div className="relative mt-1">
+									<select defaultValue="" className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-7 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
+										<option value="">Sub-Location</option>
+										<option value="Lipa">Lipa</option>
+										<option value="Nuvali">Nuvali</option>
+										<option value="Tagaytay">Tagaytay</option>
+										<option value="Alabang">Alabang</option>
+									</select>
+									<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
+										<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
+								</div>
+							</div>
+
+							{/* Price */}
+							<div className="col-span-2 border-l border-black/10 px-4 py-2.5">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Price</p>
+								<div className="mt-1 grid grid-cols-2 gap-2">
+									<input placeholder="Min" inputMode="numeric" className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" />
+									<input placeholder="Max" inputMode="numeric" className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" />
+								</div>
+							</div>
+
+							{/* Status */}
+							<div className="col-span-1 border-l border-black/10 px-4 py-2.5">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Status</p>
+								<div className="relative mt-1">
+									<select defaultValue="" className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-7 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
+										<option value="">Status</option>
+										<option value="for-sale">For Sale</option>
+										<option value="pre-selling">Pre-Selling</option>
+										<option value="ready">Ready for Occupancy</option>
+									</select>
+									<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
+										<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
+								</div>
+							</div>
+
+							{/* Search button */}
+							<div className="col-span-1 flex items-center justify-center px-3 py-2.5">
+								<button type="submit" className="search-btn inline-flex h-9 w-full items-center justify-center gap-2 rounded-[16px] bg-[#DE141C] text-xs font-semibold text-white shadow-[0_10px_22px_rgba(222,20,28,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(222,20,28,0.34)]">
+									<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+										<circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.8"></circle>
+										<path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"></path>
+									</svg>
+									Search
+								</button>
+							</div>
 						</div>
 					</div>
-
-					<div className="mt-4 grid grid-cols-2 gap-3.5">
-						<div>
-							<p className="mb-1 text-[11px] text-[#8B8B8B]">{priceRangeLabel}</p>
-							<input
-								className="h-1.5 w-full accent-[#DE141C]"
-								type="range"
-								min="0"
-								max="850000"
-								step="10000"
-								value={safePriceMax}
-								onChange={(e) => setPriceMax(Math.min(Number(e.target.value) || 0, 850000))}
-							/>
-						</div>
-						<div>
-							<p className="mb-1 text-[11px] text-[#8B8B8B]">Area (120-{areaMax})</p>
-							<input
-								className="h-1.5 w-full accent-[#DE141C]"
-								type="range"
-								min="120"
-								max="500"
-								step="1"
-								value={areaMax ?? 120}
-								onChange={(e) => setAreaMax(Number(e.target.value) || 120)}
-							/>
-						</div>
-					</div>
-
-					<button className="mx-auto mt-5 block h-10 w-[170px] rounded bg-[#DE141C] text-xs font-bold text-white">
-						Search Property
-					</button>
 				</div>
 
 				<div className="md:hidden">
@@ -396,94 +388,94 @@ export function HeroBanner({
 						</div>
 					</div>
 
-					<div className="space-y-2 bg-black px-[15px] pb-[15px] pt-5">
+					<div className="overflow-hidden rounded-[28px] border border-black/5 bg-white/95 px-3.5 py-3 shadow-[0_-14px_28px_rgba(0,0,0,0.08),0_18px_40px_rgba(0,0,0,0.12)] backdrop-blur-sm">
 						<div className="grid grid-cols-2 gap-2">
 							<div className="relative">
-								<select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+								<select className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-6 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
 									<option value="">Location</option>
 									<option value="batangas">Batangas</option>
 									<option value="cavite">Cavite</option>
 									<option value="laguna">Laguna</option>
 								</select>
-								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
+								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 								</svg>
 							</div>
 							<div className="relative">
-								<select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+								<select className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-6 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
 									<option value="">Sub-Location</option>
 									<option value="lipa">Lipa</option>
 									<option value="nuvali">Nuvali</option>
 									<option value="tagaytay">Tagaytay</option>
 								</select>
-								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
+								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 								</svg>
 							</div>
 
 							<div className="relative">
-								<select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+								<select className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-6 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
 									<option value="">No. of Bathrooms</option>
 									<option value="1">1</option>
 									<option value="2">2</option>
 									<option value="3">3</option>
 									<option value="4">4+</option>
 								</select>
-								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
+								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 								</svg>
 							</div>
 
 							<div className="relative">
-								<select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+								<select className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-6 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
 									<option value="">Status</option>
 									<option value="for-sale">For Sale</option>
 									<option value="pre-selling">Pre-Selling</option>
 									<option value="ready">Ready for Occupancy</option>
 								</select>
-								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
+								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 								</svg>
 							</div>
 
 							<div className="relative">
-								<select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+								<select className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-6 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
 									<option value="">No. of Guest</option>
 									<option value="1-2">1-2</option>
 									<option value="3-4">3-4</option>
 									<option value="5-6">5-6</option>
 									<option value="7+">7+</option>
 								</select>
-								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
+								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 								</svg>
 							</div>
 
 							<div className="relative">
-								<select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+								<select className="h-9 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-6 text-xs text-black shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]">
 									<option value="">No. of Bedrooms</option>
 									<option value="1">1</option>
 									<option value="2">2</option>
 									<option value="3">3</option>
 									<option value="4">4+</option>
 								</select>
-								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
+								<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 								</svg>
 							</div>
 						</div>
 
-						<div className="grid grid-cols-2 gap-2 pt-1">
+						<div className="grid grid-cols-2 gap-2 pt-2">
 							<div>
-								<p className="mb-1 text-[10px] text-white/60">{priceRangeLabel}</p>
+								<p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">{priceRangeLabel}</p>
 								<input className="h-1.5 w-full accent-[#DE141C]" type="range" min="0" max="850000" step="10000" value={safePriceMax} onChange={(e) => setPriceMax(Math.min(Number(e.target.value) || 0, 850000))} />
 							</div>
 							<div>
-								<p className="mb-1 text-[10px] text-white/60">Area (120-{areaMax})</p>
+								<p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Area (120-{areaMax})</p>
 								<input className="h-1.5 w-full accent-[#DE141C]" type="range" min="120" max="500" step="1" value={areaMax ?? 120} onChange={(e) => setAreaMax(Number(e.target.value) || 120)} />
 							</div>
 						</div>
-						<button className="mt-1 h-10 w-full rounded-sm bg-[#DE141C] text-xs font-semibold text-white">Search Property</button>
+						<button className="mt-2 h-9 w-full rounded-[16px] bg-[#DE141C] text-xs font-semibold text-white shadow-[0_10px_22px_rgba(222,20,28,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(222,20,28,0.34)]">Search Property</button>
 					</div>
 				</div>
 			</section>
@@ -562,7 +554,8 @@ export function HeroBanner({
 							</svg>
 						</div>
 						<div>
-							<h3 className="font-semibold">Real Estate Consultation</h3>
+							<p className="text-[11px] font-bold leading-none tracking-[0.18em] text-[#7F7F7F] md:text-[13px]">INVEST &amp; GROW</p>
+							<h3 className="font-semibold">CONSULTATION<br />&amp; GROWTH</h3>
 							<p className="text-sm leading-6">Provides personalized property recommendations, market guidance, and investment assistance tailored to each client&apos;s needs and budget.</p>
 						</div>
 					</div>

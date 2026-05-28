@@ -143,9 +143,9 @@ const serviceVisuals = [
     image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
   },
   {
-    title: "Real Estate Consultation",
+    title: "CONSULTATION & GROWTH",
     subtitle: "Get tailored advice on value, timing, and smart property decisions.",
-    image: "https://images.unsplash.com/photo-1554995207-c18c203602cb?w=1200&q=80",
+    image: "/assets/bannerconsult.png",
   },
   {
     title: "Property Viewing & Tripping Services",
@@ -705,7 +705,17 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
             ))}
           </div>
           <div className="pointer-events-none absolute bottom-4 left-4 right-24 text-white">
-            <p className="text-lg font-semibold">{serviceVisuals[serviceVisualIndex].title}</p>
+            <p className="text-lg font-semibold">
+              {serviceVisuals[serviceVisualIndex].title === "CONSULTATION & GROWTH" ? (
+                <>
+                  CONSULTATION
+                  <br />
+                  &amp; GROWTH
+                </>
+              ) : (
+                serviceVisuals[serviceVisualIndex].title
+              )}
+            </p>
             <p className="mt-1 text-sm text-white/85">{serviceVisuals[serviceVisualIndex].subtitle}</p>
           </div>
         </div>

@@ -19,7 +19,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 	return (
-		<nav className="sticky inset-x-0 top-0 z-[100] border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
+		<nav className="sticky inset-x-0 top-0 z-[5000] border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
 			<div className="mx-auto flex max-w-[1200px] items-center">
 				<div className="hidden min-w-[170px] items-center md:flex">
 					<Image
@@ -120,7 +120,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 				</div>
 			</div>
 			<div
-				className={`absolute left-0 right-0 top-full z-[110] transform-gpu md:hidden transition-all duration-200 ${
+				className={`absolute left-0 right-0 top-full z-[5010] transform-gpu md:hidden transition-all duration-200 ${
 					mobileMenuOpen
 						? "pointer-events-auto translate-y-0 opacity-100 ease-out"
 						: "pointer-events-none -translate-y-3 opacity-0 ease-in"

@@ -22,6 +22,7 @@ export type Property = {
 	price: number;
 
 	location?: string;
+	coordinates?: [number, number];
 	image?: string;
 	beds?: number;
 	baths?: number;
