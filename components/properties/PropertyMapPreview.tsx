@@ -6,6 +6,7 @@ import type { Property } from "@/types/property";
 
 type PropertyMapPreviewProps = {
 	properties: Property[];
+	mapHeightClassName?: string;
 };
 
 type GeocodeResult = {
@@ -41,7 +42,7 @@ function createPinIcon(leaflet: typeof import("leaflet")) {
 	});
 	}
 
-	export function PropertyMapPreview({ properties }: PropertyMapPreviewProps) {
+	export function PropertyMapPreview({ properties, mapHeightClassName = "h-[520px]" }: PropertyMapPreviewProps) {
 	const mapElementRef = useRef<HTMLDivElement | null>(null);
 	const mapRef = useRef<LeafletMap | null>(null);
 	const markerRefs = useRef<Marker[]>([]);
@@ -134,7 +135,7 @@ function createPinIcon(leaflet: typeof import("leaflet")) {
 
 	return (
 		<div className="flex h-full min-h-[520px] flex-col overflow-hidden">
-			<div className="relative h-[420px] shrink-0 bg-[#f3f3f3]">
+			<div className={`relative ${mapHeightClassName} shrink-0 bg-[#f3f3f3]`}>
 				<div ref={mapElementRef} className="absolute inset-0" />
 			</div>
 			<div className="border-t border-black/10 bg-white p-4">

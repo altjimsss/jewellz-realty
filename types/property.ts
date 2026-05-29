@@ -12,8 +12,15 @@ export type PropertyType =
 	| "Condo"
 	| "Townhouse"
 	| "Lot"
+	| "Farm"
+	| "Memorial"
 	| "Commercial"
 	| string;
+
+export type PropertySpec = {
+	label: string;
+	value: string;
+};
 
 export type Property = {
 	id: string;
@@ -21,12 +28,17 @@ export type Property = {
 	title: string;
 	price: number;
 
+	/** Optional full description text */
+	description?: string;
+
 	location?: string;
 	coordinates?: [number, number];
 	image?: string;
+	images?: string[];
 	beds?: number;
 	baths?: number;
 	areaSqm?: number;
+	specs?: PropertySpec[];
 	type?: PropertyType;
 	category?: PropertyCategory;
 	featured?: boolean;
