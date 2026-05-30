@@ -21,7 +21,11 @@ const quickPrompts = [
 ];
 
 function createId() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
 }
 
 async function fetchPropertyPrompt(property: Property, message: string, history: ChatMessage[]) {
@@ -123,8 +127,38 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
 
   return (
     <>
+      {/* ── Book an Appointment Button ── */}
+      <a
+        href="/contact"
+        className="group flex items-center justify-between gap-3 rounded-2xl border border-[#DE141C] bg-[#DE141C] px-4 py-3 text-white shadow-sm transition-colors hover:bg-[#c51018]"
+      >
+        <div className="flex items-center gap-2.5">
+          <svg
+            viewBox="0 0 20 20"
+            className="h-4 w-4 shrink-0 text-white/80"
+            fill="none"
+            aria-hidden="true"
+          >
+            <rect x="2" y="3" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M2 8h16M7 1v4M13 1v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.1em]">
+            Book an Appointment
+          </span>
+        </div>
+        <svg
+          viewBox="0 0 16 16"
+          className="h-3.5 w-3.5 shrink-0 text-white/70 transition-transform group-hover:translate-x-0.5"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </a>
+
+      {/* ── Chat Widget ── */}
       <div className="flex h-[520px] max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white">
-        <div className="border-b border-black/10 bg-gradient-to-b from-white to-[#FBFBFB] px-3 py-2.5">
+        <div className="border-b border-black/10 bg-[#f4f4f4] px-3 py-2.5">
           <div className="flex items-center gap-2.5">
             <Image
               src="/assets/chaticon.svg"
@@ -136,8 +170,8 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-sm font-semibold text-black">Chat</p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-white" style={{ backgroundColor: '#10b981' }}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
                   AI
                 </span>
               </div>
@@ -146,7 +180,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-[#FCFCFC] to-[#F7F7F7] p-3 text-[11px] text-black/55" aria-live="polite">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-[#FCFCFC] to-[#FFFFF] p-3 text-[11px] text-black/55" aria-live="polite">
           <div className="space-y-3">
             {messages.map((message) => (
               <div
@@ -203,7 +237,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-black/10 bg-white/95 p-2.5 backdrop-blur">
+        <div className="shrink-0 border-t border-black/10 bg-f4f4f4 p-2.5 backdrop-blur">
           <div className="mb-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {quickPrompts.map((prompt) => (
               <button
@@ -230,11 +264,11 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
               onChange={(event) => setInput(event.target.value)}
               className="h-9 w-full rounded-md border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-2 focus:ring-[#DE141C]/10"
               placeholder="Type your message here..."
-                disabled={isSending}
+              disabled={isSending}
             />
             <button
               type="submit"
-                disabled={isSending || !input.trim()}
+              disabled={isSending || !input.trim()}
               className="flex h-9 items-center gap-1.5 rounded-md bg-[#DE141C] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition-colors hover:bg-[#c51018] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
