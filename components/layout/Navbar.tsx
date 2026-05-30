@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export type NavLink = {
@@ -87,7 +88,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 					{links.map((link) => {
 						const isActive = pathname === link.href;
 						return (
-							<a
+							<Link
 								key={link.href}
 								href={link.href}
 								className={`group relative pb-2 font-medium transition-colors duration-200 ${
@@ -101,7 +102,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 										isActive ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-full group-hover:opacity-60"
 									}`}
 								/>
-							</a>
+							</Link>
 						);
 					})}
 				</div>
@@ -131,7 +132,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 						{links.map((link) => {
 							const isActive = pathname === link.href;
 							return (
-								<a
+								<Link
 									key={link.href}
 									href={link.href}
 									onClick={() => setMobileMenuOpen(false)}
@@ -140,7 +141,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 									} ${isActive ? "text-[#DE141C]" : "text-black/80"}`}
 								>
 									{link.label}
-								</a>
+								</Link>
 							);
 						})}
 					</div>

@@ -172,35 +172,59 @@ export function PropertyBanner() {
   void bannerProgress;
 
   return (
-    <section className="relative isolate overflow-hidden bg-black">
-      <img
-        src="/assets/Gradient V25.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-8 top-1/2 z-0 h-80 w-80 -translate-y-1/2 md:h-[34rem] md:w-[34rem]"
-      />
+    <>
+      <section className="relative isolate overflow-hidden bg-black">
+        <img
+          src="/assets/Gradient V25.svg"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-8 top-1/2 z-0 h-80 w-80 -translate-y-1/2 md:h-[34rem] md:w-[34rem]"
+        />
 
-      <div className="relative mx-auto max-w-[1200px] px-4 py-6 md:py-8">
-        <div className="relative h-[150px] md:h-[190px]">
-          {BANNER_SLIDES.map((slide, idx) => {
-            const Svg = slide.Svg;
-            const isActive = idx === bannerIndex;
+        <div className="relative mx-auto max-w-[1200px] px-4 py-6 md:py-8">
+          <div className="relative h-[150px] md:h-[190px]">
+            {BANNER_SLIDES.map((slide, idx) => {
+              const Svg = slide.Svg;
+              const isActive = idx === bannerIndex;
 
-            return (
-              <div
-                key={`${slide.key}-${isActive ? "active" : "inactive"}`}
-                className={`absolute inset-0 transition-opacity duration-700 ${
-                  isActive ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <div className="relative mx-auto h-full w-full max-w-[860px] overflow-visible">
-                  <Svg />
+              return (
+                <div
+                  key={`${slide.key}-${isActive ? "active" : "inactive"}`}
+                  className={`absolute inset-0 transition-opacity duration-700 ${
+                    isActive ? "opacity-100" : "pointer-events-none opacity-0"
+                  }`}
+                >
+                  <div className="relative mx-auto h-full w-full max-w-[860px] overflow-visible">
+                    <Svg />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <style jsx global>{`
+        @keyframes banner-fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes banner-slide-right {
+          from {
+            opacity: 0;
+            transform: translateX(-60px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
+    </>
   );
 }

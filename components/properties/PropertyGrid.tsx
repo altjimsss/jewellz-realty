@@ -1,5 +1,3 @@
-"use client";
-
 import type { Property } from "@/types/property";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 

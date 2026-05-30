@@ -1,10 +1,10 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PropertyBanner } from "@/components/layout/PropertyBanner";
 import { PropertyCard } from "@/components/properties/PropertyCard";
+import { PropertyChatAssistant } from "@/components/properties/PropertyChatAssistant";
 import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyLocationMap } from "@/components/properties/PropertyLocationMap";
 import { InquireCard } from "@/components/properties/InquireCard";
@@ -233,59 +233,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 </div>
             </div>
 
-            <div className="rounded-[12px] border border-black/10 bg-white p-4 shadow-sm">
-              {/* Header */}
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-black">Ready to make a move?</p>
-                <p className="mt-0.5 text-xs text-black/50">Schedule a visit or send us a message below.</p>
-              </div>
-
-              {/* CTA Button */}
-              <button className="h-10 w-full bg-[#DE141C] text-[12px] font-semibold uppercase tracking-[0.06em] text-white transition-colors hover:bg-[#c51018]">
-                Book an Appointment
-              </button>
-
-              <div className="my-4 flex items-center gap-2">
-                <hr className="flex-1 border-black/10" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-black/30">or chat with us</span>
-                <hr className="flex-1 border-black/10" />
-              </div>
-
-              {/* Chat */}
-              <div className="rounded-[10px] border border-black/10">
-                <div className="border-b border-black/10 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DE141C]">
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-white" fill="none" aria-hidden="true">
-                        <rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
-                        <path d="M8 10h8M8 13.5h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        <path d="M8 3v3M16 3v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        <circle cx="9" cy="10" r="0" fill="currentColor" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-semibold text-black">Chat</p>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#DE141C]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#DE141C]">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#DE141C]" />
-                          AI
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-black/45">Message us your questions</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="min-h-[120px] bg-[#FAFAFA] p-3 text-[11px] text-black/55">
-                  Ask about pricing, availability, site viewing, or property details.
-                </div>
-                <div className="border-t border-black/10 p-2">
-                  <input
-                    className="h-9 w-full rounded-sm border border-black/10 px-3 text-[12px] outline-none focus:border-[#DE141C]/40 focus:ring-0"
-                    placeholder="Type your message here..."
-                  />
-                </div>
-              </div>
-            </div>
+            <PropertyChatAssistant property={property} />
 
             {/* ✅ Collapsible Inquire Card */}
             <InquireCard />
