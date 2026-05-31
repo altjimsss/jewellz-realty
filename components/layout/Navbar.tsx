@@ -18,6 +18,15 @@ type NavbarProps = {
 export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 	const pathname = usePathname();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const isProjectListJourney = pathname === "/appointment" || pathname.startsWith("/project-list");
+
+	function isLinkActive(linkHref: string) {
+		if (linkHref === "/project-list") {
+			return isProjectListJourney;
+		}
+
+		return pathname === linkHref;
+	}
 
 	return (
 		<nav className="sticky inset-x-0 top-0 z-[5000] border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
@@ -86,7 +95,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 				</div>
 				<div className={`ml-28 hidden items-center gap-8 text-sm md:flex ${fontClassName}`}>
 					{links.map((link) => {
-						const isActive = pathname === link.href;
+						const isActive = isLinkActive(link.href);
 						return (
 							<Link
 								key={link.href}
@@ -130,7 +139,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 				<div className="relative mx-4 mt-2 overflow-hidden rounded-[20px] border border-black/10 bg-white/95 shadow-lg backdrop-blur-md">
 					<div className="flex flex-col p-1.5">
 						{links.map((link) => {
-							const isActive = pathname === link.href;
+							const isActive = isLinkActive(link.href);
 							return (
 								<Link
 									key={link.href}
@@ -138,7 +147,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 									onClick={() => setMobileMenuOpen(false)}
 									className={`rounded-lg px-2.5 py-3 text-sm font-medium transition-colors duration-150 hover:bg-[#DE141C]/10 hover:text-[#DE141C] ${
 										mobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
-									} ${isActive ? "text-[#DE141C]" : "text-black/80"}`}
+									} ${isActive ? "text-black" : "text-black/80"}`}
 								>
 									{link.label}
 								</Link>

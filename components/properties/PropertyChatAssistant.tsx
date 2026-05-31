@@ -129,7 +129,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
     <>
       {/* ── Book an Appointment Button ── */}
       <a
-        href="/appointment"
+        href={`/appointment?from=${encodeURIComponent(`/project-list/${property.slug}`)}&property=${encodeURIComponent(property.title)}`}
         className="group flex items-center justify-between gap-3 rounded-2xl border border-[#DE141C] bg-[#DE141C] px-4 py-3 text-white shadow-sm transition-colors hover:bg-[#c51018]"
       >
         <div className="flex items-center gap-2.5">

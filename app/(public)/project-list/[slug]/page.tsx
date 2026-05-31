@@ -9,6 +9,7 @@ import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyLocationMap } from "@/components/properties/PropertyLocationMap";
 import { InquireCard } from "@/components/properties/InquireCard";
 import { ParamIcon } from "@/components/properties/ParamIcon";
+import { RouteScrollOffset } from "@/components/layout/RouteScrollOffset";
 
 import { formatPHPWhole } from "@/lib/currency";
 import { SAMPLE_PROPERTIES, getPropertyBySlug, getRelatedProperties } from "@/lib/sample-properties";
@@ -139,9 +140,10 @@ export default async function PropertyDetailPage({ params }: PageProps) {
       </div>
 
       <Navbar links={navLinks} fontClassName={poppins.className} />
+      <RouteScrollOffset offset={290} />
       <PropertyBanner />
 
-      <section className="mx-auto max-w-[1200px] px-4 py-6 md:py-10">
+      <section className="mx-auto max-w-[1200px] px-4 py-4 md:py-6">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <div className="space-y-6">
             <PropertyGallery images={galleryImages} title={property.title} />
