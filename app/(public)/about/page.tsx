@@ -1,1 +1,5 @@
-export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(public)\about\page.tsx</main>; }
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/about-us");
+}
