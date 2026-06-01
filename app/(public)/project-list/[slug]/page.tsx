@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Poppins } from "next/font/google";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PropertyBanner } from "@/components/layout/PropertyBanner";
@@ -132,12 +133,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
   return (
     <main className={`${poppins.className} bg-white text-[#181A20]`}>
-      <div className="flex h-7 items-center justify-center gap-1 bg-black px-2 text-[10px] text-[#FAFAFA] sm:h-8 sm:gap-2 sm:text-sm">
-        <p className="whitespace-nowrap">Premium but Affordable (deals) Properties on Sale.</p>
-        <a className="underline" href="#">
-          BrowseNow
-        </a>
-      </div>
+      <AnnouncementBar />
 
       <Navbar links={navLinks} fontClassName={poppins.className} />
       <RouteScrollOffset offset={290} />

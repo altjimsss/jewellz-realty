@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import SectionHeader from "@/components/layout/SectionHeader";
 import { Poppins } from "next/font/google";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
@@ -86,35 +88,17 @@ function StatIcon() {
 export default function AboutUsPage() {
   return (
     <main className={`${poppins.className} bg-white text-[#111111]`}>
+      <AnnouncementBar />
       <Navbar links={navLinks} fontClassName={poppins.className} />
 
-      <section className="px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="mx-auto max-w-[1120px] rounded-[24px] bg-white px-0 py-0">
-          <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.98fr] lg:gap-12">
-            <div className="py-2">
-              <div className="flex items-start gap-3">
-                <span
-                  className="mt-1.5 h-[2.2em] w-[3px] shrink-0 rounded-full bg-[#DE141C]"
-                  aria-hidden="true"
-                />
-                <div>
-                  <h2
-                    className="font-semibold leading-tight text-zinc-900"
-                    style={{ fontFamily: "'Poppins', sans-serif", fontSize: "22px" }}
-                  >
-                    About Us
-                  </h2>
-                  <p
-                    className="mt-[2px] font-normal leading-tight text-zinc-400"
-                    style={{ fontFamily: "'Poppins', sans-serif", fontSize: "11px" }}
-                  >
-                    Redefining the way people discover property.
-                  </p>
-                </div>
-              </div>
+      <section className="mx-auto w-full max-w-[1120px] px-6 py-14 lg:px-8">
+        <div className="rounded-[24px] bg-white px-0 py-0">
+          <div className="grid items-start gap-8 lg:grid-cols-[1fr_0.98fr] lg:gap-12">
+            <div>
+              <SectionHeader title={"About Us"} subtitle={"Redefining the way people discover property."} />
 
               <h1 className="mt-4 max-w-xl text-[clamp(2.05rem,3.7vw,3.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-[#111111]">
-                Discover the story behind Jewellz Realty.
+                Discover Jewellz Realty
               </h1>
 
               <p className="mt-4 max-w-[430px] text-[14px] leading-7 text-black/55">

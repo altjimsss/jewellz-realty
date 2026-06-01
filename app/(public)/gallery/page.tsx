@@ -9,8 +9,10 @@ import {
   FaHandshake,
   FaBuilding,
 } from "react-icons/fa";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import SectionHeader from "@/components/layout/SectionHeader";
 import CardSwap, { Card, type CardSwapHandle } from "@/components/gallery/CardSwap";
 
 const RED = "#DD141C";
@@ -132,45 +134,22 @@ export default function GalleryPage() {
 
   return (
     <main className="min-h-screen bg-white" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* Announcement Bar */}
-      <div className="flex h-7 items-center justify-center gap-1 bg-black px-2 text-[10px] text-[#FAFAFA] sm:h-8 sm:gap-2 sm:text-sm">
-        <p className="whitespace-nowrap">Premium but Affordable Properties on Sale.</p>
-        <a className="underline" href="#">Browse Now</a>
-      </div>
+      <AnnouncementBar />
 
       <Navbar links={navLinks} />
 
       {/* Category buttons removed from top and will be placed under the header */}
 
       {/* ── Gallery Showcase ── */}
-      <div className="mx-auto max-w-[1120px] px-0 pt-0 pb-8 sm:px-0 lg:pt-0 lg:pb-10">
-        <section className="relative min-h-[620px] overflow-hidden rounded-b-[22px] rounded-t-none border-x border-b border-zinc-200 border-t-0 bg-white px-6 py-10 pr-0 pb-0 text-zinc-900 sm:px-10 sm:pr-0 sm:pb-0 lg:px-12 lg:py-12 lg:pr-0 lg:pb-0">
-          <div className="absolute inset-x-0 bottom-0 rounded-b-[22px] border-x border-b border-zinc-200 pointer-events-none" />
+      <section className="mx-auto w-full max-w-[1120px] px-6 py-14 lg:px-8">
+        <section className="relative min-h-[620px] overflow-hidden border-r border-zinc-200 bg-white px-0 py-0 text-zinc-900">
+          <div className="absolute top-0 right-0 bottom-0 border-r border-zinc-200 pointer-events-none" />
 
           <div className="relative z-10 grid min-h-[600px] grid-cols-1 lg:grid-cols-[0.72fr_1.28fr]">
-            <div className="py-2">
-              <div className="flex items-start gap-3">
-                <span
-                  className="mt-1.5 h-[2.2em] w-[3px] shrink-0 rounded-full bg-[#DE141C]"
-                  aria-hidden="true"
-                />
-                <div>
-                  <h2
-                    className="font-semibold leading-tight text-zinc-900"
-                    style={{ fontFamily: "'Poppins', sans-serif", fontSize: "22px" }}
-                  >
-                    Gallery
-                  </h2>
-                  <p
-                    className="mt-[2px] font-normal leading-tight text-zinc-400"
-                    style={{ fontFamily: "'Poppins', sans-serif", fontSize: "11px" }}
-                  >
-                    Milestones, moments & memories from our journey.
-                  </p>
-                </div>
-              </div>
+            <div>
+              <SectionHeader title={"Gallery"} subtitle={"Milestones, moments & memories from our journey."} />
 
-              <h1 className="mt-4 max-w-xl text-[clamp(1.5rem,3.2vw,2.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-[#111111]">
+              <h1 className="mt-4 max-w-xl text-[clamp(2.05rem,3.7vw,3.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-[#111111]">
                 Gallery highlights from our journey
               </h1>
 
@@ -220,7 +199,6 @@ export default function GalleryPage() {
               </div>
 
               <div className="mt-5 max-w-[430px] bg-transparent p-0">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-400">Featured photo</p>
                   <div className="mt-2 flex items-start gap-3">
                     <div className="mt-0.5 h-11 w-1 rounded-full bg-[#DE141C]" aria-hidden="true" />
                     <div className="min-w-0">
@@ -255,22 +233,6 @@ export default function GalleryPage() {
                       <div className="relative h-full w-full overflow-hidden rounded-[20px] bg-zinc-100">
                         <Image src={photo.src} alt={photo.label} fill className="object-cover" sizes="(max-width: 768px) 100vw, 760px" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
-                          <div className="max-w-[72%]">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">
-                              {photo.date ?? activeOption.title}
-                            </p>
-                            <h3 className="mt-1 text-[15px] font-semibold leading-tight text-white">
-                              {photo.title ?? photo.label}
-                            </h3>
-                            <p className="mt-1 text-[11px] leading-5 text-white/75">
-                              {photo.description ?? activeOption.description}
-                            </p>
-                          </div>
-                          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/75">
-                            {activeOption.title}
-                          </span>
-                        </div>
                       </div>
                     </Card>
                   ))}
@@ -279,7 +241,7 @@ export default function GalleryPage() {
             </div>
           </div>
         </section>
-      </div>
+      </section>
 
       <Footer />
     </main>
