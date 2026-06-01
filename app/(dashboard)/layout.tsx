@@ -1,1 +1,3 @@
-import { redirect } from "next/navigation"; export default async function DashboardLayout({ children }: { children: React.ReactNode }) { const isAuthenticated = true; if (!isAuthenticated) redirect("/login"); return <section className="min-h-screen bg-white">{children}</section>; }
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+	return <section className="min-h-screen bg-white text-[#111111]">{children}</section>;
+}
