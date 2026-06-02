@@ -1,478 +1,75 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bell, Building2, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, RefreshCw, Search, Settings, UserCircle, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, Building2, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { EntityEditor, InfoCard, SectionShell } from "./blocks";
+import { agentFields, cmsPageFields, developerFields, emptySelection, emptyWorkspace, galleryFields, heroBannerFields, inquiryStatusOptions, partnerLogoFields, priorityOptions, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields, testimonialFields } from "./constants";
+import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, Role, SelectionState, Workspace } from "./types";
+import { asText, labelForRow } from "./utils";
 
-type Role = "admin" | "agent" | "developer_partner" | "buyer" | null;
-type FieldType = "text" | "textarea" | "number" | "checkbox" | "select" | "datetime-local" | "email" | "url" | "array";
+function asRole(value: unknown): Role {
+	return value === "admin" || value === "agent" || value === "developer_partner" || value === "buyer" ? value : null;
+}
 
-type FieldOption = { label: string; value: string };
-type FieldSpec = {
-	name: string;
-	label: string;
-	type: FieldType;
-	placeholder?: string;
-	rows?: number;
-	options?: FieldOption[];
-	help?: string;
+function optionalId(row: CmsRow | undefined) {
+	return row?.id == null ? null : asText(row.id);
+}
+
+type AdminCmsProps = {
+	initialPrimary?: CmsPrimary;
+	initialSection?: CmsSection;
+	initialPropertyCategory?: string;
+	initialPropertyId?: string | null;
 };
 
-type SectionProps = {
-	title: string;
-	description: string;
-	children: ReactNode;
-};
+function routeForPrimary(primary: CmsPrimary) {
+	const routes: Record<CmsPrimary, string> = {
+		dashboard: "/admin",
+		listings: "/admin/listings",
+		inquiries: "/admin/inquiries",
+		analytics: "/admin?section=analytics",
+		people: "/admin/agents",
+		content: "/admin?section=hero",
+		settings: "/admin/settings",
+	};
 
-type EditorProps = {
-	title: string;
-	description: string;
-	rows: any[];
-	selectedId: string | null;
-	fields: FieldSpec[];
-	defaultValues?: Record<string, any>;
-	canEdit: boolean;
-	rowLabel: (row: any) => string;
-	rowMeta?: (row: any) => string;
-	onSelect: (row: any | null) => void;
-	onCreateNew: () => void;
-	onDelete?: (row: any) => Promise<void>;
-	onSubmit: (payload: Record<string, any>, currentRow: any | null) => Promise<void>;
-	extra?: ReactNode;
-	idKey?: string;
-};
-
-type Workspace = {
-	properties: any[];
-	projects: any[];
-	developers: any[];
-	agents: any[];
-	inquiries: any[];
-	cmsPages: any[];
-	galleryItems: any[];
-	testimonials: any[];
-	heroBanners: any[];
-	partnerLogos: any[];
-	siteStats: any[];
-	settings: any[];
-	listingPerformance: any[];
-	dailyInquiryVolume: any[];
-	trafficSources: any[];
-	agentPerformance: any[];
-	developerPortfolio: any[];
-	recommendations: any[];
-};
-
-type SelectionState = {
-	properties: string | null;
-	projects: string | null;
-	developers: string | null;
-	agents: string | null;
-	inquiries: string | null;
-	cmsPages: string | null;
-	galleryItems: string | null;
-	testimonials: string | null;
-	heroBanners: string | null;
-	partnerLogos: string | null;
-	siteStats: string | null;
-	settings: string | null;
-};
-
-type CmsSection =
-	| "overview"
-	| "properties"
-	| "projects"
-	| "inquiries"
-	| "pipeline"
-	| "timeline"
-	| "analytics"
-	| "traffic"
-	| "agentPerformance"
-	| "developerPortfolio"
-	| "agents"
-	| "developers"
-	| "profiles"
-	| "hero"
-	| "gallery"
-	| "testimonials"
-	| "logos"
-	| "stats"
-	| "pages"
-	| "settings"
-	| "activityLogs";
-
-type CmsPrimary = "dashboard" | "listings" | "inquiries" | "analytics" | "people" | "content" | "settings";
-
-type CmsNavGroup = {
-	id: CmsPrimary;
-	label: string;
-	icon: LucideIcon;
-	items: { id: CmsSection; label: string; hint: string; icon: LucideIcon }[];
-};
-
-const emptyWorkspace: Workspace = {
-	properties: [],
-	projects: [],
-	developers: [],
-	agents: [],
-	inquiries: [],
-	cmsPages: [],
-	galleryItems: [],
-	testimonials: [],
-	heroBanners: [],
-	partnerLogos: [],
-	siteStats: [],
-	settings: [],
-	listingPerformance: [],
-	dailyInquiryVolume: [],
-	trafficSources: [],
-	agentPerformance: [],
-	developerPortfolio: [],
-	recommendations: [],
-};
-
-const emptySelection: SelectionState = {
-	properties: null,
-	projects: null,
-	developers: null,
-	agents: null,
-	inquiries: null,
-	cmsPages: null,
-	galleryItems: null,
-	testimonials: null,
-	heroBanners: null,
-	partnerLogos: null,
-	siteStats: null,
-	settings: null,
-};
-
-const propertyCategoryOptions: FieldOption[] = [
-	{ label: "Condo", value: "condo" },
-	{ label: "House", value: "house" },
-	{ label: "House and Lot", value: "house_and_lot" },
-	{ label: "Townhouse", value: "townhouse" },
-	{ label: "Lot", value: "lot" },
-	{ label: "Farm", value: "farm" },
-	{ label: "Memorial", value: "memorial" },
-	{ label: "Commercial", value: "commercial" },
-];
-
-const propertySidebarCategoryOptions: FieldOption[] = [
-	{ label: "Condo", value: "condo" },
-	{ label: "House", value: "house" },
-	{ label: "Lot", value: "lot" },
-	{ label: "Farm", value: "farm" },
-	{ label: "Memorial", value: "memorial" },
-];
-
-const listingStatusOptions: FieldOption[] = [
-	{ label: "Draft", value: "draft" },
-	{ label: "Published", value: "published" },
-	{ label: "Reserved", value: "reserved" },
-	{ label: "Sold", value: "sold" },
-	{ label: "Unpublished", value: "unpublished" },
-];
-
-const listingBadgeOptions: FieldOption[] = [
-	{ label: "None", value: "none" },
-	{ label: "Featured", value: "featured" },
-	{ label: "Promo", value: "promo" },
-	{ label: "New", value: "new" },
-	{ label: "Hot", value: "hot" },
-];
-
-const inquiryStatusOptions: FieldOption[] = [
-	{ label: "New", value: "new" },
-	{ label: "Assigned", value: "assigned" },
-	{ label: "Contacted", value: "contacted" },
-	{ label: "Viewing Scheduled", value: "viewing_scheduled" },
-	{ label: "Negotiating", value: "negotiating" },
-	{ label: "Reserved", value: "reserved" },
-	{ label: "Closed Won", value: "closed_won" },
-	{ label: "Closed Lost", value: "closed_lost" },
-];
-
-const priorityOptions: FieldOption[] = [
-	{ label: "High", value: "high" },
-	{ label: "Medium", value: "medium" },
-	{ label: "Low", value: "low" },
-];
-
-const trafficSourceOptions: FieldOption[] = [
-	{ label: "Direct", value: "direct" },
-	{ label: "Organic Search", value: "organic_search" },
-	{ label: "Facebook", value: "social_media_facebook" },
-	{ label: "Instagram", value: "social_media_instagram" },
-	{ label: "Other Social", value: "social_media_other" },
-	{ label: "Email", value: "email_campaign" },
-	{ label: "Referral", value: "referral" },
-	{ label: "Walk In", value: "walk_in" },
-	{ label: "Phone", value: "phone" },
-	{ label: "Other", value: "other" },
-];
-
-const gallerySectionOptions: FieldOption[] = [
-	{ label: "Achievements", value: "achievements" },
-	{ label: "Events", value: "events" },
-	{ label: "Trainings", value: "trainings" },
-	{ label: "Service", value: "service" },
-	{ label: "General", value: "general" },
-];
-
-function asText(value: unknown) {
-	return value == null ? "" : String(value);
+	return routes[primary];
 }
 
-function asArrayText(value: unknown) {
-	if (Array.isArray(value)) {
-		return value.filter(Boolean).join("\n");
-	}
+function routeForSection(section: CmsSection) {
+	const routes: Partial<Record<CmsSection, string>> = {
+		overview: "/admin",
+		properties: "/admin/listings",
+		projects: "/admin/listings?section=projects",
+		inquiries: "/admin/inquiries",
+		pipeline: "/admin/inquiries?section=pipeline",
+		timeline: "/admin/inquiries?section=timeline",
+		analytics: "/admin?section=analytics",
+		traffic: "/admin?section=traffic",
+		agentPerformance: "/admin?section=agentPerformance",
+		developerPortfolio: "/admin?section=developerPortfolio",
+		agents: "/admin/agents",
+		developers: "/admin/agents?section=developers",
+		profiles: "/admin/agents?section=profiles",
+		hero: "/admin?section=hero",
+		gallery: "/admin?section=gallery",
+		testimonials: "/admin?section=testimonials",
+		logos: "/admin?section=logos",
+		stats: "/admin?section=stats",
+		pages: "/admin?section=pages",
+		settings: "/admin/settings",
+		activityLogs: "/admin/settings?section=activityLogs",
+	};
 
-	return asText(value);
-}
-
-function parseArrayText(value: FormDataEntryValue | null) {
-	return asText(value)
-		.split(/\r?\n|,/) 
-		.map((item) => item.trim())
-		.filter(Boolean);
-}
-
-function toDateTimeLocal(value: unknown) {
-	if (!value) {
-		return "";
-	}
-
-	const date = new Date(String(value));
-	if (Number.isNaN(date.getTime())) {
-		return "";
-	}
-
-	const offset = date.getTimezoneOffset() * 60000;
-	return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
-
-function readNumber(value: FormDataEntryValue | null) {
-	const text = asText(value).trim();
-	return text === "" ? null : Number(text);
-}
-
-function readBoolean(value: FormDataEntryValue | null) {
-	return value === "on";
-}
-
-function buildPayload(fields: FieldSpec[], formData: FormData) {
-	const payload: Record<string, any> = {};
-
-	for (const field of fields) {
-		const raw = formData.get(field.name);
-
-		if (field.type === "checkbox") {
-			payload[field.name] = readBoolean(raw);
-			continue;
-		}
-
-		if (field.type === "number") {
-			payload[field.name] = readNumber(raw);
-			continue;
-		}
-
-		if (field.type === "array") {
-			payload[field.name] = parseArrayText(raw);
-			continue;
-		}
-
-		if (field.type === "datetime-local") {
-			payload[field.name] = asText(raw).trim() ? new Date(asText(raw)).toISOString() : null;
-			continue;
-		}
-
-		const text = asText(raw).trim();
-		payload[field.name] = text === "" ? null : text;
-	}
-
-	return payload;
-}
-
-function displayValue(field: FieldSpec, value: unknown) {
-	if (field.type === "checkbox") {
-		return Boolean(value) ? "true" : "";
-	}
-
-	if (field.type === "number") {
-		return value == null ? "" : String(value);
-	}
-
-	if (field.type === "array") {
-		return asArrayText(value);
-	}
-
-	if (field.type === "datetime-local") {
-		return toDateTimeLocal(value);
-	}
-
-	return asText(value);
-}
-
-function labelForRow(row: any) {
-	return row?.title ?? row?.company_name ?? row?.project_name ?? row?.author_name ?? row?.headline ?? row?.label ?? row?.key ?? row?.slug ?? row?.id ?? "Record";
-}
-
-function SectionShell({ title, description, children }: SectionProps) {
-	return (
-		<section className="overflow-hidden rounded-lg border border-black/10 bg-white">
-			<div className="flex flex-col gap-2 border-b border-black/10 pb-4">
-				<div className="px-5 pt-5">
-					<h2 className="text-base font-semibold text-[#111111]">{title}</h2>
-					<p className="mt-1 max-w-3xl text-sm leading-6 text-black/55">{description}</p>
-				</div>
-			</div>
-			<div className="p-5">{children}</div>
-		</section>
-	);
-}
-
-function InfoCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
-	return (
-		<div className="rounded-lg border border-black/10 bg-white p-4">
-			<div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/45">{label}</div>
-			<div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{value}</div>
-			{hint ? <div className="mt-1 text-xs text-black/45">{hint}</div> : null}
-		</div>
-	);
-}
-
-function EntityEditor({
-	title,
-	description,
-	rows,
-	selectedId,
-	fields,
-	defaultValues,
-	canEdit,
-	rowLabel,
-	rowMeta,
-	onSelect,
-	onCreateNew,
-	onDelete,
-	onSubmit,
-	extra,
-	idKey = "id",
-}: EditorProps) {
-	const selectedRow = rows.find((row) => asText(row?.[idKey]) === asText(selectedId)) ?? null;
-
-	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const formData = new FormData(event.currentTarget);
-		await onSubmit(buildPayload(fields, formData), selectedRow);
-	}
-
-	return (
-		<SectionShell title={title} description={description}>
-			<div className="grid gap-4 xl:grid-cols-[260px_1fr]">
-				<aside className="rounded-lg border border-black/10 bg-white p-3">
-					<div className="flex items-center justify-between gap-2 px-1 pb-3">
-						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Records</div>
-						{canEdit ? (
-							<button type="button" onClick={onCreateNew} className="rounded-md border border-black/10 px-3 py-1 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
-								New
-							</button>
-						) : null}
-					</div>
-					<div className="max-h-[460px] space-y-2 overflow-auto pr-1">
-						{rows.length === 0 ? <p className="px-2 py-4 text-sm text-black/45">No records available.</p> : null}
-						{rows.map((row) => {
-							const rowId = asText(row?.[idKey]);
-							const active = rowId === asText(selectedId);
-							return (
-								<button key={rowId} type="button" onClick={() => onSelect(row)} className={`w-full rounded-md border px-3 py-2 text-left transition ${active ? "border-black/10 bg-[#eef3fc]" : "border-transparent bg-white hover:border-black/10 hover:bg-zinc-50"}`}>
-									<div className="truncate text-sm font-medium text-[#111111]">{rowLabel(row)}</div>
-									{rowMeta ? <div className="mt-1 truncate text-xs text-black/50">{rowMeta(row)}</div> : null}
-								</button>
-							);
-						})}
-					</div>
-				</aside>
-
-				<div className="rounded-lg border border-black/10 bg-white p-4">
-					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
-						<div>
-							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Editor</div>
-							<div className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#111111]">{selectedRow ? `Editing ${rowLabel(selectedRow)}` : `Create a new ${title.toLowerCase()}`}</div>
-						</div>
-						<div className="flex flex-wrap items-center gap-2">
-							{selectedRow && canEdit && onDelete ? (
-								<button type="button" onClick={() => onDelete(selectedRow)} className="rounded-md border border-[#F0997B] bg-[#FAECE7] px-4 py-2 text-sm font-medium text-[#993C1D] transition hover:bg-[#F5C4B3]">
-									Delete
-								</button>
-							) : null}
-							{!canEdit ? <span className="rounded-md bg-black/5 px-4 py-2 text-sm text-black/55">Read-only for this role</span> : null}
-						</div>
-					</div>
-
-					<form key={selectedRow ? asText(selectedRow[idKey]) : "new"} className="mt-4 grid gap-4" onSubmit={handleSubmit}>
-						<div className="grid gap-4 md:grid-cols-2">
-							{fields.map((field) => {
-								const value = selectedRow ? selectedRow[field.name] : (defaultValues?.[field.name] ?? "");
-								const commonInputClass = "mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm outline-none transition focus:border-black/30 disabled:bg-zinc-50 disabled:text-black/45";
-								return (
-									<label key={field.name} className={field.type === "textarea" || field.type === "array" ? "md:col-span-2" : ""}>
-										<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">{field.label}</div>
-										{field.type === "textarea" || field.type === "array" ? (
-											<textarea
-												name={field.name}
-												rows={field.rows ?? 4}
-												defaultValue={displayValue(field, value)}
-												placeholder={field.placeholder}
-												disabled={!canEdit}
-												className={`${commonInputClass} min-h-[110px] py-3`}
-											/>
-										) : field.type === "select" ? (
-											<select name={field.name} defaultValue={displayValue(field, value)} disabled={!canEdit} className={commonInputClass}>
-												<option value="">Select</option>
-												{field.options?.map((option) => (
-													<option key={option.value} value={option.value}>{option.label}</option>
-												))}
-											</select>
-										) : field.type === "checkbox" ? (
-											<label className="mt-1 flex items-center gap-2 rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-black/70">
-												<input type="checkbox" name={field.name} defaultChecked={Boolean(value)} disabled={!canEdit} />
-												<span>{field.help ?? "Enabled"}</span>
-											</label>
-										) : (
-											<input
-												type={field.type}
-												name={field.name}
-												defaultValue={displayValue(field, value)}
-												placeholder={field.placeholder}
-												disabled={!canEdit}
-												className={commonInputClass}
-											/>
-										)}
-										{field.help ? <p className="mt-1 text-[11px] leading-5 text-black/45">{field.help}</p> : null}
-									</label>
-								);
-							})}
-						</div>
-
-						<div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
-							<p className="text-xs text-black/45">{selectedRow ? "Update the current row or create a new one." : "Fill in the form to create a new row."}</p>
-							<button type="submit" disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
-								Save
-							</button>
-						</div>
-					</form>
-				</div>
-			</div>
-
-			{extra ? <div className="mt-5">{extra}</div> : null}
-		</SectionShell>
-	);
+	return routes[section] ?? "/admin";
 }
 
 function PropertyImagesManager({ propertyId, canEdit, onChanged }: { propertyId: string | null; canEdit: boolean; onChanged: () => Promise<void> | void }) {
-	const [images, setImages] = useState<any[]>([]);
+	const [images, setImages] = useState<CmsRow[]>([]);
 	const [draft, setDraft] = useState({ storage_url: "", caption: "", sort_order: "0", is_cover: false });
 	const [saving, setSaving] = useState(false);
 
@@ -487,9 +84,22 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged }: { propertyId:
 	}
 
 	useEffect(() => {
-		setDraft({ storage_url: "", caption: "", sort_order: "0", is_cover: false });
-		void loadImages();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		let active = true;
+
+		void (async () => {
+			await Promise.resolve();
+			if (!propertyId) {
+				if (active) setImages([]);
+				return;
+			}
+
+			const { data } = await supabaseBrowser.from("property_images").select("*").eq("property_id", propertyId).order("sort_order", { ascending: true });
+			if (active) setImages(data ?? []);
+		})();
+
+		return () => {
+			active = false;
+		};
 	}, [propertyId]);
 
 	async function saveImage(event: FormEvent<HTMLFormElement>) {
@@ -546,20 +156,20 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged }: { propertyId:
 					Cover image
 				</label>
 				<div className="md:col-span-4">
-					<button type="submit" disabled={!canEdit || saving} className="inline-flex h-11 items-center justify-center rounded-full bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">Add image</button>
+					<button type="submit" disabled={!canEdit || saving} className="inline-flex h-11 items-center justify-center rounded-full bg-red-700 px-5 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-black/20">Add image</button>
 				</div>
 			</form>
 
 			<div className="mt-4 grid gap-2 md:grid-cols-2">
 				{images.map((image) => (
-					<div key={image.id} className="rounded-2xl border border-black/10 bg-white p-3">
+					<div key={asText(image.id)} className="rounded-2xl border border-black/10 bg-white p-3">
 						<div className="truncate text-sm font-medium text-[#111111]">{image.caption || image.storage_url}</div>
 						<div className="mt-1 text-xs text-black/45">{image.storage_url}</div>
 						<div className="mt-3 flex items-center justify-between gap-2 text-xs text-black/55">
 							<span>Sort order: {image.sort_order}</span>
 							<span>{image.is_cover ? "Cover" : "Secondary"}</span>
 						</div>
-						{canEdit ? <button type="button" onClick={() => deleteImage(image.id)} className="mt-3 rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50">Delete</button> : null}
+						{canEdit ? <button type="button" onClick={() => deleteImage(asText(image.id))} className="mt-3 rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50">Delete</button> : null}
 					</div>
 				))}
 			</div>
@@ -578,8 +188,8 @@ function InquiryPanel({
 	canEdit,
 	canReassign,
 }: {
-	inquiries: any[];
-	agents: any[];
+	inquiries: CmsRow[];
+	agents: CmsRow[];
 	currentRole: Role;
 	currentUserId: string | null;
 	selectedId: string | null;
@@ -588,39 +198,42 @@ function InquiryPanel({
 	canEdit: boolean;
 	canReassign: boolean;
 }) {
-	const [timeline, setTimeline] = useState<any[]>([]);
-	const [status, setStatus] = useState("new");
-	const [assignedAgentId, setAssignedAgentId] = useState("");
-	const [note, setNote] = useState("");
+	const [timeline, setTimeline] = useState<CmsRow[]>([]);
+	const [draft, setDraft] = useState({ inquiryId: "", status: "new", assignedAgentId: "", note: "" });
 	const [saving, setSaving] = useState(false);
 
 	const selectedInquiry = inquiries.find((item) => asText(item.id) === asText(selectedId)) ?? null;
+	const selectedInquiryId = asText(selectedInquiry?.id);
+	const status = draft.inquiryId === selectedInquiryId ? draft.status : asText(selectedInquiry?.status || "new");
+	const assignedAgentId = draft.inquiryId === selectedInquiryId ? draft.assignedAgentId : asText(selectedInquiry?.assigned_agent_id);
+	const note = draft.inquiryId === selectedInquiryId ? draft.note : "";
+	const updateDraft = (updates: Partial<typeof draft>) => setDraft((current) => ({ ...current, inquiryId: selectedInquiryId, ...updates }));
 
 	useEffect(() => {
-		if (!selectedInquiry) {
-			setTimeline([]);
-			setStatus("new");
-			setAssignedAgentId("");
-			setNote("");
-			return;
-		}
-
-		setStatus(selectedInquiry.status ?? "new");
-		setAssignedAgentId(asText(selectedInquiry.assigned_agent_id));
-		setNote("");
+		let active = true;
 
 		void (async () => {
+			if (!selectedInquiry) {
+				await Promise.resolve();
+				if (active) setTimeline([]);
+				return;
+			}
+
 			const { data } = await supabaseBrowser.from("inquiry_timeline").select("*").eq("inquiry_id", selectedInquiry.id).order("created_at", { ascending: false });
-			setTimeline(data ?? []);
+			if (active) setTimeline(data ?? []);
 		})();
-	}, [selectedInquiry]);
+
+		return () => {
+			active = false;
+		};
+	}, [selectedInquiry, selectedInquiryId]);
 
 	async function saveInquiry() {
 		if (!selectedInquiry || !canEdit) return;
 
 		setSaving(true);
 		const now = new Date().toISOString();
-		const updatePayload: Record<string, any> = {
+		const updatePayload: CmsPayload = {
 			status,
 			last_activity_at: now,
 		};
@@ -659,7 +272,7 @@ function InquiryPanel({
 		}
 
 		setSaving(false);
-		setNote("");
+		updateDraft({ note: "" });
 		await onReload();
 	}
 
@@ -673,7 +286,7 @@ function InquiryPanel({
 			new_status: status,
 			note: note.trim(),
 		});
-		setNote("");
+		updateDraft({ note: "" });
 		await onReload();
 		const { data } = await supabaseBrowser.from("inquiry_timeline").select("*").eq("inquiry_id", selectedInquiry.id).order("created_at", { ascending: false });
 		setTimeline(data ?? []);
@@ -690,7 +303,7 @@ function InquiryPanel({
 						{inquiries.map((item) => {
 							const active = asText(item.id) === asText(selectedId);
 							return (
-								<button key={item.id} type="button" onClick={() => onSelect(item.id)} className={`w-full rounded-2xl border px-3 py-2 text-left transition ${active ? "border-[#0E4B74] bg-white shadow-sm" : "border-transparent bg-white/60 hover:border-black/10 hover:bg-white"}`}>
+								<button key={asText(item.id)} type="button" onClick={() => onSelect(asText(item.id))} className={`w-full rounded-2xl border px-3 py-2 text-left transition ${active ? "border-red-200 bg-red-50 shadow-sm" : "border-transparent bg-white/60 hover:border-black/10 hover:bg-white"}`}>
 									<div className="text-sm font-medium text-[#111111]">{item.buyer_name}</div>
 									<div className="mt-1 flex flex-wrap gap-2 text-xs text-black/55">
 										<span>{item.status}</span>
@@ -733,30 +346,30 @@ function InquiryPanel({
 									<div className="mt-4 space-y-3">
 										<label className="block">
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Status</div>
-											<select value={status} onChange={(event) => setStatus(event.target.value)} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
+											<select value={status} onChange={(event) => updateDraft({ status: event.target.value })} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
 												{inquiryStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
 											</select>
 										</label>
 										<label className="block">
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Priority</div>
-											<select value={selectedInquiry.priority ?? ""} disabled className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
+											<select value={asText(selectedInquiry.priority)} disabled className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
 												<option value="">Auto-derived</option>
 												{priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
 											</select>
 										</label>
 										<label className="block">
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Assigned Agent</div>
-											<select value={assignedAgentId} onChange={(event) => setAssignedAgentId(event.target.value)} disabled={!canReassign} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
+											<select value={assignedAgentId} onChange={(event) => updateDraft({ assignedAgentId: event.target.value })} disabled={!canReassign} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
 												<option value="">Unassigned</option>
-												{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.profile_id ?? agent.id}</option>)}
+												{agents.map((agent) => <option key={asText(agent.id)} value={asText(agent.id)}>{agent.profile_id ?? agent.id}</option>)}
 											</select>
 										</label>
 										<label className="block">
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Timeline Note</div>
-											<textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50" placeholder="Add an internal note or next step..." />
+											<textarea value={note} onChange={(event) => updateDraft({ note: event.target.value })} rows={4} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50" placeholder="Add an internal note or next step..." />
 										</label>
 										<div className="flex flex-wrap gap-2">
-											<button type="button" onClick={saveInquiry} disabled={!canEdit || saving} className="rounded-full bg-[#0E4B74] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0b3d5c] disabled:cursor-not-allowed disabled:bg-black/20">Save pipeline</button>
+											<button type="button" onClick={saveInquiry} disabled={!canEdit || saving} className="rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-black/20">Save pipeline</button>
 											<button type="button" onClick={addTimelineNote} disabled={!canEdit || saving || !note.trim()} className="rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:bg-black/5">Add note</button>
 										</div>
 									</div>
@@ -769,7 +382,7 @@ function InquiryPanel({
 									<div className="mt-3 space-y-3">
 										{timeline.length === 0 ? <p className="text-sm text-black/45">No timeline events yet.</p> : null}
 										{timeline.map((entry) => (
-											<div key={entry.id} className="rounded-2xl border border-black/10 bg-zinc-50 p-3">
+											<div key={asText(entry.id)} className="rounded-2xl border border-black/10 bg-zinc-50 p-3">
 												<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/45">{entry.new_status}</div>
 												<div className="mt-1 text-sm text-black/70">{entry.note ?? "Status change recorded."}</div>
 												<div className="mt-2 text-xs text-black/45">{entry.created_at}</div>
@@ -804,28 +417,28 @@ function AnalyticsPanel({
 	inquiries,
 	recommendations,
 	listingPerformance,
-	dailyInquiryVolume,
 	trafficSources,
 	agentPerformance,
 	developerPortfolio,
 }: {
 	isAdmin: boolean;
-	properties: any[];
-	inquiries: any[];
-	recommendations: any[];
-	listingPerformance: any[];
-	dailyInquiryVolume: any[];
-	trafficSources: any[];
-	agentPerformance: any[];
-	developerPortfolio: any[];
+	properties: CmsRow[];
+	inquiries: CmsRow[];
+	recommendations: CmsRow[];
+	listingPerformance: CmsRow[];
+	trafficSources: CmsRow[];
+	agentPerformance: CmsRow[];
+	developerPortfolio: CmsRow[];
 }) {
 	const inquiryCounts = inquiries.reduce((acc: Record<string, number>, item) => {
-		acc[item.status] = (acc[item.status] ?? 0) + 1;
+		const status = asText(item.status || "unclassified");
+		acc[status] = (acc[status] ?? 0) + 1;
 		return acc;
 	}, {});
 
 	const priorityCounts = inquiries.reduce((acc: Record<string, number>, item) => {
-		acc[item.priority ?? "unclassified"] = (acc[item.priority ?? "unclassified"] ?? 0) + 1;
+		const priority = asText(item.priority || "unclassified");
+		acc[priority] = (acc[priority] ?? 0) + 1;
 		return acc;
 	}, {});
 
@@ -833,7 +446,7 @@ function AnalyticsPanel({
 		const responseHours = inquiries
 			.map((item) => {
 				if (!item.first_contacted_at || !item.created_at) return null;
-				return (new Date(item.first_contacted_at).getTime() - new Date(item.created_at).getTime()) / 36e5;
+				return (new Date(asText(item.first_contacted_at)).getTime() - new Date(asText(item.created_at)).getTime()) / 36e5;
 			})
 			.filter((value): value is number => value != null && Number.isFinite(value));
 		if (!responseHours.length) return null;
@@ -871,7 +484,7 @@ function AnalyticsPanel({
 							<div key={status} className="flex items-center gap-3">
 								<div className="w-36 text-sm text-black/60">{status}</div>
 								<div className="h-2 flex-1 rounded-full bg-black/5">
-									<div className="h-2 rounded-full bg-[#0E4B74]" style={{ width: `${Math.max(10, Math.min(100, count * 10))}%` }} />
+									<div className="h-2 rounded-full bg-red-700" style={{ width: `${Math.max(10, Math.min(100, count * 10))}%` }} />
 								</div>
 								<div className="w-10 text-right text-sm font-medium text-black/70">{count}</div>
 							</div>
@@ -914,7 +527,7 @@ function AnalyticsPanel({
 								</thead>
 								<tbody>
 									{listingPerformance.slice(0, 8).map((row) => (
-										<tr key={row.property_id} className="border-t border-black/5">
+										<tr key={asText(row.property_id)} className="border-t border-black/5">
 											<td className="py-2 pr-4 font-medium text-[#111111]">{row.title}</td>
 											<td className="py-2 pr-4">{row.total_views ?? 0}</td>
 											<td className="py-2 pr-4">{row.detail_opens ?? 0}</td>
@@ -931,7 +544,7 @@ function AnalyticsPanel({
 						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Traffic Sources</div>
 						<div className="mt-3 space-y-2">
 							{trafficSources.map((row) => (
-								<div key={row.source} className="rounded-xl border border-black/10 bg-zinc-50 p-3 text-sm">
+								<div key={asText(row.source)} className="rounded-xl border border-black/10 bg-zinc-50 p-3 text-sm">
 									<div className="flex items-center justify-between gap-3">
 										<span className="font-medium text-[#111111]">{row.source}</span>
 										<span>{row.share_pct ?? 0}%</span>
@@ -961,7 +574,7 @@ function AnalyticsPanel({
 								</thead>
 								<tbody>
 									{agentPerformance.map((row) => (
-										<tr key={row.agent_id} className="border-t border-black/5">
+										<tr key={asText(row.agent_id)} className="border-t border-black/5">
 											<td className="py-2 pr-4 font-medium text-[#111111]">{row.agent_name}</td>
 											<td className="py-2 pr-4">{row.total_assigned ?? 0}</td>
 											<td className="py-2 pr-4">{row.conversions ?? 0}</td>
@@ -988,7 +601,7 @@ function AnalyticsPanel({
 								</thead>
 								<tbody>
 									{developerPortfolio.map((row) => (
-										<tr key={row.developer_id} className="border-t border-black/5">
+										<tr key={asText(row.developer_id)} className="border-t border-black/5">
 											<td className="py-2 pr-4 font-medium text-[#111111]">{row.company_name}</td>
 											<td className="py-2 pr-4">{row.total_listings ?? 0}</td>
 											<td className="py-2 pr-4">{row.total_views ?? 0}</td>
@@ -1005,22 +618,27 @@ function AnalyticsPanel({
 	);
 }
 
-export default function AdminCms() {
+export default function AdminCms({
+	initialPrimary = "dashboard",
+	initialSection = "overview",
+	initialPropertyCategory = "all",
+	initialPropertyId = null,
+}: AdminCmsProps) {
 	const router = useRouter();
 	const [loading, setLoading] = useState(true);
 	const [message, setMessage] = useState("Loading workspace...");
 	const [saving, setSaving] = useState(false);
-	const [sessionUser, setSessionUser] = useState<any>(null);
-	const [profile, setProfile] = useState<any>(null);
-	const [agentProfile, setAgentProfile] = useState<any>(null);
-	const [developerProfile, setDeveloperProfile] = useState<any>(null);
+	const [sessionUser, setSessionUser] = useState<User | null>(null);
+	const [profile, setProfile] = useState<CmsRow | null>(null);
+	const [agentProfile, setAgentProfile] = useState<CmsRow | null>(null);
+	const [developerProfile, setDeveloperProfile] = useState<CmsRow | null>(null);
 	const [workspace, setWorkspace] = useState<Workspace>(emptyWorkspace);
-	const [selection, setSelection] = useState<SelectionState>(emptySelection);
-	const [activePrimary, setActivePrimary] = useState<CmsPrimary>("dashboard");
-	const [activeSection, setActiveSection] = useState<CmsSection>("overview");
-	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState("all");
+	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
+	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
+	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
+	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState(initialPropertyCategory);
 
-	const role: Role = profile?.role ?? null;
+	const role = asRole(profile?.role);
 	const isAdmin = role === "admin";
 	const isAgent = role === "agent";
 	const isDeveloper = role === "developer_partner";
@@ -1030,7 +648,12 @@ export default function AdminCms() {
 	const canEditInquiries = isAdmin || isAgent || isDeveloper;
 	const canReassignInquiries = isAdmin;
 
-	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selection.properties)) ?? null;
+	const selectedPropertyId = selection.properties ?? optionalId(workspace.properties[0]);
+	const selectedProjectId = selection.projects ?? optionalId(workspace.projects[0]);
+	const selectedDeveloperId = selection.developers ?? optionalId(workspace.developers[0]);
+	const selectedAgentId = selection.agents ?? optionalId(workspace.agents[0]);
+	const selectedInquiryId = selection.inquiries ?? optionalId(workspace.inquiries[0]);
+	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
 	const navGroups = useMemo<CmsNavGroup[]>(() => {
 		const groups: CmsNavGroup[] = [
 			{
@@ -1111,7 +734,8 @@ export default function AdminCms() {
 		return groups;
 	}, [isAdmin, workspace.agents.length, workspace.cmsPages.length, workspace.developers.length, workspace.galleryItems.length, workspace.heroBanners.length, workspace.inquiries.length, workspace.partnerLogos.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length, workspace.testimonials.length]);
 	const navItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
-	const activeNavItem = navItems.find((item) => item.id === activeSection);
+	const currentSection = navItems.some((item) => item.id === activeSection) ? activeSection : "overview";
+	const activeNavItem = navItems.find((item) => item.id === currentSection);
 	const activeNavGroup = navGroups.find((group) => group.id === activePrimary) ?? navGroups[0];
 	const activeSidebarItems = activeNavGroup?.items ?? [];
 	const visibleProperties = useMemo(() => {
@@ -1123,10 +747,29 @@ export default function AdminCms() {
 	}, [propertyCategoryFilter, workspace.properties]);
 	const selectedCategoryLabel = propertyCategoryFilter === "all" ? "All Categories" : (propertyCategoryOptions.find((option) => option.value === propertyCategoryFilter)?.label ?? "All Categories");
 
-	async function loadWorkspace(currentUser: any, currentProfile: any, currentAgent: any, currentDeveloper: any) {
+	function openPrimary(group: CmsNavGroup) {
+		setActivePrimary(group.id);
+		setActiveSection(group.items[0].id);
+		router.push(routeForPrimary(group.id));
+	}
+
+	function openSection(section: CmsSection) {
+		setActiveSection(section);
+		router.push(routeForSection(section));
+	}
+
+	function openPropertyCategory(category: string) {
+		setActivePrimary("listings");
+		setActiveSection("properties");
+		setPropertyCategoryFilter(category);
+		setSelection((current) => ({ ...current, properties: null }));
+		router.push(category === "all" ? "/admin/listings" : `/admin/listings?category=${category}`);
+	}
+
+	async function loadWorkspace(currentUser: User, currentProfile: CmsRow, currentAgent: CmsRow | null, currentDeveloper: CmsRow | null) {
 		const agentId = currentAgent?.id ?? null;
 		const developerId = currentDeveloper?.id ?? null;
-		const activeRole: Role = currentProfile?.role ?? null;
+		const activeRole = asRole(currentProfile?.role);
 		const activeIsAdmin = activeRole === "admin";
 		const activeIsAgent = activeRole === "agent";
 		const activeIsDeveloper = activeRole === "developer_partner";
@@ -1282,45 +925,7 @@ export default function AdminCms() {
 		return () => {
 			active = false;
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
-
-	useEffect(() => {
-		if (workspace.properties.length && !selection.properties) {
-			setSelection((current) => ({ ...current, properties: workspace.properties[0].id }));
-		}
-	}, [selection.properties, workspace.properties]);
-
-	useEffect(() => {
-		if (workspace.projects.length && !selection.projects && isAdmin) {
-			setSelection((current) => ({ ...current, projects: workspace.projects[0].id }));
-		}
-	}, [isAdmin, selection.projects, workspace.projects]);
-
-	useEffect(() => {
-		if (workspace.developers.length && !selection.developers && isAdmin) {
-			setSelection((current) => ({ ...current, developers: workspace.developers[0].id }));
-		}
-	}, [isAdmin, selection.developers, workspace.developers]);
-
-	useEffect(() => {
-		if (workspace.agents.length && !selection.agents && isAdmin) {
-			setSelection((current) => ({ ...current, agents: workspace.agents[0].id }));
-		}
-	}, [isAdmin, selection.agents, workspace.agents]);
-
-	useEffect(() => {
-		if (workspace.inquiries.length && !selection.inquiries) {
-			setSelection((current) => ({ ...current, inquiries: workspace.inquiries[0].id }));
-		}
-	}, [selection.inquiries, workspace.inquiries]);
-
-	useEffect(() => {
-		if (!navItems.some((item) => item.id === activeSection)) {
-			setActivePrimary("dashboard");
-			setActiveSection("overview");
-		}
-	}, [activeSection, navItems]);
 
 	const stats = useMemo(() => ({
 		propertyCount: workspace.properties.length,
@@ -1329,10 +934,10 @@ export default function AdminCms() {
 		developerCount: workspace.developers.length,
 		agentCount: workspace.agents.length,
 		publishedCount: workspace.properties.filter((item) => item.status === "published").length,
-		closedCount: workspace.inquiries.filter((item) => ["reserved", "closed_won"].includes(item.status)).length,
+		closedCount: workspace.inquiries.filter((item) => ["reserved", "closed_won"].includes(asText(item.status))).length,
 	}), [workspace.agents.length, workspace.developers.length, workspace.inquiries, workspace.properties, workspace.projects.length]);
 
-	async function saveEntity(table: string, payload: Record<string, any>, currentRow: any | null, idKey = "id") {
+	async function saveEntity(table: string, payload: CmsPayload, currentRow: CmsRow | null, idKey = "id") {
 		setMessage(`Saving ${table}...`);
 		setSaving(true);
 
@@ -1348,7 +953,7 @@ export default function AdminCms() {
 		return true;
 	}
 
-	async function deleteEntity(table: string, currentRow: any, idKey = "id") {
+	async function deleteEntity(table: string, currentRow: CmsRow, idKey = "id") {
 		if (!currentRow) return;
 		setMessage(`Deleting from ${table}...`);
 		setSaving(true);
@@ -1357,7 +962,7 @@ export default function AdminCms() {
 		await reloadWorkspace();
 	}
 
-	async function saveProperty(payload: Record<string, any>, currentRow: any | null) {
+	async function saveProperty(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.developer_id) {
 			setMessage("Property records require developer_id.");
 			return;
@@ -1379,7 +984,7 @@ export default function AdminCms() {
 		await saveEntity("properties", payload, currentRow);
 	}
 
-	async function saveProject(payload: Record<string, any>, currentRow: any | null) {
+	async function saveProject(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.developer_id || !payload.project_name || !payload.slug) {
 			setMessage("Projects need developer_id, project_name, and slug.");
 			return;
@@ -1387,7 +992,7 @@ export default function AdminCms() {
 		await saveEntity("projects", payload, currentRow);
 	}
 
-	async function saveDeveloper(payload: Record<string, any>, currentRow: any | null) {
+	async function saveDeveloper(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.company_name || !payload.slug) {
 			setMessage("Developer partners need company_name and slug.");
 			return;
@@ -1395,7 +1000,7 @@ export default function AdminCms() {
 		await saveEntity("developer_partners", payload, currentRow);
 	}
 
-	async function saveAgent(payload: Record<string, any>, currentRow: any | null) {
+	async function saveAgent(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.profile_id) {
 			setMessage("Agents need a profile_id linked to auth.users.");
 			return;
@@ -1403,7 +1008,7 @@ export default function AdminCms() {
 		await saveEntity("agents", payload, currentRow);
 	}
 
-	async function saveCmsPage(payload: Record<string, any>, currentRow: any | null) {
+	async function saveCmsPage(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.slug || !payload.title) {
 			setMessage("CMS pages need slug and title.");
 			return;
@@ -1418,7 +1023,7 @@ export default function AdminCms() {
 		await saveEntity("cms_pages", payload, currentRow);
 	}
 
-	async function saveGalleryItem(payload: Record<string, any>, currentRow: any | null) {
+	async function saveGalleryItem(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.section || !payload.title || !payload.image_url) {
 			setMessage("Gallery items need section, title, and image_url.");
 			return;
@@ -1427,7 +1032,7 @@ export default function AdminCms() {
 		await saveEntity("gallery_items", payload, currentRow);
 	}
 
-	async function saveTestimonial(payload: Record<string, any>, currentRow: any | null) {
+	async function saveTestimonial(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.author_name || !payload.quote) {
 			setMessage("Testimonials need author_name and quote.");
 			return;
@@ -1435,7 +1040,7 @@ export default function AdminCms() {
 		await saveEntity("testimonials", payload, currentRow);
 	}
 
-	async function saveHeroBanner(payload: Record<string, any>, currentRow: any | null) {
+	async function saveHeroBanner(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.headline || !payload.image_url) {
 			setMessage("Hero banners need headline and image_url.");
 			return;
@@ -1444,7 +1049,7 @@ export default function AdminCms() {
 		await saveEntity("hero_banners", payload, currentRow);
 	}
 
-	async function savePartnerLogo(payload: Record<string, any>, currentRow: any | null) {
+	async function savePartnerLogo(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.name || !payload.logo_url) {
 			setMessage("Partner logos need name and logo_url.");
 			return;
@@ -1452,7 +1057,7 @@ export default function AdminCms() {
 		await saveEntity("partner_logos", payload, currentRow);
 	}
 
-	async function saveSiteStat(payload: Record<string, any>, currentRow: any | null) {
+	async function saveSiteStat(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.key || !payload.label) {
 			setMessage("Site stats need key and label.");
 			return;
@@ -1460,7 +1065,7 @@ export default function AdminCms() {
 		await saveEntity("site_stats", payload, currentRow, "key");
 	}
 
-	async function saveSetting(payload: Record<string, any>, currentRow: any | null) {
+	async function saveSetting(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.key || payload.value == null) {
 			setMessage("Settings need key and value.");
 			return;
@@ -1468,147 +1073,6 @@ export default function AdminCms() {
 		if (sessionUser?.id) payload.updated_by = sessionUser.id;
 		await saveEntity("system_settings", payload, currentRow, "key");
 	}
-
-	const propertyFields: FieldSpec[] = [
-		{ name: "project_id", label: "Project ID", type: "text", placeholder: "UUID from projects" },
-		{ name: "developer_id", label: "Developer ID", type: "text", placeholder: "UUID from developer_partners" },
-		{ name: "assigned_agent_id", label: "Assigned Agent ID", type: "text", placeholder: "UUID from agents" },
-		{ name: "title", label: "Title", type: "text", placeholder: "Palm Village Unit 12" },
-		{ name: "slug", label: "Slug", type: "text", placeholder: "palm-village-unit-12" },
-		{ name: "category", label: "Category", type: "select", options: propertyCategoryOptions },
-		{ name: "status", label: "Status", type: "select", options: listingStatusOptions },
-		{ name: "badge", label: "Badge", type: "select", options: listingBadgeOptions },
-		{ name: "address", label: "Address", type: "text" },
-		{ name: "city", label: "City", type: "text" },
-		{ name: "province", label: "Province", type: "text" },
-		{ name: "region", label: "Region", type: "text" },
-		{ name: "zip_code", label: "Zip Code", type: "text" },
-		{ name: "latitude", label: "Latitude", type: "number", placeholder: "13.7563" },
-		{ name: "longitude", label: "Longitude", type: "number", placeholder: "121.0583" },
-		{ name: "google_maps_url", label: "Google Maps URL", type: "url" },
-		{ name: "bedrooms", label: "Bedrooms", type: "number" },
-		{ name: "bathrooms", label: "Bathrooms", type: "number" },
-		{ name: "floor_area_sqm", label: "Floor Area (sqm)", type: "number" },
-		{ name: "lot_area_sqm", label: "Lot Area (sqm)", type: "number" },
-		{ name: "floor_count", label: "Floor Count", type: "number" },
-		{ name: "unit_number", label: "Unit Number", type: "text" },
-		{ name: "parking_slots", label: "Parking Slots", type: "number" },
-		{ name: "price", label: "Price", type: "number" },
-		{ name: "price_per_sqm", label: "Price per sqm", type: "number" },
-		{ name: "is_price_negotiable", label: "Price Negotiable", type: "checkbox", help: "Enable if the listed price can still be negotiated." },
-		{ name: "monthly_amortization", label: "Monthly Amortization", type: "number" },
-		{ name: "description", label: "Description", type: "textarea", rows: 5 },
-		{ name: "key_features", label: "Key Features", type: "array", rows: 4, help: "One feature per line, or comma-separated." },
-		{ name: "amenities", label: "Amenities", type: "array", rows: 4, help: "One amenity per line, or comma-separated." },
-		{ name: "nearby_landmarks", label: "Nearby Landmarks", type: "array", rows: 4 },
-		{ name: "cover_image_url", label: "Cover Image URL", type: "url" },
-		{ name: "video_url", label: "Video URL", type: "url" },
-		{ name: "published_at", label: "Published At", type: "datetime-local" },
-	];
-
-	const projectFields: FieldSpec[] = [
-		{ name: "developer_id", label: "Developer ID", type: "text" },
-		{ name: "project_name", label: "Project Name", type: "text" },
-		{ name: "slug", label: "Slug", type: "text" },
-		{ name: "tagline", label: "Tagline", type: "text" },
-		{ name: "description", label: "Description", type: "textarea", rows: 5 },
-		{ name: "location_city", label: "City", type: "text" },
-		{ name: "location_province", label: "Province", type: "text" },
-		{ name: "region", label: "Region", type: "text" },
-		{ name: "latitude", label: "Latitude", type: "number" },
-		{ name: "longitude", label: "Longitude", type: "number" },
-		{ name: "cover_image_url", label: "Cover Image URL", type: "url" },
-		{ name: "brochure_url", label: "Brochure URL", type: "url" },
-		{ name: "is_active", label: "Active", type: "checkbox", help: "Show this project in the portfolio." },
-	];
-
-	const developerFields: FieldSpec[] = [
-		{ name: "profile_id", label: "Profile ID", type: "text" },
-		{ name: "company_name", label: "Company Name", type: "text" },
-		{ name: "slug", label: "Slug", type: "text" },
-		{ name: "logo_url", label: "Logo URL", type: "url" },
-		{ name: "website_url", label: "Website URL", type: "url" },
-		{ name: "description", label: "Description", type: "textarea", rows: 5 },
-		{ name: "contact_email", label: "Contact Email", type: "email" },
-		{ name: "contact_phone", label: "Contact Phone", type: "text" },
-		{ name: "is_active", label: "Active", type: "checkbox" },
-	];
-
-	const agentFields: FieldSpec[] = [
-		{ name: "profile_id", label: "Profile ID", type: "text" },
-		{ name: "license_number", label: "License Number", type: "text" },
-		{ name: "specialization", label: "Specialization", type: "text" },
-		{ name: "bio", label: "Bio", type: "textarea", rows: 5 },
-		{ name: "photo_url", label: "Photo URL", type: "url" },
-		{ name: "facebook_url", label: "Facebook URL", type: "url" },
-		{ name: "instagram_url", label: "Instagram URL", type: "url" },
-		{ name: "twitter_url", label: "Twitter URL", type: "url" },
-		{ name: "linkedin_url", label: "LinkedIn URL", type: "url" },
-		{ name: "is_top_agent", label: "Top Agent", type: "checkbox" },
-	];
-
-	const cmsPageFields: FieldSpec[] = [
-		{ name: "slug", label: "Slug", type: "text" },
-		{ name: "title", label: "Title", type: "text" },
-		{ name: "content_html", label: "Content HTML", type: "textarea", rows: 10, help: "Paste raw HTML or simple text content." },
-		{ name: "meta_title", label: "Meta Title", type: "text" },
-		{ name: "meta_description", label: "Meta Description", type: "textarea", rows: 3 },
-		{ name: "is_published", label: "Published", type: "checkbox" },
-		{ name: "published_at", label: "Published At", type: "datetime-local" },
-	];
-
-	const galleryFields: FieldSpec[] = [
-		{ name: "section", label: "Section", type: "select", options: gallerySectionOptions },
-		{ name: "title", label: "Title", type: "text" },
-		{ name: "description", label: "Description", type: "textarea", rows: 4 },
-		{ name: "image_url", label: "Image URL", type: "url" },
-		{ name: "link_url", label: "Link URL", type: "url" },
-		{ name: "sort_order", label: "Sort Order", type: "number" },
-		{ name: "is_published", label: "Published", type: "checkbox" },
-	];
-
-	const testimonialFields: FieldSpec[] = [
-		{ name: "author_name", label: "Author Name", type: "text" },
-		{ name: "author_title", label: "Author Title", type: "text" },
-		{ name: "avatar_url", label: "Avatar URL", type: "url" },
-		{ name: "quote", label: "Quote", type: "textarea", rows: 5 },
-		{ name: "rating", label: "Rating", type: "number" },
-		{ name: "is_published", label: "Published", type: "checkbox" },
-		{ name: "sort_order", label: "Sort Order", type: "number" },
-	];
-
-	const heroBannerFields: FieldSpec[] = [
-		{ name: "headline", label: "Headline", type: "text" },
-		{ name: "subheadline", label: "Subheadline", type: "textarea", rows: 3 },
-		{ name: "cta_label", label: "CTA Label", type: "text" },
-		{ name: "cta_url", label: "CTA URL", type: "url" },
-		{ name: "image_url", label: "Image URL", type: "url" },
-		{ name: "linked_property", label: "Linked Property ID", type: "text" },
-		{ name: "sort_order", label: "Sort Order", type: "number" },
-		{ name: "is_active", label: "Active", type: "checkbox" },
-	];
-
-	const partnerLogoFields: FieldSpec[] = [
-		{ name: "name", label: "Name", type: "text" },
-		{ name: "logo_url", label: "Logo URL", type: "url" },
-		{ name: "website_url", label: "Website URL", type: "url" },
-		{ name: "sort_order", label: "Sort Order", type: "number" },
-		{ name: "is_active", label: "Active", type: "checkbox" },
-	];
-
-	const siteStatFields: FieldSpec[] = [
-		{ name: "key", label: "Key", type: "text" },
-		{ name: "label", label: "Label", type: "text" },
-		{ name: "value", label: "Value", type: "number" },
-		{ name: "suffix", label: "Suffix", type: "text" },
-		{ name: "sort_order", label: "Sort Order", type: "number" },
-	];
-
-	const settingFields: FieldSpec[] = [
-		{ name: "key", label: "Key", type: "text" },
-		{ name: "value", label: "Value", type: "text" },
-		{ name: "description", label: "Description", type: "textarea", rows: 3 },
-	];
 
 	if (loading) {
 		return <main className="min-h-screen bg-[linear-gradient(180deg,#f5f8fa_0%,#ffffff_100%)] px-6 py-10 text-[#111111]"><div className="mx-auto max-w-6xl rounded-[28px] border border-black/10 bg-white p-8 shadow-sm">{message}</div></main>;
@@ -1618,10 +1082,10 @@ export default function AdminCms() {
 		return (
 			<main className="min-h-screen bg-[linear-gradient(180deg,#f5f8fa_0%,#ffffff_100%)] px-6 py-10 text-[#111111]">
 				<div className="mx-auto max-w-3xl rounded-[28px] border border-black/10 bg-white p-8 shadow-sm">
-					<div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#0E4B74]">Jewellz Realty CMS</div>
+					<div className="text-xs font-semibold uppercase tracking-[0.24em] text-red-700">Jewellz Realty CMS</div>
 					<h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">Sign in required</h1>
 					<p className="mt-2 text-sm leading-6 text-black/60">Use the login page to access the CMS. The dashboard honors Supabase Auth and role-based visibility from the profiles table.</p>
-					<button onClick={() => router.push("/login")} className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#0E4B74] px-5 text-sm font-medium text-white transition hover:bg-[#0b3d5c]">Go to login</button>
+					<button onClick={() => router.push("/login")} className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-red-700 px-5 text-sm font-medium text-white transition hover:bg-red-800">Go to login</button>
 				</div>
 			</main>
 		);
@@ -1637,7 +1101,7 @@ export default function AdminCms() {
 				<aside className="hidden border-r border-black/10 bg-white py-5 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
 						<div className="flex h-10 w-10 items-center justify-center rounded-md">
-							<img src="/assets/logo-icon.png" alt="Jewellz Realty" className="h-8 w-8 object-contain" />
+							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
 						</div>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {
@@ -1647,11 +1111,8 @@ export default function AdminCms() {
 									<button
 										key={group.id}
 										type="button"
-										onClick={() => {
-											setActivePrimary(group.id);
-											setActiveSection(group.items[0].id);
-										}}
-										className={`flex h-10 w-10 items-center justify-center rounded-md transition ${active ? "bg-zinc-100 text-[#111111]" : "text-black/60 hover:bg-zinc-100 hover:text-[#111111]"}`}
+										onClick={() => openPrimary(group)}
+										className={`flex h-10 w-10 items-center justify-center rounded-md transition ${active ? "bg-red-50 text-red-700" : "text-black/60 hover:bg-red-50 hover:text-red-700"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -1672,7 +1133,7 @@ export default function AdminCms() {
 
 				<aside className="border-b border-black/10 bg-white lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
 					<div className="border-b border-black/10 px-4 py-5">
-						<div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/45">Jewellz Realty</div>
+						<div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black">Jewellz Realty</div>
 						<p className="mt-2 truncate text-xs text-black/45">{profile.full_name}</p>
 					</div>
 
@@ -1681,13 +1142,13 @@ export default function AdminCms() {
 						<div className="space-y-0">
 							{activeSidebarItems.map((item) => {
 								const ItemIcon = item.icon;
-								const active = activeSection === item.id;
+								const active = currentSection === item.id;
 								return (
 									<div key={item.id}>
 										<button
 											type="button"
-											onClick={() => setActiveSection(item.id)}
-											className={`flex w-full items-center gap-2 border-l-2 px-4 py-2 text-left transition ${active ? "border-[#111111] bg-zinc-50 text-[#111111]" : "border-transparent text-black/65 hover:bg-zinc-50 hover:text-[#111111]"}`}
+											onClick={() => openSection(item.id)}
+											className={`flex w-full items-center gap-2 border-l-2 px-4 py-2 text-left transition ${active ? "border-red-700 bg-red-50 text-red-700" : "border-transparent text-black/65 hover:bg-red-50 hover:text-red-700"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
@@ -1699,12 +1160,8 @@ export default function AdminCms() {
 											<div className="border-l-2 border-transparent py-1 pl-8 pr-2">
 												<button
 													type="button"
-													onClick={() => {
-														setActiveSection("properties");
-														setPropertyCategoryFilter("all");
-														setSelection((current) => ({ ...current, properties: null }));
-													}}
-													className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition ${propertyCategoryFilter === "all" ? "bg-zinc-100 font-medium text-[#111111]" : "text-black/50 hover:bg-zinc-50 hover:text-[#111111]"}`}
+													onClick={() => openPropertyCategory("all")}
+													className={`w-full rounded-md px-2 py-1.5 text-left text-xs transition ${propertyCategoryFilter === "all" ? "bg-red-50 font-medium text-red-700" : "text-black/50 hover:bg-red-50 hover:text-red-700"}`}
 												>
 													All Categories
 												</button>
@@ -1712,12 +1169,8 @@ export default function AdminCms() {
 													<button
 														key={option.value}
 														type="button"
-														onClick={() => {
-															setActiveSection("properties");
-															setPropertyCategoryFilter(option.value);
-															setSelection((current) => ({ ...current, properties: null }));
-														}}
-														className={`mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs transition ${propertyCategoryFilter === option.value ? "bg-zinc-100 font-medium text-[#111111]" : "text-black/50 hover:bg-zinc-50 hover:text-[#111111]"}`}
+														onClick={() => openPropertyCategory(option.value)}
+														className={`mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs transition ${propertyCategoryFilter === option.value ? "bg-red-50 font-medium text-red-700" : "text-black/50 hover:bg-red-50 hover:text-red-700"}`}
 													>
 														{option.label}
 													</button>
@@ -1733,7 +1186,7 @@ export default function AdminCms() {
 					<div className="border-t border-black/10 px-5 py-4">
 						<div className="rounded-md bg-zinc-50 px-3 py-2 text-xs leading-5 text-black/55">
 							<div>{message}</div>
-							{saving ? <div className="font-medium text-[#0E4B74]">Saving...</div> : null}
+							{saving ? <div className="font-medium text-red-700">Saving...</div> : null}
 						</div>
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button onClick={() => void reloadWorkspace()} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium">Refresh</button>
@@ -1752,7 +1205,7 @@ export default function AdminCms() {
 							<button type="button" className="rounded-md p-1.5 transition hover:bg-zinc-100" title="Notifications">
 								<Bell className="h-4 w-4" />
 							</button>
-							<button type="button" className="rounded-md p-1.5 transition hover:bg-zinc-100" title={profile.email ?? profile.full_name}>
+							<button type="button" className="rounded-md p-1.5 transition hover:bg-zinc-100" title={asText(profile.email ?? profile.full_name)}>
 								<UserCircle className="h-5 w-5" />
 							</button>
 						</div>
@@ -1762,7 +1215,7 @@ export default function AdminCms() {
 						<div className="mx-auto flex max-w-6xl flex-col gap-5">
 							<div className="flex items-center justify-between">
 								<div className="text-base font-medium text-[#111111]">
-									{activeNavGroup?.label ?? "Dashboard"} / <strong>{activeNavItem?.label ?? "Overview"}</strong>{activeSection === "properties" && propertyCategoryFilter !== "all" ? <> / <strong>{selectedCategoryLabel}</strong></> : null}
+									{activeNavGroup?.label ?? "Dashboard"} / <strong>{activeNavItem?.label ?? "Overview"}</strong>{currentSection === "properties" && propertyCategoryFilter !== "all" ? <> / <strong>{selectedCategoryLabel}</strong></> : null}
 								</div>
 								<button onClick={() => void reloadWorkspace()} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
 									<RefreshCw className="h-3.5 w-3.5" />
@@ -1770,7 +1223,7 @@ export default function AdminCms() {
 								</button>
 							</div>
 
-						{activeSection === "overview" ? (
+						{currentSection === "overview" ? (
 							<>
 								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 									<InfoCard label="Properties" value={stats.propertyCount} hint={isAdmin ? "All properties" : "Visible to your role"} />
@@ -1788,14 +1241,14 @@ export default function AdminCms() {
 							</>
 						) : null}
 
-						{activeSection === "properties" ? (
+						{currentSection === "properties" ? (
 							canEditCatalog ? (
 								propertyCategoryFilter === "all" ? (
 									<EntityEditor
 										title="Properties"
 										description="Full CRUD for adding and maintaining property records."
 										rows={workspace.properties}
-										selectedId={selection.properties}
+										selectedId={selectedPropertyId}
 										fields={propertyFields}
 										defaultValues={{ status: "draft", badge: "none" }}
 										canEdit={canEditCatalog}
@@ -1805,7 +1258,7 @@ export default function AdminCms() {
 										onCreateNew={() => setSelection((current) => ({ ...current, properties: null }))}
 										onDelete={(row) => deleteEntity("properties", row)}
 										onSubmit={saveProperty}
-										extra={<PropertyImagesManager propertyId={selectedProperty?.id ?? null} canEdit={canEditCatalog} onChanged={reloadWorkspace} />}
+										extra={<PropertyImagesManager propertyId={selectedProperty ? asText(selectedProperty.id) : null} canEdit={canEditCatalog} onChanged={reloadWorkspace} />}
 									/>
 								) : (
 									<SectionShell title={`${selectedCategoryLabel} Properties`} description={`Showing only listings categorized as ${selectedCategoryLabel}. Use Listings / Properties to add or edit property records.`}>
@@ -1824,7 +1277,7 @@ export default function AdminCms() {
 														<tr><td colSpan={4} className="px-4 py-5 text-sm text-black/45">No properties found in this category.</td></tr>
 													) : null}
 													{visibleProperties.map((property) => (
-														<tr key={property.id} className="border-b border-black/10 last:border-b-0 hover:bg-zinc-50">
+														<tr key={asText(property.id)} className="border-b border-black/10 last:border-b-0 hover:bg-zinc-50">
 															<td className="px-4 py-3 font-medium text-[#111111]">{property.title}</td>
 															<td className="px-4 py-3 text-black/60">{property.city ?? "n/a"}</td>
 															<td className="px-4 py-3 text-black/60">{property.price == null ? "n/a" : `₱${Number(property.price).toLocaleString()}`}</td>
@@ -1839,67 +1292,67 @@ export default function AdminCms() {
 							) : (
 								<SectionShell title="Properties" description="Read-only property list for the current role.">
 									<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-										{visibleProperties.map((row) => <div key={row.id} className="rounded-2xl border border-black/10 bg-zinc-50 p-4"><div className="font-medium text-[#111111]">{row.title}</div><div className="mt-1 text-sm text-black/55">{row.city ?? ""} {row.province ?? ""}</div></div>)}
+										{visibleProperties.map((row) => <div key={asText(row.id)} className="rounded-2xl border border-black/10 bg-zinc-50 p-4"><div className="font-medium text-[#111111]">{row.title}</div><div className="mt-1 text-sm text-black/55">{row.city ?? ""} {row.province ?? ""}</div></div>)}
 									</div>
 								</SectionShell>
 							)
 						) : null}
 
-						{activeSection === "projects" && isAdmin ? (
-							<EntityEditor title="Projects" description="Developer project portfolios." rows={workspace.projects} selectedId={selection.projects} fields={projectFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: null }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />
+						{currentSection === "projects" && isAdmin ? (
+							<EntityEditor title="Projects" description="Developer project portfolios." rows={workspace.projects} selectedId={selectedProjectId} fields={projectFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: null }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />
 						) : null}
 
-						{activeSection === "agents" && isAdmin ? (
-							<EntityEditor title="Agents" description="Profile info, social links, and top-agent flags." rows={workspace.agents} selectedId={selection.agents} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.license_number ?? "no license"}${row.is_top_agent ? " • top agent" : ""}`} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: null }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} />
+						{currentSection === "agents" && isAdmin ? (
+							<EntityEditor title="Agents" description="Profile info, social links, and top-agent flags." rows={workspace.agents} selectedId={selectedAgentId} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.license_number ?? "no license"}${row.is_top_agent ? " • top agent" : ""}`} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: null }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} />
 						) : null}
 
-						{activeSection === "developers" && isAdmin ? (
-							<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selection.developers} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => row.contact_email ?? row.website_url ?? row.slug} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: null }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
+						{currentSection === "developers" && isAdmin ? (
+							<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selectedDeveloperId} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => asText(row.contact_email ?? row.website_url ?? row.slug)} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: null }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
 						) : null}
 
-						{activeSection === "profiles" && isAdmin ? (
+						{currentSection === "profiles" && isAdmin ? (
 							<SectionShell title="Profiles & Buyers" description="Buyer profile browsing can be added here when you want user-management CRUD in the CMS.">
 								<div className="text-sm text-black/55">This section is reserved for profile and buyer account management.</div>
 							</SectionShell>
 						) : null}
 
-						{activeSection === "inquiries" || activeSection === "pipeline" || activeSection === "timeline" ? (
-							<InquiryPanel inquiries={workspace.inquiries} agents={workspace.agents} currentRole={role} currentUserId={sessionUser.id} selectedId={selection.inquiries} onSelect={(id) => setSelection((current) => ({ ...current, inquiries: id }))} onReload={reloadWorkspace} canEdit={canEditInquiries} canReassign={canReassignInquiries} />
+						{currentSection === "inquiries" || currentSection === "pipeline" || currentSection === "timeline" ? (
+							<InquiryPanel inquiries={workspace.inquiries} agents={workspace.agents} currentRole={role} currentUserId={sessionUser.id} selectedId={selectedInquiryId} onSelect={(id) => setSelection((current) => ({ ...current, inquiries: id }))} onReload={reloadWorkspace} canEdit={canEditInquiries} canReassign={canReassignInquiries} />
 						) : null}
 
-						{activeSection === "pages" && isAdmin ? (
-							<EntityEditor title="CMS Pages" description="Static and semi-static content pages." rows={workspace.cmsPages} selectedId={selection.cmsPages} fields={cmsPageFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => row.slug ?? row.meta_title ?? "cms"} onSelect={(row) => setSelection((current) => ({ ...current, cmsPages: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, cmsPages: null }))} onDelete={(row) => deleteEntity("cms_pages", row)} onSubmit={saveCmsPage} />
+						{currentSection === "pages" && isAdmin ? (
+							<EntityEditor title="CMS Pages" description="Static and semi-static content pages." rows={workspace.cmsPages} selectedId={selection.cmsPages} fields={cmsPageFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => asText(row.slug ?? row.meta_title ?? "cms")} onSelect={(row) => setSelection((current) => ({ ...current, cmsPages: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, cmsPages: null }))} onDelete={(row) => deleteEntity("cms_pages", row)} onSubmit={saveCmsPage} />
 						) : null}
 
-						{activeSection === "gallery" && isAdmin ? (
+						{currentSection === "gallery" && isAdmin ? (
 							<EntityEditor title="Gallery Items" description="Browse Gallery tiles for achievements, events, trainings, service, and general content." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.section ?? "general"} • ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} />
 						) : null}
 
-						{activeSection === "testimonials" && isAdmin ? (
+						{currentSection === "testimonials" && isAdmin ? (
 							<EntityEditor title="Testimonials" description="Homepage testimonials carousel content." rows={workspace.testimonials} selectedId={selection.testimonials} fields={testimonialFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.author_title ?? ""} • ${row.rating ?? "n/a"} stars`} onSelect={(row) => setSelection((current) => ({ ...current, testimonials: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, testimonials: null }))} onDelete={(row) => deleteEntity("testimonials", row)} onSubmit={saveTestimonial} />
 						) : null}
 
-						{activeSection === "hero" && isAdmin ? (
+						{currentSection === "hero" && isAdmin ? (
 							<EntityEditor title="Hero Banners" description="Rotating hero slides for the public landing page." rows={workspace.heroBanners} selectedId={selection.heroBanners} fields={heroBannerFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.sort_order ?? 0} • ${row.is_active ? "active" : "inactive"}`} onSelect={(row) => setSelection((current) => ({ ...current, heroBanners: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, heroBanners: null }))} onDelete={(row) => deleteEntity("hero_banners", row)} onSubmit={saveHeroBanner} />
 						) : null}
 
-						{activeSection === "logos" && isAdmin ? (
+						{currentSection === "logos" && isAdmin ? (
 							<EntityEditor title="Partner Logos" description="Homepage logo strip for developer partners." rows={workspace.partnerLogos} selectedId={selection.partnerLogos} fields={partnerLogoFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.sort_order ?? 0} • ${row.is_active ? "active" : "inactive"}`} onSelect={(row) => setSelection((current) => ({ ...current, partnerLogos: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, partnerLogos: null }))} onDelete={(row) => deleteEntity("partner_logos", row)} onSubmit={savePartnerLogo} />
 						) : null}
 
-						{activeSection === "stats" && isAdmin ? (
+						{currentSection === "stats" && isAdmin ? (
 							<EntityEditor title="Site Stats" description="Key-value counters shown in the homepage stat strip." rows={workspace.siteStats} selectedId={selection.siteStats} idKey="key" fields={siteStatFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.value ?? 0}${row.suffix ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, siteStats: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, siteStats: null }))} onDelete={(row) => deleteEntity("site_stats", row, "key")} onSubmit={saveSiteStat} />
 						) : null}
 
-						{activeSection === "settings" && isAdmin ? (
-							<EntityEditor title="System Settings" description="Key-value configuration editor for platform behavior." rows={workspace.settings} selectedId={selection.settings} idKey="key" fields={settingFields} canEdit={canEditSettings} rowLabel={labelForRow} rowMeta={(row) => row.description ?? row.value} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={saveSetting} />
+						{currentSection === "settings" && isAdmin ? (
+							<EntityEditor title="System Settings" description="Key-value configuration editor for platform behavior." rows={workspace.settings} selectedId={selection.settings} idKey="key" fields={settingFields} canEdit={canEditSettings} rowLabel={labelForRow} rowMeta={(row) => asText(row.description ?? row.value)} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={saveSetting} />
 						) : null}
 
-						{(activeSection === "analytics" || activeSection === "traffic" || activeSection === "agentPerformance" || activeSection === "developerPortfolio") && isAdmin ? (
-							<AnalyticsPanel isAdmin={isAdmin} properties={workspace.properties} inquiries={workspace.inquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} dailyInquiryVolume={workspace.dailyInquiryVolume} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} />
+						{(currentSection === "analytics" || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
+							<AnalyticsPanel isAdmin={isAdmin} properties={workspace.properties} inquiries={workspace.inquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} />
 						) : null}
 
-						{activeSection === "activityLogs" && isAdmin ? (
+						{currentSection === "activityLogs" && isAdmin ? (
 							<SectionShell title="Activity Logs" description="Audit trail browsing can be connected to the activity_logs table here.">
 								<div className="text-sm text-black/55">This section is reserved for activity log review.</div>
 							</SectionShell>

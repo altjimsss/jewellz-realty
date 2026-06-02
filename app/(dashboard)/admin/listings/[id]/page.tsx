@@ -1,1 +1,7 @@
-export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(dashboard)\admin\listings\[id]\page.tsx</main>; }
+import AdminCms from "@/components/cms/AdminCms";
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+	const { id } = await params;
+
+	return <AdminCms initialPrimary="listings" initialSection="properties" initialPropertyId={id} />;
+}

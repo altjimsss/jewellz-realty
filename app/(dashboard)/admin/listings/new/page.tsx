@@ -1,1 +1,5 @@
-export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(dashboard)\admin\listings\new\page.tsx</main>; }
+import AdminCms from "@/components/cms/AdminCms";
+
+export default function Page() {
+	return <AdminCms initialPrimary="listings" initialSection="properties" initialPropertyId={null} />;
+}
