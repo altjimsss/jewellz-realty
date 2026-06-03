@@ -2,28 +2,16 @@
 
 import { useState } from "react";
 import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
+import type { NearbyPlaceGroup } from "@/lib/nearby-places";
+import { formatDistance } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
-
-type NearbyItem = {
-  name: string;
-  distance: number;
-};
 
 type NearbyCategory = {
   label: string;
   icon: React.ReactNode;
-  items: NearbyItem[];
 };
 
-function formatDistance(miles: number): string {
-  const meters = miles * 1609.34;
-  if (meters < 1000) {
-    return `${Math.round(meters)} m`;
-  }
-  return `${(meters / 1000).toFixed(1)} km`;
-}
-
-const nearbyCategories: NearbyCategory[] = [
+const nearbyCategoryTabs: NearbyCategory[] = [
   {
     label: "Education",
     icon: (
@@ -32,11 +20,6 @@ const nearbyCategories: NearbyCategory[] = [
         <path d="M2 8v6M22 8v6M6 10.5v5a6 6 0 0012 0v-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    items: [
-      { name: "Allen Academy", distance: 0.089 },
-      { name: "St. Joseph School", distance: 0.028 },
-      { name: "George Washington School", distance: 0.059 },
-    ],
   },
   {
     label: "Health",
@@ -46,11 +29,6 @@ const nearbyCategories: NearbyCategory[] = [
         <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
-    items: [
-      { name: "Batangas Medical Center", distance: 0.045 },
-      { name: "City Health Clinic", distance: 0.031 },
-      { name: "Rose Pharmacy", distance: 0.012 },
-    ],
   },
   {
     label: "Food",
@@ -60,11 +38,6 @@ const nearbyCategories: NearbyCategory[] = [
         <path d="M6 2v6M10 2v6M14 2v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
-    items: [
-      { name: "Jollibee Batangas", distance: 0.102 },
-      { name: "SM Supermarket", distance: 0.075 },
-      { name: "Mang Inasal", distance: 0.034 },
-    ],
   },
   {
     label: "Culture",
@@ -73,23 +46,21 @@ const nearbyCategories: NearbyCategory[] = [
         <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M16 10v11M12 10v11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    items: [
-      { name: "Batangas City Plaza", distance: 0.210 },
-      { name: "Heritage Museum", distance: 0.183 },
-      { name: "St. Patrick Parish Church", distance: 0.094 },
-    ],
   },
 ];
 
 type PropertyLocationMapProps = {
   property: Property;
+  nearbyGroups: NearbyPlaceGroup[];
 };
 
-export function PropertyLocationMap({ property }: PropertyLocationMapProps) {
+export function PropertyLocationMap({ property, nearbyGroups }: PropertyLocationMapProps) {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [focusedNearbyPlace, setFocusedNearbyPlace] = useState<NearbyPlaceGroup["places"][number] | null>(null);
 
-  const active = nearbyCategories[activeTab];
+  const active = nearbyCategoryTabs[activeTab];
+  const activePlaces = nearbyGroups.find((group) => group.category === active.label)?.places ?? [];
 
   return (
     <>
@@ -109,7 +80,7 @@ export function PropertyLocationMap({ property }: PropertyLocationMapProps) {
 
       {isMapOpen && (
         <div id="property-location-map" className="mt-3 w-full overflow-hidden rounded-[10px] border border-black/10">
-          <PropertyMapPreview properties={[property]} mapHeightClassName="h-[400px]" />
+          <PropertyMapPreview properties={[property]} mapHeightClassName="h-[400px]" focusedNearbyPlace={focusedNearbyPlace} />
         </div>
       )}
 
@@ -122,7 +93,7 @@ export function PropertyLocationMap({ property }: PropertyLocationMapProps) {
 
   {/* Tabs */}
   <div className="flex flex-wrap gap-2">
-    {nearbyCategories.map((category, index) => {
+    {nearbyCategoryTabs.map((category, index) => {
       const isActive = activeTab === index;
       return (
         <button
@@ -144,14 +115,27 @@ export function PropertyLocationMap({ property }: PropertyLocationMapProps) {
 
   {/* Items list */}
   <div className="mt-3 divide-y divide-black/8 rounded-[12px] border border-black/10">
-    {active.items.map((item) => (
-      <div key={item.name} className="flex items-center justify-between px-4 py-3">
-        <span className="text-sm text-black/80">{item.name}</span>
+    {activePlaces.length === 0 ? (
+      <div className="px-4 py-3 text-sm text-black/50">
+        No nearby {active.label.toLowerCase()} places found from OpenStreetMap.
+      </div>
+    ) : null}
+    {activePlaces.map((item) => (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => {
+          setFocusedNearbyPlace((current) => current?.id === item.id ? null : item);
+          setIsMapOpen(true);
+        }}
+        className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-red-50 ${focusedNearbyPlace?.id === item.id ? "bg-red-50" : ""}`}
+      >
+        <span className="min-w-0 truncate text-sm text-black/80">{item.name}</span>
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-[#DE141C]" aria-hidden="true" />
-          <span className="text-xs font-medium text-black/50">{formatDistance(item.distance)}</span>
+          <span className="shrink-0 text-xs font-medium text-black/50">{formatDistance(item.distanceMeters)}</span>
         </div>
-      </div>
+      </button>
     ))}
   </div>
 </div>

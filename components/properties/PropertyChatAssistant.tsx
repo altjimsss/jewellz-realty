@@ -16,8 +16,9 @@ type PropertyChatAssistantProps = {
 
 const quickPrompts = [
   "Is this property still available?",
-  "What makes this listing a good fit?",
-  "Can you tell me about the price and features?",
+  "Compare this with similar properties",
+  "Is this good for a small family?",
+  "What should I ask before booking?",
 ];
 
 function createId() {
@@ -54,7 +55,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
     {
       id: createId(),
       role: "assistant",
-      content: "Ask about pricing, availability, site viewing, or property details.",
+      content: "Ask me about this listing, FAQs, viewing steps, or how it compares with similar properties.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -100,7 +101,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
 
     try {
       const payload = await fetchPropertyPrompt(property, trimmedMessage, [...history, userMessage]);
-      setStatus(`Using ${payload.propertyTitle} context`);
+      setStatus(`Using ${payload.propertyTitle} and comparable listings`);
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
@@ -175,7 +176,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
                   AI
                 </span>
               </div>
-              <p className="text-[11px] leading-4 text-black/45">Message us your questions</p>
+              <p className="text-[11px] leading-4 text-black/45">{status}</p>
             </div>
           </div>
         </div>

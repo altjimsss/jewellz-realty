@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
@@ -13,7 +14,9 @@ import { ParamIcon } from "@/components/properties/ParamIcon";
 import { RouteScrollOffset } from "@/components/layout/RouteScrollOffset";
 
 import { formatPHPWhole } from "@/lib/currency";
+import { getNearbyPlaceGroups } from "@/lib/nearby-places";
 import { SAMPLE_PROPERTIES, getPropertyBySlug, getRelatedProperties } from "@/lib/sample-properties";
+import { getPublishedProperties, getPublishedPropertyBySlug } from "@/lib/supabase/properties";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
@@ -30,88 +33,31 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-function StatIcon({ label }: { label: string }) {
-  const normalizedLabel = label.toLowerCase();
-
-  if (normalizedLabel.includes("bed")) {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-        <path d="M3 18v-7h18v7M3 14h18M6 11V7h6v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (normalizedLabel.includes("bath")) {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-        <path d="M4 13h16v1a5 5 0 01-5 5H9a5 5 0 01-5-5v-1zM7 13V8a2 2 0 114 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (normalizedLabel.includes("area") || normalizedLabel.includes("sqm") || normalizedLabel.includes("lot") || normalizedLabel.includes("land")) {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-        <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M8 8h8M8 12h5M8 16h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (normalizedLabel.includes("water")) {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-        <path d="M12 3s4 4.4 4 8.5A4 4 0 118 11.5C8 7.4 12 3 12 3z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (normalizedLabel.includes("section")) {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-        <path d="M12 21s6-4.5 6-10a6 6 0 10-12 0c0 5.5 6 10 6 10z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="12" cy="11" r="2" stroke="currentColor" strokeWidth="1.6" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-      <rect x="3.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="13.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="3.5" y="13.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="13.5" y="13.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  );
-}
-
 export function generateStaticParams() {
   return SAMPLE_PROPERTIES.map((property) => ({ slug: property.slug }));
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function PropertyDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const property = getPropertyBySlug(slug);
+  const property = await getPublishedPropertyBySlug(slug) ?? getPropertyBySlug(slug);
 
   if (!property) {
     notFound();
   }
 
-  const relatedProperties = getRelatedProperties(property.slug, 3);
+  const publishedProperties = await getPublishedProperties();
+  const relatedProperties = publishedProperties.filter((item) => item.slug !== property.slug).slice(0, 3);
+  const fallbackRelatedProperties = relatedProperties.length ? relatedProperties : getRelatedProperties(property.slug, 3);
   const galleryImages =
     property.images?.length
       ? property.images
-      : [property.image, ...relatedProperties.map((item) => item.image)]
+      : [property.image, ...fallbackRelatedProperties.map((item) => item.image)]
           .filter((image): image is string => Boolean(image))
           .slice(0, 3);
-
-  const statItems = property.specs?.length
-    ? property.specs
-    : [
-        { label: "Bedrooms", value: String(property.beds ?? 0) },
-        { label: "Bathrooms", value: String(property.baths ?? 0) },
-        { label: "Area", value: `${property.areaSqm ?? 0} sqm` },
-      ];
+  const [latitude, longitude] = property.coordinates ?? [];
+  const nearbyGroups = await getNearbyPlaceGroups({ latitude, longitude, propertyType: property.type });
 
   const computedDescription =
     property.type === "Lot"
@@ -156,7 +102,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               <span className="text-black/30" aria-hidden="true">•</span>
               <span className="text-sm text-black/70">{property.location ?? "Location not specified"}</span>
               <span className="text-black/30" aria-hidden="true">•</span>
-              <PropertyLocationMap property={property} />
+              <PropertyLocationMap property={property} nearbyGroups={nearbyGroups} />
             </div>
 
             {/* Recommendations */}
@@ -170,7 +116,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               </div>
               <div className="-mx-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex gap-3 px-1">
-                  {relatedProperties.map((relatedProperty) => (
+                  {fallbackRelatedProperties.map((relatedProperty) => (
                     <div key={relatedProperty.id} className="w-[300px] shrink-0">
                       <PropertyCard
                         property={relatedProperty}
@@ -192,12 +138,12 @@ export default async function PropertyDetailPage({ params }: PageProps) {
       {property.category ?? property.type ?? "Listing"}
     </div>
   </div>
-  <a
+  <Link
     href="/project-list"
     className="rounded-full border border-black/10 px-3 py-2 text-xs font-semibold text-black/60 transition-colors hover:bg-black/5"
   >
     Back
-  </a>
+  </Link>
 </div>
 
               <p className="mt-3 text-sm uppercase tracking-[0.12em] text-black/50">Start at</p>
