@@ -1,0 +1,111 @@
+import type { Property } from "@/types/property";
+import { supabaseServer } from "./server";
+
+type PropertyRow = {
+	id: string;
+	slug: string;
+	title: string;
+	category: string | null;
+	status: string | null;
+	badge: string | null;
+	address: string | null;
+	city: string | null;
+	province: string | null;
+	latitude: number | string | null;
+	longitude: number | string | null;
+	bedrooms: number | null;
+	bathrooms: number | null;
+	floor_area_sqm: number | null;
+	lot_area_sqm: number | null;
+	floor_count: number | null;
+	parking_slots: number | null;
+	price: number | null;
+	description: string | null;
+	key_features: string[] | null;
+	amenities: string[] | null;
+	nearby_landmarks: string[] | null;
+	cover_image_url: string | null;
+};
+
+function titleCase(value: string | null | undefined) {
+	if (!value) return undefined;
+	return value
+		.split(/[_\s-]+/)
+		.filter(Boolean)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
+
+function toNumber(value: number | string | null | undefined) {
+	if (value == null || value === "") return undefined;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+export function mapPropertyRow(row: PropertyRow): Property {
+	const latitude = toNumber(row.latitude);
+	const longitude = toNumber(row.longitude);
+	const lotArea = toNumber(row.lot_area_sqm);
+	const floorArea = toNumber(row.floor_area_sqm);
+	const floorCount = toNumber(row.floor_count);
+	const parkingSlots = toNumber(row.parking_slots);
+	const location = [row.city, row.province].filter(Boolean).join(", ") || row.address || undefined;
+	const image = row.cover_image_url || undefined;
+	const displayArea = floorArea ?? lotArea;
+
+	return {
+		id: row.id,
+		slug: row.slug,
+		title: row.title,
+		price: toNumber(row.price) ?? 0,
+		description: row.description ?? undefined,
+		location,
+		coordinates: latitude != null && longitude != null ? [latitude, longitude] : undefined,
+		image,
+		images: image ? [image] : undefined,
+		beds: row.bedrooms ?? undefined,
+		baths: row.bathrooms ?? undefined,
+		areaSqm: displayArea,
+		type: titleCase(row.category),
+		category: row.status === "published" ? "For Sale" : titleCase(row.status),
+		featured: row.badge === "featured",
+		specs: [
+			{ label: "Beds", value: String(row.bedrooms ?? 0) },
+			{ label: "Baths", value: String(row.bathrooms ?? 0) },
+			{ label: lotArea && !floorArea ? "Lot Area" : "Area", value: `${displayArea ?? 0} sqm` },
+			floorCount ? { label: "Levels", value: String(floorCount) } : null,
+			parkingSlots != null ? { label: "Garage", value: String(parkingSlots) } : null,
+		].filter((item): item is { label: string; value: string } => Boolean(item)),
+	};
+}
+
+export async function getPublishedProperties() {
+	const { data, error } = await supabaseServer
+		.from("properties")
+		.select("*")
+		.eq("status", "published")
+		.order("created_at", { ascending: false });
+
+	if (error) {
+		console.error("Failed to load published properties", error.message);
+		return [];
+	}
+
+	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
+}
+
+export async function getPublishedPropertyBySlug(slug: string) {
+	const { data, error } = await supabaseServer
+		.from("properties")
+		.select("*")
+		.eq("slug", slug)
+		.eq("status", "published")
+		.maybeSingle();
+
+	if (error) {
+		console.error("Failed to load property", error.message);
+		return null;
+	}
+
+	return data ? mapPropertyRow(data as PropertyRow) : null;
+}

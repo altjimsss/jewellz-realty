@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export type NavLink = {
 	label: string;
@@ -17,7 +17,9 @@ type NavbarProps = {
 
 export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 	const pathname = usePathname();
+	const router = useRouter();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
 	const isProjectListJourney = pathname === "/appointment" || pathname.startsWith("/project-list");
 
 	function isLinkActive(linkHref: string) {
@@ -26,6 +28,16 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 		}
 
 		return pathname === linkHref;
+	}
+
+	function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		const query = searchQuery.trim();
+
+		if (!query) return;
+
+		setMobileMenuOpen(false);
+		router.push(`/project-list?search=${encodeURIComponent(query)}`);
 	}
 
 	return (
@@ -50,17 +62,21 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 						priority
 						className="-ml-4 h-10 w-[140px] shrink-0 object-contain sm:w-[180px]"
 					/>
-					<label className="relative block min-w-0 flex-1">
+					<form className="relative block min-w-0 flex-1" onSubmit={handleSearchSubmit}>
 						<input
 							type="search"
 							placeholder="What are you looking for?"
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
 							className="h-9 w-full rounded-sm border border-black/10 bg-white pl-4 pr-9 text-xs text-black placeholder:text-black/40 outline-none"
 						/>
-						<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
-							<circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.8" />
-							<path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-						</svg>
-					</label>
+						<button type="submit" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-black/60" aria-label="Search properties">
+							<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+								<circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.8" />
+								<path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+							</svg>
+						</button>
+					</form>
 					<button
 						type="button"
 						aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
@@ -116,17 +132,21 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 					})}
 				</div>
 				<div className="ml-auto hidden md:block">
-					<label className="relative block">
+					<form className="relative block" onSubmit={handleSearchSubmit}>
 						<input
 							type="search"
 							placeholder="What are you looking for?"
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
 							className="h-9 w-[280px] rounded-sm border border-black/10 bg-white pl-4 pr-9 text-xs text-black placeholder:text-black/40 outline-none lg:w-[320px]"
 						/>
-						<svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/60" fill="none" aria-hidden="true">
-							<circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.8" />
-							<path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-						</svg>
-					</label>
+						<button type="submit" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-black/60" aria-label="Search properties">
+							<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+								<circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.8" />
+								<path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+							</svg>
+						</button>
+					</form>
 				</div>
 			</div>
 			<div

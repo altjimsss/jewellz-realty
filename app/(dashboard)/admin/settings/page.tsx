@@ -1,1 +1,9 @@
-export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(dashboard)\admin\settings\page.tsx</main>; }
+import AdminCms from "@/components/cms/AdminCms";
+import { sectionFromParam, type CmsSearchParams } from "@/components/cms/routing";
+
+export default async function Page({ searchParams }: { searchParams: CmsSearchParams }) {
+	const params = await searchParams;
+	const section = sectionFromParam(params.section, "settings");
+
+	return <AdminCms initialPrimary="settings" initialSection={section === "activityLogs" ? "activityLogs" : "settings"} />;
+}
