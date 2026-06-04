@@ -6,6 +6,7 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import SectionHeader from "@/components/layout/SectionHeader";
+import { getOrCreateSessionId } from "@/lib/session";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -20,16 +21,54 @@ const navLinks = [
 
 export default function ContactPage() {
 	const [formState, setFormState] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
+	const [submitStatus, setSubmitStatus] = useState("");
 
-	function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-
+	function openMailFallback() {
 		const subject = encodeURIComponent(formState.subject || `Jewellz Realty inquiry from ${formState.name || "website visitor"}`);
 		const body = encodeURIComponent(
 			[`Name: ${formState.name}`, `Email: ${formState.email}`, `Phone: ${formState.phone}`, "", formState.message].join("\n")
 		);
 
 		window.location.href = `mailto:inquiries@jewellzrealty.com?subject=${subject}&body=${body}`;
+	}
+
+	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+
+		if (!formState.name.trim() || !formState.email.trim()) {
+			setSubmitStatus("Name and email are required.");
+			return;
+		}
+
+		setSubmitStatus("Sending message...");
+
+		try {
+			const response = await fetch("/api/inquiries", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					buyerName: formState.name,
+					buyerEmail: formState.email,
+					buyerPhone: formState.phone,
+					subject: formState.subject,
+					message: formState.message,
+					source: "contact_page",
+					sessionId: getOrCreateSessionId(),
+				}),
+			});
+
+			if (!response.ok) {
+				setSubmitStatus("Unable to save this inquiry. Opening email fallback...");
+				openMailFallback();
+				return;
+			}
+
+			setSubmitStatus("Message sent. Our team will contact you soon.");
+			setFormState({ name: "", email: "", phone: "", subject: "", message: "" });
+		} catch {
+			setSubmitStatus("Unable to save this inquiry. Opening email fallback...");
+			openMailFallback();
+		}
 	}
 
 	return (
@@ -134,6 +173,7 @@ export default function ContactPage() {
 								</svg>
 							</button>
 						</div>
+						{submitStatus ? <p className="mt-3 text-right text-xs text-black/55">{submitStatus}</p> : null}
 					</form>
 
 				</div>

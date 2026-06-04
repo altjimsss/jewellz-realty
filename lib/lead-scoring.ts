@@ -1,5 +1,8 @@
 export type LeadScoreInput = {
 	propertyViewCount?: number;
+	propertyInteractionCount?: number;
+	maxDwellSeconds?: number;
+	totalDwellSeconds?: number;
 	hasPhone?: boolean;
 	hasMessage?: boolean;
 	hasSubject?: boolean;
@@ -18,11 +21,19 @@ export function computeLeadScore(input: LeadScoreInput | number[]) {
 	}
 
 	const views = Math.min(input.propertyViewCount ?? 0, 8);
+	const interactions = Math.min(input.propertyInteractionCount ?? 0, 12);
+	const maxDwellSeconds = Math.max(0, input.maxDwellSeconds ?? 0);
+	const totalDwellSeconds = Math.max(0, input.totalDwellSeconds ?? 0);
 	const priority = input.priority?.toLowerCase();
 	const source = input.source?.toLowerCase();
 	let rawScore = -2;
 
 	rawScore += Math.min(1.6, views * 0.22);
+	rawScore += Math.min(1.4, interactions * 0.16);
+	if (maxDwellSeconds >= 180) rawScore += 0.95;
+	else if (maxDwellSeconds >= 90) rawScore += 0.65;
+	else if (maxDwellSeconds >= 45) rawScore += 0.35;
+	if (totalDwellSeconds >= 300) rawScore += 0.45;
 	if (input.hasPhone) rawScore += 0.7;
 	if (input.hasMessage) rawScore += 0.65;
 	if (input.hasSubject) rawScore += 0.25;

@@ -113,7 +113,8 @@ $$;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 ALTER TABLE inquiries
-  ADD COLUMN IF NOT EXISTS lead_score NUMERIC(5,4);
+  ADD COLUMN IF NOT EXISTS lead_score NUMERIC(5,4),
+  ADD COLUMN IF NOT EXISTS session_id TEXT;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -179,6 +180,51 @@ CREATE INDEX IF NOT EXISTS idx_recommendations_session
 CREATE INDEX IF NOT EXISTS idx_recommendations_buyer
   ON recommendations(buyer_id, generated_at DESC);
 
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE property_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recommendations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "sessions_authenticated_read" ON sessions;
+CREATE POLICY "sessions_authenticated_read" ON sessions
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "sessions_public_write" ON sessions;
+CREATE POLICY "sessions_public_write" ON sessions
+  FOR INSERT WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "sessions_public_update" ON sessions;
+CREATE POLICY "sessions_public_update" ON sessions
+  FOR UPDATE USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "analytics_events_authenticated_read" ON analytics_events;
+CREATE POLICY "analytics_events_authenticated_read" ON analytics_events
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "analytics_events_public_insert" ON analytics_events;
+CREATE POLICY "analytics_events_public_insert" ON analytics_events
+  FOR INSERT WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "property_analytics_authenticated_read" ON property_analytics;
+CREATE POLICY "property_analytics_authenticated_read" ON property_analytics
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "property_analytics_public_insert" ON property_analytics;
+CREATE POLICY "property_analytics_public_insert" ON property_analytics
+  FOR INSERT WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "recommendations_authenticated_read" ON recommendations;
+CREATE POLICY "recommendations_authenticated_read" ON recommendations
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "recommendations_public_insert" ON recommendations;
+CREATE POLICY "recommendations_public_insert" ON recommendations
+  FOR INSERT WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "recommendations_public_click_update" ON recommendations;
+CREATE POLICY "recommendations_public_click_update" ON recommendations
+  FOR UPDATE USING (TRUE) WITH CHECK (TRUE);
+
 -- 2. Drop stale regular/materialized objects with the same names before creating
 -- regular views. The CMS only needs queryable relations; regular views avoid
 -- manual refresh work during development.
@@ -231,7 +277,49 @@ WITH property_event_counts AS (
         'property_open',
         'property_click'
       )
-    ) AS detail_opens
+    ) AS detail_opens,
+    COUNT(ae.id) FILTER (
+      WHERE ae.event_type::TEXT IN (
+        'property_detail_open',
+        'detail_open',
+        'property_open',
+        'property_click',
+        'property_gallery_interaction',
+        'property_gallery_open',
+        'property_gallery_next',
+        'property_gallery_previous',
+        'property_map_open',
+        'property_nearby_click',
+        'recommendation_click'
+      )
+      OR COALESCE(ae.metadata->>'event', '') IN (
+        'property_detail_open',
+        'detail_open',
+        'property_open',
+        'property_click',
+        'property_gallery_interaction',
+        'property_gallery_open',
+        'property_gallery_next',
+        'property_gallery_previous',
+        'property_map_open',
+        'property_nearby_click',
+        'recommendation_click'
+      )
+    ) AS total_interactions,
+    ROUND(
+      AVG(NULLIF(
+        CASE
+          WHEN (ae.metadata->>'durationSeconds') ~ '^[0-9]+(\.[0-9]+)?$'
+          THEN (ae.metadata->>'durationSeconds')::NUMERIC
+          ELSE NULL
+        END,
+        0
+      )) FILTER (
+        WHERE ae.event_type::TEXT = 'property_dwell_time'
+          OR COALESCE(ae.metadata->>'event', '') = 'property_dwell_time'
+      ),
+      2
+    ) AS avg_dwell_seconds
   FROM properties p
   LEFT JOIN analytics_events ae ON ae.property_id = p.id
   GROUP BY p.id
@@ -248,6 +336,8 @@ SELECT
   p.title,
   COALESCE(events.total_views, 0)::BIGINT AS total_views,
   COALESCE(events.detail_opens, 0)::BIGINT AS detail_opens,
+  COALESCE(events.total_interactions, 0)::BIGINT AS total_interactions,
+  COALESCE(events.avg_dwell_seconds, 0)::NUMERIC AS avg_dwell_seconds,
   COALESCE(inquiries_count.total_inquiries, 0)::BIGINT AS total_inquiries,
   CASE
     WHEN COALESCE(events.total_views, 0) = 0 THEN 0::NUMERIC
@@ -357,6 +447,9 @@ GRANT SELECT ON public.mv_daily_inquiry_volume TO authenticated;
 GRANT SELECT ON public.mv_traffic_sources TO authenticated;
 GRANT SELECT ON public.mv_agent_performance TO authenticated;
 GRANT SELECT ON public.mv_developer_portfolio TO authenticated;
+GRANT SELECT ON public.sessions TO authenticated;
+GRANT SELECT ON public.analytics_events TO authenticated;
+GRANT SELECT ON public.property_analytics TO authenticated;
 GRANT SELECT ON public.recommendations TO authenticated;
 
 -- =============================================================================

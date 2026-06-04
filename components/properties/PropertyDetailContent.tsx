@@ -9,6 +9,7 @@ import { PropertyAnalyticsTracker } from "@/components/properties/PropertyAnalyt
 import { InquireCard } from "@/components/properties/InquireCard";
 import { ParamIcon } from "@/components/properties/ParamIcon";
 import { formatPHPWhole } from "@/lib/currency";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 
@@ -62,13 +63,18 @@ export function PropertyDetailContent({
 }: PropertyDetailContentProps) {
 	const computedDescription = getComputedDescription(property);
 	const parameterItems = getParameterItems(property);
+	const { track } = useAnalytics();
+	const trackPropertyInteraction = (event: string, metadata: Record<string, unknown> = {}) => {
+		if (previewMode) return;
+		track(event, { propertyId: property.id, ...metadata });
+	};
 
 	return (
 		<section className="mx-auto max-w-[1200px] px-4 py-4 md:py-6">
 			{previewMode ? null : <PropertyAnalyticsTracker propertyId={property.id} />}
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
 				<div className="space-y-6">
-					<PropertyGallery images={galleryImages} title={property.title} />
+					<PropertyGallery images={galleryImages} title={property.title} onInteraction={trackPropertyInteraction} />
 
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="flex items-center gap-2 text-[#DE141C]">
@@ -81,7 +87,7 @@ export function PropertyDetailContent({
 						<span className="text-black/30" aria-hidden="true">•</span>
 						<span className="text-sm text-black/70">{property.location ?? "Location not specified"}</span>
 						<span className="text-black/30" aria-hidden="true">•</span>
-						<PropertyLocationMap property={property} nearbyGroups={nearbyGroups} />
+						<PropertyLocationMap property={property} nearbyGroups={nearbyGroups} onInteraction={trackPropertyInteraction} />
 					</div>
 
 					<div className="mt-6">

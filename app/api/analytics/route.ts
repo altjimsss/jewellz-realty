@@ -16,6 +16,69 @@ function sourceFromPayload(source: string, utmSource: string, referrer: string) 
 	}
 }
 
+function eventTypeCandidates(eventType: string) {
+	if (eventType === "property_view") return ["property_view", "page_view", "view", "listing_view"];
+	if (eventType === "detail_open") return ["detail_open", "property_detail_open", "property_open", "property_click", "click", "page_view", "view"];
+	if (eventType === "property_dwell_time") return ["property_dwell_time", "page_view", "view"];
+	if (eventType.startsWith("property_gallery_")) return [eventType, "property_click", "click", "page_view", "view"];
+	if (eventType === "property_map_open" || eventType === "property_nearby_click") return [eventType, "property_click", "click", "page_view", "view"];
+	return [eventType];
+}
+
+async function insertWithSchemaFallback(tableName: "analytics_events" | "property_analytics", payload: Record<string, unknown>, eventTypes = eventTypeCandidates(text(payload.event_type))) {
+	const removedColumns = new Set<string>();
+	let lastResult: Awaited<ReturnType<ReturnType<typeof supabaseServer.from>["insert"]>> | null = null;
+
+	for (const eventType of eventTypes) {
+		let nextPayload: Record<string, unknown> = { ...payload, event_type: eventType };
+		for (const column of removedColumns) delete nextPayload[column];
+
+		for (let attempt = 0; attempt < 6; attempt += 1) {
+			const result = await supabaseServer.from(tableName).insert(nextPayload);
+			lastResult = result;
+			if (!result.error) return result;
+
+			const missingColumn = result.error.message.match(/'([^']+)' column/)?.[1];
+			const shouldDropSession = result.error.message.includes("session_id") && result.error.message.includes("fkey") && "session_id" in nextPayload;
+			if (!missingColumn && !shouldDropSession) break;
+
+			const fallbackColumn = shouldDropSession ? "session_id" : missingColumn;
+			if (!fallbackColumn || !(fallbackColumn in nextPayload)) break;
+
+			removedColumns.add(fallbackColumn);
+			const { [fallbackColumn]: _missingValue, ...fallbackPayload } = nextPayload;
+			nextPayload = fallbackPayload;
+		}
+	}
+
+	return lastResult ?? supabaseServer.from(tableName).insert(payload);
+}
+
+async function upsertSessionWithSchemaFallback(payload: Record<string, unknown>) {
+	let nextPayload: Record<string, unknown> = { ...payload };
+
+	for (let attempt = 0; attempt < 8; attempt += 1) {
+		const result = await supabaseServer.from("sessions").upsert(nextPayload);
+		if (!result.error) return result;
+
+		const missingColumn = result.error.message.match(/'([^']+)' column/)?.[1];
+		if (missingColumn && missingColumn in nextPayload) {
+			const { [missingColumn]: _missingValue, ...fallbackPayload } = nextPayload;
+			nextPayload = fallbackPayload;
+			continue;
+		}
+
+		if (result.error.message.includes("invalid input value for enum") && nextPayload.source !== "other") {
+			nextPayload = { ...nextPayload, source: "other" };
+			continue;
+		}
+
+		return result;
+	}
+
+	return supabaseServer.from("sessions").upsert(nextPayload);
+}
+
 export async function GET() {
 	const [properties, inquiries, listingPerformance, trafficSources] = await Promise.all([
 		supabaseServer.from("properties").select("id", { count: "exact", head: true }),
@@ -49,7 +112,7 @@ export async function POST(request: Request) {
 			.eq("id", sessionId)
 			.maybeSingle();
 
-		await supabaseServer.from("sessions").upsert({
+		await upsertSessionWithSchemaFallback({
 			id: sessionId,
 			source,
 			referrer: referrer || null,
@@ -64,7 +127,7 @@ export async function POST(request: Request) {
 		});
 	}
 
-	const { error } = await supabaseServer.from("analytics_events").insert({
+	const { error } = await insertWithSchemaFallback("analytics_events", {
 		event_type: eventType,
 		session_id: sessionId || null,
 		property_id: propertyId || null,
@@ -74,7 +137,7 @@ export async function POST(request: Request) {
 	});
 
 	if (propertyId) {
-		await supabaseServer.from("property_analytics").insert({
+		await insertWithSchemaFallback("property_analytics", {
 			property_id: propertyId,
 			event_type: eventType,
 			session_id: sessionId || null,

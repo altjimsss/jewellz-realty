@@ -67,6 +67,7 @@ export type Workspace = {
 	agentPerformance: CmsRow[];
 	developerPortfolio: CmsRow[];
 	recommendations: CmsRow[];
+	engagementEvents: CmsRow[];
 	profiles: CmsRow[];
 	activityLogs: CmsRow[];
 };

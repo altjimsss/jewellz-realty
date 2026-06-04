@@ -19,6 +19,7 @@ export const emptyWorkspace: Workspace = {
 	agentPerformance: [],
 	developerPortfolio: [],
 	recommendations: [],
+	engagementEvents: [],
 	profiles: [],
 	activityLogs: [],
 };

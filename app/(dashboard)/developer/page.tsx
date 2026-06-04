@@ -1,1 +1,166 @@
-export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(dashboard)\developer\page.tsx</main>; }
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { ListingPerformanceChart } from "@/components/dashboard/ListingPerformanceChart";
+import { supabaseBrowser } from "@/lib/supabase/client";
+
+type Row = Record<string, string | number | boolean | null | undefined>;
+
+function text(value: unknown) {
+	return typeof value === "string" ? value : "";
+}
+
+function numberValue(value: unknown) {
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function Metric({ label, value, hint }: { label: string; value: string | number; hint: string }) {
+	return (
+		<div className="rounded-lg border border-black/10 bg-white p-4">
+			<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/45">{label}</div>
+			<div className="mt-2 text-2xl font-semibold text-[#111111]">{value}</div>
+			<p className="mt-1 text-xs text-black/50">{hint}</p>
+		</div>
+	);
+}
+
+export default function DeveloperDashboardPage() {
+	const [loading, setLoading] = useState(true);
+	const [message, setMessage] = useState("Loading developer dashboard...");
+	const [developer, setDeveloper] = useState<Row | null>(null);
+	const [properties, setProperties] = useState<Row[]>([]);
+	const [inquiries, setInquiries] = useState<Row[]>([]);
+	const [listingPerformance, setListingPerformance] = useState<Row[]>([]);
+	const [portfolio, setPortfolio] = useState<Row | null>(null);
+
+	useEffect(() => {
+		let active = true;
+
+		async function load() {
+			const { data: sessionResult } = await supabaseBrowser.auth.getSession();
+			const user = sessionResult.session?.user;
+
+			if (!user) {
+				if (active) {
+					setMessage("Sign in as a developer partner to view this dashboard.");
+					setLoading(false);
+				}
+				return;
+			}
+
+			const { data: developerRow } = await supabaseBrowser
+				.from("developer_partners")
+				.select("*")
+				.eq("profile_id", user.id)
+				.maybeSingle();
+
+			if (!developerRow) {
+				if (active) {
+					setMessage("No developer partner profile is linked to this account.");
+					setLoading(false);
+				}
+				return;
+			}
+
+			const { data: propertyRows } = await supabaseBrowser
+				.from("properties")
+				.select("*")
+				.eq("developer_id", developerRow.id)
+				.order("created_at", { ascending: false });
+			const propertyIds = (propertyRows ?? []).map((property) => property.id);
+			const [inquiryResult, listingResult, portfolioResult] = await Promise.all([
+				propertyIds.length
+					? supabaseBrowser.from("inquiries").select("*").in("property_id", propertyIds).order("created_at", { ascending: false })
+					: Promise.resolve({ data: [] }),
+				propertyIds.length
+					? supabaseBrowser.from("mv_listing_performance").select("*").in("property_id", propertyIds)
+					: Promise.resolve({ data: [] }),
+				supabaseBrowser.from("mv_developer_portfolio").select("*").eq("developer_id", developerRow.id).maybeSingle(),
+			]);
+
+			if (!active) return;
+			setDeveloper(developerRow);
+			setProperties(propertyRows ?? []);
+			setInquiries(inquiryResult.data ?? []);
+			setListingPerformance(listingResult.data ?? []);
+			setPortfolio(portfolioResult.data ?? null);
+			setMessage("Developer dashboard loaded.");
+			setLoading(false);
+		}
+
+		void load();
+		return () => {
+			active = false;
+		};
+	}, []);
+
+	const chartRows = useMemo(() => listingPerformance.map((row) => ({
+		property_id: text(row.property_id),
+		title: text(row.title),
+		total_views: numberValue(row.total_views),
+		detail_opens: numberValue(row.detail_opens),
+		total_inquiries: numberValue(row.total_inquiries),
+		inquiry_rate_pct: numberValue(row.inquiry_rate_pct),
+	})), [listingPerformance]);
+	const conversions = inquiries.filter((inquiry) => ["reserved", "closed_won"].includes(text(inquiry.status))).length;
+	const conversionRate = inquiries.length ? (conversions / inquiries.length) * 100 : 0;
+
+	return (
+		<main className="min-h-screen bg-zinc-50 px-5 py-6 text-[#111111]">
+			<div className="mx-auto max-w-6xl space-y-5">
+				<header className="rounded-lg border border-black/10 bg-white p-5">
+					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-red-700">Developer Partner Dashboard</div>
+					<h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">{developer?.company_name ?? "Portfolio Analytics"}</h1>
+					<p className="mt-1 text-sm text-black/55">{message}</p>
+				</header>
+
+				{loading ? null : (
+					<>
+						<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+							<Metric label="Listings" value={portfolio?.total_listings == null ? properties.length : numberValue(portfolio.total_listings)} hint="Properties connected to your developer profile." />
+							<Metric label="Views" value={portfolio?.total_views == null ? chartRows.reduce((sum, row) => sum + row.total_views, 0) : numberValue(portfolio.total_views)} hint="Tracked buyer views across your listings." />
+							<Metric label="Inquiries" value={inquiries.length} hint="Buyer leads generated by your listings." />
+							<Metric label="Conversion Rate" value={`${conversionRate.toFixed(1)}%`} hint={`${conversions} reserved or closed-won leads.`} />
+						</div>
+
+						<section className="rounded-lg border border-black/10 bg-white p-5">
+							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Listing Performance</div>
+							<p className="mt-1 text-sm text-black/55">Views, detail opens, inquiries, and inquiry-rate trend for your portfolio.</p>
+							<div className="mt-4">
+								<ListingPerformanceChart rows={chartRows} />
+							</div>
+						</section>
+
+						<section className="rounded-lg border border-black/10 bg-white p-5">
+							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Recent Inquiries</div>
+							<div className="mt-3 overflow-x-auto">
+								<table className="min-w-full text-left text-sm">
+									<thead className="text-xs uppercase tracking-[0.16em] text-black/45">
+										<tr>
+											<th className="py-2 pr-4">Buyer</th>
+											<th className="py-2 pr-4">Status</th>
+											<th className="py-2 pr-4">Priority</th>
+											<th className="py-2 pr-4">Created</th>
+										</tr>
+									</thead>
+									<tbody>
+										{inquiries.slice(0, 10).map((inquiry) => (
+											<tr key={text(inquiry.id)} className="border-t border-black/5">
+												<td className="py-2 pr-4 font-medium text-[#111111]">{inquiry.buyer_name ?? inquiry.buyer_email}</td>
+												<td className="py-2 pr-4 text-black/60">{inquiry.status ?? "new"}</td>
+												<td className="py-2 pr-4 text-black/60">{inquiry.priority ?? "medium"}</td>
+												<td className="py-2 pr-4 text-black/60">{text(inquiry.created_at).slice(0, 10)}</td>
+											</tr>
+										))}
+										{inquiries.length === 0 ? <tr><td colSpan={4} className="py-5 text-black/45">No inquiries yet.</td></tr> : null}
+									</tbody>
+								</table>
+							</div>
+						</section>
+					</>
+				)}
+			</div>
+		</main>
+	);
+}

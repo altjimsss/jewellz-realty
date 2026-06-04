@@ -6,11 +6,12 @@ import Image from "next/image";
 type PropertyGalleryProps = {
   images: string[];
   title: string;
+  onInteraction?: (event: string, metadata?: Record<string, unknown>) => void;
 };
 
 const FALLBACK_IMAGE = "/assets/housebanner1.png";
 
-export function PropertyGallery({ images, title }: PropertyGalleryProps) {
+export function PropertyGallery({ images, title, onInteraction }: PropertyGalleryProps) {
   const availableImages = images.filter(Boolean);
   const galleryImages = availableImages.length > 0 ? availableImages : [FALLBACK_IMAGE];
   const [activeIndex, setActiveIndex] = useState(0);
@@ -27,6 +28,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
   const changeImage = (direction: number) => {
     if (imageCount <= 1) return;
     setActiveIndex((current) => (current + direction + imageCount) % imageCount);
+    onInteraction?.(direction > 0 ? "property_gallery_next" : "property_gallery_previous", { imageCount });
   };
 
   useEffect(() => {
@@ -52,7 +54,13 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
             <button
               key={`${galleryImages[previewIndex]}-${idx}`}
               type="button"
-              onClick={isShowAllTile ? () => setIsLightboxOpen(true) : () => setActiveIndex(previewIndex)}
+              onClick={isShowAllTile ? () => {
+                setIsLightboxOpen(true);
+                onInteraction?.("property_gallery_open", { imageCount });
+              } : () => {
+                setActiveIndex(previewIndex);
+                onInteraction?.("property_gallery_interaction", { previewIndex, imageCount });
+              }}
               className="relative overflow-hidden bg-black/5 text-left shadow-sm min-h-0"
               aria-label={isShowAllTile ? "Show all images" : `Show preview image ${idx + 1}`}
             >
@@ -142,7 +150,10 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
               <button
                 type="button"
                 aria-label="Close gallery"
-                onClick={() => setIsLightboxOpen(false)}
+                onClick={() => {
+                  setIsLightboxOpen(false);
+                  onInteraction?.("property_gallery_close", { imageCount });
+                }}
                 className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">

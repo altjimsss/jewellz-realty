@@ -52,9 +52,10 @@ const nearbyCategoryTabs: NearbyCategory[] = [
 type PropertyLocationMapProps = {
   property: Property;
   nearbyGroups: NearbyPlaceGroup[];
+  onInteraction?: (event: string, metadata?: Record<string, unknown>) => void;
 };
 
-export function PropertyLocationMap({ property, nearbyGroups }: PropertyLocationMapProps) {
+export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: PropertyLocationMapProps) {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [focusedNearbyPlace, setFocusedNearbyPlace] = useState<NearbyPlaceGroup["places"][number] | null>(null);
@@ -66,7 +67,13 @@ export function PropertyLocationMap({ property, nearbyGroups }: PropertyLocation
     <>
       <button
         type="button"
-        onClick={() => setIsMapOpen((current) => !current)}
+        onClick={() => {
+          setIsMapOpen((current) => {
+            const nextOpen = !current;
+            if (nextOpen) onInteraction?.("property_map_open");
+            return nextOpen;
+          });
+        }}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#DE141C]/30 bg-[#DE141C]/5 px-3 py-1 text-xs font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/10"
         aria-expanded={isMapOpen}
         aria-controls="property-location-map"
@@ -127,6 +134,7 @@ export function PropertyLocationMap({ property, nearbyGroups }: PropertyLocation
         onClick={() => {
           setFocusedNearbyPlace((current) => current?.id === item.id ? null : item);
           setIsMapOpen(true);
+          onInteraction?.("property_nearby_click", { category: active.label, placeName: item.name, distanceMeters: item.distanceMeters });
         }}
         className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-red-50 ${focusedNearbyPlace?.id === item.id ? "bg-red-50" : ""}`}
       >
