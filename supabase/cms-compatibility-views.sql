@@ -109,6 +109,76 @@ BEGIN
 END;
 $$;
 
+-- 2. Ensure public-site analytics tables exist for the CMS views.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+ALTER TABLE inquiries
+  ADD COLUMN IF NOT EXISTS lead_score NUMERIC(5,4);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL DEFAULT 'direct',
+  referrer TEXT,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  landing_path TEXT,
+  page_view_count INTEGER NOT NULL DEFAULT 0,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  page_path TEXT,
+  source TEXT NOT NULL DEFAULT 'website',
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_events_property_type
+  ON analytics_events(property_id, event_type, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_events_session
+  ON analytics_events(session_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS property_analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+  source TEXT NOT NULL DEFAULT 'website',
+  page_path TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_property_analytics_property_type
+  ON property_analytics(property_id, event_type, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS recommendations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  buyer_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  reason TEXT,
+  confidence NUMERIC(5,2),
+  source TEXT NOT NULL DEFAULT 'ai',
+  is_fallback BOOLEAN NOT NULL DEFAULT FALSE,
+  was_clicked BOOLEAN NOT NULL DEFAULT FALSE,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  clicked_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_recommendations_session
+  ON recommendations(session_id, generated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_recommendations_buyer
+  ON recommendations(buyer_id, generated_at DESC);
+
 -- 2. Drop stale regular/materialized objects with the same names before creating
 -- regular views. The CMS only needs queryable relations; regular views avoid
 -- manual refresh work during development.
@@ -287,6 +357,7 @@ GRANT SELECT ON public.mv_daily_inquiry_volume TO authenticated;
 GRANT SELECT ON public.mv_traffic_sources TO authenticated;
 GRANT SELECT ON public.mv_agent_performance TO authenticated;
 GRANT SELECT ON public.mv_developer_portfolio TO authenticated;
+GRANT SELECT ON public.recommendations TO authenticated;
 
 -- =============================================================================
 -- END CMS COMPATIBILITY PATCH

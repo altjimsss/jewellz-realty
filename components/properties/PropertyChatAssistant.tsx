@@ -12,6 +12,7 @@ type ChatMessage = PropertyChatMessage & {
 
 type PropertyChatAssistantProps = {
   property: Property;
+  previewMode?: boolean;
 };
 
 const quickPrompts = [
@@ -50,7 +51,7 @@ async function fetchPropertyPrompt(property: Property, message: string, history:
   return (await response.json()) as PropertyChatResponse;
 }
 
-export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) {
+export function PropertyChatAssistant({ property, previewMode = false }: PropertyChatAssistantProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createId(),
@@ -72,7 +73,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
   async function handleSend(nextMessage: string) {
     const trimmedMessage = nextMessage.trim();
 
-    if (!trimmedMessage || isSending) {
+    if (!trimmedMessage || isSending || previewMode) {
       return;
     }
 
@@ -129,9 +130,14 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
   return (
     <>
       {/* ── Book an Appointment Button ── */}
-      <a
-        href={`/appointment?from=${encodeURIComponent(`/project-list/${property.slug}`)}&property=${encodeURIComponent(property.title)}`}
-        className="group flex items-center justify-between gap-3 rounded-2xl border border-[#DE141C] bg-[#DE141C] px-4 py-3 text-white shadow-sm transition-colors hover:bg-[#c51018]"
+      <button
+        type="button"
+        disabled={previewMode}
+        title={previewMode ? "Disabled in CMS preview" : undefined}
+        className={`group flex w-full items-center justify-between gap-3 rounded-2xl border border-[#DE141C] bg-[#DE141C] px-4 py-3 text-left text-white shadow-sm transition-colors ${previewMode ? "cursor-not-allowed opacity-80" : "hover:bg-[#c51018]"}`}
+        onClick={() => {
+          if (!previewMode) window.location.href = `/appointment?from=${encodeURIComponent(`/project-list/${property.slug}`)}&property=${encodeURIComponent(property.title)}`;
+        }}
       >
         <div className="flex items-center gap-2.5">
           <svg
@@ -155,7 +161,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
         >
           <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </a>
+      </button>
 
       {/* ── Chat Widget ── */}
       <div className="flex h-[520px] max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white">
@@ -245,7 +251,7 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
                 key={prompt}
                 type="button"
                 onClick={() => handleSend(prompt)}
-                disabled={isSending}
+                disabled={isSending || previewMode}
                 className="shrink-0 whitespace-nowrap rounded-full border border-black/10 bg-white px-2.5 py-1 text-[10px] font-semibold text-black/60 transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {prompt}
@@ -265,11 +271,11 @@ export function PropertyChatAssistant({ property }: PropertyChatAssistantProps) 
               onChange={(event) => setInput(event.target.value)}
               className="h-9 w-full rounded-md border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-2 focus:ring-[#DE141C]/10"
               placeholder="Type your message here..."
-              disabled={isSending}
+              disabled={isSending || previewMode}
             />
             <button
               type="submit"
-              disabled={isSending || !input.trim()}
+              disabled={isSending || previewMode || !input.trim()}
               className="flex h-9 items-center gap-1.5 rounded-md bg-[#DE141C] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition-colors hover:bg-[#c51018] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">

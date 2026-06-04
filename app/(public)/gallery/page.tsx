@@ -36,6 +36,51 @@ type Option = {
   photos: Photo[];
 };
 
+type CmsGalleryItem = {
+  section: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+};
+
+function iconForSection(section: string) {
+  const normalized = section.toLowerCase();
+  if (normalized.includes("achievement")) return <FaMedal size={16} />;
+  if (normalized.includes("event")) return <FaCalendarCheck size={16} />;
+  if (normalized.includes("training")) return <FaUserGraduate size={16} />;
+  if (normalized.includes("service")) return <FaHandshake size={16} />;
+  return <FaBuilding size={16} />;
+}
+
+function titleCase(value: string) {
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function groupGalleryItems(items: CmsGalleryItem[]): Option[] {
+  const grouped = new Map<string, CmsGalleryItem[]>();
+  for (const item of items) {
+    const section = item.section || "General";
+    grouped.set(section, [...(grouped.get(section) ?? []), item]);
+  }
+
+  return Array.from(grouped.entries()).map(([section, sectionItems]) => ({
+    title: titleCase(section),
+    description: `${titleCase(section)} from Jewellz Realty`,
+    cover: sectionItems[0]?.imageUrl ?? "",
+    icon: iconForSection(section),
+    photos: sectionItems.map((item) => ({
+      src: item.imageUrl,
+      label: item.title,
+      title: item.title,
+      description: item.description,
+    })),
+  })).filter((option) => option.cover && option.photos.length);
+}
+
 const OPTIONS: Option[] = [
   {
     title: "Achievements",
@@ -110,7 +155,9 @@ export default function GalleryPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [cardWidth, setCardWidth] = useState(0);
+  const [cmsOptions, setCmsOptions] = useState<Option[]>([]);
   const cardSwapRef = useRef<CardSwapHandle | null>(null);
+  const galleryOptions = cmsOptions.length ? cmsOptions : OPTIONS;
 
   useEffect(() => {
     const updateWidth = () => {
@@ -124,7 +171,26 @@ export default function GalleryPage() {
     return () => window.removeEventListener("resize", updateWidth);
   }, []);
 
-  const activeOption = useMemo(() => OPTIONS[activeIndex], [activeIndex]);
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/content/gallery")
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        const items = Array.isArray(data?.items) ? data.items as CmsGalleryItem[] : [];
+        if (active) setCmsOptions(groupGalleryItems(items));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeIndex >= galleryOptions.length) setActiveIndex(0);
+  }, [activeIndex, galleryOptions.length]);
+
+  const activeOption = useMemo(() => galleryOptions[activeIndex] ?? galleryOptions[0] ?? OPTIONS[0], [activeIndex, galleryOptions]);
 
   useEffect(() => {
     setActivePhotoIndex(0);
@@ -159,7 +225,7 @@ export default function GalleryPage() {
 
               <div className="mt-6">
                 <div className="flex flex-wrap gap-3 border-b border-zinc-200 pb-5">
-                  {OPTIONS.map((option, index) => {
+                  {galleryOptions.map((option, index) => {
                     const isActive = index === activeIndex;
 
                     return (

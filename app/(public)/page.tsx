@@ -86,6 +86,13 @@ const heroProperties = [
     garage: 3,
   },
 ];
+type HomeContent = {
+	heroBanners?: Array<{ headline: string; subheadline?: string; imageUrl: string; ctaLabel?: string; ctaUrl?: string }>;
+	siteStats?: Array<{ key: string; label: string; value: number; suffix?: string }>;
+	partnerLogos?: Array<{ name: string; logoUrl?: string; websiteUrl?: string }>;
+	testimonials?: Array<{ authorName: string; authorTitle?: string; quote: string; rating?: number }>;
+	agents?: Array<{ name: string; top: boolean }>;
+};
 const HERO_DURATION_MS = 5000;
 const HERO_TICK_MS = 50;
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
@@ -98,6 +105,7 @@ const navLinks = [
   { label: "Career", href: "/career" },
 ];
 export default function Page() {
+  const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
   const [total, setTotal] = useState(3 * 86400 + 23 * 3600 + 19 * 60 + 56);
   const [priceMax, setPriceMax] = useState(850000);
   const [areaMax, setAreaMax] = useState(170);
@@ -105,8 +113,35 @@ export default function Page() {
   const safePriceMax = Math.min(Math.max(priceMax, 0), 850000);
   const priceRangeLabel = `Price (${formatPHPWhole(0)}-${formatPHPWhole(safePriceMax)})`;
 
+  const cmsHeroProperties = homeContent?.heroBanners?.map((banner) => ({
+    image: banner.imageUrl,
+    title: banner.headline,
+    price: 0,
+    status: banner.ctaLabel ?? "Featured",
+    location: banner.subheadline ?? "Jewellz Realty",
+    area: "VIEW DETAILS",
+    bedroom: 0,
+    bathroom: 0,
+    garage: 0,
+  })) ?? [];
+  const displayedHeroProperties = cmsHeroProperties.length ? cmsHeroProperties : heroProperties;
+  const displayedStats = homeContent?.siteStats?.length ? homeContent.siteStats : [
+    { key: "properties", label: "Properties", value: 500, suffix: "+" },
+    { key: "agents", label: "Agents", value: 50, suffix: "+" },
+    { key: "provinces", label: "Provinces", value: 10, suffix: "+" },
+  ];
+  const displayedLogos = homeContent?.partnerLogos?.length
+    ? homeContent.partnerLogos.map((logo) => ({
+      title: logo.name,
+      href: logo.websiteUrl,
+      node: logo.logoUrl
+        ? <img src={logo.logoUrl} alt={logo.name} className="h-9 max-w-[140px] object-contain" />
+        : <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">{logo.name}</span>,
+    }))
+    : developerLogos;
+
 const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
-    heroCount: heroProperties.length,
+    heroCount: displayedHeroProperties.length,
     durationMs: HERO_DURATION_MS,
     tickMs: HERO_TICK_MS,
   });
@@ -118,11 +153,25 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/content/home")
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (active && data) setHomeContent(data);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const d = String(Math.floor(total / 86400)).padStart(2, "0");
   const h = String(Math.floor((total % 86400) / 3600)).padStart(2, "0");
   const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
   const s = String(total % 60).padStart(2, "0");
-  const currentHero = heroProperties[heroIndex];
+  const currentHero = displayedHeroProperties[heroIndex % displayedHeroProperties.length];
 
   return (
     <main className={`${poppins.className} bg-white text-[#181A20]`}>
@@ -353,7 +402,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
             </div>
           </div>
           <div className="relative h-[300px] w-full overflow-hidden">
-            {heroProperties.map((hero, idx) => (
+            {displayedHeroProperties.map((hero, idx) => (
               <div
                 key={`mobile-hero-${hero.title}`}
                 className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out ${
@@ -520,14 +569,14 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
       <ServiceShowcase />
 
       <div className="grid grid-cols-3 border-y py-4 text-center">
-        <div className="flex flex-col items-center justify-center"><p className="text-2xl font-semibold sm:text-4xl"><CountUpOnView end={500} /><span className="text-[#DE141C]">+</span></p><p className="text-[11px] sm:text-sm">Properties</p></div>
-        <div className="flex flex-col items-center justify-center"><p className="text-2xl font-semibold sm:text-4xl"><CountUpOnView end={50} /><span className="text-[#DE141C]">+</span></p><p className="text-[11px] sm:text-sm">Agents</p></div>
-        <div className="flex flex-col items-center justify-center"><p className="text-2xl font-semibold sm:text-4xl"><CountUpOnView end={10} /><span className="text-[#DE141C]">+</span></p><p className="text-[11px] sm:text-sm">Provinces</p></div>
+        {displayedStats.slice(0, 3).map((stat) => (
+          <div key={stat.key} className="flex flex-col items-center justify-center"><p className="text-2xl font-semibold sm:text-4xl"><CountUpOnView end={stat.value} /><span className="text-[#DE141C]">{stat.suffix ?? ""}</span></p><p className="text-[11px] sm:text-sm">{stat.label}</p></div>
+        ))}
       </div>
 
       <section className="border-b py-10">
         <LogoLoop
-          logos={developerLogos}
+          logos={displayedLogos}
           speed={80}
           direction="left"
           logoHeight={36}
@@ -542,14 +591,27 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
 
       <HomeDiscoverySection />
 
-      <MeetAgents />
+      <MeetAgents agents={homeContent?.agents?.length ? homeContent.agents : undefined} />
 
       <section className="border-y px-4 py-12 text-center sm:px-6 sm:py-16">
         <p className="text-sm font-bold text-gray-500">WHAT OUR CLIENTS SAY</p>
         <h2 className="text-3xl font-bold sm:text-4xl">TESTIMONIALS</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="mt-8">
-          <Testimonial />
+          {homeContent?.testimonials?.length ? (
+            <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
+              {homeContent.testimonials.slice(0, 3).map((item) => (
+                <article key={`${item.authorName}-${item.quote}`} className="rounded-2xl border border-black/10 bg-white p-5 text-left shadow-sm">
+                  <div className="text-sm leading-6 text-black/65">“{item.quote}”</div>
+                  <div className="mt-4 text-sm font-semibold text-[#111111]">{item.authorName}</div>
+                  {item.authorTitle ? <div className="mt-1 text-xs text-black/45">{item.authorTitle}</div> : null}
+                  {item.rating ? <div className="mt-2 text-xs font-semibold text-[#DE141C]">{item.rating}/5 rating</div> : null}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <Testimonial />
+          )}
         </div>
       </section>
 

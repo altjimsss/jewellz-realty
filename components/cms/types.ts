@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 export type Role = "admin" | "agent" | "developer_partner" | "buyer" | null;
 export type FieldType = "text" | "textarea" | "number" | "checkbox" | "select" | "datetime-local" | "email" | "url" | "array";
 
-export type FieldOption = { label: string; value: string };
+export type FieldOption = { label: string; value: string; meta?: Record<string, string> };
 export type CmsValue = string | number | null | undefined;
 export type CmsRow = Record<string, CmsValue>;
 export type CmsPayload = Record<string, CmsValue | boolean | string[]>;
@@ -13,9 +13,12 @@ export type FieldSpec = {
 	name: string;
 	label: string;
 	type: FieldType;
+	section?: string;
 	placeholder?: string;
 	rows?: number;
 	options?: FieldOption[];
+	dependsOn?: string;
+	optionParentKey?: string;
 	help?: string;
 };
 
@@ -39,6 +42,8 @@ export type EditorProps = {
 	onCreateNew: () => void;
 	onDelete?: (row: CmsRow) => Promise<void>;
 	onSubmit: (payload: CmsPayload, currentRow: CmsRow | null) => Promise<void>;
+	renderPreview?: (payload: CmsPayload, currentRow: CmsRow | null) => ReactNode;
+	guidance?: ReactNode;
 	extra?: ReactNode;
 	idKey?: string;
 };
@@ -62,6 +67,8 @@ export type Workspace = {
 	agentPerformance: CmsRow[];
 	developerPortfolio: CmsRow[];
 	recommendations: CmsRow[];
+	profiles: CmsRow[];
+	activityLogs: CmsRow[];
 };
 
 export type SelectionState = {

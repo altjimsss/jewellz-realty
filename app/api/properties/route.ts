@@ -1,1 +1,6 @@
-import { NextResponse } from "next/server"; export async function GET() { return NextResponse.json({ data: [] }); }
+import { NextResponse } from "next/server";
+import { getPublishedProperties } from "@/lib/supabase/properties";
+
+export async function GET() {
+	return NextResponse.json({ data: await getPublishedProperties() });
+}

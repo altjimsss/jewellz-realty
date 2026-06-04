@@ -106,6 +106,7 @@ export function AppointmentBooking() {
   const fromPath = searchParams.get("from") || "/project-list";
   const fromLabel = getFromLabel(fromPath);
   const propertyLabel = searchParams.get("property")?.trim() || fromLabel;
+  const propertySlug = fromPath.split("/").filter(Boolean).pop() || "";
 
   const today = new Date();
   const minBookDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3);
@@ -118,6 +119,8 @@ export function AppointmentBooking() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [submitStatus, setSubmitStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [calHeight, setCalHeight] = useState<number | undefined>(undefined);
 
   const calRef = useRef<HTMLDivElement>(null);
@@ -171,6 +174,32 @@ export function AppointmentBooking() {
   const formattedDate = selectedDay ? `${MONTHS[curMonth]} ${selectedDay}, ${curYear}` : "";
   const inputBase =
     "w-full border border-black/12 rounded-lg bg-white text-[13px] text-black placeholder:text-black/28 outline-none focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/10 transition h-[34px]";
+
+  async function confirmBooking() {
+    if (!formValid || !formattedDate || !selectedTime || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitStatus("Saving appointment request...");
+    const response = await fetch("/api/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        buyerName: name,
+        buyerPhone: phone,
+        buyerEmail: email,
+        date: formattedDate,
+        time: selectedTime,
+        propertySlug,
+        propertyTitle: propertyLabel,
+      }),
+    });
+    setIsSubmitting(false);
+    if (!response.ok) {
+      setSubmitStatus("Unable to save appointment. Please try again.");
+      return;
+    }
+    setSubmitStatus("");
+    setStep(2);
+  }
 
   return (
     <section className="mx-auto w-full max-w-[1100px] px-6 py-16 lg:py-20">
@@ -457,14 +486,18 @@ export function AppointmentBooking() {
                 </button>
               )}
               <button
-                disabled={step === 0 ? !(selectedDay && selectedTime) : !formValid}
-                onClick={() => setStep((currentStep) => currentStep + 1)}
+                disabled={isSubmitting || (step === 0 ? !(selectedDay && selectedTime) : !formValid)}
+                onClick={() => {
+                  if (step === 0) setStep(1);
+                  else void confirmBooking();
+                }}
                 className="rounded-lg bg-[#DE141C] px-5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#c01018] disabled:opacity-40"
               >
-                {step === 0 ? "Continue →" : "Confirm booking"}
+                {step === 0 ? "Continue →" : isSubmitting ? "Saving..." : "Confirm booking"}
               </button>
             </div>
           )}
+          {submitStatus ? <p className="mt-2 text-right text-xs text-black/45">{submitStatus}</p> : null}
         </div>
 
         {step === 0 && (

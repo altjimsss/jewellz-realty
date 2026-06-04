@@ -42,4 +42,11 @@ export type Property = {
 	type?: PropertyType;
 	category?: PropertyCategory;
 	featured?: boolean;
+	amenities?: string[];
+	keyFeatures?: string[];
+	videoUrl?: string;
+	pricePerSqm?: number;
+	monthlyAmortization?: number;
+	isPriceNegotiable?: boolean;
+	developerName?: string;
 };

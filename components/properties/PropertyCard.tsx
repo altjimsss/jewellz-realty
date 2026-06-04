@@ -18,7 +18,7 @@ export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) 
 	const specs = property.specs?.length ? property.specs.slice(0, 3) : defaultSpecs;
 	const displayPrice = priceLabel ?? formatPHPWhole(property.price);
 	const imageSrc =
-		property.image ??
+		property.image?.trim() ||
 		"https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1200&q=80";
 
 	function renderSpecIcon(label: string) {

@@ -1,10 +1,12 @@
 import { PropertyCard } from "@/components/properties/PropertyCard";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import type { Property } from "@/types/property";
 
 export type AiRecommendedProperty = {
 	property: Property;
 	reason: string;
 	confidence?: number;
+	recommendationId?: string;
 	source: "ai" | "fallback";
 };
 
@@ -14,6 +16,8 @@ type RecommendationPanelProps = {
 };
 
 export function RecommendationPanel({ recommendations, status }: RecommendationPanelProps) {
+	const { track } = useAnalytics();
+
 	if (recommendations.length === 0) return null;
 
 	return (
@@ -36,8 +40,12 @@ export function RecommendationPanel({ recommendations, status }: RecommendationP
 			</div>
 
 			<div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-				{recommendations.map(({ property, reason, confidence, source }) => (
-					<div key={property.id} className="space-y-2">
+				{recommendations.map(({ property, reason, confidence, recommendationId, source }) => (
+					<div
+						key={property.id}
+						className="space-y-2"
+						onClick={() => track("recommendation_click", { propertyId: property.id, recommendationId, recommendationSource: source })}
+					>
 						<PropertyCard property={property} href={`/project-list/${property.slug}`} />
 						<p className="rounded-full bg-zinc-50 px-3 py-2 text-xs font-medium text-black/55">
 							{source === "ai" ? "AI reason" : "Recommended"}: {reason}

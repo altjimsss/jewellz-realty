@@ -25,6 +25,12 @@ type PropertyRow = {
 	amenities: string[] | null;
 	nearby_landmarks: string[] | null;
 	cover_image_url: string | null;
+	video_url: string | null;
+	price_per_sqm: number | null;
+	monthly_amortization: number | null;
+	is_price_negotiable: boolean | null;
+	property_images?: Array<{ storage_url: string | null; sort_order: number | null; is_cover: boolean | null }>;
+	developer_partners?: { company_name: string | null } | null;
 };
 
 function titleCase(value: string | null | undefined) {
@@ -51,6 +57,13 @@ export function mapPropertyRow(row: PropertyRow): Property {
 	const parkingSlots = toNumber(row.parking_slots);
 	const location = [row.city, row.province].filter(Boolean).join(", ") || row.address || undefined;
 	const image = row.cover_image_url || undefined;
+	const imageRows = Array.isArray(row.property_images) ? row.property_images : [];
+	const images = imageRows
+		.slice()
+		.sort((first, second) => Number(Boolean(second.is_cover)) - Number(Boolean(first.is_cover)) || (first.sort_order ?? 0) - (second.sort_order ?? 0))
+		.map((item) => item.storage_url)
+		.filter((item): item is string => Boolean(item));
+	const allImages = [...new Set([...(image ? [image] : []), ...images])];
 	const displayArea = floorArea ?? lotArea;
 
 	return {
@@ -61,14 +74,21 @@ export function mapPropertyRow(row: PropertyRow): Property {
 		description: row.description ?? undefined,
 		location,
 		coordinates: latitude != null && longitude != null ? [latitude, longitude] : undefined,
-		image,
-		images: image ? [image] : undefined,
+		image: allImages[0],
+		images: allImages.length ? allImages : undefined,
 		beds: row.bedrooms ?? undefined,
 		baths: row.bathrooms ?? undefined,
 		areaSqm: displayArea,
 		type: titleCase(row.category),
 		category: row.status === "published" ? "For Sale" : titleCase(row.status),
 		featured: row.badge === "featured",
+		amenities: row.amenities ?? undefined,
+		keyFeatures: row.key_features ?? undefined,
+		videoUrl: row.video_url ?? undefined,
+		pricePerSqm: toNumber(row.price_per_sqm),
+		monthlyAmortization: toNumber(row.monthly_amortization),
+		isPriceNegotiable: Boolean(row.is_price_negotiable),
+		developerName: row.developer_partners?.company_name ?? undefined,
 		specs: [
 			{ label: "Beds", value: String(row.bedrooms ?? 0) },
 			{ label: "Baths", value: String(row.bathrooms ?? 0) },
@@ -82,7 +102,7 @@ export function mapPropertyRow(row: PropertyRow): Property {
 export async function getPublishedProperties() {
 	const { data, error } = await supabaseServer
 		.from("properties")
-		.select("*")
+		.select("*, property_images(storage_url, sort_order, is_cover), developer_partners(company_name)")
 		.eq("status", "published")
 		.order("created_at", { ascending: false });
 
@@ -97,7 +117,7 @@ export async function getPublishedProperties() {
 export async function getPublishedPropertyBySlug(slug: string) {
 	const { data, error } = await supabaseServer
 		.from("properties")
-		.select("*")
+		.select("*, property_images(storage_url, sort_order, is_cover), developer_partners(company_name)")
 		.eq("slug", slug)
 		.eq("status", "published")
 		.maybeSingle();

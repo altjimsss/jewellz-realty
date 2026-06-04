@@ -8,6 +8,7 @@ import { Footer } from "@/components/layout/Footer";
 import { PropertyBanner } from "@/components/layout/PropertyBanner";
 import { RecommendationPanel, type AiRecommendedProperty } from "@/components/ai/RecommendationPanel";
 import { extractBasicSearchIntent } from "@/lib/ai/search-intent";
+import { getOrCreateSessionId } from "@/lib/session";
 import { PropertyFilters, type PropertyFiltersState } from "@/components/properties/PropertyFilters";
 import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
@@ -296,6 +297,7 @@ export function ProjectListPageClient({ properties, initialSearch = "" }: Projec
 						category: activeCategory,
 						filters: appliedFilters,
 						properties,
+						sessionId: getOrCreateSessionId(),
 					}),
 					signal: controller.signal,
 				});
@@ -304,7 +306,7 @@ export function ProjectListPageClient({ properties, initialSearch = "" }: Projec
 
 				const data: unknown = await response.json();
 				const recommendations = Array.isArray((data as { recommendations?: unknown }).recommendations)
-					? (data as { recommendations: Array<{ id?: unknown; reason?: unknown; confidence?: unknown }> }).recommendations
+					? (data as { recommendations: Array<{ id?: unknown; reason?: unknown; confidence?: unknown; recommendationId?: unknown }> }).recommendations
 					: [];
 				const mappedRecommendations = recommendations
 					.flatMap((item): AiRecommendedProperty[] => {
@@ -316,6 +318,7 @@ export function ProjectListPageClient({ properties, initialSearch = "" }: Projec
 							property,
 							reason: typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : getRecommendationReason(property, activeCategory, appliedFilters),
 							confidence: typeof item.confidence === "number" ? item.confidence : undefined,
+							recommendationId: typeof item.recommendationId === "string" ? item.recommendationId : undefined,
 							source: "ai" as const,
 						}];
 					})

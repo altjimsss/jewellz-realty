@@ -33,6 +33,7 @@ type AiRecommendation = {
 	id: string;
 	reason: string;
 	confidence?: number;
+	recommendationId?: string;
 };
 
 type NumberedCandidate = RecommendationCandidate & {
@@ -476,6 +477,38 @@ async function getVectorRecommendations(category: string, filters: Recommendatio
 		.map(({ id, reason, confidence }) => ({ id, reason, confidence }));
 }
 
+async function persistRecommendations(recommendations: AiRecommendation[], body: Record<string, unknown>, source: string) {
+	const sessionId = toText(body.sessionId);
+	if (recommendations.length === 0) return recommendations;
+
+	const rows = recommendations.map((recommendation) => ({
+		session_id: sessionId || null,
+		property_id: recommendation.id,
+		reason: recommendation.reason,
+		confidence: recommendation.confidence ?? null,
+		is_fallback: source !== "ai" && source !== "semantic-vector",
+		was_clicked: false,
+		generated_at: new Date().toISOString(),
+		source,
+	}));
+
+	const { data, error } = await supabaseServer
+		.from("recommendations")
+		.insert(rows)
+		.select("id, property_id");
+
+	if (error || !data) {
+		console.error("Recommendation persistence failed", error?.message);
+		return recommendations;
+	}
+
+	const rowByPropertyId = new Map(data.map((row: { id: string; property_id: string }) => [row.property_id, row.id]));
+	return recommendations.map((recommendation) => ({
+		...recommendation,
+		recommendationId: rowByPropertyId.get(recommendation.id),
+	}));
+}
+
 export async function POST(request: Request) {
 	let body: unknown;
 
@@ -508,7 +541,7 @@ export async function POST(request: Request) {
 
 	if (vectorRecommendations.length > 0) {
 		return NextResponse.json({
-			recommendations: vectorRecommendations,
+			recommendations: await persistRecommendations(vectorRecommendations, body, "semantic-vector"),
 			model: "Xenova/all-MiniLM-L6-v2",
 			source: "semantic-vector",
 		});
@@ -564,7 +597,7 @@ export async function POST(request: Request) {
 				continue;
 			}
 
-			return NextResponse.json({ recommendations, model, source: "ai" });
+			return NextResponse.json({ recommendations: await persistRecommendations(recommendations, body, "ai"), model, source: "ai" });
 		}
 
 		return NextResponse.json({ error: lastProviderError }, { status: lastProviderStatus });

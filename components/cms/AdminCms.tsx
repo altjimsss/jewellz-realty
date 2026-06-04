@@ -1,14 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BarChart3, Bell, Building2, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
+import type { NearbyPlaceGroup } from "@/lib/nearby-places";
+import type { Property } from "@/types/property";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
 import { agentFields, cmsPageFields, developerFields, emptySelection, emptyWorkspace, galleryFields, heroBannerFields, inquiryStatusOptions, partnerLogoFields, priorityOptions, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields, testimonialFields } from "./constants";
-import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, Role, SelectionState, Workspace } from "./types";
+import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 
 function asRole(value: unknown): Role {
@@ -19,11 +22,99 @@ function optionalId(row: CmsRow | undefined) {
 	return row?.id == null ? null : asText(row.id);
 }
 
+function optionFromRow(row: CmsRow, label: string, fallback = "Unnamed record", meta?: Record<string, string>): FieldOption {
+	return {
+		label: label.trim() || fallback,
+		value: asText(row.id),
+		meta,
+	};
+}
+
+function displayCategory(value: unknown) {
+	return asText(value)
+		.split(/[_\s-]+/)
+		.filter(Boolean)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ") || "Property";
+}
+
+function toNumberValue(value: unknown) {
+	const numberValue = Number(value);
+	return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+const NEW_RECORD_ID = "__new__";
+
+function PropertyPublicPreview({ payload, currentRow, imageUrls }: { payload: CmsPayload; currentRow: CmsRow | null; imageUrls: string[] }) {
+	const title = asText(payload.title || currentRow?.title || "Untitled Property");
+	const type = displayCategory(payload.category || currentRow?.category);
+	const location = [payload.city, payload.province].filter(Boolean).join(", ") || [currentRow?.city, currentRow?.province].filter(Boolean).join(", ") || "Location not specified";
+	const description = asText(payload.description || currentRow?.description || "Add a clear buyer-friendly description so visitors understand what makes this property worth viewing.");
+	const image = asText(currentRow?.cover_image_url).trim() || undefined;
+	const price = Number(payload.price || currentRow?.price || 0);
+	const latitude = toNumberValue(payload.latitude || currentRow?.latitude);
+	const longitude = toNumberValue(payload.longitude || currentRow?.longitude);
+	const galleryImages = imageUrls.length ? imageUrls : image ? [image] : [];
+	const property: Property = {
+		id: asText(currentRow?.id || "preview-property"),
+		slug: asText(payload.slug || currentRow?.slug || "preview-property"),
+		title,
+		price: Number.isFinite(price) ? price : 0,
+		description,
+		location,
+		coordinates: latitude != null && longitude != null ? [latitude, longitude] : undefined,
+		image: galleryImages[0],
+		images: galleryImages.length ? galleryImages : undefined,
+		beds: Number(payload.bedrooms || currentRow?.bedrooms || 0),
+		baths: Number(payload.bathrooms || currentRow?.bathrooms || 0),
+		areaSqm: Number(payload.floor_area_sqm || payload.lot_area_sqm || currentRow?.floor_area_sqm || currentRow?.lot_area_sqm || 0),
+		type,
+		category: payload.status === "published" || currentRow?.status === "published" ? "For Sale" : displayCategory(payload.status || currentRow?.status || "Draft"),
+		specs: [
+			{ label: "Lot Area", value: payload.lot_area_sqm || currentRow?.lot_area_sqm ? `${payload.lot_area_sqm || currentRow?.lot_area_sqm} sqm` : "N/A" },
+			{ label: "Levels", value: asText(payload.floor_count || currentRow?.floor_count || "N/A") },
+			{ label: "Garage", value: asText(payload.parking_slots || currentRow?.parking_slots || "0") },
+		],
+	};
+
+	const fallbackRelatedProperties: Property[] = [
+		{ ...property, id: `${property.id}-preview-1`, slug: `${property.slug}-preview-1` },
+		{ ...property, id: `${property.id}-preview-2`, slug: `${property.slug}-preview-2`, title: `Similar ${type}` },
+		{ ...property, id: `${property.id}-preview-3`, slug: `${property.slug}-preview-3`, title: `Nearby ${type}` },
+	];
+
+	const nearbyGroups: NearbyPlaceGroup[] = [
+		{ category: "Education", places: [] },
+		{ category: "Health", places: [] },
+		{ category: "Food", places: [] },
+		{ category: "Culture", places: [] },
+	];
+
+	return (
+		<PropertyDetailContent
+			property={property}
+			galleryImages={property.images ?? []}
+			nearbyGroups={nearbyGroups}
+			relatedProperties={fallbackRelatedProperties}
+			backHref="#"
+			developerName={asText(currentRow?.developer_id) || "Jewellz Realty"}
+			previewMode
+		/>
+	);
+}
+
 type AdminCmsProps = {
 	initialPrimary?: CmsPrimary;
 	initialSection?: CmsSection;
 	initialPropertyCategory?: string;
 	initialPropertyId?: string | null;
+};
+
+type DestructiveAction = {
+	title: string;
+	description: string;
+	confirmLabel?: string;
+	onConfirm: () => Promise<void>;
 };
 
 function routeForPrimary(primary: CmsPrimary) {
@@ -68,9 +159,26 @@ function routeForSection(section: CmsSection) {
 	return routes[section] ?? "/admin";
 }
 
-function PropertyImagesManager({ propertyId, canEdit, onChanged }: { propertyId: string | null; canEdit: boolean; onChanged: () => Promise<void> | void }) {
+const PROPERTY_IMAGE_BUCKET = "property-images";
+
+function sanitizeFileName(fileName: string) {
+	return fileName
+		.toLowerCase()
+		.replace(/[^a-z0-9._-]+/g, "-")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "");
+}
+
+function storagePathFromPublicUrl(url: string) {
+	const marker = `/storage/v1/object/public/${PROPERTY_IMAGE_BUCKET}/`;
+	const markerIndex = url.indexOf(marker);
+	return markerIndex >= 0 ? decodeURIComponent(url.slice(markerIndex + marker.length)) : null;
+}
+
+function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete }: { propertyId: string | null; canEdit: boolean; onChanged: () => Promise<void> | void; onRequestDelete: (action: DestructiveAction) => void }) {
 	const [images, setImages] = useState<CmsRow[]>([]);
-	const [draft, setDraft] = useState({ storage_url: "", caption: "", sort_order: "0", is_cover: false });
+	const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+	const [uploadMessage, setUploadMessage] = useState("");
 	const [saving, setSaving] = useState(false);
 
 	async function loadImages() {
@@ -81,6 +189,70 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged }: { propertyId:
 
 		const { data } = await supabaseBrowser.from("property_images").select("*").eq("property_id", propertyId).order("sort_order", { ascending: true });
 		setImages(data ?? []);
+	}
+
+	function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
+		setSelectedFiles(Array.from(event.target.files ?? []));
+		setUploadMessage("");
+	}
+
+	async function uploadSelectedImages() {
+		if (!propertyId || selectedFiles.length === 0) return;
+
+		setSaving(true);
+		setUploadMessage(`Uploading ${selectedFiles.length} image${selectedFiles.length === 1 ? "" : "s"}...`);
+
+		const nextRows = [];
+		const existingCover = images.some((image) => Boolean(image.is_cover));
+
+		for (const [index, file] of selectedFiles.entries()) {
+			const extension = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+			const baseName = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "property-image";
+			const filePath = `${propertyId}/${Date.now()}-${index}-${baseName}.${extension}`;
+
+			const { error: uploadError } = await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).upload(filePath, file, {
+				cacheControl: "3600",
+				upsert: false,
+			});
+
+			if (uploadError) {
+				setUploadMessage(`Upload failed: ${uploadError.message}. Check that the "${PROPERTY_IMAGE_BUCKET}" storage bucket exists and allows CMS uploads.`);
+				setSaving(false);
+				return;
+			}
+
+			const { data: publicUrlData } = supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).getPublicUrl(filePath);
+			const publicUrl = publicUrlData.publicUrl;
+			const isCover = !existingCover && index === 0 && images.length === 0;
+
+			nextRows.push({
+				property_id: propertyId,
+				storage_url: publicUrl,
+				caption: file.name.replace(/\.[^.]+$/, ""),
+				sort_order: images.length + index,
+				is_cover: isCover,
+			});
+		}
+
+		if (nextRows.length) {
+			const { error: insertError } = await supabaseBrowser.from("property_images").insert(nextRows);
+			if (insertError) {
+				setUploadMessage(insertError.message);
+				setSaving(false);
+				return;
+			}
+
+			const coverRow = nextRows.find((row) => row.is_cover);
+			if (coverRow) {
+				await supabaseBrowser.from("properties").update({ cover_image_url: coverRow.storage_url }).eq("id", propertyId);
+			}
+		}
+
+		await loadImages();
+		await onChanged();
+		setSelectedFiles([]);
+		setUploadMessage(`Uploaded ${nextRows.length} image${nextRows.length === 1 ? "" : "s"}.`);
+		setSaving(false);
 	}
 
 	useEffect(() => {
@@ -102,74 +274,84 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged }: { propertyId:
 		};
 	}, [propertyId]);
 
-	async function saveImage(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
+	async function deleteImage(id: string) {
+		const image = images.find((item) => asText(item.id) === id);
+		onRequestDelete({
+			title: "Delete this property photo?",
+			description: `This will permanently delete ${asText(image?.caption || image?.storage_url || "this image")} from the listing gallery.`,
+			confirmLabel: "Verify password and delete photo",
+			onConfirm: async () => {
+				await supabaseBrowser.from("property_images").delete().eq("id", id);
+				const storagePath = storagePathFromPublicUrl(asText(image?.storage_url));
+				if (storagePath) {
+					await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove([storagePath]);
+				}
+				await loadImages();
+				await onChanged();
+			},
+		});
+	}
+
+	async function setCoverImage(image: CmsRow) {
 		if (!propertyId) return;
-
 		setSaving(true);
-		const payload = {
-			property_id: propertyId,
-			storage_url: draft.storage_url.trim(),
-			caption: draft.caption.trim() || null,
-			sort_order: Number(draft.sort_order || 0),
-			is_cover: draft.is_cover,
-		};
-
-		const { error } = await supabaseBrowser.from("property_images").insert(payload);
-		if (error) {
-			setSaving(false);
-			return;
-		}
-
+		await supabaseBrowser.from("property_images").update({ is_cover: false }).eq("property_id", propertyId);
+		await supabaseBrowser.from("property_images").update({ is_cover: true }).eq("id", image.id);
+		await supabaseBrowser.from("properties").update({ cover_image_url: image.storage_url }).eq("id", propertyId);
 		await loadImages();
 		await onChanged();
-		setDraft({ storage_url: "", caption: "", sort_order: "0", is_cover: false });
 		setSaving(false);
 	}
 
-	async function deleteImage(id: string) {
-		await supabaseBrowser.from("property_images").delete().eq("id", id);
-		await loadImages();
-		await onChanged();
-	}
-
 	if (!propertyId) {
-		return <div className="rounded-2xl border border-dashed border-black/15 bg-zinc-50 px-4 py-5 text-sm text-black/50">Select a property to manage its image gallery.</div>;
+		return (
+			<div className="rounded-lg border border-dashed border-black/15 bg-zinc-50 px-4 py-5">
+				<div className="text-xs font-semibold uppercase tracking-[0.2em] text-red-700">Photo Uploads</div>
+				<p className="mt-1 text-sm text-black/55">Save the property details first, then upload as many photos as you need. This keeps each photo attached to the correct property.</p>
+			</div>
+		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-black/10 bg-zinc-50 p-4">
+		<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Property Images</div>
-					<div className="mt-1 text-sm text-black/60">Add, sort, and remove gallery images for the selected listing.</div>
+					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-red-700">Photo Uploads</div>
+					<div className="mt-1 text-sm text-black/60">Choose one or more photos, then upload them in one action. The first uploaded photo becomes the cover if no cover exists yet.</div>
 				</div>
 				<div className="text-xs text-black/45">{images.length} images</div>
 			</div>
 
-			<form className="mt-4 grid gap-3 md:grid-cols-4" onSubmit={saveImage}>
-				<input value={draft.storage_url} onChange={(event) => setDraft((state) => ({ ...state, storage_url: event.target.value }))} placeholder="Storage URL" disabled={!canEdit} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm outline-none disabled:bg-zinc-100" />
-				<input value={draft.caption} onChange={(event) => setDraft((state) => ({ ...state, caption: event.target.value }))} placeholder="Caption" disabled={!canEdit} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm outline-none disabled:bg-zinc-100" />
-				<input value={draft.sort_order} onChange={(event) => setDraft((state) => ({ ...state, sort_order: event.target.value }))} type="number" placeholder="Sort order" disabled={!canEdit} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm outline-none disabled:bg-zinc-100" />
-				<label className="flex h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-sm text-black/70">
-					<input checked={draft.is_cover} onChange={(event) => setDraft((state) => ({ ...state, is_cover: event.target.checked }))} type="checkbox" disabled={!canEdit} />
-					Cover image
+			<div className="mt-4 rounded-xl border border-dashed border-black/15 bg-white p-4">
+				<label className="block">
+					<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Upload Photos</div>
+					<input type="file" accept="image/*" multiple disabled={!canEdit || saving} onChange={handleFilesChange} className="mt-2 block w-full text-sm text-black/60 file:mr-4 file:rounded-md file:border-0 file:bg-red-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white disabled:cursor-not-allowed disabled:opacity-60" />
 				</label>
-				<div className="md:col-span-4">
-					<button type="submit" disabled={!canEdit || saving} className="inline-flex h-11 items-center justify-center rounded-full bg-red-700 px-5 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-black/20">Add image</button>
+				<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+					<p className="text-xs text-black/45">{selectedFiles.length ? `${selectedFiles.length} selected: ${selectedFiles.map((file) => file.name).join(", ")}` : "Choose one or more JPG, PNG, or WebP images."}</p>
+					<button type="button" onClick={uploadSelectedImages} disabled={!canEdit || saving || selectedFiles.length === 0} className="inline-flex h-10 items-center justify-center rounded-md bg-red-700 px-4 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-black/20">
+						{saving ? "Uploading..." : "Upload photos"}
+					</button>
 				</div>
-			</form>
+				{uploadMessage ? <p className="mt-2 text-xs text-black/55">{uploadMessage}</p> : null}
+			</div>
 
 			<div className="mt-4 grid gap-2 md:grid-cols-2">
 				{images.map((image) => (
 					<div key={asText(image.id)} className="rounded-2xl border border-black/10 bg-white p-3">
+						{image.storage_url ? <img src={asText(image.storage_url)} alt={asText(image.caption || "Property image")} className="mb-3 h-36 w-full rounded-xl object-cover" /> : null}
 						<div className="truncate text-sm font-medium text-[#111111]">{image.caption || image.storage_url}</div>
 						<div className="mt-1 text-xs text-black/45">{image.storage_url}</div>
 						<div className="mt-3 flex items-center justify-between gap-2 text-xs text-black/55">
 							<span>Sort order: {image.sort_order}</span>
 							<span>{image.is_cover ? "Cover" : "Secondary"}</span>
 						</div>
-						{canEdit ? <button type="button" onClick={() => deleteImage(asText(image.id))} className="mt-3 rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50">Delete</button> : null}
+						{canEdit ? (
+							<div className="mt-3 flex flex-wrap gap-2">
+								<button type="button" onClick={() => setCoverImage(image)} disabled={saving || Boolean(image.is_cover)} className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-black/65 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">Set cover</button>
+								<button type="button" onClick={() => deleteImage(asText(image.id))} className="rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50">Delete</button>
+							</div>
+						) : null}
 					</div>
 				))}
 			</div>
@@ -633,6 +815,14 @@ export default function AdminCms({
 	const [agentProfile, setAgentProfile] = useState<CmsRow | null>(null);
 	const [developerProfile, setDeveloperProfile] = useState<CmsRow | null>(null);
 	const [workspace, setWorkspace] = useState<Workspace>(emptyWorkspace);
+	const [selectedPropertyImages, setSelectedPropertyImages] = useState<CmsRow[]>([]);
+	const [destructiveAction, setDestructiveAction] = useState<DestructiveAction | null>(null);
+	const [destructivePassword, setDestructivePassword] = useState("");
+	const [destructiveMessage, setDestructiveMessage] = useState("");
+	const [confirmingDestructiveAction, setConfirmingDestructiveAction] = useState(false);
+	const [dashboardSearch, setDashboardSearch] = useState("");
+	const [showNotifications, setShowNotifications] = useState(false);
+	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
 	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
@@ -648,12 +838,63 @@ export default function AdminCms({
 	const canEditInquiries = isAdmin || isAgent || isDeveloper;
 	const canReassignInquiries = isAdmin;
 
-	const selectedPropertyId = selection.properties ?? optionalId(workspace.properties[0]);
-	const selectedProjectId = selection.projects ?? optionalId(workspace.projects[0]);
-	const selectedDeveloperId = selection.developers ?? optionalId(workspace.developers[0]);
-	const selectedAgentId = selection.agents ?? optionalId(workspace.agents[0]);
+	const selectedPropertyId = selection.properties === NEW_RECORD_ID ? NEW_RECORD_ID : selection.properties ?? optionalId(workspace.properties[0]);
+	const selectedProjectId = selection.projects === NEW_RECORD_ID ? NEW_RECORD_ID : selection.projects ?? optionalId(workspace.projects[0]);
+	const selectedDeveloperId = selection.developers === NEW_RECORD_ID ? NEW_RECORD_ID : selection.developers ?? optionalId(workspace.developers[0]);
+	const selectedAgentId = selection.agents === NEW_RECORD_ID ? NEW_RECORD_ID : selection.agents ?? optionalId(workspace.agents[0]);
 	const selectedInquiryId = selection.inquiries ?? optionalId(workspace.inquiries[0]);
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
+	const selectedPropertyImageUrls = useMemo(
+		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
+		[selectedPropertyImages],
+	);
+	const dashboardSearchResults = useMemo(() => {
+		const query = dashboardSearch.trim().toLowerCase();
+		if (!query) return [];
+		return [
+			...workspace.properties.map((row) => ({ label: asText(row.title), meta: "Property", open: () => openPropertyForEditing(asText(row.id)) })),
+			...workspace.projects.map((row) => ({ label: asText(row.project_name ?? row.slug), meta: "Project", open: () => { setActivePrimary("listings"); setActiveSection("projects"); setSelection((current) => ({ ...current, projects: asText(row.id) })); router.push("/admin/listings?section=projects"); } })),
+			...workspace.inquiries.map((row) => ({ label: asText(row.buyer_name ?? row.buyer_email), meta: "Inquiry", open: () => { setActivePrimary("inquiries"); setActiveSection("inquiries"); setSelection((current) => ({ ...current, inquiries: asText(row.id) })); router.push("/admin/inquiries"); } })),
+		].filter((item) => `${item.label} ${item.meta}`.toLowerCase().includes(query)).slice(0, 6);
+	}, [dashboardSearch, router, workspace.inquiries, workspace.projects, workspace.properties]);
+
+	function requestDestructiveAction(action: DestructiveAction) {
+		setDestructiveAction(action);
+		setDestructivePassword("");
+		setDestructiveMessage("");
+	}
+
+	async function confirmDestructiveAction() {
+		if (!destructiveAction) return;
+		if (!sessionUser?.email) {
+			setDestructiveMessage("Cannot verify password because the current user email is missing.");
+			return;
+		}
+		if (!destructivePassword) {
+			setDestructiveMessage("Enter your password to continue.");
+			return;
+		}
+
+		setConfirmingDestructiveAction(true);
+		setDestructiveMessage("Verifying password...");
+		const { error } = await supabaseBrowser.auth.signInWithPassword({
+			email: sessionUser.email,
+			password: destructivePassword,
+		});
+
+		if (error) {
+			setDestructiveMessage("Password verification failed. Nothing was deleted.");
+			setConfirmingDestructiveAction(false);
+			return;
+		}
+
+		setDestructiveMessage("Deleting...");
+		await destructiveAction.onConfirm();
+		setDestructiveAction(null);
+		setDestructivePassword("");
+		setDestructiveMessage("");
+		setConfirmingDestructiveAction(false);
+	}
 	const navGroups = useMemo<CmsNavGroup[]>(() => {
 		const groups: CmsNavGroup[] = [
 			{
@@ -746,6 +987,31 @@ export default function AdminCms({
 		return workspace.properties.filter((property) => property.category === propertyCategoryFilter);
 	}, [propertyCategoryFilter, workspace.properties]);
 	const selectedCategoryLabel = propertyCategoryFilter === "all" ? "All Categories" : (propertyCategoryOptions.find((option) => option.value === propertyCategoryFilter)?.label ?? "All Categories");
+	const developerOptions = useMemo(
+		() => workspace.developers.map((developer) => optionFromRow(developer, asText(developer.company_name ?? developer.slug), "Unnamed developer")),
+		[workspace.developers],
+	);
+	const projectOptions = useMemo(
+		() => workspace.projects.map((project) => optionFromRow(project, `${asText(project.project_name ?? project.slug)}${project.location_city ? ` · ${project.location_city}` : ""}`, "Unnamed project", { developer_id: asText(project.developer_id) })),
+		[workspace.projects],
+	);
+	const agentOptions = useMemo(
+		() => workspace.agents.map((agent) => optionFromRow(agent, `${asText(agent.license_number ?? agent.specialization ?? agent.profile_id)}${agent.is_top_agent ? " · Top agent" : ""}`, "Unnamed agent")),
+		[workspace.agents],
+	);
+	const propertyEditorFields = useMemo<FieldSpec[]>(
+		() => propertyFields.map((field) => {
+			if (field.name === "developer_id") return { ...field, options: developerOptions };
+			if (field.name === "project_id") return { ...field, options: projectOptions };
+			if (field.name === "assigned_agent_id") return { ...field, options: agentOptions };
+			return field;
+		}),
+		[agentOptions, developerOptions, projectOptions],
+	);
+	const projectEditorFields = useMemo<FieldSpec[]>(
+		() => projectFields.map((field) => field.name === "developer_id" ? { ...field, options: developerOptions } : field),
+		[developerOptions],
+	);
 
 	function openPrimary(group: CmsNavGroup) {
 		setActivePrimary(group.id);
@@ -764,6 +1030,14 @@ export default function AdminCms({
 		setPropertyCategoryFilter(category);
 		setSelection((current) => ({ ...current, properties: null }));
 		router.push(category === "all" ? "/admin/listings" : `/admin/listings?category=${category}`);
+	}
+
+	function openPropertyForEditing(propertyId: string) {
+		setActivePrimary("listings");
+		setActiveSection("properties");
+		setPropertyCategoryFilter("all");
+		setSelection((current) => ({ ...current, properties: propertyId }));
+		router.push("/admin/listings");
 	}
 
 	async function loadWorkspace(currentUser: User, currentProfile: CmsRow, currentAgent: CmsRow | null, currentDeveloper: CmsRow | null) {
@@ -816,6 +1090,8 @@ export default function AdminCms({
 				agentPerformanceResult,
 				developerPortfolioResult,
 				recommendationsResult,
+				profilesResult,
+				activityLogsResult,
 			] = await Promise.all([
 				supabaseBrowser.from("developer_partners").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("agents").select("*").order("created_at", { ascending: false }),
@@ -832,6 +1108,8 @@ export default function AdminCms({
 				supabaseBrowser.from("mv_agent_performance").select("*"),
 				supabaseBrowser.from("mv_developer_portfolio").select("*"),
 				supabaseBrowser.from("recommendations").select("id, was_clicked, is_fallback, clicked_at, generated_at"),
+				supabaseBrowser.from("profiles").select("*").order("created_at", { ascending: false }),
+				supabaseBrowser.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100),
 			]);
 
 			nextWorkspace.developers = developersResult.data ?? [];
@@ -849,6 +1127,8 @@ export default function AdminCms({
 			nextWorkspace.agentPerformance = agentPerformanceResult.data ?? [];
 			nextWorkspace.developerPortfolio = developerPortfolioResult.data ?? [];
 			nextWorkspace.recommendations = recommendationsResult.data ?? [];
+			nextWorkspace.profiles = profilesResult.data ?? [];
+			nextWorkspace.activityLogs = activityLogsResult.data ?? [];
 		} else if (activeIsDeveloper && developerId) {
 			const [developerResult, recommendationsResult] = await Promise.all([
 				supabaseBrowser.from("developer_partners").select("*").eq("id", developerId).maybeSingle(),
@@ -874,6 +1154,24 @@ export default function AdminCms({
 		setMessage("Refreshing data...");
 		await loadWorkspace(sessionUser, profile, agentProfile, developerProfile);
 	}
+
+	async function loadPropertyImages(propertyId: string | null) {
+		if (!propertyId) {
+			setSelectedPropertyImages([]);
+			return;
+		}
+
+		const { data } = await supabaseBrowser.from("property_images").select("*").eq("property_id", propertyId).order("sort_order", { ascending: true });
+		setSelectedPropertyImages(data ?? []);
+	}
+
+	useEffect(() => {
+		if (!selectedPropertyId || selectedPropertyId === NEW_RECORD_ID) {
+			setSelectedPropertyImages([]);
+			return;
+		}
+		void loadPropertyImages(asText(selectedPropertyId));
+	}, [selectedPropertyId]);
 
 	useEffect(() => {
 		let active = true;
@@ -955,16 +1253,23 @@ export default function AdminCms({
 
 	async function deleteEntity(table: string, currentRow: CmsRow, idKey = "id") {
 		if (!currentRow) return;
-		setMessage(`Deleting from ${table}...`);
-		setSaving(true);
-		await supabaseBrowser.from(table).delete().eq(idKey, currentRow[idKey]);
-		setSaving(false);
-		await reloadWorkspace();
+		requestDestructiveAction({
+			title: `Delete ${labelForRow(currentRow)}?`,
+			description: `This will permanently delete this record from ${table}. This action cannot be undone.`,
+			confirmLabel: "Verify password and delete",
+			onConfirm: async () => {
+				setMessage(`Deleting from ${table}...`);
+				setSaving(true);
+				await supabaseBrowser.from(table).delete().eq(idKey, currentRow[idKey]);
+				setSaving(false);
+				await reloadWorkspace();
+			},
+		});
 	}
 
 	async function saveProperty(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.developer_id) {
-			setMessage("Property records require developer_id.");
+			setMessage("Choose a Developer Partner first. If none exists, create one under People → Developer Partners.");
 			return;
 		}
 		if (!payload.title || !payload.slug || !payload.address || !payload.city || !payload.province) {
@@ -986,7 +1291,7 @@ export default function AdminCms({
 
 	async function saveProject(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.developer_id || !payload.project_name || !payload.slug) {
-			setMessage("Projects need developer_id, project_name, and slug.");
+			setMessage("Projects need a Developer Partner, Project Name, and Slug.");
 			return;
 		}
 		await saveEntity("projects", payload, currentRow);
@@ -1197,17 +1502,45 @@ export default function AdminCms({
 
 				<section className="flex min-w-0 flex-col bg-white">
 					<header className="sticky top-0 z-20 flex h-12 items-center border-b border-black/10 bg-white px-5">
-						<div className="ml-auto hidden h-8 w-full max-w-xs items-center gap-2 rounded-md border border-black/10 bg-zinc-50 px-3 text-sm text-black/35 md:flex">
-							<Search className="h-4 w-4" />
-							<span>Search dashboard...</span>
+						<div className="relative ml-auto hidden w-full max-w-xs md:block">
+							<div className="flex h-8 items-center gap-2 rounded-md border border-black/10 bg-zinc-50 px-3 text-sm text-black/60">
+								<Search className="h-4 w-4" />
+								<input value={dashboardSearch} onChange={(event) => setDashboardSearch(event.target.value)} placeholder="Search dashboard..." className="w-full bg-transparent text-sm outline-none placeholder:text-black/35" />
+							</div>
+							{dashboardSearch.trim() ? (
+								<div className="absolute right-0 top-10 z-30 w-full overflow-hidden rounded-lg border border-black/10 bg-white shadow-xl">
+									{dashboardSearchResults.length === 0 ? <div className="px-3 py-3 text-xs text-black/45">No CMS records found.</div> : null}
+									{dashboardSearchResults.map((item) => (
+										<button key={`${item.meta}-${item.label}`} type="button" onClick={() => { item.open(); setDashboardSearch(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-red-50">
+											<span className="font-medium text-[#111111]">{item.label}</span>
+											<span className="ml-2 text-xs text-black/45">{item.meta}</span>
+										</button>
+									))}
+								</div>
+							) : null}
 						</div>
-						<div className="ml-6 flex items-center gap-2 text-black/60">
-							<button type="button" className="rounded-md p-1.5 transition hover:bg-zinc-100" title="Notifications">
+						<div className="relative ml-6 flex items-center gap-2 text-black/60">
+							<button type="button" onClick={() => setShowNotifications((current) => !current)} className="rounded-md p-1.5 transition hover:bg-zinc-100" title="Notifications">
 								<Bell className="h-4 w-4" />
 							</button>
-							<button type="button" className="rounded-md p-1.5 transition hover:bg-zinc-100" title={asText(profile.email ?? profile.full_name)}>
+							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-md p-1.5 transition hover:bg-zinc-100" title={asText(profile.email ?? profile.full_name)}>
 								<UserCircle className="h-5 w-5" />
 							</button>
+							{showNotifications ? (
+								<div className="absolute right-8 top-10 z-30 w-72 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
+									<div className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">Notifications</div>
+									<p className="mt-2 text-black/60">{workspace.inquiries.filter((item) => item.status === "new").length} new inquiries need review.</p>
+									<p className="mt-1 text-xs text-black/45">{workspace.properties.filter((item) => item.status === "draft").length} draft properties are not public yet.</p>
+								</div>
+							) : null}
+							{showProfileMenu ? (
+								<div className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
+									<div className="font-medium text-[#111111]">{profile.full_name ?? "CMS User"}</div>
+									<div className="mt-1 text-xs text-black/45">{profile.email ?? sessionUser.email}</div>
+									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
+									<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+								</div>
+							) : null}
 						</div>
 					</header>
 
@@ -1246,22 +1579,33 @@ export default function AdminCms({
 								propertyCategoryFilter === "all" ? (
 									<EntityEditor
 										title="Properties"
-										description="Full CRUD for adding and maintaining property records."
+										description="Guided CRUD for creating public property listings without typing database IDs."
 										rows={workspace.properties}
 										selectedId={selectedPropertyId}
-										fields={propertyFields}
+										fields={propertyEditorFields}
 										defaultValues={{ status: "draft", badge: "none" }}
 										canEdit={canEditCatalog}
 										rowLabel={labelForRow}
 										rowMeta={(row) => `${row.city ?? ""} ${row.province ?? ""} • ${row.status ?? "draft"}`}
 										onSelect={(row) => setSelection((current) => ({ ...current, properties: row ? asText(row.id) : null }))}
-										onCreateNew={() => setSelection((current) => ({ ...current, properties: null }))}
+										onCreateNew={() => setSelection((current) => ({ ...current, properties: NEW_RECORD_ID }))}
 										onDelete={(row) => deleteEntity("properties", row)}
 										onSubmit={saveProperty}
-										extra={<PropertyImagesManager propertyId={selectedProperty ? asText(selectedProperty.id) : null} canEdit={canEditCatalog} onChanged={reloadWorkspace} />}
+										renderPreview={(payload, currentRow) => <PropertyPublicPreview payload={payload} currentRow={currentRow} imageUrls={selectedPropertyImageUrls} />}
+										extra={
+											<PropertyImagesManager
+												propertyId={selectedProperty ? asText(selectedProperty.id) : null}
+												canEdit={canEditCatalog}
+												onRequestDelete={requestDestructiveAction}
+												onChanged={async () => {
+													await reloadWorkspace();
+													await loadPropertyImages(selectedProperty ? asText(selectedProperty.id) : null);
+												}}
+											/>
+										}
 									/>
 								) : (
-									<SectionShell title={`${selectedCategoryLabel} Properties`} description={`Showing only listings categorized as ${selectedCategoryLabel}. Use Listings / Properties to add or edit property records.`}>
+									<SectionShell title={`${selectedCategoryLabel} Properties`} description={`Showing only listings categorized as ${selectedCategoryLabel}. Click any row to open it in Listings / Properties.`}>
 										<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
 											<table className="w-full border-collapse text-sm">
 												<thead>
@@ -1277,7 +1621,20 @@ export default function AdminCms({
 														<tr><td colSpan={4} className="px-4 py-5 text-sm text-black/45">No properties found in this category.</td></tr>
 													) : null}
 													{visibleProperties.map((property) => (
-														<tr key={asText(property.id)} className="border-b border-black/10 last:border-b-0 hover:bg-zinc-50">
+														<tr
+															key={asText(property.id)}
+															role="button"
+															tabIndex={0}
+															title="Open this property in the editor"
+															onClick={() => openPropertyForEditing(asText(property.id))}
+															onKeyDown={(event) => {
+																if (event.key === "Enter" || event.key === " ") {
+																	event.preventDefault();
+																	openPropertyForEditing(asText(property.id));
+																}
+															}}
+															className="cursor-pointer border-b border-black/10 transition last:border-b-0 hover:bg-red-50/70 focus:bg-red-50 focus:outline-none"
+														>
 															<td className="px-4 py-3 font-medium text-[#111111]">{property.title}</td>
 															<td className="px-4 py-3 text-black/60">{property.city ?? "n/a"}</td>
 															<td className="px-4 py-3 text-black/60">{property.price == null ? "n/a" : `₱${Number(property.price).toLocaleString()}`}</td>
@@ -1299,20 +1656,42 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "projects" && isAdmin ? (
-							<EntityEditor title="Projects" description="Developer project portfolios." rows={workspace.projects} selectedId={selectedProjectId} fields={projectFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: null }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />
+							<EntityEditor title="Projects" description="Developer project portfolios. Choose the developer by company name; the CMS stores the ID automatically." rows={workspace.projects} selectedId={selectedProjectId} fields={projectEditorFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />
 						) : null}
 
 						{currentSection === "agents" && isAdmin ? (
-							<EntityEditor title="Agents" description="Profile info, social links, and top-agent flags." rows={workspace.agents} selectedId={selectedAgentId} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.license_number ?? "no license"}${row.is_top_agent ? " • top agent" : ""}`} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: null }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} />
+							<EntityEditor title="Agents" description="Profile info, social links, and top-agent flags." rows={workspace.agents} selectedId={selectedAgentId} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.license_number ?? "no license"}${row.is_top_agent ? " • top agent" : ""}`} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} />
 						) : null}
 
 						{currentSection === "developers" && isAdmin ? (
-							<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selectedDeveloperId} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => asText(row.contact_email ?? row.website_url ?? row.slug)} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: null }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
+							<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selectedDeveloperId} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => asText(row.contact_email ?? row.website_url ?? row.slug)} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
 						) : null}
 
 						{currentSection === "profiles" && isAdmin ? (
-							<SectionShell title="Profiles & Buyers" description="Buyer profile browsing can be added here when you want user-management CRUD in the CMS.">
-								<div className="text-sm text-black/55">This section is reserved for profile and buyer account management.</div>
+							<SectionShell title="Profiles & Buyers" description="Read-only account overview from the profiles table.">
+								<div className="overflow-x-auto rounded-lg border border-black/10">
+									<table className="min-w-full text-left text-sm">
+										<thead className="text-xs uppercase tracking-[0.18em] text-black/45">
+											<tr>
+												<th className="px-4 py-3">Name</th>
+												<th className="px-4 py-3">Email</th>
+												<th className="px-4 py-3">Role</th>
+												<th className="px-4 py-3">Active</th>
+											</tr>
+										</thead>
+										<tbody>
+											{workspace.profiles.length === 0 ? <tr><td colSpan={4} className="px-4 py-5 text-black/45">No profiles found.</td></tr> : null}
+											{workspace.profiles.map((row) => (
+												<tr key={asText(row.id)} className="border-t border-black/10">
+													<td className="px-4 py-3 font-medium text-[#111111]">{row.full_name ?? "Unnamed"}</td>
+													<td className="px-4 py-3 text-black/60">{row.email ?? "—"}</td>
+													<td className="px-4 py-3 text-black/60">{row.role ?? "buyer"}</td>
+													<td className="px-4 py-3 text-black/60">{asText(row.is_active) === "false" ? "No" : "Yes"}</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
 							</SectionShell>
 						) : null}
 
@@ -1353,14 +1732,83 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "activityLogs" && isAdmin ? (
-							<SectionShell title="Activity Logs" description="Audit trail browsing can be connected to the activity_logs table here.">
-								<div className="text-sm text-black/55">This section is reserved for activity log review.</div>
+							<SectionShell title="Activity Logs" description="Recent audit records from the activity_logs table.">
+								<div className="overflow-x-auto rounded-lg border border-black/10">
+									<table className="min-w-full text-left text-sm">
+										<thead className="text-xs uppercase tracking-[0.18em] text-black/45">
+											<tr>
+												<th className="px-4 py-3">When</th>
+												<th className="px-4 py-3">Action</th>
+												<th className="px-4 py-3">Table</th>
+												<th className="px-4 py-3">Record</th>
+											</tr>
+										</thead>
+										<tbody>
+											{workspace.activityLogs.length === 0 ? <tr><td colSpan={4} className="px-4 py-5 text-black/45">No activity logs found.</td></tr> : null}
+											{workspace.activityLogs.map((row, index) => (
+												<tr key={asText(row.id ?? index)} className="border-t border-black/10">
+													<td className="px-4 py-3 text-black/60">{asText(row.created_at ?? row.occurred_at) || "—"}</td>
+													<td className="px-4 py-3 font-medium text-[#111111]">{row.action ?? row.event_type ?? "Activity"}</td>
+													<td className="px-4 py-3 text-black/60">{row.table_name ?? row.entity_type ?? "—"}</td>
+													<td className="px-4 py-3 text-black/60">{row.record_id ?? row.entity_id ?? "—"}</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
 							</SectionShell>
 						) : null}
 					</div>
 					</div>
 				</section>
 			</div>
+			{destructiveAction ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+					<div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-red-700">Destructive Action</div>
+						<h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#111111]">{destructiveAction.title}</h2>
+						<p className="mt-2 text-sm leading-6 text-black/60">{destructiveAction.description}</p>
+						<p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">Please confirm you are sure. Enter your password to continue.</p>
+						<label className="mt-4 block">
+							<span className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Password</span>
+							<input
+								type="password"
+								value={destructivePassword}
+								onChange={(event) => setDestructivePassword(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter") void confirmDestructiveAction();
+								}}
+								className="mt-1 h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-red-300"
+								placeholder="Enter your CMS password"
+								autoFocus
+							/>
+						</label>
+						{destructiveMessage ? <p className="mt-3 text-sm text-black/55">{destructiveMessage}</p> : null}
+						<div className="mt-5 flex flex-wrap justify-end gap-2">
+							<button
+								type="button"
+								disabled={confirmingDestructiveAction}
+								onClick={() => {
+									setDestructiveAction(null);
+									setDestructivePassword("");
+									setDestructiveMessage("");
+								}}
+								className="rounded-md border border-black/10 px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-zinc-50 disabled:opacity-50"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								disabled={confirmingDestructiveAction}
+								onClick={() => void confirmDestructiveAction()}
+								className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-black/20"
+							>
+								{confirmingDestructiveAction ? "Verifying..." : destructiveAction.confirmLabel ?? "Verify password and delete"}
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 		</main>
 	);
 }
