@@ -49,7 +49,7 @@ export function Footer() {
 			</div>
 
 			<div className="mt-6 flex flex-col gap-2 border-t border-white/15 pt-4 text-center text-[11px] text-white/55 sm:mt-10 sm:gap-3 sm:pt-5 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
-				<p>Copyright Jewellz Realty 2026. All rights reserved.</p>
+				<p>Copyright Jewellz Realty 2026. All rights reserved. We use anonymous browsing signals to improve property recommendations and lead follow-up.</p>
 				<div className="flex items-center justify-center gap-4 md:justify-start">
 					<a href="#" className="hover:text-[#DE141C]">Privacy Policy</a>
 					<a href="#" className="hover:text-[#DE141C]">Terms & Conditions</a>

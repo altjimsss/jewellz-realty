@@ -4,7 +4,7 @@ import { FormEvent, Suspense, useEffect, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+export function LoginPage() {
 	return (
 		<Suspense fallback={<LoginShell message="Loading sign in..." />}>
 			<LoginForm />
@@ -22,11 +22,23 @@ function LoginForm() {
 	const [loading, setLoading] = useState(false);
 
 	useEffect(() => {
-		void supabaseBrowser.auth.getSession().then(({ data }) => {
-			if (data.session) {
-				router.replace(nextPath);
-			}
-		});
+		void supabaseBrowser.auth
+			.getSession()
+			.then(async ({ data, error }) => {
+				if (error) {
+					await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+					setMessage("Your previous session expired. Please sign in again.");
+					return;
+				}
+
+				if (data.session) {
+					router.replace(nextPath);
+				}
+			})
+			.catch(async () => {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+				setMessage("Your previous session expired. Please sign in again.");
+			});
 	}, [nextPath, router]);
 
 	async function handlePasswordSignIn(event: FormEvent<HTMLFormElement>) {

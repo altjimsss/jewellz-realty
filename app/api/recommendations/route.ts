@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generatePropertyEmbedding, formatEmbeddingForPostgres } from "@/lib/ai/property-embeddings";
 import { extractSemanticSearchIntent, type PropertySearchIntent } from "@/lib/ai/search-intent";
 import { formatDistance } from "@/lib/nearby-places";
+import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 
 type RecommendationFilters = {
@@ -510,16 +511,21 @@ async function persistRecommendations(recommendations: AiRecommendation[], body:
 }
 
 export async function POST(request: Request) {
+	const limiter = checkRateLimit(`recommendations:${clientKey(request)}`, { limit: 30, windowMs: 60_000 });
+	if (!limiter.allowed) {
+		return NextResponse.json({ error: "Too many recommendation requests. Please try again later." }, { status: 429, headers: rateLimitHeaders(limiter) });
+	}
+
 	let body: unknown;
 
 	try {
 		body = await request.json();
 	} catch {
-		return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+		return NextResponse.json({ error: "Invalid request body." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	if (!isRecord(body)) {
-		return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+		return NextResponse.json({ error: "Invalid request body." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	const apiKey = process.env.OPENROUTER_API_KEY;

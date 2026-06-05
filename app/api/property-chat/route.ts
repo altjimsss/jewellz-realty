@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import {
 	buildPropertyChatContext,
 	buildPropertyChatConversation,
@@ -22,24 +23,29 @@ function getPropertyChatModels() {
 }
 
 export async function POST(request: Request) {
+  const limiter = checkRateLimit(`property-chat:${clientKey(request)}`, { limit: 20, windowMs: 60_000 });
+  if (!limiter.allowed) {
+    return NextResponse.json({ error: "Too many chat requests. Please try again later." }, { status: 429, headers: rateLimitHeaders(limiter) });
+  }
+
   let body: unknown;
 
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400, headers: rateLimitHeaders(limiter) });
   }
 
   const parsedBody = parsePropertyChatRequestBody(body);
 
   if (!parsedBody) {
-    return NextResponse.json({ error: "Missing slug or message." }, { status: 400 });
+    return NextResponse.json({ error: "Missing slug or message." }, { status: 400, headers: rateLimitHeaders(limiter) });
   }
 
   const propertyContext = await buildPropertyChatContext(parsedBody.slug);
 
   if (!propertyContext) {
-    return NextResponse.json({ error: "Property not found." }, { status: 404 });
+    return NextResponse.json({ error: "Property not found." }, { status: 404, headers: rateLimitHeaders(limiter) });
   }
 
   const conversation = buildPropertyChatConversation(parsedBody.history);
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
+    return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500, headers: rateLimitHeaders(limiter) });
   }
 
   const controller = new AbortController();

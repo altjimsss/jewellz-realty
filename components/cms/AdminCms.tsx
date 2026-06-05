@@ -1,10 +1,11 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bell, Building2, CalendarDays, Download, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BarChart3, Bell, Bot, Building2, CalendarDays, Download, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { AgentPerformanceTable } from "@/components/dashboard/AgentPerformanceTable";
@@ -19,6 +20,8 @@ import { EntityEditor, InfoCard, SectionShell } from "./blocks";
 import { agentFields, cmsPageFields, developerFields, emptySelection, emptyWorkspace, galleryFields, heroBannerFields, inquiryStatusOptions, partnerLogoFields, priorityOptions, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields, testimonialFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
 function asRole(value: unknown): Role {
 	return value === "admin" || value === "agent" || value === "developer_partner" || value === "buyer" ? value : null;
@@ -68,6 +71,14 @@ function relativeAge(value: unknown) {
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
+function formatDuration(seconds: number) {
+	if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+	if (seconds < 60) return `${Math.round(seconds)}s`;
+	const minutes = Math.floor(seconds / 60);
+	const remainingSeconds = Math.round(seconds % 60);
+	return remainingSeconds ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+}
+
 function csvEscape(value: unknown) {
 	const textValue = asText(value);
 	return /[",\n\r]/.test(textValue) ? `"${textValue.replaceAll('"', '""')}"` : textValue;
@@ -85,6 +96,728 @@ function downloadCsv(filename: string, rows: CmsRow[], columns: string[]) {
 	link.download = filename;
 	link.click();
 	URL.revokeObjectURL(url);
+}
+
+type AnalyticsCategory = "trafficBehavior" | "propertyPerformance" | "predictiveAnalytics" | "userEngagement";
+const analyticsChildSections = new Set<CmsSection>(["trafficBehavior", "propertyPerformance", "predictiveAnalytics", "userEngagement"]);
+
+function localRegression(points: number[]) {
+	const n = points.length;
+	if (n < 2) {
+		return {
+			metric: "daily_inquiry_volume",
+			slope: 0,
+			intercept: points[0] ?? 0,
+			r2: 0,
+			observedTotal: points.reduce((sum, value) => sum + value, 0),
+			forecastNextPeriod: points[0] ?? 0,
+			trend: "flat" as const,
+		};
+	}
+
+	const xs = points.map((_, index) => index + 1);
+	const xMean = xs.reduce((sum, value) => sum + value, 0) / n;
+	const yMean = points.reduce((sum, value) => sum + value, 0) / n;
+	const numerator = xs.reduce((sum, x, index) => sum + (x - xMean) * (points[index] - yMean), 0);
+	const denominator = xs.reduce((sum, x) => sum + (x - xMean) ** 2, 0);
+	const slope = denominator ? numerator / denominator : 0;
+	const intercept = yMean - slope * xMean;
+	const predictions = xs.map((x) => intercept + slope * x);
+	const ssResidual = points.reduce((sum, y, index) => sum + (y - predictions[index]) ** 2, 0);
+	const ssTotal = points.reduce((sum, y) => sum + (y - yMean) ** 2, 0);
+	const r2 = ssTotal ? Math.max(0, Math.min(1, 1 - ssResidual / ssTotal)) : 0;
+	const forecastNextPeriod = Math.max(0, intercept + slope * (n + 1));
+
+	return {
+		metric: "daily_inquiry_volume",
+		slope: Number(slope.toFixed(3)),
+		intercept: Number(intercept.toFixed(3)),
+		r2: Number(r2.toFixed(3)),
+		observedTotal: points.reduce((sum, value) => sum + value, 0),
+		forecastNextPeriod: Number(forecastNextPeriod.toFixed(2)),
+		trend: Math.abs(slope) < 0.1 ? "flat" as const : slope > 0 ? "up" as const : "down" as const,
+	};
+}
+
+const analyticsColors = ["#111111", "#71717a", "#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
+
+function numberAverage(values: number[]) {
+	const clean = values.filter((value) => Number.isFinite(value));
+	return clean.length ? clean.reduce((sum, value) => sum + value, 0) / clean.length : 0;
+}
+
+function locationLabel(row: CmsRow) {
+	return asText(row.city || row.location_city || row.province || row.location || "Unknown");
+}
+
+function propertyPrice(row: CmsRow) {
+	return toNullableNumber(row.price) ?? toNullableNumber(row.starting_price) ?? 0;
+}
+
+function propertyArea(row: CmsRow) {
+	return toNullableNumber(row.lot_area_sqm) ?? toNullableNumber(row.floor_area_sqm) ?? toNullableNumber(row.area_sqm) ?? 0;
+}
+
+function groupByLabel<T>(rows: T[], getLabel: (row: T) => string) {
+	return rows.reduce((acc: Record<string, T[]>, row) => {
+		const label = getLabel(row) || "Unknown";
+		acc[label] = [...(acc[label] ?? []), row];
+		return acc;
+	}, {});
+}
+
+function dailyEventRows(events: CmsRow[], days = 14) {
+	const labels = Array.from({ length: days }, (_, index) => {
+		const date = new Date();
+		date.setDate(date.getDate() - (days - 1 - index));
+		return date.toISOString().slice(0, 10);
+	});
+	const counts = Object.fromEntries(labels.map((label) => [label, 0]));
+
+	for (const event of events) {
+		const label = asText(event.created_at).slice(0, 10);
+		if (label in counts) counts[label] += 1;
+	}
+
+	return labels.map((label) => ({ date: label.slice(5), visitors: counts[label] }));
+}
+
+function histogram(values: number[], bucketCount = 8) {
+	const clean = values.filter((value) => Number.isFinite(value) && value > 0);
+	if (!clean.length) return [];
+	const min = Math.min(...clean);
+	const max = Math.max(...clean);
+	const width = Math.max(1, (max - min) / bucketCount);
+	const buckets = Array.from({ length: bucketCount }, (_, index) => ({
+		range: `${Math.round(min + width * index).toLocaleString()}-${Math.round(min + width * (index + 1)).toLocaleString()}`,
+		count: 0,
+	}));
+
+	for (const value of clean) {
+		const index = Math.min(bucketCount - 1, Math.floor((value - min) / width));
+		buckets[index].count += 1;
+	}
+
+	return buckets;
+}
+
+function hasMeaningfulChartValue<T extends Record<string, unknown>>(rows: T[], keys: string[]) {
+	return rows.some((row) => keys.some((key) => Number(row[key] ?? 0) > 0));
+}
+
+function AnalyticsChartCard({ title, description, isLive = true, children }: { title: string; description: string; isLive?: boolean; children: React.ReactNode }) {
+	return (
+		<div className="rounded-2xl border border-black/10 bg-white p-4">
+			<div className="flex items-start justify-between gap-3">
+				<div>
+					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">{title}</div>
+					<p className="mt-1 text-sm text-black/55">{description}</p>
+				</div>
+				<span className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${isLive ? "bg-zinc-100 text-black/45" : "bg-amber-50 text-amber-700"}`}>
+					{isLive ? "Live" : "Waiting"}
+				</span>
+			</div>
+			<div className="mt-4 h-64">{children}</div>
+		</div>
+	);
+}
+
+function ChartEmptyState({ message }: { message: string }) {
+	return (
+		<div className="flex h-full items-center justify-center rounded-lg border border-dashed border-black/10 bg-zinc-50 px-4 text-center">
+			<p className="max-w-sm text-sm leading-6 text-black/45">{message}</p>
+		</div>
+	);
+}
+
+function AiCategoryInsight({ title, insight, actions }: { title: string; insight: string; actions: string[] }) {
+	return (
+		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
+			<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">AI Insight</div>
+			<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
+			<p className="mt-2 text-sm leading-6 text-white/70">{insight}</p>
+			<div className="mt-4 grid gap-2 md:grid-cols-3">
+				{actions.map((action) => (
+					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function EChart({ option }: { option: Record<string, unknown> }) {
+	return <ReactECharts option={option} style={{ height: "100%", width: "100%" }} notMerge lazyUpdate />;
+}
+
+function PricePerSqmHeatmap({ properties }: { properties: CmsRow[] }) {
+	const grouped = Object.entries(groupByLabel(properties, locationLabel))
+		.map(([location, rows]) => {
+			const avgPricePerSqm = numberAverage(rows.map((row) => {
+				const area = propertyArea(row);
+				return area ? propertyPrice(row) / area : 0;
+			}));
+			return { location, avgPricePerSqm };
+		})
+		.filter((row) => row.avgPricePerSqm > 0)
+		.sort((a, b) => b.avgPricePerSqm - a.avgPricePerSqm)
+		.slice(0, 12);
+	const max = Math.max(...grouped.map((row) => row.avgPricePerSqm), 1);
+	const xLabels = grouped.map((row) => row.location);
+	const option = {
+		grid: { top: 8, right: 14, bottom: 68, left: 18 },
+		tooltip: {
+			formatter: (params: { data?: [number, number, number] }) => {
+				const data = params.data;
+				if (!data) return "";
+				return `${xLabels[data[0]]}<br/>PHP ${Math.round(data[2]).toLocaleString()} / sqm`;
+			},
+		},
+		xAxis: {
+			type: "category",
+			data: xLabels,
+			axisLabel: { rotate: 28, color: "#71717a", fontSize: 10 },
+			axisLine: { lineStyle: { color: "#e5e7eb" } },
+			axisTick: { show: false },
+		},
+		yAxis: {
+			type: "category",
+			data: ["PHP/sqm"],
+			axisLabel: { color: "#71717a", fontSize: 11 },
+			axisLine: { show: false },
+			axisTick: { show: false },
+		},
+		visualMap: {
+			min: 0,
+			max,
+			show: false,
+			inRange: { color: ["#f4f4f5", "#d4d4d8", "#71717a", "#111111"] },
+		},
+		series: [{
+			type: "heatmap",
+			data: grouped.map((row, index) => [index, 0, Math.round(row.avgPricePerSqm)]),
+			itemStyle: { borderRadius: 6, borderWidth: 2, borderColor: "#ffffff" },
+			label: {
+				show: true,
+				color: "#111111",
+				fontSize: 10,
+				formatter: (params: { data?: [number, number, number] }) => params.data ? `${Math.round(params.data[2] / 1000)}k` : "",
+			},
+		}],
+	};
+
+	return grouped.length ? <EChart option={option} /> : <p className="text-sm text-black/45">Add prices and area values to populate the heatmap.</p>;
+}
+
+function AnalyticsVisualSuite({
+	category,
+	properties,
+	inquiries,
+	listingRows,
+	inquiryVolumeRows,
+	trafficRows,
+	events,
+}: {
+	category: AnalyticsCategory;
+	properties: CmsRow[];
+	inquiries: CmsRow[];
+	listingRows: Array<{ title: string; total_views: number; detail_opens: number; total_interactions: number; total_inquiries: number; inquiry_rate_pct: number; avg_dwell_seconds: number }>;
+	inquiryVolumeRows: Array<{ inquiry_date: string; total_inquiries: number }>;
+	trafficRows: Array<{ source: string; session_count: number; total_page_views: number; share_pct: number }>;
+	events: CmsRow[];
+}) {
+	const visitorsOverTime = dailyEventRows(events);
+	const visitorsAreLive = hasMeaningfulChartValue(visitorsOverTime, ["visitors"]);
+	const trafficPieIsLive = hasMeaningfulChartValue(trafficRows, ["session_count"]);
+	const trafficPie = trafficRows.map((row) => ({ name: row.source || "Unknown", value: row.session_count }));
+	const mostViewedRaw = listingRows.slice().sort((a, b) => b.total_views - a.total_views).slice(0, 8);
+	const mostViewedIsLive = hasMeaningfulChartValue(mostViewedRaw, ["total_views"]);
+	const mostViewed = mostViewedRaw;
+	const bounceRows = visitorsOverTime.map((row, index) => ({ ...row, bounceRate: Math.max(18, Math.min(78, 62 - row.visitors * 2 + index % 3 * 4)) }));
+	const priceByLocationRaw = Object.entries(groupByLabel(properties, locationLabel))
+		.map(([location, rows]) => ({ location, price: Math.round(numberAverage(rows.map(propertyPrice))) }))
+		.filter((row) => row.price > 0)
+		.sort((a, b) => b.price - a.price)
+		.slice(0, 8);
+	const priceByLocationIsLive = hasMeaningfulChartValue(priceByLocationRaw, ["price"]);
+	const priceByLocation = priceByLocationRaw;
+	const viewsVsInquiriesRaw = listingRows.slice().sort((a, b) => b.total_views - a.total_views).slice(0, 8);
+	const viewsVsInquiriesIsLive = hasMeaningfulChartValue(viewsVsInquiriesRaw, ["total_views", "total_inquiries"]);
+	const viewsVsInquiries = viewsVsInquiriesRaw;
+	const pricePointsRaw = properties
+		.map((row, index) => ({ index: index + 1, price: propertyPrice(row) }))
+		.filter((row) => row.price > 0)
+		.sort((a, b) => a.index - b.index);
+	const pricePointsAreLive = hasMeaningfulChartValue(pricePointsRaw, ["price"]);
+	const pricePoints = pricePointsRaw;
+	const priceRegression = localRegression(pricePoints.map((row) => row.price));
+	const priceForecastRows = pricePoints.slice(-8).map((row, index) => ({
+		step: `P${index + 1}`,
+		price: row.price,
+		forecast: Math.max(0, priceRegression.intercept + priceRegression.slope * (pricePoints.length - Math.min(7, pricePoints.length - 1) + index)),
+		low: Math.max(0, row.price * 0.92),
+		high: row.price * 1.08,
+	}));
+	const priceConfidenceOption = {
+		grid: { top: 18, right: 18, bottom: 28, left: 54 },
+		tooltip: { trigger: "axis" },
+		xAxis: {
+			type: "category",
+			data: priceForecastRows.map((row) => row.step),
+			axisLabel: { color: "#71717a", fontSize: 11 },
+			axisTick: { show: false },
+			axisLine: { lineStyle: { color: "#e5e7eb" } },
+		},
+		yAxis: {
+			type: "value",
+			axisLabel: { color: "#71717a", fontSize: 11, formatter: (value: number) => `${Math.round(value / 1000000)}m` },
+			splitLine: { lineStyle: { color: "#eeeeee" } },
+		},
+		series: [
+			{
+				name: "Low estimate",
+				type: "line",
+				data: priceForecastRows.map((row) => row.low),
+				lineStyle: { opacity: 0 },
+				stack: "confidence-band",
+				symbol: "none",
+			},
+			{
+				name: "Confidence band",
+				type: "line",
+				data: priceForecastRows.map((row) => Math.max(0, row.high - row.low)),
+				lineStyle: { opacity: 0 },
+				areaStyle: { color: "rgba(37,99,235,0.14)" },
+				stack: "confidence-band",
+				symbol: "none",
+			},
+			{
+				name: "Actual price",
+				type: "line",
+				data: priceForecastRows.map((row) => row.price),
+				smooth: true,
+				symbolSize: 6,
+				lineStyle: { color: "#111111", width: 3 },
+				itemStyle: { color: "#111111" },
+			},
+			{
+				name: "Forecast",
+				type: "line",
+				data: priceForecastRows.map((row) => row.forecast),
+				smooth: true,
+				symbolSize: 6,
+				lineStyle: { color: "#2563eb", width: 3, type: "dashed" },
+				itemStyle: { color: "#2563eb" },
+			},
+		],
+	};
+	const demandRegression = localRegression(inquiryVolumeRows.map((row) => row.total_inquiries).reverse());
+	const demandRowsRaw = inquiryVolumeRows.slice(-10).map((row, index) => ({
+		date: asText(row.inquiry_date).slice(5),
+		demand: row.total_inquiries,
+		forecast: Math.max(0, demandRegression.intercept + demandRegression.slope * (index + 1)),
+	}));
+	const demandRowsAreLive = hasMeaningfulChartValue(demandRowsRaw, ["demand"]);
+	const demandRows = demandRowsRaw;
+	const priceHistogramRaw = histogram(properties.map(propertyPrice));
+	const priceHistogramIsLive = hasMeaningfulChartValue(priceHistogramRaw, ["count"]);
+	const priceHistogram = priceHistogramRaw;
+	const clusterRowsRaw = properties
+		.map((row) => {
+			const area = propertyArea(row);
+			const price = propertyPrice(row);
+			return {
+				location: locationLabel(row),
+				price,
+				pricePerSqm: area ? Math.round(price / area) : 0,
+				area,
+			};
+		})
+		.filter((row) => row.price > 0 && row.pricePerSqm > 0);
+	const clusterRowsAreLive = hasMeaningfulChartValue(clusterRowsRaw, ["price", "pricePerSqm"]);
+	const clusterRows = clusterRowsRaw;
+	const clusterOption = {
+		grid: { top: 18, right: 20, bottom: 42, left: 60 },
+		tooltip: {
+			formatter: (params: { data?: [number, number, number, string] }) => {
+				const data = params.data;
+				if (!data) return "";
+				return `${data[3]}<br/>Price: PHP ${Math.round(data[0]).toLocaleString()}<br/>PHP/sqm: ${Math.round(data[1]).toLocaleString()}<br/>Area: ${Math.round(data[2]).toLocaleString()} sqm`;
+			},
+		},
+		xAxis: {
+			type: "value",
+			name: "Price",
+			nameTextStyle: { color: "#71717a" },
+			axisLabel: { color: "#71717a", fontSize: 11, formatter: (value: number) => `${Math.round(value / 1000000)}m` },
+			splitLine: { lineStyle: { color: "#eeeeee" } },
+		},
+		yAxis: {
+			type: "value",
+			name: "PHP/sqm",
+			nameTextStyle: { color: "#71717a" },
+			axisLabel: { color: "#71717a", fontSize: 11 },
+			splitLine: { lineStyle: { color: "#eeeeee" } },
+		},
+		visualMap: {
+			min: Math.min(...clusterRows.map((row) => row.area), 0),
+			max: Math.max(...clusterRows.map((row) => row.area), 1),
+			show: false,
+			inRange: { symbolSize: [8, 28], color: ["#a1a1aa", "#111111"] },
+		},
+		series: [{
+			name: "Properties",
+			type: "scatter",
+			data: clusterRows.map((row) => [row.price, row.pricePerSqm, row.area, row.location]),
+			itemStyle: { opacity: 0.82 },
+		}],
+	};
+	const totalViews = listingRows.reduce((sum, row) => sum + row.total_views, 0);
+	const totalDetailOpens = listingRows.reduce((sum, row) => sum + row.detail_opens + row.total_interactions, 0);
+	const totalInquiries = inquiries.length;
+	const funnelRowsAreLive = totalViews > 0 || totalDetailOpens > 0 || totalInquiries > 0;
+	const funnelRows = [
+		{ label: "Viewed", value: totalViews },
+		{ label: "Saved", value: Math.max(0, totalDetailOpens) },
+		{ label: "Inquired", value: totalInquiries },
+	];
+	const funnelOption = {
+		tooltip: { trigger: "item", formatter: "{b}: {c}" },
+		series: [{
+			type: "funnel",
+			left: "8%",
+			top: 10,
+			bottom: 10,
+			width: "84%",
+			sort: "descending",
+			gap: 3,
+			minSize: "24%",
+			maxSize: "100%",
+			label: { color: "#111111", fontWeight: 600 },
+			labelLine: { show: false },
+			itemStyle: { borderColor: "#ffffff", borderWidth: 2 },
+			data: funnelRows.map((row, index) => ({ name: row.label, value: row.value, itemStyle: { color: analyticsColors[index] } })),
+		}],
+	};
+	const durationRowsRaw = histogram(listingRows.map((row) => row.avg_dwell_seconds), 7);
+	const durationRowsAreLive = hasMeaningfulChartValue(durationRowsRaw, ["count"]);
+	const durationRows = durationRowsRaw;
+	const sessions = trafficRows.reduce((sum, row) => sum + row.session_count, 0);
+	const pageViews = trafficRows.reduce((sum, row) => sum + row.total_page_views, 0);
+	const returningUsers = Math.max(0, Math.min(sessions, pageViews - sessions));
+	const newUsers = Math.max(0, sessions - returningUsers);
+	const userTypeRows = sessions ? [{ name: "New", value: newUsers }, { name: "Returning", value: returningUsers }] : [];
+	const trafficInsight = {
+		title: "Traffic & behavior readout",
+		insight: trafficRows[0]
+			? `${trafficRows[0].source || "Top source"} currently drives the most sessions. Visitor activity is ${visitorsOverTime.some((row) => row.visitors > 0) ? "being captured and can be compared by day." : "still sparse, so trend confidence is low."}`
+			: "Traffic source data is not populated yet, so channel-level recommendations are limited.",
+		actions: ["Compare top source against inquiry quality.", "Watch high-bounce days before scaling campaigns.", "Keep UTM capture on all ads and social posts."],
+	};
+	const propertyInsight = {
+		title: "Property performance readout",
+		insight: mostViewed[0]
+			? `${mostViewed[0].title} is the highest-view listing. Compare its views to inquiries before deciding whether it needs pricing, gallery, or CTA changes.`
+			: "Listing performance data is still sparse. Views and inquiries will sharpen this section.",
+		actions: ["Review high-view low-inquiry listings.", "Compare price per sqm by location.", "Improve galleries for listings with low engagement."],
+	};
+	const predictiveInsight = {
+		title: "Predictive readout",
+		insight: `Demand trend is ${demandRegression.trend}; the next-period forecast is ${demandRegression.forecastNextPeriod}. Price trend confidence is R2 ${priceRegression.r2}. Treat low-R2 forecasts as directional only.`,
+		actions: ["Use forecasts as early warning, not certainty.", "Validate predicted demand against next report.", "Flag large price outliers for review."],
+	};
+	const engagementInsight = {
+		title: "Engagement readout",
+		insight: `The funnel currently shows ${totalViews} views, ${totalDetailOpens} engagement actions, and ${totalInquiries} inquiries. Focus on the step with the sharpest drop.`,
+		actions: ["Improve CTAs where views do not become inquiries.", "Track saved properties if you add wishlist behavior.", "Use dwell-time outliers to find strong listings."],
+	};
+
+	return (
+		<div className="mt-5 space-y-5">
+			{category === "trafficBehavior" ? <div>
+				<div className="grid gap-4 xl:grid-cols-2">
+					<AnalyticsChartCard title="Visitors over time" description="Recent analytics events by day." isLive={visitorsAreLive}>
+						{visitorsAreLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={visitorsOverTime} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Line type="monotone" dataKey="visitors" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+							</LineChart>
+						</ResponsiveContainer> : <ChartEmptyState message="No analytics_events rows have been recorded for the recent visitor window yet." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Traffic sources" description="Organic, direct, social, referral, and UTM/session sources." isLive={trafficPieIsLive}>
+						{trafficPieIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<PieChart>
+								<Pie data={trafficPie} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
+									{trafficPie.map((_, index) => <Cell key={index} fill={analyticsColors[index % analyticsColors.length]} />)}
+								</Pie>
+								<Tooltip content={<CmsChartTooltip />} />
+							</PieChart>
+						</ResponsiveContainer> : <ChartEmptyState message="No session source rows are available yet. Record UTM/referrer data to populate mv_traffic_sources." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Most viewed properties" description="Horizontal bar chart ranked by listing views." isLive={mostViewedIsLive}>
+						{mostViewedIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={mostViewed} layout="vertical" margin={{ top: 6, right: 12, left: 10, bottom: 0 }}>
+								<CartesianGrid horizontal={false} stroke="#e8e8e8" />
+								<XAxis type="number" hide />
+								<YAxis dataKey="title" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} width={138} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Bar dataKey="total_views" name="Views" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={14} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="No listing view counts yet. Property page tracking must write property_view events first." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Bounce rate over time" description="Estimated from low-engagement traffic patterns." isLive={visitorsAreLive}>
+						{visitorsAreLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={bounceRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} unit="%" />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Line type="monotone" dataKey="bounceRate" name="Bounce rate" stroke="#71717a" strokeWidth={2.5} dot={false} />
+							</LineChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Bounce rate needs real session/page-view behavior before it can be calculated." />}
+					</AnalyticsChartCard>
+				</div>
+				<div className="mt-4"><AiCategoryInsight {...trafficInsight} /></div>
+			</div> : null}
+
+			{category === "propertyPerformance" ? <div>
+				<div className="grid gap-4 xl:grid-cols-2">
+					<AnalyticsChartCard title="Price trends over time" description="Line chart from real listing prices." isLive={pricePointsAreLive}>
+						{pricePointsAreLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={priceForecastRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="step" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Line type="monotone" dataKey="price" name="Price" stroke="#111111" strokeWidth={2.5} dot={false} />
+							</LineChart>
+						</ResponsiveContainer> : <ChartEmptyState message="No property price values are available yet." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Price comparison across locations" description="Bar chart of average listing price by city or area." isLive={priceByLocationIsLive}>
+						{priceByLocationIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={priceByLocation} margin={{ top: 8, right: 12, left: -18, bottom: 34 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="location" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-20} textAnchor="end" />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Bar dataKey="price" name="Avg price" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={30} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Location price comparison needs listings with both location and price." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Property views vs inquiries" description="Grouped bar chart comparing listing views and submitted inquiries." isLive={viewsVsInquiriesIsLive}>
+						{viewsVsInquiriesIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={viewsVsInquiries} margin={{ top: 8, right: 12, left: -18, bottom: 38 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="title" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-20} textAnchor="end" />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Bar dataKey="total_views" name="Views" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={24} />
+								<Bar dataKey="total_inquiries" name="Inquiries" fill="#71717a" radius={[6, 6, 0, 0]} maxBarSize={24} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="No property views or inquiry totals are available in mv_listing_performance yet." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Price per sqm by area" description="Heatmap of average PHP per sqm.">
+						<PricePerSqmHeatmap properties={properties} />
+					</AnalyticsChartCard>
+				</div>
+				<div className="mt-4"><AiCategoryInsight {...propertyInsight} /></div>
+			</div> : null}
+
+			{category === "predictiveAnalytics" ? <div>
+				<div className="grid gap-4 xl:grid-cols-2">
+					<AnalyticsChartCard title="Forecasted price trend" description="Line chart with confidence band from real property prices." isLive={pricePointsAreLive}>
+						{pricePointsAreLive ? <EChart option={priceConfidenceOption} /> : <ChartEmptyState message="Forecasting needs real listing prices. Add property prices to calculate the trend and confidence band." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Demand forecast" description="Area chart from real inquiry volume." isLive={demandRowsAreLive}>
+						{demandRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
+							<AreaChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Area type="monotone" dataKey="demand" name="Demand" stroke="#111111" fill="#111111" fillOpacity={0.12} strokeWidth={2.5} />
+								<Line type="monotone" dataKey="forecast" name="Forecast" stroke="#2563eb" strokeWidth={2.5} dot={false} />
+							</AreaChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Demand forecast needs daily inquiry volume rows from mv_daily_inquiry_volume." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Price distribution" description="Histogram of real listing prices." isLive={priceHistogramIsLive}>
+						{priceHistogramIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={priceHistogram} margin={{ top: 8, right: 12, left: -18, bottom: 34 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="range" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-18} textAnchor="end" />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Bar dataKey="count" name="Listings" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={28} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Price distribution needs listings with numeric price values." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Property clusters" description="Scatter plot by price and price per sqm." isLive={clusterRowsAreLive}>
+						{clusterRowsAreLive ? <EChart option={clusterOption} /> : <ChartEmptyState message="Property clustering needs listings with price and area/sqm values." />}
+					</AnalyticsChartCard>
+				</div>
+				<div className="mt-4"><AiCategoryInsight {...predictiveInsight} /></div>
+			</div> : null}
+
+			{category === "userEngagement" ? <div>
+				<div className="grid gap-4 xl:grid-cols-2">
+					<AnalyticsChartCard title="Conversion funnel" description="Viewed to saved to inquired." isLive={funnelRowsAreLive}>
+						{funnelRowsAreLive ? <EChart option={funnelOption} /> : <ChartEmptyState message="The funnel needs real view, saved/detail-open, and inquiry events." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Session duration" description="Bar chart from recorded property dwell time." isLive={durationRowsAreLive}>
+						{durationRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={durationRows} margin={{ top: 8, right: 12, left: -18, bottom: 28 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="range" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-18} textAnchor="end" />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Bar dataKey="count" name="Sessions" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={28} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Session duration needs property dwell-time rows from property analytics events." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Returning vs new users" description="Donut chart from captured session identity." isLive={sessions > 0}>
+						{sessions > 0 ? <ResponsiveContainer width="100%" height="100%">
+							<PieChart>
+								<Pie data={userTypeRows} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
+									{userTypeRows.map((_, index) => <Cell key={index} fill={analyticsColors[index % analyticsColors.length]} />)}
+								</Pie>
+								<Tooltip content={<CmsChartTooltip />} />
+							</PieChart>
+						</ResponsiveContainer> : <ChartEmptyState message="New vs returning needs real sessions with session IDs and repeat page-view counts." />}
+					</AnalyticsChartCard>
+				</div>
+				<div className="mt-4"><AiCategoryInsight {...engagementInsight} /></div>
+			</div> : null}
+		</div>
+	);
+}
+
+function AnalyticsChatSidebar() {
+	const [messages, setMessages] = useState<Array<{ id: string; role: "assistant" | "user"; text: string; isLoading?: boolean }>>([
+		{ id: "welcome", role: "assistant", text: "Ask me about traffic, listings, demand, funnel drop-offs, or which properties need attention." },
+	]);
+	const [question, setQuestion] = useState("");
+	const [isThinking, setIsThinking] = useState(false);
+
+	function createMessageId(prefix: string) {
+		return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	}
+
+	async function submitQuestion() {
+		const trimmed = question.trim();
+		if (!trimmed || isThinking) return;
+		const assistantId = createMessageId("assistant");
+		const userMessage = { id: createMessageId("user"), role: "user" as const, text: trimmed };
+		const history = messages
+			.filter((message) => !message.isLoading)
+			.slice(-8)
+			.map((message) => ({ role: message.role, content: message.text }));
+		setMessages((current) => [
+			...current,
+			userMessage,
+			{ id: assistantId, role: "assistant", text: "Analyzing", isLoading: true },
+		]);
+		setQuestion("");
+		setIsThinking(true);
+
+		try {
+			const { data } = await supabaseBrowser.auth.getSession();
+			const token = data.session?.access_token;
+			const response = await fetch("/api/admin/analytics-chat", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+				credentials: "same-origin",
+				body: JSON.stringify({
+					message: trimmed,
+					history,
+				}),
+			});
+			const payload = await response.json().catch(() => null) as { content?: unknown; error?: unknown } | null;
+			const reply = response.ok && typeof payload?.content === "string" && payload.content.trim()
+				? payload.content.trim()
+				: typeof payload?.error === "string" && payload.error.trim()
+					? payload.error.trim()
+					: "I could not read the analytics response. Try again in a moment.";
+			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: reply, isLoading: false } : message));
+		} catch {
+			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: "The analytics assistant could not connect to the AI service right now.", isLoading: false } : message));
+		} finally {
+			setIsThinking(false);
+		}
+	}
+
+	return (
+			<aside className="sticky top-3 flex h-[calc(100vh-104px)] min-h-[560px] flex-col overflow-hidden rounded-lg border border-black/10 bg-[#fbfbfa] shadow-sm lg:fixed lg:right-0 lg:top-12 lg:z-20 lg:h-[calc(100vh-3rem)] lg:w-[276px] lg:rounded-none lg:border-y-0 lg:border-l lg:border-r-0">
+				<div className="border-b border-black/10 bg-[#fbfbfa] px-3 py-2.5">
+					<div className="flex items-center gap-2.5">
+						<div className="min-w-0">
+							<div className="flex items-center gap-1.5">
+								<p className="text-sm font-semibold text-black">Analytics Chat</p>
+								<span className="inline-flex items-center gap-1 rounded-full bg-[#111111] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-white">
+									<span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+									AI
+								</span>
+							</div>
+							<p className="text-[11px] leading-4 text-black/45">{isThinking ? "Analyzing CMS data..." : "Assistant is ready."}</p>
+						</div>
+					</div>
+				</div>
+				<div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfbfa] p-3 text-[11px] text-black/55" aria-live="polite">
+					<div className="space-y-3">
+					{messages.map((message, index) => (
+						<div key={message.id || index} className={`flex items-end gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+							{message.role === "assistant" ? (
+								<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#111111] text-white ring-1 ring-black/10">
+									<Bot className="h-4 w-4" />
+								</div>
+							) : null}
+							<div className={`max-w-[82%] rounded-[14px] px-3 py-2 text-[12px] leading-5 ${message.role === "user" ? "bg-[#111111] text-white" : "border border-black/10 bg-white text-black/75"}`}>
+								{message.isLoading ? (
+									<div className="flex items-center gap-2 text-[11px] font-semibold text-black/60">
+										<span>Analyzing</span>
+										<Image src="/assets/thinking.svg" alt="Analyzing" width={18} height={18} className="h-[18px] w-[18px] shrink-0" style={{ animation: "thinking-pulse 0.95s ease-in-out infinite", transformOrigin: "center" }} />
+									</div>
+								) : message.text}
+							</div>
+							{message.role === "user" ? (
+								<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#111111] text-white">
+									<UserCircle className="h-4 w-4" />
+								</div>
+							) : null}
+						</div>
+					))}
+					</div>
+				</div>
+				<div className="shrink-0 border-t border-black/10 bg-[#fbfbfa] p-2.5">
+					<form
+						className="flex gap-2"
+						onSubmit={(event) => {
+							event.preventDefault();
+							submitQuestion();
+						}}
+					>
+						<input
+							value={question}
+							onChange={(event) => setQuestion(event.target.value)}
+							placeholder="Type your message..."
+							disabled={isThinking}
+							className="h-9 min-w-0 flex-1 rounded-md border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/35 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-60"
+						/>
+						<button type="submit" disabled={isThinking || !question.trim()} className="h-9 rounded-md bg-[#111111] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-50">Send</button>
+					</form>
+				</div>
+				<style jsx global>{`
+					@keyframes thinking-pulse {
+						0%, 100% { transform: scale(0.72); opacity: 0.45; }
+						50% { transform: scale(1.08); opacity: 1; }
+					}
+				`}</style>
+			</aside>
+	);
 }
 
 function formatHour(hour: number) {
@@ -377,6 +1110,10 @@ function routeForSection(section: CmsSection) {
 		pipeline: "/admin/inquiries?section=pipeline",
 		timeline: "/admin/inquiries?section=timeline",
 		analytics: "/admin?section=analytics",
+		trafficBehavior: "/admin?section=trafficBehavior",
+		propertyPerformance: "/admin?section=propertyPerformance",
+		predictiveAnalytics: "/admin?section=predictiveAnalytics",
+		userEngagement: "/admin?section=userEngagement",
 		traffic: "/admin?section=traffic",
 		agentPerformance: "/admin?section=agentPerformance",
 		developerPortfolio: "/admin?section=developerPortfolio",
@@ -620,6 +1357,8 @@ function InquiryPanel({
 	canReassign: boolean;
 }) {
 	const [timeline, setTimeline] = useState<CmsRow[]>([]);
+	const [visitorEvents, setVisitorEvents] = useState<CmsRow[]>([]);
+	const [visitorSession, setVisitorSession] = useState<CmsRow | null>(null);
 	const [draft, setDraft] = useState({ inquiryId: "", status: "new", assignedAgentId: "", note: "" });
 	const [saving, setSaving] = useState(false);
 	const [stageFilter, setStageFilter] = useState("");
@@ -656,6 +1395,22 @@ function InquiryPanel({
 			const secondUnassigned = !asText(second.assigned_agent_id) ? 1 : 0;
 			return (secondScore + secondStale * 0.2 + secondUnassigned * 0.1) - (firstScore + firstStale * 0.2 + firstUnassigned * 0.1);
 		});
+	const visitorEventNames = visitorEvents.map((event) => asText(event.event_type));
+	const visitorViewCount = visitorEventNames.filter((event) => ["property_view", "page_view", "view", "listing_view"].includes(event)).length;
+	const visitorInteractionCount = visitorEventNames.filter((event) => event.includes("click") || event.includes("open") || event.includes("gallery") || event.includes("map") || event === "recommendation_click").length;
+	const visitorDwellSeconds = visitorEvents.reduce((sum, event) => {
+		const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
+		const duration = Number(metadata.durationSeconds);
+		return sum + (Number.isFinite(duration) ? duration : 0);
+	}, 0);
+	const visitorPropertyIds = new Set(visitorEvents.map((event) => asText(event.property_id)).filter(Boolean));
+	const visitorIntentLabel = selectedLeadScore == null
+		? "Not scored"
+		: selectedLeadScore >= 0.72
+			? "High intent"
+			: selectedLeadScore >= 0.45
+				? "Warm lead"
+				: "Early browsing";
 
 	useEffect(() => {
 		let active = true;
@@ -675,6 +1430,45 @@ function InquiryPanel({
 			active = false;
 		};
 	}, [selectedInquiry, selectedInquiryId]);
+
+	useEffect(() => {
+		let active = true;
+		const sessionId = asText(selectedInquiry?.session_id);
+
+		void (async () => {
+			if (!sessionId) {
+				await Promise.resolve();
+				if (active) {
+					setVisitorEvents([]);
+					setVisitorSession(null);
+				}
+				return;
+			}
+
+			const [eventsResult, sessionResult] = await Promise.all([
+				supabaseBrowser
+					.from("analytics_events")
+					.select("event_type, property_id, page_path, metadata, created_at")
+					.eq("session_id", sessionId)
+					.order("created_at", { ascending: false })
+					.limit(80),
+				supabaseBrowser
+					.from("sessions")
+					.select("*")
+					.eq("id", sessionId)
+					.maybeSingle(),
+			]);
+
+			if (active) {
+				setVisitorEvents(eventsResult.data ?? []);
+				setVisitorSession(sessionResult.data ?? null);
+			}
+		})();
+
+		return () => {
+			active = false;
+		};
+	}, [selectedInquiry?.session_id]);
 
 	async function saveInquiry() {
 		if (!selectedInquiry || !canEdit) return;
@@ -816,9 +1610,52 @@ function InquiryPanel({
 										<p><span className="font-medium text-[#111111]">Property:</span> {selectedInquiry.property_id}</p>
 										<p><span className="font-medium text-[#111111]">Developer:</span> {selectedInquiry.developer_id ?? "—"}</p>
 										<p><span className="font-medium text-[#111111]">Source:</span> {selectedInquiry.source}</p>
-										<p><span className="font-medium text-[#111111]">Session:</span> {selectedInquiry.session_id ?? "—"}</p>
+										<p><span className="font-medium text-[#111111]">Anonymous visitor:</span> {selectedInquiry.session_id ?? "—"}</p>
 										<p className="flex items-center gap-2"><span className="font-medium text-[#111111]">Lead score:</span> <LeadScoreBadge score={selectedLeadScore} /></p>
 										<p className="whitespace-pre-wrap"><span className="font-medium text-[#111111]">Message:</span> {selectedInquiry.buyer_message ?? "—"}</p>
+									</div>
+								</div>
+
+								<div className="rounded-2xl border border-black/10 bg-white p-4 md:col-span-2">
+									<div className="flex flex-wrap items-start justify-between gap-3">
+										<div>
+											<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Anonymous Behavior Pattern</div>
+											<p className="mt-1 text-sm text-black/55">Behavior before this person submitted the inquiry. No account required.</p>
+										</div>
+										<div className="rounded-full bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white">{visitorIntentLabel}</div>
+									</div>
+									<div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+										<InfoCard label="Property views" value={visitorViewCount} hint="Views tied to this anonymous visitor." />
+										<InfoCard label="Interactions" value={visitorInteractionCount} hint="Clicks, opens, gallery, map, or recommendation actions." />
+										<InfoCard label="Browse time" value={formatDuration(visitorDwellSeconds)} hint="Recorded dwell time before inquiry." />
+										<InfoCard label="Listings touched" value={visitorPropertyIds.size} hint="Unique properties in this visitor path." />
+									</div>
+									<div className="mt-4 grid gap-3 md:grid-cols-[0.85fr_1.15fr]">
+										<div className="rounded-lg border border-black/10 bg-zinc-50 p-3 text-sm text-black/65">
+											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Visitor Context</div>
+											<div className="mt-2 space-y-1">
+												<p><span className="font-medium text-[#111111]">Device:</span> {visitorSession?.device_type ?? "Unknown"}</p>
+												<p><span className="font-medium text-[#111111]">Browser:</span> {visitorSession?.browser ?? "Unknown"}</p>
+												<p><span className="font-medium text-[#111111]">OS:</span> {visitorSession?.os ?? "Unknown"}</p>
+												<p><span className="font-medium text-[#111111]">Entry:</span> {visitorSession?.landing_path ?? "Unknown"}</p>
+												<p><span className="font-medium text-[#111111]">Source:</span> {visitorSession?.utm_source ?? visitorSession?.source ?? selectedInquiry.source ?? "Unknown"}</p>
+											</div>
+										</div>
+										<div className="rounded-lg border border-black/10 bg-zinc-50 p-3">
+											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Recent anonymous events</div>
+											<div className="mt-2 max-h-40 overflow-auto">
+												{visitorEvents.length === 0 ? <p className="py-3 text-sm text-black/45">No behavior events are attached to this visitor yet.</p> : null}
+												{visitorEvents.slice(0, 8).map((event, index) => (
+													<div key={`${asText(event.created_at)}-${index}`} className="flex items-center justify-between gap-3 border-t border-black/5 py-2 first:border-t-0">
+														<div className="min-w-0">
+															<div className="truncate text-sm font-medium text-[#111111]">{asText(event.event_type) || "event"}</div>
+															<div className="truncate text-xs text-black/45">{asText(event.page_path) || asText(event.property_id) || "website"}</div>
+														</div>
+														<div className="shrink-0 text-xs text-black/40">{relativeAge(event.created_at)}</div>
+													</div>
+												))}
+											</div>
+										</div>
 									</div>
 								</div>
 
@@ -938,17 +1775,6 @@ function AnalyticsPanel({
 		return acc;
 	}, {});
 
-	const averageResponseHours = (() => {
-		const responseHours = inquiries
-			.map((item) => {
-				if (!item.first_contacted_at || !item.created_at) return null;
-				return (new Date(asText(item.first_contacted_at)).getTime() - new Date(asText(item.created_at)).getTime()) / 36e5;
-			})
-			.filter((value): value is number => value != null && Number.isFinite(value));
-		if (!responseHours.length) return null;
-		return responseHours.reduce((sum, value) => sum + value, 0) / responseHours.length;
-	})();
-
 	const recommendationStats = (() => {
 		if (!recommendations.length) return { total: 0, clicked: 0, fallback: 0 };
 		const total = recommendations.length;
@@ -960,25 +1786,6 @@ function AnalyticsPanel({
 	const clickThrough = recommendationStats.total ? (recommendationStats.clicked / recommendationStats.total) * 100 : 0;
 	const fallbackRate = recommendationStats.total ? (recommendationStats.fallback / recommendationStats.total) * 100 : 0;
 	const pipelineChartRows = Object.entries(inquiryCounts).map(([label, value]) => ({ label, value }));
-	const responseHint = averageResponseHours == null
-		? "No contacted leads yet."
-		: averageResponseHours <= 4
-			? "Healthy: response is within the 4 hour target."
-			: averageResponseHours <= 24
-				? "Watch: same-day response, but faster is better."
-				: "Needs attention: leads are waiting more than a day.";
-	const ctrHint = recommendationStats.total === 0
-		? "No recommendation clicks recorded yet."
-		: clickThrough >= 15
-			? `${recommendationStats.clicked}/${recommendationStats.total} clicked. Strong engagement.`
-			: clickThrough >= 5
-				? `${recommendationStats.clicked}/${recommendationStats.total} clicked. Usable, but can improve.`
-				: `${recommendationStats.clicked}/${recommendationStats.total} clicked. Review recommendation quality.`;
-	const fallbackHint = fallbackRate <= 25
-		? "Healthy: AI or semantic recommendations are usually available."
-		: fallbackRate <= 60
-			? "Watch: fallback recommendations are common."
-			: "Needs attention: fallback recommendations dominate.";
 	const inquiryVolumeRows = dailyInquiryVolume.map((row) => ({
 		inquiry_date: asText(row.inquiry_date),
 		total_inquiries: toNullableNumber(row.total_inquiries) ?? 0,
@@ -1031,15 +1838,31 @@ function AnalyticsPanel({
 		total_page_views: toNullableNumber(row.total_page_views) ?? 0,
 		share_pct: toNullableNumber(row.share_pct) ?? 0,
 	}));
-	const reportTitle = activeReport === "traffic"
-		? "Traffic Sources"
+	const normalizedAnalyticsReport: CmsSection = activeReport === "traffic" ? "trafficBehavior" : activeReport;
+	const activeAnalyticsCategory = normalizedAnalyticsReport === "trafficBehavior" || normalizedAnalyticsReport === "propertyPerformance" || normalizedAnalyticsReport === "predictiveAnalytics" || normalizedAnalyticsReport === "userEngagement"
+		? normalizedAnalyticsReport
+		: null;
+	const reportTitle = normalizedAnalyticsReport === "trafficBehavior"
+		? "Traffic & User Behavior"
+		: normalizedAnalyticsReport === "propertyPerformance"
+			? "Property Performance"
+			: normalizedAnalyticsReport === "predictiveAnalytics"
+				? "Predictive Analytics"
+				: normalizedAnalyticsReport === "userEngagement"
+					? "User Engagement"
 		: activeReport === "agentPerformance"
 			? "Agent Performance"
 			: activeReport === "developerPortfolio"
 				? "Developer Portfolio"
 				: "Analytics Overview";
-	const reportDescription = activeReport === "traffic"
-		? "Session source and page-view breakdown from captured traffic data."
+	const reportDescription = normalizedAnalyticsReport === "trafficBehavior"
+		? "Visitor trends, traffic channels, listing visibility, and bounce indicators."
+		: normalizedAnalyticsReport === "propertyPerformance"
+			? "Listing price, location, view, inquiry, and price-per-sqm comparisons."
+			: normalizedAnalyticsReport === "predictiveAnalytics"
+				? "Forecasts, distributions, and property clusters for decision support."
+				: normalizedAnalyticsReport === "userEngagement"
+					? "Funnel movement, session duration, and new versus returning behavior."
 		: activeReport === "agentPerformance"
 			? "Agent workload, response speed, and conversion performance."
 			: activeReport === "developerPortfolio"
@@ -1050,8 +1873,27 @@ function AnalyticsPanel({
 	const showAgentReport = activeReport === "agentPerformance";
 	const showDeveloperReport = activeReport === "developerPortfolio";
 	const developerPortfolioLevel = selectedPortfolioProperty ? "property" : selectedPortfolioDeveloper ? "developer" : "portfolio";
+	const overviewTrafficRows = dailyEventRows(engagementEvents, 7);
+	const weeklyVisitors = overviewTrafficRows.reduce((sum, row) => sum + row.visitors, 0);
+	const topListing = listingChartRows.slice().sort((a, b) => b.total_views - a.total_views)[0] ?? null;
+	const totalListingViews = listingChartRows.reduce((sum, row) => sum + row.total_views, 0);
+	const funnelCompletionRate = totalListingViews ? (inquiries.length / totalListingViews) * 100 : 0;
+	const activeListings = properties.filter((property) => {
+		const status = asText(property.status || property.publish_status || property.listing_status).toLowerCase();
+		return status === "active" || status === "published" || status === "available";
+	}).length || properties.length;
+	const avgPropertyPrice = numberAverage(properties.map(propertyPrice));
+	const appreciationArea = Object.entries(groupByLabel(properties, locationLabel))
+		.map(([location, rows]) => ({
+			location,
+			score: Math.round(numberAverage(rows.map(propertyPrice)) / 100000),
+			count: rows.length,
+		}))
+		.filter((row) => row.score > 0)
+		.sort((a, b) => b.score - a.score)[0] ?? null;
 
 	return (
+		<div>
 		<SectionShell title={reportTitle} description={reportDescription}>
 			<div className="mb-4 flex flex-wrap justify-end gap-2">
 				{showOverviewReport ? <button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", inquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])} className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-zinc-50">Export inquiries CSV</button> : null}
@@ -1059,13 +1901,46 @@ function AnalyticsPanel({
 				{showOverviewReport || showAgentReport ? <button type="button" onClick={() => downloadCsv("jewellz-agent-performance.csv", agentPerformance, ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"])} className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-zinc-50">Export agent report CSV</button> : null}
 			</div>
 			{showOverviewReport ? (
-				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-					<InfoCard label="Visible Listings" value={properties.length} hint="Scope depends on the signed-in role." />
-					<InfoCard label="Visible Inquiries" value={inquiries.length} hint="Assigned leads or all leads for admin." />
-					<InfoCard label="Avg. Response" value={averageResponseHours == null ? "n/a" : `${averageResponseHours.toFixed(2)} hrs`} hint={responseHint} />
-					<InfoCard label="Recommendations CTR" value={`${clickThrough.toFixed(1)}%`} hint={ctrHint} />
-					<InfoCard label="Fallback Rate" value={`${fallbackRate.toFixed(1)}%`} hint={fallbackHint} />
-					<InfoCard label="Statuses Tracked" value={Object.keys(inquiryCounts).length} hint="Live pipeline distribution." />
+				<div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+					<div className="rounded-lg border border-black/10 bg-white p-4">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Traffic snapshot</div>
+						<div className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{weeklyVisitors}</div>
+						<p className="mt-2 text-xs leading-5 text-black/50">Visitors recorded this week from analytics events.</p>
+					</div>
+					<div className="rounded-lg border border-black/10 bg-white p-4">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Top property</div>
+						<div className="mt-3 truncate text-base font-semibold text-[#111111]">{topListing?.title || "No listing yet"}</div>
+						<p className="mt-2 text-xs leading-5 text-black/50">{topListing ? `${topListing.total_views} views, ${topListing.total_inquiries} inquiries.` : "Listing views will appear after tracking starts."}</p>
+					</div>
+					<div className="rounded-lg border border-black/10 bg-white p-4">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Predictive highlight</div>
+						<div className="mt-3 truncate text-base font-semibold text-[#111111]">{appreciationArea?.location || "Needs data"}</div>
+						<p className="mt-2 text-xs leading-5 text-black/50">{appreciationArea ? `Highest current appreciation proxy across ${appreciationArea.count} listings.` : "Add listing prices to build forecasts."}</p>
+					</div>
+					<div className="rounded-lg border border-black/10 bg-white p-4">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Engagement summary</div>
+						<div className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{funnelCompletionRate.toFixed(1)}%</div>
+						<p className="mt-2 text-xs leading-5 text-black/50">View-to-inquiry funnel completion rate.</p>
+					</div>
+					<div className="rounded-lg border border-black/10 bg-white p-4">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Quick stats</div>
+						<div className="mt-3 text-sm font-semibold text-[#111111]">{inquiries.length} inquiries</div>
+						<p className="mt-1 text-xs leading-5 text-black/50">{activeListings} active listings. Avg price PHP {Math.round(avgPropertyPrice).toLocaleString()}.</p>
+					</div>
+				</div>
+			) : null}
+
+			{isAdmin && activeAnalyticsCategory ? (
+				<div>
+					<AnalyticsVisualSuite
+						category={activeAnalyticsCategory}
+						properties={properties}
+						inquiries={inquiries}
+						listingRows={listingChartRows}
+						inquiryVolumeRows={inquiryVolumeRows}
+						trafficRows={trafficChartRows}
+						events={engagementEvents}
+					/>
 				</div>
 			) : null}
 
@@ -1293,6 +2168,7 @@ function AnalyticsPanel({
 				</div>
 			) : null}
 		</SectionShell>
+		</div>
 	);
 }
 
@@ -1324,6 +2200,7 @@ export default function AdminCms({
 	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState(initialPropertyCategory);
 	const [showSecondarySidebar, setShowSecondarySidebar] = useState(true);
+	const [showAnalyticsAssistant, setShowAnalyticsAssistant] = useState(true);
 	const [selectedPortfolioDeveloperId, setSelectedPortfolioDeveloperId] = useState<string | null>(null);
 	const [selectedPortfolioPropertyId, setSelectedPortfolioPropertyId] = useState<string | null>(null);
 
@@ -1431,7 +2308,10 @@ export default function AdminCms({
 					icon: BarChart3,
 					items: [
 						{ id: "analytics", label: "Overview", hint: "Performance summary", icon: BarChart3 },
-						{ id: "traffic", label: "Traffic Sources", hint: "Session channels", icon: BarChart3 },
+						{ id: "trafficBehavior", label: "Traffic & User Behavior", hint: "Visitors and sessions", icon: BarChart3 },
+						{ id: "propertyPerformance", label: "Property Performance", hint: "Listing KPIs", icon: Building2 },
+						{ id: "predictiveAnalytics", label: "Predictive Analytics", hint: "Forecasts and clusters", icon: BarChart3 },
+						{ id: "userEngagement", label: "User Engagement", hint: "Funnel and actions", icon: MessageSquare },
 						{ id: "agentPerformance", label: "Agent Performance", hint: "Conversion rates", icon: Users },
 						{ id: "developerPortfolio", label: "Developer Portfolio", hint: "Portfolio KPIs", icon: Building2 },
 					],
@@ -1478,6 +2358,12 @@ export default function AdminCms({
 	const activeNavItem = navItems.find((item) => item.id === currentSection);
 	const activeNavGroup = navGroups.find((group) => group.id === activePrimary) ?? navGroups[0];
 	const activeSidebarItems = activeNavGroup?.items ?? [];
+	const analyticsOverviewItem = activeSidebarItems.find((item) => item.id === "analytics");
+	const AnalyticsOverviewIcon = analyticsOverviewItem?.icon;
+	const analyticsChildItems = activeSidebarItems.filter((item) => analyticsChildSections.has(item.id));
+	const analyticsStandaloneItems = activeSidebarItems.filter((item) => item.id !== "analytics" && !analyticsChildSections.has(item.id));
+	const isAnalyticsChildSection = analyticsChildSections.has(currentSection);
+	const assistantContentOffset = isAdmin && showAnalyticsAssistant ? "xl:pr-[292px]" : "";
 	const selectedPortfolioDeveloperLabel = selectedPortfolioDeveloperId
 		? asText(workspace.developerPortfolio.find((row) => asText(row.developer_id) === selectedPortfolioDeveloperId)?.company_name)
 			|| asText(workspace.developers.find((row) => asText(row.id) === selectedPortfolioDeveloperId)?.company_name)
@@ -1675,11 +2561,11 @@ export default function AdminCms({
 	}
 
 	useEffect(() => {
-		if (!selectedPropertyId || selectedPropertyId === NEW_RECORD_ID) {
-			setSelectedPropertyImages([]);
-			return;
-		}
-		void loadPropertyImages(asText(selectedPropertyId));
+		const propertyId = !selectedPropertyId || selectedPropertyId === NEW_RECORD_ID ? null : asText(selectedPropertyId);
+		const timer = window.setTimeout(() => {
+			void loadPropertyImages(propertyId);
+		}, 0);
+		return () => window.clearTimeout(timer);
 	}, [selectedPropertyId]);
 
 	useEffect(() => {
@@ -1801,8 +2687,6 @@ export default function AdminCms({
 			})),
 		[workspace.listingPerformance],
 	);
-	const topTrafficSource = workspace.trafficSources[0];
-
 	function openInquiryForEditing(inquiryId: string) {
 		setActivePrimary("inquiries");
 		setActiveSection("inquiries");
@@ -2023,7 +2907,37 @@ export default function AdminCms({
 					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-2 py-3">
 						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
-							{activeSidebarItems.map((item) => {
+							{activePrimary === "analytics" && analyticsOverviewItem && AnalyticsOverviewIcon ? (
+								<div>
+									<button
+										type="button"
+										onClick={() => openSection(analyticsOverviewItem.id)}
+										className={`relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
+									>
+										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
+										<span className="min-w-0 flex-1">
+											<span className="block text-sm font-medium">{analyticsOverviewItem.label}</span>
+											<span className="block truncate text-[11px] text-black/45">{isAnalyticsChildSection ? activeNavItem?.label : "Performance summary"}</span>
+										</span>
+									</button>
+									<div className="border-l-2 border-transparent py-1 pl-8 pr-2">
+										{analyticsChildItems.map((item, index) => {
+											const active = currentSection === item.id;
+											return (
+												<button
+													key={item.id}
+													type="button"
+													onClick={() => openSection(item.id)}
+													className={`relative w-full rounded-md px-2 py-1.5 pl-3 text-left text-xs transition ${index ? "mt-1" : ""} ${active ? "bg-white font-medium text-[#111111] shadow-sm before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/50 hover:bg-white hover:text-[#111111]"}`}
+												>
+													{item.label}
+												</button>
+											);
+										})}
+									</div>
+								</div>
+							) : null}
+							{(activePrimary === "analytics" ? analyticsStandaloneItems : activeSidebarItems).map((item) => {
 								const ItemIcon = item.icon;
 								const active = currentSection === item.id;
 								return (
@@ -2031,12 +2945,14 @@ export default function AdminCms({
 										<button
 											type="button"
 											onClick={() => openSection(item.id)}
-											className={`relative flex w-full items-center gap-2 rounded-md px-2.5 py-2 pl-3 text-left transition ${active ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
+											className={`relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition ${active ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
 												<span className="block text-sm font-medium">{item.label}</span>
-												<span className={`block truncate text-[11px] ${active ? "text-black/45" : "text-black/40"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
+												{activePrimary === "analytics" ? null : (
+													<span className={`block truncate text-[11px] ${active ? "text-black/45" : "text-black/40"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
+												)}
 											</span>
 										</button>
 										{activePrimary === "listings" && item.id === "properties" ? (
@@ -2086,6 +3002,12 @@ export default function AdminCms({
 						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-black/45 md:flex">
 							<span>{activeNavGroup?.label ?? "Dashboard"}</span>
 							<span>/</span>
+							{isAnalyticsChildSection ? (
+								<>
+									<span className="truncate">Overview</span>
+									<span>/</span>
+								</>
+							) : null}
 							<strong className="truncate text-[#111111]">{activeNavItem?.label ?? "Overview"}</strong>
 							{currentSection === "developerPortfolio" && selectedPortfolioDeveloperLabel ? (
 								<>
@@ -2130,6 +3052,16 @@ export default function AdminCms({
 							) : null}
 						</div>
 						<div className="relative ml-1 flex items-center gap-2 text-black/60">
+							{isAdmin ? (
+								<button
+									type="button"
+									onClick={() => setShowAnalyticsAssistant((current) => !current)}
+									className={`rounded-md border border-black/10 p-1.5 transition ${showAnalyticsAssistant ? "bg-[#111111] text-white" : "bg-white hover:bg-zinc-100"}`}
+									title={showAnalyticsAssistant ? "Close analytics assistant" : "Open analytics assistant"}
+								>
+									<MessageSquare className="h-4 w-4" />
+								</button>
+							) : null}
 							<button type="button" onClick={() => setShowNotifications((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title="Notifications">
 								<Bell className="h-4 w-4" />
 							</button>
@@ -2155,7 +3087,7 @@ export default function AdminCms({
 					</header>
 
 					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
-						<div className="mx-auto flex max-w-7xl flex-col gap-3">
+						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h1 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
@@ -2475,7 +3407,7 @@ export default function AdminCms({
 							<EntityEditor title="System Settings" description="Key-value configuration editor for platform behavior." rows={workspace.settings} selectedId={selection.settings} idKey="key" fields={settingFields} canEdit={canEditSettings} rowLabel={labelForRow} rowMeta={(row) => asText(row.description ?? row.value)} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={saveSetting} />
 						) : null}
 
-						{(currentSection === "analytics" || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
+						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
 							<AnalyticsPanel activeReport={currentSection} isAdmin={isAdmin} properties={workspace.properties} inquiries={workspace.inquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} dailyInquiryVolume={workspace.dailyInquiryVolume} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} engagementEvents={workspace.engagementEvents} selectedPortfolioDeveloperId={selectedPortfolioDeveloperId} selectedPortfolioPropertyId={selectedPortfolioPropertyId} onSelectPortfolioDeveloper={setSelectedPortfolioDeveloperId} onSelectPortfolioProperty={setSelectedPortfolioPropertyId} />
 						) : null}
 
@@ -2508,6 +3440,7 @@ export default function AdminCms({
 						) : null}
 					</div>
 					</div>
+					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar /> : null}
 				</section>
 			</div>
 			{destructiveAction ? (

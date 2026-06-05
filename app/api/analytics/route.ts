@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function text(value: unknown) {
@@ -23,6 +24,14 @@ function eventTypeCandidates(eventType: string) {
 	if (eventType.startsWith("property_gallery_")) return [eventType, "property_click", "click", "page_view", "view"];
 	if (eventType === "property_map_open" || eventType === "property_nearby_click") return [eventType, "property_click", "click", "page_view", "view"];
 	return [eventType];
+}
+
+function toEventBodies(body: unknown) {
+	if (body && typeof body === "object" && Array.isArray((body as Record<string, unknown>).events)) {
+		return (body as { events: unknown[] }).events.filter((item) => item && typeof item === "object").slice(0, 25);
+	}
+
+	return body && typeof body === "object" ? [body] : [];
 }
 
 async function insertWithSchemaFallback(tableName: "analytics_events" | "property_analytics", payload: Record<string, unknown>, eventTypes = eventTypeCandidates(text(payload.event_type))) {
@@ -97,6 +106,39 @@ export async function GET() {
 
 export async function POST(request: Request) {
 	const body = await request.json().catch(() => null);
+	const eventBodies = toEventBodies(body);
+
+	if (eventBodies.length === 0) {
+		return NextResponse.json({ error: "Analytics event payload is required." }, { status: 400 });
+	}
+
+	if (body && typeof body === "object" && Array.isArray((body as Record<string, unknown>).events) && (body as { events: unknown[] }).events.length > 25) {
+		return NextResponse.json({ error: "Analytics batches are limited to 25 events." }, { status: 413 });
+	}
+
+	const firstSessionId = text((eventBodies[0] as Record<string, unknown>)?.sessionId);
+	const limiter = checkRateLimit(`analytics:${clientKey(request)}:${firstSessionId || "anonymous"}`, { limit: 180, windowMs: 60_000 });
+	if (!limiter.allowed) {
+		return NextResponse.json({ error: "Too many analytics events. Please slow down." }, { status: 429, headers: rateLimitHeaders(limiter) });
+	}
+
+	const results = [];
+	for (const eventBody of eventBodies) {
+		results.push(await trackAnalyticsEvent(eventBody as Record<string, unknown>));
+	}
+
+	const failed = results.filter((result) => result.error);
+	return NextResponse.json(
+		{
+			tracked: failed.length === 0,
+			count: results.length,
+			warnings: failed.map((result) => result.error).slice(0, 3),
+		},
+		{ headers: rateLimitHeaders(limiter) },
+	);
+}
+
+async function trackAnalyticsEvent(body: Record<string, unknown>) {
 	const eventType = text(body?.event) || "page_view";
 	const sessionId = text(body?.sessionId);
 	const propertyId = text(body?.propertyId);
@@ -114,12 +156,17 @@ export async function POST(request: Request) {
 
 		await upsertSessionWithSchemaFallback({
 			id: sessionId,
+			anonymous_visitor_id: text(body?.anonymousVisitorId) || sessionId,
 			source,
 			referrer: referrer || null,
 			utm_source: utmSource || null,
 			utm_medium: text(body?.utmMedium) || null,
 			utm_campaign: text(body?.utmCampaign) || null,
 			landing_path: path || null,
+			device_type: text(body?.deviceType) || null,
+			browser: text(body?.browser) || null,
+			os: text(body?.os) || null,
+			language: text(body?.language) || null,
 			last_seen_at: new Date().toISOString(),
 			page_view_count: eventType === "page_view" || eventType === "property_view"
 				? Number(existingSession?.page_view_count ?? 0) + 1
@@ -155,5 +202,5 @@ export async function POST(request: Request) {
 			.eq("id", recommendationId);
 	}
 
-	return NextResponse.json({ tracked: !error, warning: error?.message });
+	return { tracked: !error, error: error?.message };
 }

@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/ai-analytics-report?run=1&period=daily",
+      "schedule": "10 16 * * *"
+    },
+    {
+      "path": "/api/admin/ai-analytics-report?run=1&period=weekly",
+      "schedule": "20 16 * * 0"
+    },
+    {
+      "path": "/api/admin/ai-analytics-report?run=1&period=monthly",
+      "schedule": "30 16 1 * *"
+    }
+  ]
+}

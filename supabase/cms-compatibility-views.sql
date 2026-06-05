@@ -118,16 +118,28 @@ ALTER TABLE inquiries
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
+  anonymous_visitor_id TEXT,
   source TEXT NOT NULL DEFAULT 'direct',
   referrer TEXT,
   utm_source TEXT,
   utm_medium TEXT,
   utm_campaign TEXT,
   landing_path TEXT,
+  device_type TEXT,
+  browser TEXT,
+  os TEXT,
+  language TEXT,
   page_view_count INTEGER NOT NULL DEFAULT 0,
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE sessions
+  ADD COLUMN IF NOT EXISTS anonymous_visitor_id TEXT,
+  ADD COLUMN IF NOT EXISTS device_type TEXT,
+  ADD COLUMN IF NOT EXISTS browser TEXT,
+  ADD COLUMN IF NOT EXISTS os TEXT,
+  ADD COLUMN IF NOT EXISTS language TEXT;
 
 CREATE TABLE IF NOT EXISTS analytics_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

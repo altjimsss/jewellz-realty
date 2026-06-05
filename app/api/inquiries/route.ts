@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { computeLeadScore, priorityFromLeadScore } from "@/lib/lead-scoring";
+import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function text(value: unknown) {
@@ -89,6 +90,12 @@ async function getBehaviorSignals(propertyId: string, sessionId: string) {
 
 export async function POST(request: Request) {
 	const body = await request.json().catch(() => null);
+	const sessionId = text(body?.sessionId);
+	const limiter = checkRateLimit(`inquiries:${clientKey(request)}:${sessionId || "anonymous"}`, { limit: 6, windowMs: 10 * 60_000 });
+	if (!limiter.allowed) {
+		return NextResponse.json({ error: "Too many inquiry submissions. Please try again later." }, { status: 429, headers: rateLimitHeaders(limiter) });
+	}
+
 	const buyerName = text(body?.buyerName);
 	const buyerEmail = text(body?.buyerEmail);
 	const buyerPhone = text(body?.buyerPhone);
@@ -96,10 +103,9 @@ export async function POST(request: Request) {
 	const propertyId = text(body?.propertyId);
 	const source = text(body?.source) || "website";
 	const requestedPriority = text(body?.priority);
-	const sessionId = text(body?.sessionId);
 
 	if (!buyerName || !buyerEmail) {
-		return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
+		return NextResponse.json({ error: "Name and email are required." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	const behaviorSignals = await getBehaviorSignals(propertyId, sessionId);
@@ -127,8 +133,8 @@ export async function POST(request: Request) {
 	const { data, error } = await supabaseServer.from("inquiries").insert(payload).select("id").single();
 
 	if (error) {
-		return NextResponse.json({ error: error.message }, { status: 422 });
+		return NextResponse.json({ error: error.message }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
 
-	return NextResponse.json({ ok: true, inquiryId: data?.id });
+	return NextResponse.json({ ok: true, inquiryId: data?.id }, { headers: rateLimitHeaders(limiter) });
 }

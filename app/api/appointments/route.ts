@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function text(value: unknown) {
@@ -12,6 +13,11 @@ function parseScheduledAt(dateText: string, timeText: string) {
 
 export async function POST(request: Request) {
 	const body = await request.json().catch(() => null);
+	const limiter = checkRateLimit(`appointments:${clientKey(request)}:${text(body?.buyerEmail) || "anonymous"}`, { limit: 4, windowMs: 10 * 60_000 });
+	if (!limiter.allowed) {
+		return NextResponse.json({ error: "Too many appointment requests. Please try again later." }, { status: 429, headers: rateLimitHeaders(limiter) });
+	}
+
 	const buyerName = text(body?.buyerName);
 	const buyerEmail = text(body?.buyerEmail);
 	const buyerPhone = text(body?.buyerPhone);
@@ -20,7 +26,7 @@ export async function POST(request: Request) {
 	const scheduledAt = parseScheduledAt(text(body?.date), text(body?.time));
 
 	if (!buyerName || !buyerEmail || !scheduledAt) {
-		return NextResponse.json({ error: "Name, email, date, and time are required." }, { status: 400 });
+		return NextResponse.json({ error: "Name, email, date, and time are required." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	let propertyId: string | null = null;
@@ -45,7 +51,7 @@ export async function POST(request: Request) {
 		.single();
 
 	if (inquiryError) {
-		return NextResponse.json({ error: inquiryError.message }, { status: 422 });
+		return NextResponse.json({ error: inquiryError.message }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
 
 	const { data: appointment, error: appointmentError } = await supabaseServer
@@ -64,8 +70,8 @@ export async function POST(request: Request) {
 		.single();
 
 	if (appointmentError) {
-		return NextResponse.json({ error: appointmentError.message, inquiryId: inquiry.id }, { status: 422 });
+		return NextResponse.json({ error: appointmentError.message, inquiryId: inquiry.id }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
 
-	return NextResponse.json({ ok: true, inquiryId: inquiry.id, appointmentId: appointment.id });
+	return NextResponse.json({ ok: true, inquiryId: inquiry.id, appointmentId: appointment.id }, { headers: rateLimitHeaders(limiter) });
 }

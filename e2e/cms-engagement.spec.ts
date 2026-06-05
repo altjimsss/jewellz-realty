@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -37,19 +37,50 @@ test("CMS inquiry queue shows a newly submitted public inquiry", async ({ page }
 
 	await page.goto(`/login?next=${encodeURIComponent("/admin/inquiries")}`, { waitUntil: "domcontentloaded" });
 	await expect(page.getByText("Sign in to continue.")).toBeVisible();
-	const emailInput = page.getByPlaceholder("admin@jewellzrealty.com");
-	const passwordInput = page.getByLabel("Password");
-	await emailInput.fill(adminEmail);
-	await passwordInput.fill(adminPassword);
-	await expect(emailInput).toHaveValue(adminEmail);
-	await expect(passwordInput).toHaveValue(adminPassword);
-	await passwordInput.press("Enter");
+	await submitLoginForm(page, adminEmail, adminPassword);
 
-	await expect(page).toHaveURL(/\/admin\/inquiries/);
+	await expect
+		.poll(
+			async () => {
+				if (/\/admin\/inquiries/.test(page.url())) return "signed-in";
+				const statusText = await page.locator("main section p").last().textContent().catch(() => "");
+				return statusText?.trim() || page.url();
+			},
+			{ timeout: 30_000, message: "Expected CMS login to reach /admin/inquiries." },
+		)
+		.toBe("signed-in");
 	await expect(page.getByRole("heading", { name: "All Inquiries" })).toBeVisible();
 	await expect(page.getByText(buyerEmail).first()).toBeVisible({ timeout: 30_000 });
 	await expect(page.getByText(buyerName).first()).toBeVisible();
 });
+
+async function submitLoginForm(page: Page, email: string, password: string) {
+	const emailInput = page.getByPlaceholder("admin@jewellzrealty.com");
+	const passwordInput = page.getByLabel("Password");
+	const signInButton = page.getByRole("button", { name: /^sign in$/i });
+
+	await expect(signInButton).toBeEnabled();
+
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		await emailInput.click();
+		await emailInput.fill("");
+		await emailInput.pressSequentially(email);
+		await passwordInput.click();
+		await passwordInput.fill("");
+		await passwordInput.pressSequentially(password);
+
+		const emailValue = await emailInput.inputValue();
+		const passwordValue = await passwordInput.inputValue();
+		if (emailValue === email && passwordValue === password) {
+			await signInButton.click();
+			return;
+		}
+
+		await page.waitForTimeout(400);
+	}
+
+	throw new Error("Login form values did not remain filled before submit.");
+}
 
 function loadEnvLocal() {
 	const envPath = resolve(process.cwd(), ".env.local");

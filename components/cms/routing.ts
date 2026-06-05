@@ -8,6 +8,10 @@ const sections = [
 	"pipeline",
 	"timeline",
 	"analytics",
+	"trafficBehavior",
+	"propertyPerformance",
+	"predictiveAnalytics",
+	"userEngagement",
 	"traffic",
 	"agentPerformance",
 	"developerPortfolio",
@@ -45,7 +49,7 @@ export function categoryFromParam(value: string | string[] | undefined) {
 export function primaryForSection(section: CmsSection): CmsPrimary {
 	if (section === "properties" || section === "projects") return "listings";
 	if (section === "inquiries" || section === "pipeline" || section === "timeline") return "inquiries";
-	if (section === "analytics" || section === "traffic" || section === "agentPerformance" || section === "developerPortfolio") return "analytics";
+	if (section === "analytics" || section === "trafficBehavior" || section === "propertyPerformance" || section === "predictiveAnalytics" || section === "userEngagement" || section === "traffic" || section === "agentPerformance" || section === "developerPortfolio") return "analytics";
 	if (section === "agents" || section === "developers" || section === "profiles") return "people";
 	if (section === "hero" || section === "gallery" || section === "testimonials" || section === "logos" || section === "stats" || section === "pages") return "content";
 	if (section === "settings" || section === "activityLogs") return "settings";
