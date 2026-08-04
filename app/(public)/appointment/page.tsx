@@ -1,10 +1,16 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { AppointmentBooking } from "@/components/appointment/AppointmentBooking";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
+
+export const metadata: Metadata = {
+  title: "Book an Appointment | Jewellz Realty",
+  description: "Schedule a property viewing or consultation appointment with Jewellz Realty.",
+};
 
 const navLinks = [
   { label: "Home", href: "/" },

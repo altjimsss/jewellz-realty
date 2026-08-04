@@ -803,6 +803,7 @@ function AnalyticsChatSidebar() {
 						<input
 							value={question}
 							onChange={(event) => setQuestion(event.target.value)}
+							aria-label="Type your message..."
 							placeholder="Type your message..."
 							disabled={isThinking}
 							className="h-9 min-w-0 flex-1 rounded-md border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/35 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-60"
@@ -810,7 +811,7 @@ function AnalyticsChatSidebar() {
 						<button type="submit" disabled={isThinking || !question.trim()} className="h-9 rounded-md bg-[#111111] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-50">Send</button>
 					</form>
 				</div>
-				<style jsx global>{`
+				<style>{`
 					@keyframes thinking-pulse {
 						0%, 100% { transform: scale(0.72); opacity: 0.45; }
 						50% { transform: scale(1.08); opacity: 1; }
@@ -1313,7 +1314,16 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete
 			<div className="mt-4 grid gap-2 md:grid-cols-2">
 				{images.map((image) => (
 					<div key={asText(image.id)} className="rounded-2xl border border-black/10 bg-white p-3">
-						{image.storage_url ? <img src={asText(image.storage_url)} alt={asText(image.caption || "Property image")} className="mb-3 h-36 w-full rounded-xl object-cover" /> : null}
+						{image.storage_url ? (
+							<Image
+								src={asText(image.storage_url)}
+								alt={asText(image.caption || "Property image")}
+								width={360}
+								height={144}
+								unoptimized
+								className="mb-3 h-36 w-full rounded-xl object-cover"
+							/>
+						) : null}
 						<div className="truncate text-sm font-medium text-[#111111]">{image.caption || image.storage_url}</div>
 						<div className="mt-1 text-xs text-black/45">{image.storage_url}</div>
 						<div className="mt-3 flex items-center justify-between gap-2 text-xs text-black/55">
@@ -1684,7 +1694,7 @@ function InquiryPanel({
 										</label>
 										<label className="block">
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Timeline Note</div>
-											<textarea value={note} onChange={(event) => updateDraft({ note: event.target.value })} rows={4} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50" placeholder="Add an internal note or next step..." />
+											<textarea aria-label="Add an internal note or next step..." value={note} onChange={(event) => updateDraft({ note: event.target.value })} rows={4} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50" placeholder="Add an internal note or next step..." />
 										</label>
 										<div className="flex flex-wrap gap-2">
 											<button type="button" onClick={saveInquiry} disabled={!canEdit || saving} className="rounded-full bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">Save pipeline</button>
@@ -2228,7 +2238,7 @@ export default function AdminCms({
 		const query = dashboardSearch.trim().toLowerCase();
 		if (!query) return [];
 		return [
-			...workspace.properties.map((row) => ({ label: asText(row.title), meta: "Property", open: () => openPropertyForEditing(asText(row.id)) })),
+			...workspace.properties.map((row) => ({ label: asText(row.title), meta: "Property", open: () => { setActivePrimary("listings"); setActiveSection("properties"); setPropertyCategoryFilter("all"); setSelection((current) => ({ ...current, properties: asText(row.id) })); router.push("/admin/listings"); } })),
 			...workspace.projects.map((row) => ({ label: asText(row.project_name ?? row.slug), meta: "Project", open: () => { setActivePrimary("listings"); setActiveSection("projects"); setSelection((current) => ({ ...current, projects: asText(row.id) })); router.push("/admin/listings?section=projects"); } })),
 			...workspace.inquiries.map((row) => ({ label: asText(row.buyer_name ?? row.buyer_email), meta: "Inquiry", open: () => { setActivePrimary("inquiries"); setActiveSection("inquiries"); setSelection((current) => ({ ...current, inquiries: asText(row.id) })); router.push("/admin/inquiries"); } })),
 		].filter((item) => `${item.label} ${item.meta}`.toLowerCase().includes(query)).slice(0, 6);
@@ -2849,7 +2859,7 @@ export default function AdminCms({
 					<div className="text-xs font-semibold uppercase tracking-[0.24em] text-black/60">Jewellz Realty CMS</div>
 					<h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">Sign in required</h1>
 					<p className="mt-2 text-sm leading-6 text-black/60">Use the login page to access the CMS. The dashboard honors Supabase Auth and role-based visibility from the profiles table.</p>
-					<button onClick={() => router.push("/login")} className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80">Go to login</button>
+					<button type="button" onClick={() => router.push("/login")} className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80">Go to login</button>
 				</div>
 			</main>
 		);
@@ -2886,10 +2896,10 @@ export default function AdminCms({
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<button onClick={() => void reloadWorkspace()} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Refresh">
+						<button type="button" onClick={() => void reloadWorkspace()} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Refresh">
 							<RefreshCw className="h-4 w-4" />
 						</button>
-						<button onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+						<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -2988,8 +2998,8 @@ export default function AdminCms({
 							{saving ? <div className="font-medium text-[#111111]">Saving...</div> : null}
 						</div>
 						<div className="mt-3 flex gap-2 lg:hidden">
-							<button onClick={() => void reloadWorkspace()} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium">Refresh</button>
-							<button onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
+							<button type="button" onClick={() => void reloadWorkspace()} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium">Refresh</button>
+							<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
 						</div>
 					</div>
 				</aside>
@@ -3025,7 +3035,7 @@ export default function AdminCms({
 						<div className="relative ml-auto hidden w-full max-w-xs md:block">
 							<div className="flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm text-black/60">
 								<Search className="h-4 w-4" />
-								<input value={dashboardSearch} onChange={(event) => setDashboardSearch(event.target.value)} placeholder="Search..." className="w-full bg-transparent text-sm outline-none placeholder:text-black/35" />
+								<input aria-label="Search..." value={dashboardSearch} onChange={(event) => setDashboardSearch(event.target.value)} placeholder="Search..." className="w-full bg-transparent text-sm outline-none placeholder:text-black/35" />
 							</div>
 							{dashboardSearch.trim() ? (
 								<div className="absolute right-0 top-10 z-30 w-full overflow-hidden rounded-lg border border-black/10 bg-white shadow-xl">
@@ -3098,7 +3108,7 @@ export default function AdminCms({
 									<button type="button" className="inline-flex h-8 items-center gap-1 rounded-md border border-black/10 bg-white px-3 text-xs text-black/60">
 										Daily
 									</button>
-									<button onClick={() => void reloadWorkspace()} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+									<button type="button" onClick={() => void reloadWorkspace()} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
 										<RefreshCw className="h-3.5 w-3.5" />
 										Refresh
 									</button>
@@ -3460,6 +3470,7 @@ export default function AdminCms({
 									if (event.key === "Enter") void confirmDestructiveAction();
 								}}
 								className="mt-1 h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30"
+								aria-label="Enter your CMS password"
 								placeholder="Enter your CMS password"
 								autoFocus
 							/>

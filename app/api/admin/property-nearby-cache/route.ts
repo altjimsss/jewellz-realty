@@ -73,15 +73,12 @@ export async function POST(request: Request) {
 	}
 
 	const rows = ((data ?? []) as PropertyNearbyRow[]).filter((row) => !cachedPropertyIds.has(row.id)).slice(0, limit);
-	const results: Array<{ id: string; title: string | null; status: "updated" | "failed" | "skipped"; places?: number; error?: string }> = [];
-
-	for (const row of rows) {
+	const results = await Promise.all(rows.map(async (row) => {
 		const latitude = toNumber(row.latitude);
 		const longitude = toNumber(row.longitude);
 
 		if (latitude == null || longitude == null) {
-			results.push({ id: row.id, title: row.title, status: "skipped", places: 0 });
-			continue;
+			return { id: row.id, title: row.title, status: "skipped" as const, places: 0 };
 		}
 
 		try {
@@ -108,16 +105,16 @@ export async function POST(request: Request) {
 				if (insertError) throw new Error(insertError.message);
 			}
 
-			results.push({ id: row.id, title: row.title, status: "updated", places: places.length });
+			return { id: row.id, title: row.title, status: "updated" as const, places: places.length };
 		} catch (error) {
-			results.push({
+			return {
 				id: row.id,
 				title: row.title,
-				status: "failed",
+				status: "failed" as const,
 				error: error instanceof Error ? error.message : "Nearby cache update failed.",
-			});
+			};
 		}
-	}
+	}));
 
 	return NextResponse.json({
 		requested: limit,

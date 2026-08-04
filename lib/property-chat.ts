@@ -33,7 +33,7 @@ function normalizeText(value: unknown) {
 	return trimmed || null;
 }
 
-export function isPropertyChatMessage(value: unknown): value is PropertyChatMessage {
+function isPropertyChatMessage(value: unknown): value is PropertyChatMessage {
 	if (!value || typeof value !== "object") return false;
 
 	const candidate = value as Record<string, unknown>;

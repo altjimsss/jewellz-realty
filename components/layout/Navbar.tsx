@@ -63,7 +63,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 						className="-ml-4 h-10 w-[140px] shrink-0 object-contain sm:w-[180px]"
 					/>
 					<form className="relative block min-w-0 flex-1" onSubmit={handleSearchSubmit}>
-						<input
+						<input aria-label="What are you looking for?"
 							type="search"
 							placeholder="What are you looking for?"
 							value={searchQuery}
@@ -133,7 +133,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 				</div>
 				<div className="ml-auto hidden md:block">
 					<form className="relative block" onSubmit={handleSearchSubmit}>
-						<input
+						<input aria-label="What are you looking for?"
 							type="search"
 							placeholder="What are you looking for?"
 							value={searchQuery}

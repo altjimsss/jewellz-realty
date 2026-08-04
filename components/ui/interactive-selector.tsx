@@ -177,7 +177,7 @@ const InteractiveSelector = () => {
       </div>
 
       {/* Custom animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideFadeIn {
           0% {
             opacity: 0;

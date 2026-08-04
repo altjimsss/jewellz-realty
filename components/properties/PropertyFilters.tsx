@@ -46,6 +46,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<input
 								value={value.keyword}
 								onChange={(e) => onChange({ ...value, keyword: e.target.value })}
+								aria-label="Enter Keywords"
 								placeholder="Enter Keywords"
 								className="h-full w-full border-none bg-transparent text-[11px] text-black outline-none placeholder:text-[#bbb]"
 								type="search"
@@ -119,6 +120,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<input
 								value={value.priceMin}
 								onChange={(e) => onChange({ ...value, priceMin: e.target.value })}
+								aria-label="Min"
 								placeholder="Min"
 								inputMode="numeric"
 								className="min-w-0 flex-1 border-none bg-transparent text-[11px] text-black outline-none placeholder:text-[#bbb]"
@@ -127,6 +129,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<input
 								value={value.priceMax}
 								onChange={(e) => onChange({ ...value, priceMax: e.target.value })}
+								aria-label="Max"
 								placeholder="Max"
 								inputMode="numeric"
 								className="min-w-0 flex-1 border-none bg-transparent text-[11px] text-black outline-none placeholder:text-[#bbb]"
@@ -172,6 +175,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<input
 								value={value.keyword}
 								onChange={(e) => onChange({ ...value, keyword: e.target.value })}
+								aria-label="Enter Keywords"
 								placeholder="Enter Keywords"
 								className="h-full w-full border-none bg-transparent text-[11px] outline-none placeholder:text-black/35"
 								type="search"
@@ -200,6 +204,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<input
 								value={value.priceMin}
 								onChange={(e) => onChange({ ...value, priceMin: e.target.value })}
+								aria-label="Min"
 								placeholder="Min"
 								inputMode="numeric"
 								className="min-w-0 flex-1 border-none bg-transparent text-[11px] outline-none placeholder:text-black/35"
@@ -208,6 +213,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<input
 								value={value.priceMax}
 								onChange={(e) => onChange({ ...value, priceMax: e.target.value })}
+								aria-label="Max"
 								placeholder="Max"
 								inputMode="numeric"
 								className="min-w-0 flex-1 border-none bg-transparent text-[11px] outline-none placeholder:text-black/35"

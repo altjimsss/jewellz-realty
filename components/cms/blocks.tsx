@@ -1,4 +1,4 @@
-import { Fragment, FormEvent, useEffect, useId, useRef, useState } from "react";
+import { Fragment, FormEvent, useId, useMemo, useRef, useState } from "react";
 import type { CmsPayload, EditorProps, SectionProps } from "./types";
 import { asText, buildPayload, displayValue } from "./utils";
 
@@ -53,11 +53,20 @@ export function EntityEditor({
 	idKey = "id",
 }: EditorProps) {
 	const selectedRow = rows.find((row) => asText(row?.[idKey]) === asText(selectedId)) ?? null;
+	const selectedRowKey = selectedRow ? asText(selectedRow[idKey]) : "__new__";
 	const formId = useId();
 	const formRef = useRef<HTMLFormElement | null>(null);
 	const [previewPayload, setPreviewPayload] = useState<CmsPayload | null>(null);
 	const [recordSearch, setRecordSearch] = useState("");
-	const [formValues, setFormValues] = useState<CmsPayload>({});
+	const [editedFormValues, setEditedFormValues] = useState<{ key: string; values: CmsPayload } | null>(null);
+	const initialFormValues = useMemo(() => {
+		const nextValues: CmsPayload = {};
+		for (const field of fields) {
+			nextValues[field.name] = selectedRow ? selectedRow[field.name] : (defaultValues?.[field.name] ?? "");
+		}
+		return nextValues;
+	}, [defaultValues, fields, selectedRow]);
+	const formValues = editedFormValues?.key === selectedRowKey ? editedFormValues.values : initialFormValues;
 	const filteredRows = rows.filter((row) => {
 		const query = recordSearch.trim().toLowerCase();
 		if (!query) return true;
@@ -67,14 +76,6 @@ export function EntityEditor({
 			.toLowerCase()
 			.includes(query);
 	});
-
-	useEffect(() => {
-		const nextValues: CmsPayload = {};
-		for (const field of fields) {
-			nextValues[field.name] = selectedRow ? selectedRow[field.name] : (defaultValues?.[field.name] ?? "");
-		}
-		setFormValues(nextValues);
-	}, [defaultValues, fields, selectedRow]);
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -97,7 +98,7 @@ export function EntityEditor({
 			}
 		}
 
-		setFormValues(buildPayload(fields, new FormData(event.currentTarget)));
+		setEditedFormValues({ key: selectedRowKey, values: buildPayload(fields, new FormData(event.currentTarget)) });
 	}
 
 	return (
@@ -154,7 +155,7 @@ export function EntityEditor({
 						</div>
 					</div>
 
-					<form ref={formRef} id={formId} key={selectedRow ? asText(selectedRow[idKey]) : "new"} className="mt-4 grid gap-4" onChange={handleFormChange} onSubmit={handleSubmit}>
+					<form ref={formRef} id={formId} key={selectedRowKey} className="mt-4 grid gap-4" onChange={handleFormChange} onSubmit={handleSubmit}>
 						{guidance ? <div>{guidance}</div> : null}
 						<div className="grid gap-4 md:grid-cols-2">
 							{fields.map((field, index) => {

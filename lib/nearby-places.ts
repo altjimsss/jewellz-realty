@@ -16,7 +16,7 @@ export type NearbyPlaceGroup = {
 	places: NearbyPlace[];
 };
 
-const nearbyCategories: { category: NearbyCategory; filters: string[] }[] = [
+export const nearbyCategories: { category: NearbyCategory; filters: string[] }[] = [
 	{ category: "Education", filters: ['["amenity"~"^(school|college|university|kindergarten)$"]'] },
 	{ category: "Health", filters: ['["amenity"~"^(hospital|clinic|doctors|pharmacy|dentist)$"]'] },
 	{ category: "Food", filters: ['["amenity"~"^(restaurant|cafe|fast_food|food_court|bar)$"]', '["shop"="bakery"]'] },
@@ -55,7 +55,7 @@ function distanceMeters(originLatitude: number, originLongitude: number, placeLa
 	return Math.round(earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine)));
 }
 
-export function nearbyRadiusForPropertyType(propertyType?: string) {
+function nearbyRadiusForPropertyType(propertyType?: string) {
 	const normalizedType = propertyType?.toLowerCase() ?? "";
 
 	if (normalizedType.includes("farm")) return 10000;

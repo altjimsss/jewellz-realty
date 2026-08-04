@@ -33,7 +33,7 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
 
   return (
     <div className="rounded-[12px] border border-black/10 bg-white p-4 shadow-sm">
-      <button
+      <button type="button"
         onClick={() => {
           if (!previewMode) {
             setOpen((prev) => {
@@ -71,6 +71,7 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
           {["Email", "Name", "Subject", "Message"].map((field) => (
             <input
               key={field}
+              aria-label={field}
               className="h-10 w-full border-b border-black/10 px-2 text-sm outline-none placeholder:text-black/35"
               placeholder={field}
               value={form[field.toLowerCase() as keyof typeof form]}

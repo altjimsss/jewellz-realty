@@ -55,7 +55,7 @@ export const propertySidebarCategoryOptions: FieldOption[] = [
 	{ label: "Memorial", value: "memorial" },
 ];
 
-export const listingStatusOptions: FieldOption[] = [
+const listingStatusOptions: FieldOption[] = [
 	{ label: "Draft", value: "draft" },
 	{ label: "Published", value: "published" },
 	{ label: "Reserved", value: "reserved" },
@@ -63,7 +63,7 @@ export const listingStatusOptions: FieldOption[] = [
 	{ label: "Unpublished", value: "unpublished" },
 ];
 
-export const listingBadgeOptions: FieldOption[] = [
+const listingBadgeOptions: FieldOption[] = [
 	{ label: "None", value: "none" },
 	{ label: "Featured", value: "featured" },
 	{ label: "Promo", value: "promo" },
@@ -88,20 +88,7 @@ export const priorityOptions: FieldOption[] = [
 	{ label: "Low", value: "low" },
 ];
 
-export const trafficSourceOptions: FieldOption[] = [
-	{ label: "Direct", value: "direct" },
-	{ label: "Organic Search", value: "organic_search" },
-	{ label: "Facebook", value: "social_media_facebook" },
-	{ label: "Instagram", value: "social_media_instagram" },
-	{ label: "Other Social", value: "social_media_other" },
-	{ label: "Email", value: "email_campaign" },
-	{ label: "Referral", value: "referral" },
-	{ label: "Walk In", value: "walk_in" },
-	{ label: "Phone", value: "phone" },
-	{ label: "Other", value: "other" },
-];
-
-export const gallerySectionOptions: FieldOption[] = [
+const gallerySectionOptions: FieldOption[] = [
 	{ label: "Achievements", value: "achievements" },
 	{ label: "Events", value: "events" },
 	{ label: "Trainings", value: "trainings" },

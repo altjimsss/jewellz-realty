@@ -115,10 +115,10 @@ export function HeroBanner({
 				</div>
 				<div className="absolute bottom-8 left-[35%] z-20 hidden w-[36%] md:block">
 					<div className="mb-0 relative inline-flex overflow-hidden">
-						<button onClick={onPrevHero} className="grid h-9 w-10 place-items-center bg-[#DE141C] text-2xl leading-none text-white">
+						<button type="button" onClick={onPrevHero} className="grid h-9 w-10 place-items-center bg-[#DE141C] text-2xl leading-none text-white">
 							&lsaquo;
 						</button>
-								<button onClick={onNextHero} className="grid h-9 w-10 place-items-center bg-white text-2xl leading-none text-[#DE141C]">
+								<button type="button" onClick={onNextHero} className="grid h-9 w-10 place-items-center bg-white text-2xl leading-none text-[#DE141C]">
 									&rsaquo;
 								</button>
 					</div>
@@ -196,7 +196,7 @@ export function HeroBanner({
 							{/* Search keywords */}
 							<div className="col-span-3 px-4 py-2.5">
 								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Search</p>
-								<input placeholder="Enter Keywords" className="mt-1 h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" type="search" />
+								<input aria-label="Enter Keywords" placeholder="Enter Keywords" className="mt-1 h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" type="search" />
 							</div>
 							<div className="col-span-2 border-l border-black/10 px-4 py-2.5">
 								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Looking For</p>
@@ -256,8 +256,8 @@ export function HeroBanner({
 							<div className="col-span-2 border-l border-black/10 px-4 py-2.5">
 								<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Price</p>
 								<div className="mt-1 grid grid-cols-2 gap-2">
-									<input placeholder="Min" inputMode="numeric" className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" />
-									<input placeholder="Max" inputMode="numeric" className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" />
+									<input aria-label="Min" placeholder="Min" inputMode="numeric" className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" />
+									<input aria-label="Max" placeholder="Max" inputMode="numeric" className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-xs text-black placeholder:text-black/40 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#DE141C] focus:shadow-[0_0_0_3px_rgba(222,20,28,0.12)]" />
 								</div>
 							</div>
 
@@ -320,10 +320,10 @@ export function HeroBanner({
 						))}
 						<div className="absolute bottom-4 left-4 right-4 z-20">
 							<div className="relative inline-flex overflow-hidden">
-								<button onClick={onPrevHero} className="grid h-10 w-10 place-items-center bg-[#DE141C] text-2xl leading-none text-white">
+								<button type="button" onClick={onPrevHero} className="grid h-10 w-10 place-items-center bg-[#DE141C] text-2xl leading-none text-white">
 									&lsaquo;
 								</button>
-								<button onClick={onNextHero} className="grid h-10 w-10 place-items-center bg-white text-2xl leading-none text-[#DE141C]">
+								<button type="button" onClick={onNextHero} className="grid h-10 w-10 place-items-center bg-white text-2xl leading-none text-[#DE141C]">
 									&rsaquo;
 								</button>
 							</div>
@@ -468,14 +468,14 @@ export function HeroBanner({
 						<div className="grid grid-cols-2 gap-2 pt-2">
 							<div>
 								<p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">{priceRangeLabel}</p>
-								<input className="h-1.5 w-full accent-[#DE141C]" type="range" min="0" max="850000" step="10000" value={safePriceMax} onChange={(e) => setPriceMax(Math.min(Number(e.target.value) || 0, 850000))} />
+								<input aria-label="Maximum price" className="h-1.5 w-full accent-[#DE141C]" type="range" min="0" max="850000" step="10000" value={safePriceMax} onChange={(e) => setPriceMax(Math.min(Number(e.target.value) || 0, 850000))} />
 							</div>
 							<div>
 								<p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">Area (120-{areaMax})</p>
-								<input className="h-1.5 w-full accent-[#DE141C]" type="range" min="120" max="500" step="1" value={areaMax ?? 120} onChange={(e) => setAreaMax(Number(e.target.value) || 120)} />
+								<input aria-label="Maximum area" className="h-1.5 w-full accent-[#DE141C]" type="range" min="120" max="500" step="1" value={areaMax ?? 120} onChange={(e) => setAreaMax(Number(e.target.value) || 120)} />
 							</div>
 						</div>
-						<button className="mt-2 h-9 w-full rounded-[16px] bg-[#DE141C] text-xs font-semibold text-white shadow-[0_10px_22px_rgba(222,20,28,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(222,20,28,0.34)]">Search Property</button>
+						<button type="button" className="mt-2 h-9 w-full rounded-[16px] bg-[#DE141C] text-xs font-semibold text-white shadow-[0_10px_22px_rgba(222,20,28,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(222,20,28,0.34)]">Search Property</button>
 					</div>
 				</div>
 			</section>
@@ -583,4 +583,3 @@ export function HeroBanner({
 		</>
 	);
 }
-

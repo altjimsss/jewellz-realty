@@ -102,7 +102,7 @@ function inferPreferredTypes(intent: PropertySearchIntent, text: string) {
 	return [];
 }
 
-export function extractLocationHint(searchText: string) {
+function extractLocationHint(searchText: string) {
 	const normalized = searchText.toLowerCase().replace(/[^a-z0-9\s,.-]+/g, " ");
 	const explicitLocation = normalized.match(/\b(?:in|at|around|near|nearby)\s+([a-z][a-z\s.-]{2,40})/i)?.[1] ?? "";
 	const source = explicitLocation || normalized;

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import SectionHeader from "@/components/layout/SectionHeader";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
@@ -7,6 +8,11 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+
+export const metadata: Metadata = {
+  title: "About Us | Jewellz Realty",
+  description: "Learn about Jewellz Realty, our brokerage team, values, and real estate services.",
+};
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -75,15 +81,6 @@ const teamMembers = [
     image: "/assets/bannerconsult.png",
   },
 ];
-
-function StatIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
-      <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function AboutUsPage() {
   return (

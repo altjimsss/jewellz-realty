@@ -76,21 +76,21 @@ export function HotPicks({
 					</div>
 				</div>
 				<div className="ml-auto flex items-center justify-end">
-					<button
+					<button type="button"
 						onClick={() => changeHotPicksPage("prev")}
 						disabled={hotPicksLoading}
 						className="grid h-9 w-8 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white"
 					>
 						‹
 					</button>
-					<button
+					<button type="button"
 						onClick={() => changeHotPicksPage("next")}
 						disabled={hotPicksLoading}
 						className="grid h-9 w-8 place-items-center bg-[#DE141C] text-lg leading-none text-white"
 					>
 						›
 					</button>
-					<button className="h-9 bg-black px-5 text-xs font-semibold text-white">
+					<button type="button" className="h-9 bg-black px-5 text-xs font-semibold text-white">
 						View All
 					</button>
 				</div>

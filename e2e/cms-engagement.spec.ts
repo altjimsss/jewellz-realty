@@ -19,7 +19,7 @@ test("CMS inquiry queue shows a newly submitted public inquiry", async ({ page }
 	const buyerName = "CMS Visible Playwright Lead";
 
 	await page.goto(`${propertyPath}?utm_source=playwright&utm_medium=e2e&utm_campaign=cms-visibility`, { waitUntil: "domcontentloaded" });
-	await page.getByRole("button", { name: /inquire us/i }).first().click();
+	await openInquiryForm(page);
 	await page.getByPlaceholder("Email").fill(buyerEmail);
 	await page.getByPlaceholder("Name").fill(buyerName);
 	await page.getByPlaceholder("Subject").fill("CMS visibility test");
@@ -53,6 +53,20 @@ test("CMS inquiry queue shows a newly submitted public inquiry", async ({ page }
 	await expect(page.getByText(buyerEmail).first()).toBeVisible({ timeout: 30_000 });
 	await expect(page.getByText(buyerName).first()).toBeVisible();
 });
+
+async function openInquiryForm(page: Page) {
+	const emailInput = page.getByPlaceholder("Email");
+	const inquiryToggle = page.getByRole("button", { name: /inquire us/i }).first();
+
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		if (await emailInput.isVisible().catch(() => false)) return;
+		await inquiryToggle.scrollIntoViewIfNeeded();
+		await inquiryToggle.click();
+		await page.waitForTimeout(300);
+	}
+
+	await expect(emailInput).toBeVisible();
+}
 
 async function submitLoginForm(page: Page, email: string, password: string) {
 	const emailInput = page.getByPlaceholder("admin@jewellzrealty.com");

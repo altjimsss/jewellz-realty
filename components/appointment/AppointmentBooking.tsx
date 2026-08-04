@@ -276,7 +276,8 @@ export function AppointmentBooking() {
               </div>
 
               <div className="flex items-center justify-between border-b border-black/7 pb-5">
-                <button
+                <button type="button"
+                  aria-label="Previous month"
                   onClick={prevMonth}
                   className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-black/10 text-black/60 transition-colors hover:bg-black/4"
                 >
@@ -287,7 +288,8 @@ export function AppointmentBooking() {
                 <span className="text-[14.5px] font-medium text-black/75">
                   {MONTHS[curMonth]} {curYear}
                 </span>
-                <button
+                <button type="button"
+                  aria-label="Next month"
                   onClick={nextMonth}
                   className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#fde7e8] text-[#DE141C] transition-colors hover:bg-[#fbd7d9]"
                 >
@@ -310,7 +312,7 @@ export function AppointmentBooking() {
                   <div key={`empty-${index}`} />
                 ))}
                 {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => (
-                  <button
+                  <button type="button"
                     key={day}
                     disabled={isPast(day)}
                     onClick={() => setSelectedDay(day)}
@@ -356,30 +358,34 @@ export function AppointmentBooking() {
 
               <div className="mb-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-[11px] text-black/45">Full name</label>
+                  <label htmlFor="appointment-name" className="mb-1 block text-[11px] text-black/45">Full name</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-black/30">
                       <IconUser />
                     </span>
                     <input
+                      id="appointment-name"
                       type="text"
                       value={name}
                       onChange={(event) => setName(event.target.value)}
+                      aria-label="Juan dela Cruz"
                       placeholder="Juan dela Cruz"
                       className={`${inputBase} pl-7 pr-3`}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] text-black/45">Contact number</label>
+                  <label htmlFor="appointment-phone" className="mb-1 block text-[11px] text-black/45">Contact number</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-black/30">
                       <IconPhone />
                     </span>
                     <input
+                      id="appointment-phone"
                       type="tel"
                       value={phone}
                       onChange={(event) => setPhone(event.target.value)}
+                      aria-label="+63 912 345 6789"
                       placeholder="+63 912 345 6789"
                       className={`${inputBase} pl-7 pr-3`}
                     />
@@ -388,15 +394,17 @@ export function AppointmentBooking() {
               </div>
 
               <div>
-                <label className="mb-1 block text-[11px] text-black/45">Email address</label>
+                <label htmlFor="appointment-email" className="mb-1 block text-[11px] text-black/45">Email address</label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-black/30">
                     <IconMail />
                   </span>
                   <input
+                    id="appointment-email"
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
+                    aria-label="you@example.com"
                     placeholder="you@example.com"
                     className={`${inputBase} pl-7 pr-3`}
                   />
@@ -478,14 +486,14 @@ export function AppointmentBooking() {
           {step < 2 && (
             <div className={`mt-5 flex gap-2 ${step === 0 ? "justify-end" : "justify-between"}`}>
               {step > 0 && (
-                <button
+                <button type="button"
                   onClick={() => setStep((currentStep) => currentStep - 1)}
                   className="rounded-lg border border-black/10 px-4 py-2 text-[13px] text-black/60 transition-colors hover:bg-black/4"
                 >
                   ← Back
                 </button>
               )}
-              <button
+              <button type="button"
                 disabled={isSubmitting || (step === 0 ? !(selectedDay && selectedTime) : !formValid)}
                 onClick={() => {
                   if (step === 0) setStep(1);
@@ -506,7 +514,7 @@ export function AppointmentBooking() {
             style={{ maxHeight: calHeight ? `${calHeight}px` : undefined }}
           >
             {timeSlots.map((slot) => (
-              <button
+              <button type="button"
                 key={slot}
                 onClick={() => setSelectedTime(slot)}
                 className={`rounded-full border px-3 py-2 text-[11.5px] font-medium whitespace-nowrap transition-colors ${

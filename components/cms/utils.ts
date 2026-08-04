@@ -4,7 +4,7 @@ export function asText(value: unknown) {
 	return value == null ? "" : String(value);
 }
 
-export function asArrayText(value: unknown) {
+function asArrayText(value: unknown) {
 	if (Array.isArray(value)) {
 		return value.filter(Boolean).join("\n");
 	}
@@ -12,14 +12,23 @@ export function asArrayText(value: unknown) {
 	return asText(value);
 }
 
-export function parseArrayText(value: FormDataEntryValue | null) {
+function parseArrayText(value: FormDataEntryValue | null) {
 	return asText(value)
 		.split(/\r?\n|,/)
 		.map((item) => item.trim())
 		.filter(Boolean);
 }
 
-export function toDateTimeLocal(value: unknown) {
+function readNumber(value: FormDataEntryValue | null) {
+	const text = asText(value).trim();
+	return text === "" ? null : Number(text);
+}
+
+function readBoolean(value: FormDataEntryValue | null) {
+	return value === "on";
+}
+
+function toDateTimeLocal(value: unknown) {
 	if (!value) {
 		return "";
 	}
@@ -31,15 +40,6 @@ export function toDateTimeLocal(value: unknown) {
 
 	const offset = date.getTimezoneOffset() * 60000;
 	return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
-
-export function readNumber(value: FormDataEntryValue | null) {
-	const text = asText(value).trim();
-	return text === "" ? null : Number(text);
-}
-
-export function readBoolean(value: FormDataEntryValue | null) {
-	return value === "on";
 }
 
 export function buildPayload(fields: FieldSpec[], formData: FormData) {

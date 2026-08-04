@@ -43,8 +43,15 @@ export function RecommendationPanel({ recommendations, status }: RecommendationP
 				{recommendations.map(({ property, reason, confidence, recommendationId, source }) => (
 					<div
 						key={property.id}
+						role="button"
+						tabIndex={0}
 						className="space-y-2"
 						onClick={() => track("recommendation_click", { propertyId: property.id, recommendationId, recommendationSource: source })}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" || event.key === " ") {
+								track("recommendation_click", { propertyId: property.id, recommendationId, recommendationSource: source });
+							}
+						}}
 					>
 						<PropertyCard property={property} href={`/project-list/${property.slug}`} />
 						<p className="rounded-full bg-zinc-50 px-3 py-2 text-xs font-medium text-black/55">

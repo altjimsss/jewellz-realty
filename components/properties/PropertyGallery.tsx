@@ -132,9 +132,13 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
         <div
           className="fixed inset-0 z-[6000] bg-black/80 p-4 backdrop-blur-sm"
           role="dialog"
+          tabIndex={-1}
           aria-modal="true"
           aria-label={`${title} photo gallery`}
           onClick={() => setIsLightboxOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setIsLightboxOpen(false);
+          }}
         >
           <div
             className="mx-auto flex h-full w-full max-w-6xl flex-col gap-3 pt-12 sm:pt-16 lg:pt-20"

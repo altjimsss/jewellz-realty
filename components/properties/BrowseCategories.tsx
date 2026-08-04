@@ -86,7 +86,7 @@ export function BrowseCategories({ categories, activeCat, setActiveCat }: Browse
 			<div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
 			<div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 md:grid-cols-5">
 				{safeCategories.map((c) => (
-					<button
+					<button type="button"
 						key={c.label}
 						onClick={() => setActiveCat(c.label)}
 						className={`group flex h-24 flex-col items-center justify-center gap-1.5 rounded border transition-all duration-200 sm:h-36 sm:gap-2 ${

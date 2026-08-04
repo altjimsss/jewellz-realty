@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { SparkleSvg } from "@/components/ui/SparkleSvg";
 
 const BANNER_DURATION_MS = 5500;
@@ -47,10 +48,12 @@ function BannerSvgOne() {
         </div>
       </div>
 
-      <img
+      <Image
         src="/assets/housebanner1.png"
         alt="House banner"
-        className="absolute right-[-30px] top-[46%] z-20 h-[260px] max-w-none -translate-y-1/2 object-contain md:h-[360px]"
+        width={520}
+        height={420}
+        className="absolute right-[-30px] top-[46%] z-20 h-[260px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[360px]"
         style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
       />
     </div>
@@ -90,10 +93,12 @@ function BannerSvgTwo() {
         </div>
       </div>
 
-      <img
+      <Image
         src="/assets/bannerprofessional.png"
         alt="Listings and selling banner"
-        className="absolute right-[-40px] top-[40%] z-20 h-[220px] max-w-none -translate-y-1/2 object-contain md:h-[300px]"
+        width={460}
+        height={360}
+        className="absolute right-[-40px] top-[40%] z-20 h-[220px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[300px]"
         style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
       />
     </div>
@@ -133,10 +138,12 @@ function BannerSvgThree() {
         </div>
       </div>
 
-      <img
+      <Image
         src="/assets/bannerconsult.png"
         alt="Investment consultation banner"
-        className="absolute right-[-40px] top-[40%] z-20 h-[220px] max-w-none -translate-y-1/2 object-contain md:h-[300px]"
+        width={460}
+        height={360}
+        className="absolute right-[-40px] top-[40%] z-20 h-[220px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[300px]"
         style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
       />
     </div>
@@ -174,10 +181,12 @@ export function PropertyBanner() {
   return (
     <>
       <section className="relative isolate overflow-hidden bg-black">
-        <img
+        <Image
           src="/assets/Gradient V25.svg"
           alt=""
           aria-hidden="true"
+          width={544}
+          height={544}
           className="pointer-events-none absolute -left-8 top-1/2 z-0 h-80 w-80 -translate-y-1/2 md:h-[34rem] md:w-[34rem]"
         />
 
@@ -204,7 +213,7 @@ export function PropertyBanner() {
         </div>
       </section>
 
-      <style jsx global>{`
+      <style>{`
         @keyframes banner-fade-in {
           from {
             opacity: 0;

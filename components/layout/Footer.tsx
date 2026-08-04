@@ -39,10 +39,10 @@ export function Footer() {
 				<div className="col-span-2 text-center md:col-span-1 md:text-left">
 					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Follow Us</h4>
 					<div className="mt-2 flex items-center justify-center gap-2 sm:mt-4 md:justify-start">
-						<a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">f</a>
-						<a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">ig</a>
-						<a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">in</a>
-						<a href="#" className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">yt</a>
+						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">f</span>
+						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">ig</span>
+						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">in</span>
+						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">yt</span>
 					</div>
 					<p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm md:mx-0">Stay updated with listings, open houses, and real estate tips.</p>
 				</div>
@@ -51,8 +51,8 @@ export function Footer() {
 			<div className="mt-6 flex flex-col gap-2 border-t border-white/15 pt-4 text-center text-[11px] text-white/55 sm:mt-10 sm:gap-3 sm:pt-5 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
 				<p>Copyright Jewellz Realty 2026. All rights reserved. We use anonymous browsing signals to improve property recommendations and lead follow-up.</p>
 				<div className="flex items-center justify-center gap-4 md:justify-start">
-					<a href="#" className="hover:text-[#DE141C]">Privacy Policy</a>
-					<a href="#" className="hover:text-[#DE141C]">Terms & Conditions</a>
+					<span>Privacy Policy</span>
+					<span>Terms & Conditions</span>
 				</div>
 			</div>
 		</footer>

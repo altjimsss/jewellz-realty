@@ -139,21 +139,21 @@ export default function HomeDiscoverySection() {
               </div>
             </div>
             <div className="ml-auto flex items-center justify-end">
-              <button
+              <button type="button"
                 onClick={() => changeHotPicksPage("prev")}
                 disabled={hotPicksLoading}
                 className="grid h-9 w-8 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ‹
               </button>
-              <button
+              <button type="button"
                 onClick={() => changeHotPicksPage("next")}
                 disabled={hotPicksLoading}
                 className="grid h-9 w-8 place-items-center bg-[#DE141C] text-lg leading-none text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ›
               </button>
-              <button className="h-9 bg-black px-5 text-xs font-semibold text-white">View All</button>
+              <button type="button" className="h-9 bg-black px-5 text-xs font-semibold text-white">View All</button>
             </div>
           </div>
 
@@ -207,14 +207,14 @@ export default function HomeDiscoverySection() {
             ))}
           </div>
           <div className="mt-4 flex items-center justify-end gap-2">
-            <button
+            <button type="button"
               onClick={() => changeHotPicksPage("prev")}
               disabled={hotPicksLoading}
               className="grid h-9 w-8 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               ‹
             </button>
-            <button
+            <button type="button"
               onClick={() => changeHotPicksPage("next")}
               disabled={hotPicksLoading}
               className="grid h-9 w-8 place-items-center bg-[#DE141C] text-lg leading-none text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -231,7 +231,7 @@ export default function HomeDiscoverySection() {
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 md:grid-cols-5">
           {categories.map((category) => (
-            <button
+            <button type="button"
               key={category.label}
               onClick={() => setActiveCat(category.label)}
               className={`group flex h-24 flex-col items-center justify-center gap-1.5 rounded border transition-all duration-200 sm:h-36 sm:gap-2 ${

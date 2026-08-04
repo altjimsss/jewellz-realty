@@ -48,7 +48,7 @@ function toNumber(value: number | string | null | undefined) {
 	return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export function mapPropertyRow(row: PropertyRow): Property {
+function mapPropertyRow(row: PropertyRow): Property {
 	const latitude = toNumber(row.latitude);
 	const longitude = toNumber(row.longitude);
 	const lotArea = toNumber(row.lot_area_sqm);
@@ -128,4 +128,61 @@ export async function getPublishedPropertyBySlug(slug: string) {
 	}
 
 	return data ? mapPropertyRow(data as PropertyRow) : null;
+}
+
+function toDbCategory(category: string | null | undefined) {
+	if (!category) return undefined;
+	return category.trim().toLowerCase();
+}
+
+/**
+ * Fetches a small set of related published listings without scanning the whole
+ * table. Prefers same-category matches, then tops up with any recent listings
+ * when a category filter comes up short.
+ */
+export async function getRelatedProperties(
+	propertyId: string,
+	options: { category?: string; limit?: number } = {},
+) {
+	const { category, limit = 3 } = options;
+
+	let query = supabaseServer
+		.from("properties")
+		.select("*, property_images(storage_url, sort_order, is_cover), developer_partners(company_name)")
+		.eq("status", "published")
+		.neq("id", propertyId)
+		.order("created_at", { ascending: false })
+		.limit(limit);
+
+	// Categories are stored as raw lowercase values ("condo", "house", ...) while
+	// property.type is title-cased ("Condo"), so normalize before filtering.
+	const dbCategory = toDbCategory(category);
+	if (dbCategory) {
+		query = query.eq("category", dbCategory);
+	}
+
+	const { data, error } = await query;
+
+	if (error) {
+		console.error("Failed to load related properties", error.message);
+		return [];
+	}
+
+	// If a category filter returned too few results, top up with any published listings.
+	if (dbCategory && data && data.length < limit) {
+		const { data: extra, error: extraError } = await supabaseServer
+			.from("properties")
+			.select("*, property_images(storage_url, sort_order, is_cover), developer_partners(company_name)")
+			.eq("status", "published")
+			.neq("id", propertyId)
+			.order("created_at", { ascending: false })
+			.limit(limit - data.length);
+
+		if (!extraError && extra) {
+			const seen = new Set(data.map((row) => row.id));
+			data.push(...extra.filter((row) => !seen.has(row.id)));
+		}
+	}
+
+	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
 }

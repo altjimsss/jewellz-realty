@@ -270,6 +270,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
               value={input}
               onChange={(event) => setInput(event.target.value)}
               className="h-9 w-full rounded-md border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-2 focus:ring-[#DE141C]/10"
+              aria-label="Type your message here..."
               placeholder="Type your message here..."
               disabled={isSending || previewMode}
             />
@@ -288,7 +289,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
         </div>
       </div>
 
-      <style jsx global>{`
+      <style>{`
         @keyframes thinking-pulse {
           0%,
           100% {

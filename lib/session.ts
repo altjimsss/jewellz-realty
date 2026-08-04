@@ -51,5 +51,3 @@ export function getOrCreateSessionId() {
 	writeCookieSessionId(next);
 	return next;
 }
-
-export const getAnonymousVisitorId = getOrCreateSessionId;
