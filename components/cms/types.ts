@@ -36,6 +36,7 @@ export type EditorProps = {
 	fields: FieldSpec[];
 	defaultValues?: CmsPayload;
 	canEdit: boolean;
+	canCreate?: boolean;
 	rowLabel: (row: CmsRow) => string;
 	rowMeta?: (row: CmsRow) => string;
 	onSelect: (row: CmsRow | null) => void;
@@ -45,6 +46,8 @@ export type EditorProps = {
 	renderPreview?: (payload: CmsPayload, currentRow: CmsRow | null) => ReactNode;
 	guidance?: ReactNode;
 	extra?: ReactNode;
+	saveLabel?: string;
+	createLabel?: string;
 	idKey?: string;
 };
 
@@ -54,10 +57,7 @@ export type Workspace = {
 	developers: CmsRow[];
 	agents: CmsRow[];
 	inquiries: CmsRow[];
-	cmsPages: CmsRow[];
 	galleryItems: CmsRow[];
-	testimonials: CmsRow[];
-	heroBanners: CmsRow[];
 	partnerLogos: CmsRow[];
 	siteStats: CmsRow[];
 	settings: CmsRow[];
@@ -78,10 +78,7 @@ export type SelectionState = {
 	developers: string | null;
 	agents: string | null;
 	inquiries: string | null;
-	cmsPages: string | null;
 	galleryItems: string | null;
-	testimonials: string | null;
-	heroBanners: string | null;
 	partnerLogos: string | null;
 	siteStats: string | null;
 	settings: string | null;
@@ -105,12 +102,9 @@ export type CmsSection =
 	| "agents"
 	| "developers"
 	| "profiles"
-	| "hero"
 	| "gallery"
-	| "testimonials"
 	| "logos"
 	| "stats"
-	| "pages"
 	| "settings"
 	| "activityLogs";
 

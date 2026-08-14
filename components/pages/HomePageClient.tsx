@@ -92,7 +92,7 @@ type HomeContent = {
 	siteStats?: Array<{ key: string; label: string; value: number; suffix?: string }>;
 	partnerLogos?: Array<{ name: string; logoUrl?: string; websiteUrl?: string }>;
 	testimonials?: Array<{ authorName: string; authorTitle?: string; quote: string; rating?: number }>;
-	agents?: Array<{ name: string; top: boolean }>;
+	agents?: Array<{ name: string; top: boolean; photoUrl?: string; licenseNumber?: string; specialization?: string; facebookUrl?: string; instagramUrl?: string; email?: string; phone?: string }>;
 };
 const HERO_DURATION_MS = 5000;
 const HERO_TICK_MS = 50;
@@ -593,20 +593,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
         <h2 className="text-3xl font-bold sm:text-4xl">TESTIMONIALS</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="mt-8">
-          {homeContent?.testimonials?.length ? (
-            <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
-              {homeContent.testimonials.slice(0, 3).map((item) => (
-                <article key={`${item.authorName}-${item.quote}`} className="rounded-2xl border border-black/10 bg-white p-5 text-left shadow-sm">
-                  <div className="text-sm leading-6 text-black/65">“{item.quote}”</div>
-                  <div className="mt-4 text-sm font-semibold text-[#111111]">{item.authorName}</div>
-                  {item.authorTitle ? <div className="mt-1 text-xs text-black/45">{item.authorTitle}</div> : null}
-                  {item.rating ? <div className="mt-2 text-xs font-semibold text-[#DE141C]">{item.rating}/5 rating</div> : null}
-                </article>
-              ))}
-            </div>
-          ) : (
-            <Testimonial />
-          )}
+          <Testimonial />
         </div>
       </section>
 

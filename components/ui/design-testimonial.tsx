@@ -62,10 +62,10 @@ export function Testimonial() {
   const current = testimonials[activeIndex]
 
   return (
-    <div className="flex items-start justify-center bg-background overflow-hidden pt-0">
+    <div className="flex items-start justify-center overflow-hidden pt-0">
       <div ref={containerRef} className="relative w-full max-w-4xl" onMouseMove={handleMouseMove}>
         <motion.div
-          className="absolute -left-6 top-0 -translate-y-1/4 text-[20rem] font-bold text-[#DE141C]/30 select-none pointer-events-none leading-none tracking-tighter"
+          className="absolute -left-6 top-0 -translate-y-1/4 text-[20rem] font-bold text-black/[0.04] select-none pointer-events-none leading-none tracking-tighter"
           style={{ x: numberX, y: numberY }}
         >
           <AnimatePresence mode="wait">
@@ -83,9 +83,9 @@ export function Testimonial() {
         </motion.div>
 
         <div className="relative flex">
-          <div className="flex flex-col items-center justify-center pr-10 border-r border-border">
+          <div className="flex flex-col items-center justify-center border-r border-black/10 pr-10">
             <motion.span
-              className="text-xs font-mono text-muted-foreground tracking-widest uppercase"
+              className="text-xs font-mono uppercase tracking-widest text-black/50"
               style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -94,9 +94,9 @@ export function Testimonial() {
               Client Reviews
             </motion.span>
 
-            <div className="relative mt-6 h-24 w-px bg-border">
+            <div className="relative mt-6 h-24 w-px bg-black/10">
               <motion.div
-                className="absolute top-0 left-0 w-full bg-foreground origin-top"
+                className="absolute left-0 top-0 w-full bg-black origin-top"
                 animate={{
                   height: `${((activeIndex + 1) / testimonials.length) * 100}%`,
                 }}
@@ -115,8 +115,8 @@ export function Testimonial() {
                 transition={{ duration: 0.4 }}
                 className="mb-6 flex justify-center"
               >
-                <span className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground border border-border rounded-full px-3 py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-black/15 px-3 py-1 text-xs font-mono text-black/60">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#DE141C]" />
                   {current.company}
                 </span>
               </motion.div>
@@ -126,7 +126,7 @@ export function Testimonial() {
               <AnimatePresence mode="wait">
                 <motion.blockquote
                   key={activeIndex}
-                  className="text-3xl md:text-4xl font-light text-foreground leading-[1.15] tracking-tight"
+                  className="text-3xl font-light leading-[1.15] tracking-tight text-black md:text-4xl"
                   initial="hidden"
                   animate="visible"
                   exit="exit"
@@ -134,7 +134,7 @@ export function Testimonial() {
                   {current.quote.split(" ").map((word, i) => (
                     <motion.span
                       key={i}
-                      className="inline-block mr-[0.3em]"
+                      className="mr-[0.3em] inline-block"
                       variants={{
                         hidden: { opacity: 0, y: 20, rotateX: 90 },
                         visible: {
@@ -172,7 +172,7 @@ export function Testimonial() {
                   className="flex items-center gap-3"
                 >
                   <motion.div
-                    className="h-px w-6 bg-foreground"
+                    className="h-px w-6 bg-black"
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     transition={{ duration: 0.6, delay: 0.3 }}
@@ -182,8 +182,8 @@ export function Testimonial() {
                     <User className="h-5 w-5" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-medium text-foreground">{current.author}</p>
-                    <p className="text-sm text-muted-foreground">{current.role}</p>
+                    <p className="text-sm font-medium text-black">{current.author}</p>
+                    <p className="text-sm text-black/55">{current.role}</p>
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -191,11 +191,11 @@ export function Testimonial() {
               <div className="flex items-center gap-3">
                 <motion.button
                   onClick={goPrev}
-                  className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-none border border-border"
+                  className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-none border border-black/20"
                   whileTap={{ scale: 0.95 }}
                 >
                   <motion.div
-                    className="absolute inset-0 bg-foreground"
+                    className="absolute inset-0 bg-black"
                     initial={{ x: "-100%" }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   />
@@ -204,7 +204,7 @@ export function Testimonial() {
                     height="16"
                     viewBox="0 0 16 16"
                     fill="none"
-                    className="relative z-10 text-foreground group-hover:text-foreground/30 transition-colors"
+                    className="relative z-10 text-black transition-colors group-hover:text-white"
                   >
                     <path
                       d="M10 12L6 8L10 4"
@@ -264,4 +264,3 @@ export function Testimonial() {
     </div>
   )
 }
-

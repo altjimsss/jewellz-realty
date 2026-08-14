@@ -18,12 +18,9 @@ const sections = [
 	"agents",
 	"developers",
 	"profiles",
-	"hero",
 	"gallery",
-	"testimonials",
 	"logos",
 	"stats",
-	"pages",
 	"settings",
 	"activityLogs",
 ] satisfies CmsSection[];
@@ -51,7 +48,7 @@ export function primaryForSection(section: CmsSection): CmsPrimary {
 	if (section === "inquiries" || section === "pipeline" || section === "timeline") return "inquiries";
 	if (section === "analytics" || section === "trafficBehavior" || section === "propertyPerformance" || section === "predictiveAnalytics" || section === "userEngagement" || section === "traffic" || section === "agentPerformance" || section === "developerPortfolio") return "analytics";
 	if (section === "agents" || section === "developers" || section === "profiles") return "people";
-	if (section === "hero" || section === "gallery" || section === "testimonials" || section === "logos" || section === "stats" || section === "pages") return "content";
+	if (section === "gallery" || section === "logos" || section === "stats") return "content";
 	if (section === "settings" || section === "activityLogs") return "settings";
 	return "dashboard";
 }

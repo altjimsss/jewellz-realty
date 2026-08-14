@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -16,8 +16,9 @@ import { TrafficSourceChart } from "@/components/dashboard/TrafficSourceChart";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
+import { AgentRegistrationForm } from "./AgentRegistrationForm";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { agentFields, cmsPageFields, developerFields, emptySelection, emptyWorkspace, galleryFields, heroBannerFields, inquiryStatusOptions, partnerLogoFields, priorityOptions, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields, testimonialFields } from "./constants";
+import { agentFields, developerFields, emptySelection, emptyWorkspace, galleryFields, inquiryStatusOptions, partnerLogoFields, priorityOptions, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 
@@ -889,11 +890,11 @@ function PeakEngagementChart({ events }: { events: CmsRow[] }) {
 	);
 }
 
-function AgentMetricsSummary({ agentId, agentPerformance }: { agentId: string | null; agentPerformance: CmsRow[] }) {
+function AgentMetricsSummary({ agentId, agentEmail, agentPerformance }: { agentId: string | null; agentEmail?: string; agentPerformance: CmsRow[] }) {
 	if (!agentId || agentId === NEW_RECORD_ID) {
 		return (
 			<div className="rounded-lg border border-dashed border-black/15 bg-zinc-50 p-4 text-sm text-black/55">
-				Select an existing agent to see live assignment, conversion, and response metrics.
+				Select an existing agent to see their login email, assignment, conversion, and response metrics.
 			</div>
 		);
 	}
@@ -902,17 +903,16 @@ function AgentMetricsSummary({ agentId, agentPerformance }: { agentId: string | 
 
 	return (
 		<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
-			<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Live Performance</div>
-			{metrics ? (
-				<div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-					<InfoCard label="Assigned" value={asText(metrics.total_assigned ?? 0)} hint="Leads assigned to this agent." />
-					<InfoCard label="Conversions" value={asText(metrics.conversions ?? 0)} hint="Reserved or closed-won leads." />
-					<InfoCard label="Conversion Rate" value={`${metrics.conversion_rate_pct ?? 0}%`} hint="From assigned leads." />
-					<InfoCard label="Avg Response" value={metrics.avg_response_time_hours == null ? "n/a" : `${metrics.avg_response_time_hours}h`} hint="Creation to first contact." />
-				</div>
-			) : (
-				<p className="mt-2 text-sm text-black/55">No performance row exists for this agent yet. It will appear once assignments and pipeline activity are recorded.</p>
-			)}
+			<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Account & Live Performance</div>
+			<div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+				<InfoCard label="Login Email" value={agentEmail ?? "No login account"} hint="Email the agent uses to sign in." />
+				<InfoCard label="Assigned" value={asText(metrics?.total_assigned ?? 0)} hint="Leads assigned to this agent." />
+				<InfoCard label="Conversions" value={asText(metrics?.conversions ?? 0)} hint="Reserved or closed-won leads." />
+				<InfoCard label="Avg Response" value={metrics?.avg_response_time_hours == null ? "n/a" : `${metrics.avg_response_time_hours}h`} hint="Creation to first contact." />
+			</div>
+			{!metrics ? (
+				<p className="mt-3 text-sm text-black/55">No performance row exists for this agent yet. It will appear once assignments and pipeline activity are recorded.</p>
+			) : null}
 		</div>
 	);
 }
@@ -1121,12 +1121,9 @@ function routeForSection(section: CmsSection) {
 		agents: "/admin/agents",
 		developers: "/admin/agents?section=developers",
 		profiles: "/admin/agents?section=profiles",
-		hero: "/admin?section=hero",
 		gallery: "/admin?section=gallery",
-		testimonials: "/admin?section=testimonials",
 		logos: "/admin?section=logos",
 		stats: "/admin?section=stats",
-		pages: "/admin?section=pages",
 		settings: "/admin/settings",
 		activityLogs: "/admin/settings?section=activityLogs",
 	};
@@ -1689,7 +1686,7 @@ function InquiryPanel({
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Assigned Agent</div>
 											<select value={assignedAgentId} onChange={(event) => updateDraft({ assignedAgentId: event.target.value })} disabled={!canReassign} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
 												<option value="">Unassigned</option>
-												{agents.map((agent) => <option key={asText(agent.id)} value={asText(agent.id)}>{agent.profile_id ?? agent.id}</option>)}
+												{agents.map((agent) => <option key={asText(agent.id)} value={asText(agent.id)}>{agent.full_name || agent.profile_id || agent.id}</option>)}
 											</select>
 										</label>
 										<label className="block">
@@ -2341,12 +2338,9 @@ export default function AdminCms({
 					label: "Content",
 					icon: FileText,
 					items: [
-						{ id: "hero", label: "Hero Banners", hint: `${workspace.heroBanners.length} banners`, icon: FileText },
 						{ id: "gallery", label: "Gallery", hint: `${workspace.galleryItems.length} items`, icon: FileText },
-						{ id: "testimonials", label: "Testimonials", hint: `${workspace.testimonials.length} quotes`, icon: MessageSquare },
 						{ id: "logos", label: "Partner Logos", hint: `${workspace.partnerLogos.length} logos`, icon: Building2 },
 						{ id: "stats", label: "Site Stats", hint: `${workspace.siteStats.length} counters`, icon: BarChart3 },
-						{ id: "pages", label: "Pages", hint: `${workspace.cmsPages.length} pages`, icon: FileText },
 					],
 				},
 				{
@@ -2362,7 +2356,7 @@ export default function AdminCms({
 		}
 
 		return groups;
-	}, [isAdmin, workspace.agents.length, workspace.cmsPages.length, workspace.developers.length, workspace.galleryItems.length, workspace.heroBanners.length, workspace.inquiries.length, workspace.partnerLogos.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length, workspace.testimonials.length]);
+	}, [isAdmin, workspace.agents.length, workspace.developers.length, workspace.galleryItems.length, workspace.inquiries.length, workspace.partnerLogos.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length]);
 	const navItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
 	const currentSection = navItems.some((item) => item.id === activeSection) ? activeSection : "overview";
 	const activeNavItem = navItems.find((item) => item.id === currentSection);
@@ -2398,8 +2392,26 @@ export default function AdminCms({
 		[workspace.projects],
 	);
 	const agentOptions = useMemo(
-		() => workspace.agents.map((agent) => optionFromRow(agent, `${asText(agent.license_number ?? agent.specialization ?? agent.profile_id)}${agent.is_top_agent ? " · Top agent" : ""}`, "Unnamed agent")),
+		() => workspace.agents.map((agent) => optionFromRow(agent, `${asText(agent.full_name ?? agent.license_number ?? agent.specialization ?? agent.profile_id)}${agent.is_top_agent ? " · Top agent" : ""}`, "Unnamed agent")),
 		[workspace.agents],
+	);
+	const profileEmailById = useMemo(
+		() => new Map(workspace.profiles.map((profile) => [asText(profile.id), asText(profile.email)])),
+		[workspace.profiles],
+	);
+	const selectedAgentProfileEmail = useMemo(() => {
+		const selectedAgent = workspace.agents.find((row) => asText(row.id) === asText(selectedAgentId));
+		return selectedAgent?.profile_id ? profileEmailById.get(asText(selectedAgent.profile_id)) : undefined;
+	}, [workspace.agents, selectedAgentId, profileEmailById]);
+	const agentRowMeta = useCallback(
+		(row: CmsRow) => {
+			const email = row.profile_id ? profileEmailById.get(asText(row.profile_id)) : undefined;
+			const parts = [row.license_number ? `PRC ${asText(row.license_number)}` : "no license"];
+			if (email) parts.push(email);
+			if (row.is_top_agent) parts.push("top agent");
+			return parts.join(" • ");
+		},
+		[profileEmailById],
 	);
 	const propertyEditorFields = useMemo<FieldSpec[]>(
 		() => propertyFields.map((field) => {
@@ -2479,10 +2491,7 @@ export default function AdminCms({
 			const [
 				developersResult,
 				agentsResult,
-				pagesResult,
 				galleryResult,
-				testimonialsResult,
-				heroBannersResult,
 				partnerLogosResult,
 				siteStatsResult,
 				settingsResult,
@@ -2498,10 +2507,7 @@ export default function AdminCms({
 			] = await Promise.all([
 				supabaseBrowser.from("developer_partners").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("agents").select("*").order("created_at", { ascending: false }),
-				supabaseBrowser.from("cms_pages").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("gallery_items").select("*").order("sort_order", { ascending: true }),
-				supabaseBrowser.from("testimonials").select("*").order("sort_order", { ascending: true }),
-				supabaseBrowser.from("hero_banners").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("partner_logos").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("site_stats").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("system_settings").select("*").order("updated_at", { ascending: false }),
@@ -2518,10 +2524,7 @@ export default function AdminCms({
 
 			nextWorkspace.developers = developersResult.data ?? [];
 			nextWorkspace.agents = agentsResult.data ?? [];
-			nextWorkspace.cmsPages = pagesResult.data ?? [];
 			nextWorkspace.galleryItems = galleryResult.data ?? [];
-			nextWorkspace.testimonials = testimonialsResult.data ?? [];
-			nextWorkspace.heroBanners = heroBannersResult.data ?? [];
 			nextWorkspace.partnerLogos = partnerLogosResult.data ?? [];
 			nextWorkspace.siteStats = siteStatsResult.data ?? [];
 			nextWorkspace.settings = settingsResult.data ?? [];
@@ -2775,26 +2778,11 @@ export default function AdminCms({
 	}
 
 	async function saveAgent(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.profile_id) {
-			setMessage("Agents need a profile_id linked to auth.users.");
+		if (!currentRow && !payload.profile_id) {
+			setMessage("Agents need a profile_id linked to auth.users. Use the Register Agent form above to create a new agent.");
 			return;
 		}
 		await saveEntity("agents", payload, currentRow);
-	}
-
-	async function saveCmsPage(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.slug || !payload.title) {
-			setMessage("CMS pages need slug and title.");
-			return;
-		}
-		if (payload.is_published && !payload.published_at) {
-			payload.published_at = new Date().toISOString();
-		}
-		if (sessionUser?.id) {
-			payload.updated_by = sessionUser.id;
-			if (!currentRow) payload.created_by = sessionUser.id;
-		}
-		await saveEntity("cms_pages", payload, currentRow);
 	}
 
 	async function saveGalleryItem(payload: CmsPayload, currentRow: CmsRow | null) {
@@ -2804,23 +2792,6 @@ export default function AdminCms({
 		}
 		if (sessionUser?.id && !currentRow) payload.created_by = sessionUser.id;
 		await saveEntity("gallery_items", payload, currentRow);
-	}
-
-	async function saveTestimonial(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.author_name || !payload.quote) {
-			setMessage("Testimonials need author_name and quote.");
-			return;
-		}
-		await saveEntity("testimonials", payload, currentRow);
-	}
-
-	async function saveHeroBanner(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.headline || !payload.image_url) {
-			setMessage("Hero banners need headline and image_url.");
-			return;
-		}
-		if (sessionUser?.id && !currentRow) payload.created_by = sessionUser.id;
-		await saveEntity("hero_banners", payload, currentRow);
 	}
 
 	async function savePartnerLogo(payload: CmsPayload, currentRow: CmsRow | null) {
@@ -3336,7 +3307,10 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "agents" && isAdmin ? (
-							<EntityEditor title="Agents" description="Profile info, social links, top-agent flags, and live performance from assigned inquiry activity." rows={workspace.agents} selectedId={selectedAgentId} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.license_number ?? "no license"}${row.is_top_agent ? " • top agent" : ""}`} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} extra={<AgentMetricsSummary agentId={selectedAgentId} agentPerformance={workspace.agentPerformance} />} />
+							<div className="space-y-3">
+								<AgentRegistrationForm onRegistered={reloadWorkspace} />
+								<EntityEditor title="Agents" description="Profile info, social links, top-agent flags, and live performance from assigned inquiry activity. Use the registration form above to create a new sign-in account for an agent." rows={workspace.agents} selectedId={selectedAgentId} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={agentRowMeta} saveLabel="Save agent" createLabel="Create a new agent" canCreate={false} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} extra={<AgentMetricsSummary agentId={selectedAgentId} agentEmail={selectedAgentProfileEmail} agentPerformance={workspace.agentPerformance} />} />
+							</div>
 						) : null}
 
 						{currentSection === "developers" && isAdmin ? (
@@ -3389,20 +3363,8 @@ export default function AdminCms({
 							<InquiryPanel activeView={currentSection} inquiries={workspace.inquiries} agents={workspace.agents} currentRole={role} currentUserId={sessionUser.id} selectedId={selectedInquiryId} onSelect={(id) => setSelection((current) => ({ ...current, inquiries: id }))} onReload={reloadWorkspace} canEdit={canEditInquiries} canReassign={canReassignInquiries} />
 						) : null}
 
-						{currentSection === "pages" && isAdmin ? (
-							<EntityEditor title="CMS Pages" description="Static and semi-static content pages." rows={workspace.cmsPages} selectedId={selection.cmsPages} fields={cmsPageFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => asText(row.slug ?? row.meta_title ?? "cms")} onSelect={(row) => setSelection((current) => ({ ...current, cmsPages: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, cmsPages: null }))} onDelete={(row) => deleteEntity("cms_pages", row)} onSubmit={saveCmsPage} />
-						) : null}
-
 						{currentSection === "gallery" && isAdmin ? (
 							<EntityEditor title="Gallery Items" description="Browse Gallery tiles for achievements, events, trainings, service, and general content." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.section ?? "general"} • ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} />
-						) : null}
-
-						{currentSection === "testimonials" && isAdmin ? (
-							<EntityEditor title="Testimonials" description="Homepage testimonials carousel content." rows={workspace.testimonials} selectedId={selection.testimonials} fields={testimonialFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.author_title ?? ""} • ${row.rating ?? "n/a"} stars`} onSelect={(row) => setSelection((current) => ({ ...current, testimonials: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, testimonials: null }))} onDelete={(row) => deleteEntity("testimonials", row)} onSubmit={saveTestimonial} />
-						) : null}
-
-						{currentSection === "hero" && isAdmin ? (
-							<EntityEditor title="Hero Banners" description="Rotating hero slides for the public landing page." rows={workspace.heroBanners} selectedId={selection.heroBanners} fields={heroBannerFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.sort_order ?? 0} • ${row.is_active ? "active" : "inactive"}`} onSelect={(row) => setSelection((current) => ({ ...current, heroBanners: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, heroBanners: null }))} onDelete={(row) => deleteEntity("hero_banners", row)} onSubmit={saveHeroBanner} />
 						) : null}
 
 						{currentSection === "logos" && isAdmin ? (

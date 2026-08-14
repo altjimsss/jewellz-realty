@@ -6,10 +6,7 @@ export const emptyWorkspace: Workspace = {
 	developers: [],
 	agents: [],
 	inquiries: [],
-	cmsPages: [],
 	galleryItems: [],
-	testimonials: [],
-	heroBanners: [],
 	partnerLogos: [],
 	siteStats: [],
 	settings: [],
@@ -30,10 +27,7 @@ export const emptySelection: SelectionState = {
 	developers: null,
 	agents: null,
 	inquiries: null,
-	cmsPages: null,
 	galleryItems: null,
-	testimonials: null,
-	heroBanners: null,
 	partnerLogos: null,
 	siteStats: null,
 	settings: null,
@@ -160,7 +154,8 @@ export const developerFields: FieldSpec[] = [
 ];
 
 export const agentFields: FieldSpec[] = [
-	{ name: "profile_id", label: "Profile ID", type: "text" },
+	{ name: "profile_id", label: "Profile ID", type: "text", help: "The Supabase auth user this agent signs in as. Use the Register Agent form to create this automatically." },
+	{ name: "full_name", label: "Full Name", type: "text" },
 	{ name: "license_number", label: "License Number", type: "text" },
 	{ name: "specialization", label: "Specialization", type: "text" },
 	{ name: "bio", label: "Bio", type: "textarea", rows: 5 },
@@ -172,16 +167,6 @@ export const agentFields: FieldSpec[] = [
 	{ name: "is_top_agent", label: "Top Agent", type: "checkbox" },
 ];
 
-export const cmsPageFields: FieldSpec[] = [
-	{ name: "slug", label: "Slug", type: "text" },
-	{ name: "title", label: "Title", type: "text" },
-	{ name: "content_html", label: "Content HTML", type: "textarea", rows: 10, help: "Paste raw HTML or simple text content." },
-	{ name: "meta_title", label: "Meta Title", type: "text" },
-	{ name: "meta_description", label: "Meta Description", type: "textarea", rows: 3 },
-	{ name: "is_published", label: "Published", type: "checkbox" },
-	{ name: "published_at", label: "Published At", type: "datetime-local" },
-];
-
 export const galleryFields: FieldSpec[] = [
 	{ name: "section", label: "Section", type: "select", options: gallerySectionOptions },
 	{ name: "title", label: "Title", type: "text" },
@@ -190,27 +175,6 @@ export const galleryFields: FieldSpec[] = [
 	{ name: "link_url", label: "Link URL", type: "url" },
 	{ name: "sort_order", label: "Sort Order", type: "number" },
 	{ name: "is_published", label: "Published", type: "checkbox" },
-];
-
-export const testimonialFields: FieldSpec[] = [
-	{ name: "author_name", label: "Author Name", type: "text" },
-	{ name: "author_title", label: "Author Title", type: "text" },
-	{ name: "avatar_url", label: "Avatar URL", type: "url" },
-	{ name: "quote", label: "Quote", type: "textarea", rows: 5 },
-	{ name: "rating", label: "Rating", type: "number" },
-	{ name: "is_published", label: "Published", type: "checkbox" },
-	{ name: "sort_order", label: "Sort Order", type: "number" },
-];
-
-export const heroBannerFields: FieldSpec[] = [
-	{ name: "headline", label: "Headline", type: "text" },
-	{ name: "subheadline", label: "Subheadline", type: "textarea", rows: 3 },
-	{ name: "cta_label", label: "CTA Label", type: "text" },
-	{ name: "cta_url", label: "CTA URL", type: "url" },
-	{ name: "image_url", label: "Image URL", type: "url" },
-	{ name: "linked_property", label: "Linked Property ID", type: "text" },
-	{ name: "sort_order", label: "Sort Order", type: "number" },
-	{ name: "is_active", label: "Active", type: "checkbox" },
 ];
 
 export const partnerLogoFields: FieldSpec[] = [

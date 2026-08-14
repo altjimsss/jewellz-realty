@@ -6,6 +6,13 @@ import Image from "next/image";
 export type Agent = {
 	name: string;
 	top: boolean;
+	photoUrl?: string;
+	licenseNumber?: string;
+	specialization?: string;
+	facebookUrl?: string;
+	instagramUrl?: string;
+	email?: string;
+	phone?: string;
 };
 
 type MeetAgentsProps = {
@@ -109,27 +116,52 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: Meet
 									{agent.top && (
 										<span className="absolute right-3 top-3 z-10 rounded-md bg-black px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-white">TOP AGENT</span>
 									)}
-									<Image
-										src="/assets/broker.png"
-										alt={agent.name}
-										fill
-										sizes="280px"
-										className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
-									/>
+									{agent.photoUrl ? (
+										<Image
+											src={agent.photoUrl}
+											alt={agent.name}
+											fill
+											sizes="280px"
+											unoptimized
+											className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
+										/>
+									) : (
+										<Image
+											src="/assets/broker.png"
+											alt={agent.name}
+											fill
+											sizes="280px"
+											className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
+										/>
+									)}
 								</div>
 								<div className="bg-[#2A2A2A] px-3 py-3 text-center text-white">
 									<p className="truncate whitespace-nowrap text-[28px] font-bold uppercase leading-none tracking-[0.02em]">{agent.name}</p>
-									<p className="mt-1 text-[15px] font-medium text-gray-200">Real Estate Broker</p>
+									<p className="mt-1 text-[15px] font-medium text-gray-200">{agent.specialization || "Real Estate Broker"}</p>
 									<div className="mx-auto mt-2 h-px w-20 bg-white/20" />
-									<p className="mt-2 text-[11px] font-medium text-gray-300">PRC No. 24444</p>
-									<p className="text-[11px] font-medium text-gray-300">DHSUD No. 6186</p>
+									{agent.licenseNumber ? (
+										<p className="mt-2 text-[11px] font-medium text-gray-300">PRC No. {agent.licenseNumber}</p>
+									) : (
+										<>
+											<p className="mt-2 text-[11px] font-medium text-gray-300">PRC No. 24444</p>
+											<p className="text-[11px] font-medium text-gray-300">DHSUD No. 6186</p>
+										</>
+									)}
 								</div>
 								<div className={`px-3 py-2.5 ${idx % 2 === 0 ? "bg-[#DE141C]" : "bg-white"}`}>
 									<div className={`flex items-center justify-center gap-3 ${idx % 2 === 0 ? "text-white" : "text-[#DE141C]"}`}>
-										<button type="button" className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label="Facebook"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M13 10h3V7h-3V5c0-.8.2-1.1 1-1.1H16V1h-3c-2.5 0-4 1.5-4 4.2V7H7v3h2v9h4v-9z" /></svg></button>
-										<button type="button" className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label="Instagram"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M7.8 2h8.4A5.8 5.8 0 0122 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8A5.8 5.8 0 012 16.2V7.8A5.8 5.8 0 017.8 2zm0 2A3.8 3.8 0 004 7.8v8.4A3.8 3.8 0 007.8 20h8.4a3.8 3.8 0 003.8-3.8V7.8A3.8 3.8 0 0016.2 4H7.8zm9.6 1.3a1.1 1.1 0 110 2.2 1.1 1.1 0 010-2.2zM12 7a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z" /></svg></button>
-										<button type="button" className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label="Email"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M3 5h18a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm16.6 2H4.4L12 12.2 19.6 7zM4 17h16V8.1l-7.4 5.1a1 1 0 01-1.2 0L4 8.1V17z" /></svg></button>
-										<button type="button" className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label="Phone"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.6 15.6 0 006.6 6.6l2.2-2.2a1 1 0 011-.24c1.1.36 2.2.54 3.4.54a1 1 0 011 1V20a1 1 0 01-1 1C10.3 21 3 13.7 3 4.5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.15.18 2.29.54 3.4a1 1 0 01-.25 1l-2.24 1.9z" /></svg></button>
+										{agent.facebookUrl ? (
+											<a href={agent.facebookUrl} target="_blank" rel="noopener noreferrer" className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label={`${agent.name} Facebook`}><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M13 10h3V7h-3V5c0-.8.2-1.1 1-1.1H16V1h-3c-2.5 0-4 1.5-4 4.2V7H7v3h2v9h4v-9z" /></svg></a>
+										) : null}
+										{agent.instagramUrl ? (
+											<a href={agent.instagramUrl} target="_blank" rel="noopener noreferrer" className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label={`${agent.name} Instagram`}><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M7.8 2h8.4A5.8 5.8 0 0122 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8A5.8 5.8 0 012 16.2V7.8A5.8 5.8 0 017.8 2zm0 2A3.8 3.8 0 004 7.8v8.4A3.8 3.8 0 007.8 20h8.4a3.8 3.8 0 003.8-3.8V7.8A3.8 3.8 0 0016.2 4H7.8zm9.6 1.3a1.1 1.1 0 110 2.2 1.1 1.1 0 010-2.2zM12 7a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z" /></svg></a>
+										) : null}
+										{agent.email ? (
+											<a href={`mailto:${agent.email}`} className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label={`${agent.name} Email`}><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M3 5h18a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm16.6 2H4.4L12 12.2 19.6 7zM4 17h16V8.1l-7.4 5.1a1 1 0 01-1.2 0L4 8.1V17z" /></svg></a>
+										) : null}
+										{agent.phone ? (
+											<a href={`tel:${agent.phone}`} className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${idx % 2 === 0 ? "bg-white/10 hover:bg-white/20" : "bg-[#DE141C]/10 hover:bg-[#DE141C]/20"}`} aria-label={`${agent.name} Phone`}><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.6 15.6 0 006.6 6.6l2.2-2.2a1 1 0 011-.24c1.1.36 2.2.54 3.4.54a1 1 0 011 1V20a1 1 0 01-1 1C10.3 21 3 13.7 3 4.5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.15.18 2.29.54 3.4a1 1 0 01-.25 1l-2.24 1.9z" /></svg></a>
+										) : null}
 									</div>
 								</div>
 							</article>

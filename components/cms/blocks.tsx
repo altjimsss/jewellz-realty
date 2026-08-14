@@ -22,7 +22,7 @@ export function InfoCard({ label, value, hint }: { label: string; value: string 
 			<div className="flex items-start justify-between gap-3">
 				<div>
 					<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">{label}</div>
-					<div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{value}</div>
+					<div className="mt-2 break-words text-2xl font-semibold leading-tight tracking-[-0.04em] text-[#111111]">{value}</div>
 				</div>
 				<span className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-black/50">Live</span>
 			</div>
@@ -50,6 +50,9 @@ export function EntityEditor({
 	renderPreview,
 	guidance,
 	extra,
+	saveLabel,
+	createLabel,
+	canCreate = true,
 	idKey = "id",
 }: EditorProps) {
 	const selectedRow = rows.find((row) => asText(row?.[idKey]) === asText(selectedId)) ?? null;
@@ -107,7 +110,7 @@ export function EntityEditor({
 				<aside className="rounded-lg border border-black/10 bg-white p-3">
 					<div className="flex items-center justify-between gap-2 px-1 pb-3">
 						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Records</div>
-						{canEdit ? (
+						{canEdit && canCreate ? (
 							<button type="button" onClick={onCreateNew} className="rounded-md border border-black/10 px-3 py-1 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
 								New
 							</button>
@@ -143,7 +146,7 @@ export function EntityEditor({
 					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
 						<div>
 							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Editor</div>
-							<div className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#111111]">{selectedRow ? `Editing ${rowLabel(selectedRow)}` : `Create a new ${title.toLowerCase()}`}</div>
+							<div className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#111111]">{selectedRow ? `Editing ${rowLabel(selectedRow)}` : createLabel ?? `Create a new ${title.toLowerCase()}`}</div>
 						</div>
 						<div className="flex flex-wrap items-center gap-2">
 							{selectedRow && canEdit && onDelete ? (
@@ -155,6 +158,12 @@ export function EntityEditor({
 						</div>
 					</div>
 
+					{!selectedRow && !canCreate ? (
+						<div className="mt-4 rounded-lg border border-dashed border-black/15 bg-zinc-50 p-6 text-sm leading-6 text-black/55">
+							Select an existing {title.toLowerCase()} from the list to edit its details. New {title.toLowerCase()} are added with the registration form above.
+						</div>
+					) : (
+						<>
 					<form ref={formRef} id={formId} key={selectedRowKey} className="mt-4 grid gap-4" onChange={handleFormChange} onSubmit={handleSubmit}>
 						{guidance ? <div>{guidance}</div> : null}
 						<div className="grid gap-4 md:grid-cols-2">
@@ -210,10 +219,12 @@ export function EntityEditor({
 							</button>
 						) : (
 							<button form={formId} type="submit" disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
-								{selectedRow ? "Save changes" : "Save property"}
+									{selectedRow ? "Save changes" : saveLabel ?? "Save property"}
 							</button>
 						)}
 					</div>
+						</>
+					)}
 				</div>
 			</div>
 			{renderPreview && previewPayload ? (
@@ -238,7 +249,7 @@ export function EntityEditor({
 									Back to edit
 								</button>
 								<button form={formId} type="submit" disabled={!canEdit} className="rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
-									{selectedRow ? "Save changes" : "Save property"}
+								{selectedRow ? "Save changes" : saveLabel ?? "Save property"}
 								</button>
 							</div>
 						</div>

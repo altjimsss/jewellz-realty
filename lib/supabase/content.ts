@@ -56,13 +56,19 @@ function asNumber(value: unknown) {
 }
 
 export async function getPublicHomeContent() {
-	const [heroResult, statsResult, logosResult, testimonialsResult, agentsResult] = await Promise.all([
+	const [heroResult, statsResult, logosResult, testimonialsResult, agentsResult, agentProfilesResult] = await Promise.all([
 		supabaseServer.from("hero_banners").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("site_stats").select("*").order("sort_order", { ascending: true }),
 		supabaseServer.from("partner_logos").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("testimonials").select("*").eq("is_published", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("agents").select("*").eq("is_top_agent", true).order("created_at", { ascending: false }),
+		supabaseServer.from("profiles").select("id, email"),
 	]);
+
+	const agentEmails = new Map<string, string>();
+	for (const profile of agentProfilesResult.data ?? []) {
+		if (profile?.id && profile.email) agentEmails.set(String(profile.id), String(profile.email));
+	}
 
 	return {
 		heroBanners: (heroResult.data ?? []).map((row): PublicHeroBanner => ({
@@ -98,6 +104,7 @@ export async function getPublicHomeContent() {
 			specialization: row.specialization ? String(row.specialization) : undefined,
 			facebookUrl: row.facebook_url ? String(row.facebook_url) : undefined,
 			instagramUrl: row.instagram_url ? String(row.instagram_url) : undefined,
+			email: row.profile_id ? agentEmails.get(String(row.profile_id)) : undefined,
 		})),
 	};
 }
