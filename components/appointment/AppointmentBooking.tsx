@@ -194,7 +194,8 @@ export function AppointmentBooking() {
     });
     setIsSubmitting(false);
     if (!response.ok) {
-      setSubmitStatus("Unable to save appointment. Please try again.");
+      const data = await response.json().catch(() => null);
+      setSubmitStatus(data?.error || "Unable to save appointment. Please try again.");
       return;
     }
     setSubmitStatus("");

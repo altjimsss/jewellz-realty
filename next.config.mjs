@@ -6,6 +6,19 @@ const nextConfig = {
   turbopack: {
     root: fileURLToPath(new URL(".", import.meta.url)),
   },
+  serverExternalPackages: ["@xenova/transformers", "onnxruntime-node", "sharp"],
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "react-icons",
+      "recharts",
+      "echarts",
+      "echarts-for-react",
+      "framer-motion",
+      "gsap",
+      "@base-ui/react"
+    ],
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },

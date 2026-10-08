@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bell, Bot, Building2, CalendarDays, Download, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
+import { BarChart3, Bell, Bot, Building2, Download, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -17,10 +17,14 @@ import { PropertyDetailContent } from "@/components/properties/PropertyDetailCon
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 import { AgentRegistrationForm } from "./AgentRegistrationForm";
+import { DeveloperRegistrationForm } from "./DeveloperRegistrationForm";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { agentFields, developerFields, emptySelection, emptyWorkspace, galleryFields, inquiryStatusOptions, partnerLogoFields, priorityOptions, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
+import { agentFields, developerFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
+import { AdminCalendarWidget } from "./AdminCalendarWidget";
+import { PropertyWizard } from "./PropertyWizard";
+import { InquiryWorkflowManager } from "./InquiryWorkflowManager";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -72,13 +76,6 @@ function relativeAge(value: unknown) {
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
-function formatDuration(seconds: number) {
-	if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
-	if (seconds < 60) return `${Math.round(seconds)}s`;
-	const minutes = Math.floor(seconds / 60);
-	const remainingSeconds = Math.round(seconds % 60);
-	return remainingSeconds ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
-}
 
 function csvEscape(value: unknown) {
 	const textValue = asText(value);
@@ -167,9 +164,10 @@ function groupByLabel<T>(rows: T[], getLabel: (row: T) => string) {
 	}, {});
 }
 
-function dailyEventRows(events: CmsRow[], days = 14) {
+function dailyEventRows(events: CmsRow[], days = 14, referenceDate?: string | null) {
+	const base = referenceDate ? new Date(`${referenceDate}T12:00:00`) : new Date();
 	const labels = Array.from({ length: days }, (_, index) => {
-		const date = new Date();
+		const date = new Date(base);
 		date.setDate(date.getDate() - (days - 1 - index));
 		return date.toISOString().slice(0, 10);
 	});
@@ -1339,403 +1337,8 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete
 		</div>
 	);
 }
+// InquiryPanel replaced by modular InquiryWorkflowManager component (./InquiryWorkflowManager.tsx)
 
-function InquiryPanel({
-	activeView,
-	inquiries,
-	agents,
-	currentRole,
-	currentUserId,
-	selectedId,
-	onSelect,
-	onReload,
-	canEdit,
-	canReassign,
-}: {
-	activeView: CmsSection;
-	inquiries: CmsRow[];
-	agents: CmsRow[];
-	currentRole: Role;
-	currentUserId: string | null;
-	selectedId: string | null;
-	onSelect: (id: string | null) => void;
-	onReload: () => Promise<void>;
-	canEdit: boolean;
-	canReassign: boolean;
-}) {
-	const [timeline, setTimeline] = useState<CmsRow[]>([]);
-	const [visitorEvents, setVisitorEvents] = useState<CmsRow[]>([]);
-	const [visitorSession, setVisitorSession] = useState<CmsRow | null>(null);
-	const [draft, setDraft] = useState({ inquiryId: "", status: "new", assignedAgentId: "", note: "" });
-	const [saving, setSaving] = useState(false);
-	const [stageFilter, setStageFilter] = useState("");
-	const [actionMessage, setActionMessage] = useState("");
-	const showStageControls = activeView === "pipeline";
-	const showPipelineEditor = activeView === "inquiries" || activeView === "pipeline";
-	const showTimelineReport = activeView === "timeline";
-	const panelTitle = activeView === "pipeline" ? "Lead Stages" : activeView === "timeline" ? "Activity History" : "All Inquiries";
-	const panelDescription = activeView === "pipeline"
-		? "Filter leads by pipeline stage and update status, assignment, and next steps."
-		: activeView === "timeline"
-			? "Review inquiry notes, status changes, and follow-up history."
-			: "Review submissions, lead scores, urgency signals, and buyer details.";
-
-	const selectedInquiry = inquiries.find((item) => asText(item.id) === asText(selectedId)) ?? null;
-	const selectedInquiryId = asText(selectedInquiry?.id);
-	const status = draft.inquiryId === selectedInquiryId ? draft.status : asText(selectedInquiry?.status || "new");
-	const assignedAgentId = draft.inquiryId === selectedInquiryId ? draft.assignedAgentId : asText(selectedInquiry?.assigned_agent_id);
-	const note = draft.inquiryId === selectedInquiryId ? draft.note : "";
-	const selectedLeadScore = toNullableNumber(selectedInquiry?.lead_score);
-	const updateDraft = (updates: Partial<typeof draft>) => setDraft((current) => ({ ...current, inquiryId: selectedInquiryId, ...updates }));
-	const stageCounts = inquiryStatusOptions.map((option) => ({
-		...option,
-		count: inquiries.filter((item) => asText(item.status || "new") === option.value).length,
-	}));
-	const visibleInquiries = (stageFilter ? inquiries.filter((item) => asText(item.status || "new") === stageFilter) : inquiries)
-		.slice()
-		.sort((first, second) => {
-			const firstScore = toNullableNumber(first.lead_score) ?? 0;
-			const secondScore = toNullableNumber(second.lead_score) ?? 0;
-			const firstStale = !first.first_contacted_at && (hoursSince(first.created_at) ?? 0) >= 24 ? 1 : 0;
-			const secondStale = !second.first_contacted_at && (hoursSince(second.created_at) ?? 0) >= 24 ? 1 : 0;
-			const firstUnassigned = !asText(first.assigned_agent_id) ? 1 : 0;
-			const secondUnassigned = !asText(second.assigned_agent_id) ? 1 : 0;
-			return (secondScore + secondStale * 0.2 + secondUnassigned * 0.1) - (firstScore + firstStale * 0.2 + firstUnassigned * 0.1);
-		});
-	const visitorEventNames = visitorEvents.map((event) => asText(event.event_type));
-	const visitorViewCount = visitorEventNames.filter((event) => ["property_view", "page_view", "view", "listing_view"].includes(event)).length;
-	const visitorInteractionCount = visitorEventNames.filter((event) => event.includes("click") || event.includes("open") || event.includes("gallery") || event.includes("map") || event === "recommendation_click").length;
-	const visitorDwellSeconds = visitorEvents.reduce((sum, event) => {
-		const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
-		const duration = Number(metadata.durationSeconds);
-		return sum + (Number.isFinite(duration) ? duration : 0);
-	}, 0);
-	const visitorPropertyIds = new Set(visitorEvents.map((event) => asText(event.property_id)).filter(Boolean));
-	const visitorIntentLabel = selectedLeadScore == null
-		? "Not scored"
-		: selectedLeadScore >= 0.72
-			? "High intent"
-			: selectedLeadScore >= 0.45
-				? "Warm lead"
-				: "Early browsing";
-
-	useEffect(() => {
-		let active = true;
-
-		void (async () => {
-			if (!selectedInquiry) {
-				await Promise.resolve();
-				if (active) setTimeline([]);
-				return;
-			}
-
-			const { data } = await supabaseBrowser.from("inquiry_timeline").select("*").eq("inquiry_id", selectedInquiry.id).order("created_at", { ascending: false });
-			if (active) setTimeline(data ?? []);
-		})();
-
-		return () => {
-			active = false;
-		};
-	}, [selectedInquiry, selectedInquiryId]);
-
-	useEffect(() => {
-		let active = true;
-		const sessionId = asText(selectedInquiry?.session_id);
-
-		void (async () => {
-			if (!sessionId) {
-				await Promise.resolve();
-				if (active) {
-					setVisitorEvents([]);
-					setVisitorSession(null);
-				}
-				return;
-			}
-
-			const [eventsResult, sessionResult] = await Promise.all([
-				supabaseBrowser
-					.from("analytics_events")
-					.select("event_type, property_id, page_path, metadata, created_at")
-					.eq("session_id", sessionId)
-					.order("created_at", { ascending: false })
-					.limit(80),
-				supabaseBrowser
-					.from("sessions")
-					.select("*")
-					.eq("id", sessionId)
-					.maybeSingle(),
-			]);
-
-			if (active) {
-				setVisitorEvents(eventsResult.data ?? []);
-				setVisitorSession(sessionResult.data ?? null);
-			}
-		})();
-
-		return () => {
-			active = false;
-		};
-	}, [selectedInquiry?.session_id]);
-
-	async function saveInquiry() {
-		if (!selectedInquiry || !canEdit) return;
-
-		setSaving(true);
-		const now = new Date().toISOString();
-		const updatePayload: CmsPayload = {
-			status,
-			last_activity_at: now,
-		};
-
-		if (canReassign) {
-			updatePayload.assigned_agent_id = assignedAgentId || null;
-		}
-
-		if (status === "contacted" && !selectedInquiry.first_contacted_at) {
-			updatePayload.first_contacted_at = now;
-		}
-
-		if (["reserved", "closed_won", "closed_lost"].includes(status) && !selectedInquiry.closed_at) {
-			updatePayload.closed_at = now;
-		}
-
-		const { error } = await supabaseBrowser.from("inquiries").update(updatePayload).eq("id", selectedInquiry.id);
-		if (error) {
-			setSaving(false);
-			return;
-		}
-
-		if (canReassign && assignedAgentId && assignedAgentId !== selectedInquiry.assigned_agent_id) {
-			await supabaseBrowser.from("agent_assignments").update({ unassigned_at: now }).eq("inquiry_id", selectedInquiry.id).is("unassigned_at", null);
-			await supabaseBrowser.from("agent_assignments").insert({ inquiry_id: selectedInquiry.id, agent_id: assignedAgentId, assigned_by: currentUserId, assigned_at: now });
-		}
-
-		if (note.trim()) {
-			await supabaseBrowser.from("inquiry_timeline").insert({
-				inquiry_id: selectedInquiry.id,
-				changed_by: currentUserId,
-				old_status: selectedInquiry.status,
-				new_status: status,
-				note: note.trim(),
-			});
-		}
-
-		setSaving(false);
-		updateDraft({ note: "" });
-		setActionMessage("Saved.");
-		window.setTimeout(() => setActionMessage(""), 2400);
-		await onReload();
-	}
-
-	async function addTimelineNote() {
-		if (!selectedInquiry || !note.trim() || !canEdit) return;
-		setSaving(true);
-		await supabaseBrowser.from("inquiry_timeline").insert({
-			inquiry_id: selectedInquiry.id,
-			changed_by: currentUserId,
-			old_status: selectedInquiry.status,
-			new_status: status,
-			note: note.trim(),
-		});
-		updateDraft({ note: "" });
-		await onReload();
-		const { data } = await supabaseBrowser.from("inquiry_timeline").select("*").eq("inquiry_id", selectedInquiry.id).order("created_at", { ascending: false });
-		setTimeline(data ?? []);
-		setSaving(false);
-		setActionMessage("Note added.");
-		window.setTimeout(() => setActionMessage(""), 2400);
-	}
-
-	return (
-		<SectionShell title={panelTitle} description={panelDescription}>
-			{showStageControls ? <div className="mb-4 rounded-lg border border-black/10 bg-zinc-50 p-4">
-				<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Lead stages</div>
-				<div className="mt-3 flex flex-wrap gap-2">
-					<button type="button" onClick={() => setStageFilter("")} className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${stageFilter ? "bg-white text-black/60 hover:bg-zinc-100" : "bg-[#111111] text-white"}`}>All {inquiries.length}</button>
-					{stageCounts.map((stage) => (
-						<button key={stage.value} type="button" onClick={() => setStageFilter(stage.value)} className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${stageFilter === stage.value ? "bg-[#111111] text-white" : "bg-white text-black/60 hover:bg-zinc-100"}`}>
-							{stage.label} {stage.count}
-						</button>
-					))}
-				</div>
-				<p className="mt-3 text-xs leading-5 text-black/50">Typical flow: New to Assigned to Contacted to Viewing Scheduled to Negotiating to Reserved or Closed.</p>
-			</div> : null}
-			<div className="grid gap-4 xl:grid-cols-[300px_1fr]">
-				<aside className="rounded-2xl border border-black/10 bg-zinc-50 p-3">
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">{showTimelineReport ? "Select Lead" : "Lead Queue"}</div>
-					<div className="mt-3 max-h-[480px] space-y-2 overflow-auto pr-1">
-						{visibleInquiries.length === 0 ? <p className="px-2 py-4 text-sm text-black/45">No inquiries available for this stage.</p> : null}
-						{visibleInquiries.map((item) => {
-							const active = asText(item.id) === asText(selectedId);
-							const highPriority = asText(item.priority) === "high" || (toNullableNumber(item.lead_score) ?? 0) >= 0.72;
-							const unassigned = !asText(item.assigned_agent_id);
-							const stale = !item.first_contacted_at && (hoursSince(item.created_at) ?? 0) >= 24;
-							return (
-								<button key={asText(item.id)} type="button" onClick={() => onSelect(asText(item.id))} className={`w-full rounded-2xl border border-l-4 px-3 py-2 text-left transition ${active ? "border-black/15 border-l-[#111111] bg-zinc-100 shadow-sm" : highPriority || stale ? "border-black/10 border-l-[#111111] bg-zinc-50 hover:bg-zinc-100" : unassigned ? "border-black/10 border-l-zinc-500 bg-zinc-50 hover:bg-zinc-100" : "border-transparent border-l-zinc-300 bg-white/60 hover:border-black/10 hover:bg-white"}`}>
-									<div className="flex items-start justify-between gap-2">
-										<div className="min-w-0 text-sm font-medium text-[#111111]">{item.buyer_name}</div>
-										<span className="shrink-0 text-[11px] text-black/45">{relativeAge(item.created_at)}</span>
-									</div>
-									<div className="mt-1 flex flex-wrap gap-2 text-xs text-black/55">
-										<span>{item.status}</span>
-										<span>Priority: {item.priority ?? "n/a"}</span>
-										<span>{item.buyer_email}</span>
-									</div>
-									<div className="mt-2 flex flex-wrap gap-1.5">
-										{unassigned ? <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-semibold text-zinc-800">Unassigned</span> : null}
-										{stale ? <span className="rounded-full bg-[#111111] px-2 py-0.5 text-[10px] font-semibold text-white">Needs follow-up</span> : null}
-										{highPriority ? <span className="rounded-full bg-[#111111] px-2 py-0.5 text-[10px] font-semibold text-white">High intent</span> : null}
-									</div>
-									<div className="mt-2">
-										<LeadScoreBadge score={toNullableNumber(item.lead_score)} />
-									</div>
-								</button>
-							);
-						})}
-					</div>
-				</aside>
-
-				<div className="rounded-2xl border border-black/10 bg-white p-4">
-					{selectedInquiry ? (
-						<div className="space-y-4">
-							<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
-								<div>
-									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Selected Lead</div>
-									<div className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#111111]">{selectedInquiry.buyer_name}</div>
-									<div className="mt-1 text-sm text-black/55">{selectedInquiry.buyer_email} {selectedInquiry.buyer_phone ? `• ${selectedInquiry.buyer_phone}` : ""}</div>
-								</div>
-								<div className="flex flex-wrap items-center gap-2">
-									<LeadScoreBadge score={selectedLeadScore} />
-									<div className="rounded-full bg-black/5 px-4 py-2 text-xs font-medium text-black/60">Current status: {selectedInquiry.status}</div>
-								</div>
-							</div>
-
-							{showPipelineEditor ? <div className="grid gap-4 md:grid-cols-2">
-								<div className="rounded-2xl border border-black/10 bg-zinc-50 p-4">
-									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Lead Details</div>
-									<div className="mt-3 space-y-2 text-sm text-black/70">
-										<p><span className="font-medium text-[#111111]">Property:</span> {selectedInquiry.property_id}</p>
-										<p><span className="font-medium text-[#111111]">Developer:</span> {selectedInquiry.developer_id ?? "—"}</p>
-										<p><span className="font-medium text-[#111111]">Source:</span> {selectedInquiry.source}</p>
-										<p><span className="font-medium text-[#111111]">Anonymous visitor:</span> {selectedInquiry.session_id ?? "—"}</p>
-										<p className="flex items-center gap-2"><span className="font-medium text-[#111111]">Lead score:</span> <LeadScoreBadge score={selectedLeadScore} /></p>
-										<p className="whitespace-pre-wrap"><span className="font-medium text-[#111111]">Message:</span> {selectedInquiry.buyer_message ?? "—"}</p>
-									</div>
-								</div>
-
-								<div className="rounded-2xl border border-black/10 bg-white p-4 md:col-span-2">
-									<div className="flex flex-wrap items-start justify-between gap-3">
-										<div>
-											<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Anonymous Behavior Pattern</div>
-											<p className="mt-1 text-sm text-black/55">Behavior before this person submitted the inquiry. No account required.</p>
-										</div>
-										<div className="rounded-full bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white">{visitorIntentLabel}</div>
-									</div>
-									<div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-										<InfoCard label="Property views" value={visitorViewCount} hint="Views tied to this anonymous visitor." />
-										<InfoCard label="Interactions" value={visitorInteractionCount} hint="Clicks, opens, gallery, map, or recommendation actions." />
-										<InfoCard label="Browse time" value={formatDuration(visitorDwellSeconds)} hint="Recorded dwell time before inquiry." />
-										<InfoCard label="Listings touched" value={visitorPropertyIds.size} hint="Unique properties in this visitor path." />
-									</div>
-									<div className="mt-4 grid gap-3 md:grid-cols-[0.85fr_1.15fr]">
-										<div className="rounded-lg border border-black/10 bg-zinc-50 p-3 text-sm text-black/65">
-											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Visitor Context</div>
-											<div className="mt-2 space-y-1">
-												<p><span className="font-medium text-[#111111]">Device:</span> {visitorSession?.device_type ?? "Unknown"}</p>
-												<p><span className="font-medium text-[#111111]">Browser:</span> {visitorSession?.browser ?? "Unknown"}</p>
-												<p><span className="font-medium text-[#111111]">OS:</span> {visitorSession?.os ?? "Unknown"}</p>
-												<p><span className="font-medium text-[#111111]">Entry:</span> {visitorSession?.landing_path ?? "Unknown"}</p>
-												<p><span className="font-medium text-[#111111]">Source:</span> {visitorSession?.utm_source ?? visitorSession?.source ?? selectedInquiry.source ?? "Unknown"}</p>
-											</div>
-										</div>
-										<div className="rounded-lg border border-black/10 bg-zinc-50 p-3">
-											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Recent anonymous events</div>
-											<div className="mt-2 max-h-40 overflow-auto">
-												{visitorEvents.length === 0 ? <p className="py-3 text-sm text-black/45">No behavior events are attached to this visitor yet.</p> : null}
-												{visitorEvents.slice(0, 8).map((event, index) => (
-													<div key={`${asText(event.created_at)}-${index}`} className="flex items-center justify-between gap-3 border-t border-black/5 py-2 first:border-t-0">
-														<div className="min-w-0">
-															<div className="truncate text-sm font-medium text-[#111111]">{asText(event.event_type) || "event"}</div>
-															<div className="truncate text-xs text-black/45">{asText(event.page_path) || asText(event.property_id) || "website"}</div>
-														</div>
-														<div className="shrink-0 text-xs text-black/40">{relativeAge(event.created_at)}</div>
-													</div>
-												))}
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<div className="rounded-2xl border border-black/10 p-4">
-									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Pipeline Update</div>
-									<div className="mt-4 space-y-3">
-										<label className="block">
-											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Status</div>
-											<select value={status} onChange={(event) => updateDraft({ status: event.target.value })} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
-												{inquiryStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-											</select>
-										</label>
-										<label className="block">
-											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Priority</div>
-											<select value={asText(selectedInquiry.priority)} disabled className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
-												<option value="">Auto-derived</option>
-												{priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-											</select>
-										</label>
-										<label className="block">
-											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Assigned Agent</div>
-											<select value={assignedAgentId} onChange={(event) => updateDraft({ assignedAgentId: event.target.value })} disabled={!canReassign} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50">
-												<option value="">Unassigned</option>
-												{agents.map((agent) => <option key={asText(agent.id)} value={asText(agent.id)}>{agent.full_name || agent.profile_id || agent.id}</option>)}
-											</select>
-										</label>
-										<label className="block">
-											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Timeline Note</div>
-											<textarea aria-label="Add an internal note or next step..." value={note} onChange={(event) => updateDraft({ note: event.target.value })} rows={4} disabled={!canEdit} className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none disabled:bg-zinc-50" placeholder="Add an internal note or next step..." />
-										</label>
-										<div className="flex flex-wrap gap-2">
-											<button type="button" onClick={saveInquiry} disabled={!canEdit || saving} className="rounded-full bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">Save pipeline</button>
-											<button type="button" onClick={addTimelineNote} disabled={!canEdit || saving || !note.trim()} className="rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:bg-black/5">Add note</button>
-											{actionMessage ? <span className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-2 text-xs font-semibold text-black/70">{actionMessage}</span> : null}
-										</div>
-									</div>
-								</div>
-							</div> : null}
-
-							{showTimelineReport ? <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-								<div className="rounded-2xl border border-black/10 p-4">
-									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Timeline History</div>
-									<div className="mt-3 space-y-3">
-										{timeline.length === 0 ? <p className="text-sm text-black/45">No timeline events yet.</p> : null}
-										{timeline.map((entry) => (
-											<div key={asText(entry.id)} className="rounded-2xl border border-black/10 bg-zinc-50 p-3">
-												<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/45">{entry.new_status}</div>
-												<div className="mt-1 text-sm text-black/70">{entry.note ?? "Status change recorded."}</div>
-												<div className="mt-2 text-xs text-black/45">{entry.created_at}</div>
-											</div>
-										))}
-									</div>
-								</div>
-								<div className="rounded-2xl border border-black/10 bg-zinc-50 p-4 text-sm text-black/60">
-									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Role Scope</div>
-									<p className="mt-3 leading-6">
-										{currentRole === "admin"
-											? "Admin can view and update every inquiry, including assignment history and pipeline notes."
-											: currentRole === "agent"
-												? "Agents only see their assigned leads. Assignment changes are restricted to the UI and RLS policy."
-												: "Developer partners only see inquiries related to their portfolio."}
-									</p>
-								</div>
-							</div> : null}
-						</div>
-					) : (
-						<div className="rounded-2xl border border-dashed border-black/15 bg-zinc-50 px-4 py-10 text-sm text-black/50">Select an inquiry to inspect its pipeline and timeline.</div>
-					)}
-				</div>
-			</div>
-		</SectionShell>
-	);
-}
 
 function AnalyticsPanel({
 	activeReport,
@@ -1753,6 +1356,7 @@ function AnalyticsPanel({
 	selectedPortfolioPropertyId,
 	onSelectPortfolioDeveloper,
 	onSelectPortfolioProperty,
+	selectedDateFilter = null,
 }: {
 	activeReport: CmsSection;
 	isAdmin: boolean;
@@ -1769,6 +1373,7 @@ function AnalyticsPanel({
 	selectedPortfolioPropertyId: string | null;
 	onSelectPortfolioDeveloper: (id: string | null) => void;
 	onSelectPortfolioProperty: (id: string | null) => void;
+	selectedDateFilter?: string | null;
 }) {
 	const inquiryCounts = inquiries.reduce((acc: Record<string, number>, item) => {
 		const status = asText(item.status || "unclassified");
@@ -1880,7 +1485,7 @@ function AnalyticsPanel({
 	const showAgentReport = activeReport === "agentPerformance";
 	const showDeveloperReport = activeReport === "developerPortfolio";
 	const developerPortfolioLevel = selectedPortfolioProperty ? "property" : selectedPortfolioDeveloper ? "developer" : "portfolio";
-	const overviewTrafficRows = dailyEventRows(engagementEvents, 7);
+	const overviewTrafficRows = dailyEventRows(engagementEvents, 7, selectedDateFilter);
 	const weeklyVisitors = overviewTrafficRows.reduce((sum, row) => sum + row.visitors, 0);
 	const topListing = listingChartRows.slice().sort((a, b) => b.total_views - a.total_views)[0] ?? null;
 	const totalListingViews = listingChartRows.reduce((sum, row) => sum + row.total_views, 0);
@@ -2210,6 +1815,7 @@ export default function AdminCms({
 	const [showAnalyticsAssistant, setShowAnalyticsAssistant] = useState(true);
 	const [selectedPortfolioDeveloperId, setSelectedPortfolioDeveloperId] = useState<string | null>(null);
 	const [selectedPortfolioPropertyId, setSelectedPortfolioPropertyId] = useState<string | null>(null);
+	const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
 
 	const role = asRole(profile?.role);
 	const isAdmin = role === "admin";
@@ -2225,7 +1831,7 @@ export default function AdminCms({
 	const selectedProjectId = selection.projects === NEW_RECORD_ID ? NEW_RECORD_ID : selection.projects ?? optionalId(workspace.projects[0]);
 	const selectedDeveloperId = selection.developers === NEW_RECORD_ID ? NEW_RECORD_ID : selection.developers ?? optionalId(workspace.developers[0]);
 	const selectedAgentId = selection.agents === NEW_RECORD_ID ? NEW_RECORD_ID : selection.agents ?? optionalId(workspace.agents[0]);
-	const selectedInquiryId = selection.inquiries ?? optionalId(workspace.inquiries[0]);
+	const selectedInquiryId = selection.inquiries ?? null;
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
 	const selectedPropertyImageUrls = useMemo(
 		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
@@ -2633,26 +2239,141 @@ export default function AdminCms({
 		};
 	}, []);
 
+	// Real-time synchronization for Admin Inquiry Pipeline
+	useEffect(() => {
+		if (!sessionUser) return;
+		let mounted = true;
+
+		// 1. Supabase Realtime channel for live inquiry pipeline updates
+		const channel = supabaseBrowser
+			.channel("admin_inquiries_pipeline_realtime")
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "inquiries",
+				},
+				(payload) => {
+					if (!mounted) return;
+					const newRow = payload.new as CmsRow;
+					if (payload.eventType === "INSERT") {
+						setWorkspace((prev) => ({
+							...prev,
+							inquiries: [newRow, ...prev.inquiries.filter((i) => asText(i.id) !== asText(newRow.id))],
+						}));
+					} else if (payload.eventType === "UPDATE") {
+						setWorkspace((prev) => ({
+							...prev,
+							inquiries: prev.inquiries.map((i) =>
+								asText(i.id) === asText(newRow.id) ? { ...i, ...newRow } : i
+							),
+						}));
+					} else if (payload.eventType === "DELETE") {
+						const oldRow = payload.old as CmsRow;
+						setWorkspace((prev) => ({
+							...prev,
+							inquiries: prev.inquiries.filter((i) => asText(i.id) !== asText(oldRow.id)),
+						}));
+					}
+				}
+			)
+			.subscribe();
+
+		// 2. Periodic background polling every 15s to keep all admin views synchronized
+		const syncInterval = setInterval(async () => {
+			if (!mounted) return;
+			const { data: latestInquiries } = await supabaseBrowser
+				.from("inquiries")
+				.select("*")
+				.order("created_at", { ascending: false });
+
+			if (latestInquiries && Array.isArray(latestInquiries) && mounted) {
+				setWorkspace((prev) => {
+					const currentSignature = prev.inquiries
+						.map((i) => `${asText(i.id)}_${asText(i.status)}_${asText(i.assigned_agent_id)}_${asText(i.last_activity_at)}`)
+						.join(",");
+					const newSignature = latestInquiries
+						.map((i) => `${asText(i.id)}_${asText(i.status)}_${asText(i.assigned_agent_id)}_${asText(i.last_activity_at)}`)
+						.join(",");
+					if (currentSignature === newSignature) return prev;
+					return {
+						...prev,
+						inquiries: latestInquiries as CmsRow[],
+					};
+				});
+			}
+		}, 15000);
+
+		return () => {
+			mounted = false;
+			void supabaseBrowser.removeChannel(channel);
+			clearInterval(syncInterval);
+		};
+	}, [sessionUser?.id]);
+
+	const activityCountsByDate = useMemo(() => {
+		const map: Record<string, { inquiries: number; events: number; logs: number }> = {};
+		const touch = (iso: string) => {
+			if (!map[iso]) map[iso] = { inquiries: 0, events: 0, logs: 0 };
+			return map[iso];
+		};
+		for (const inquiry of workspace.inquiries) {
+			const dateStr = asText(inquiry.created_at).slice(0, 10);
+			if (dateStr && dateStr.length === 10) {
+				touch(dateStr).inquiries += 1;
+			}
+		}
+		for (const event of workspace.engagementEvents) {
+			const dateStr = asText(event.created_at).slice(0, 10);
+			if (dateStr && dateStr.length === 10) {
+				touch(dateStr).events += 1;
+			}
+		}
+		for (const log of workspace.activityLogs) {
+			const dateStr = asText(log.created_at ?? log.occurred_at).slice(0, 10);
+			if (dateStr && dateStr.length === 10) {
+				touch(dateStr).logs += 1;
+			}
+		}
+		return map;
+	}, [workspace.inquiries, workspace.engagementEvents, workspace.activityLogs]);
+
+	const filteredInquiries = useMemo(() => {
+		if (!selectedDateFilter) return workspace.inquiries;
+		return workspace.inquiries.filter((item) => asText(item.created_at).slice(0, 10) === selectedDateFilter);
+	}, [workspace.inquiries, selectedDateFilter]);
+
+	const filteredEngagementEvents = useMemo(() => {
+		if (!selectedDateFilter) return workspace.engagementEvents;
+		return workspace.engagementEvents.filter((item) => asText(item.created_at).slice(0, 10) === selectedDateFilter);
+	}, [workspace.engagementEvents, selectedDateFilter]);
+
+	const filteredActivityLogs = useMemo(() => {
+		if (!selectedDateFilter) return workspace.activityLogs;
+		return workspace.activityLogs.filter((item) => asText(item.created_at ?? item.occurred_at).slice(0, 10) === selectedDateFilter);
+	}, [workspace.activityLogs, selectedDateFilter]);
+
 	const stats = useMemo(() => ({
 		propertyCount: workspace.properties.length,
-		inquiryCount: workspace.inquiries.length,
+		inquiryCount: filteredInquiries.length,
 		projectCount: workspace.projects.length,
 		developerCount: workspace.developers.length,
 		agentCount: workspace.agents.length,
 		publishedCount: workspace.properties.filter((item) => item.status === "published").length,
-		closedCount: workspace.inquiries.filter((item) => ["reserved", "closed_won"].includes(asText(item.status))).length,
-	}), [workspace.agents.length, workspace.developers.length, workspace.inquiries, workspace.properties, workspace.projects.length]);
+		closedCount: filteredInquiries.filter((item) => ["reserved", "closed_won"].includes(asText(item.status))).length,
+	}), [filteredInquiries, workspace.agents.length, workspace.developers.length, workspace.properties, workspace.projects.length]);
 	const urgentLeads = useMemo(
-		() => workspace.inquiries
+		() => filteredInquiries
 			.filter((item) => !["reserved", "closed_won", "closed_lost"].includes(asText(item.status)))
 			.filter((item) => asText(item.priority) === "high" || (toNullableNumber(item.lead_score) ?? 0) >= 0.72 || (!item.first_contacted_at && (hoursSince(item.created_at) ?? 0) >= 24))
 			.sort((first, second) => (toNullableNumber(second.lead_score) ?? 0) - (toNullableNumber(first.lead_score) ?? 0))
 			.slice(0, 5),
-		[workspace.inquiries],
+		[filteredInquiries],
 	);
 	const unassignedLeads = useMemo(
-		() => workspace.inquiries.filter((item) => !asText(item.assigned_agent_id) && !["reserved", "closed_won", "closed_lost"].includes(asText(item.status))).slice(0, 5),
-		[workspace.inquiries],
+		() => filteredInquiries.filter((item) => !asText(item.assigned_agent_id) && !["reserved", "closed_won", "closed_lost"].includes(asText(item.status))).slice(0, 5),
+		[filteredInquiries],
 	);
 	const draftListings = useMemo(
 		() => workspace.properties.filter((item) => asText(item.status || "draft") === "draft").slice(0, 5),
@@ -2665,30 +2386,40 @@ export default function AdminCms({
 		[workspace.listingPerformance],
 	);
 	const overviewInquiryTrend = useMemo(
-		() => workspace.dailyInquiryVolume
-			.slice()
-			.reverse()
-			.slice(-8)
-			.map((row) => ({
-				label: asText(row.inquiry_date).slice(5) || "day",
-				value: toNullableNumber(row.total_inquiries) ?? 0,
-			})),
-		[workspace.dailyInquiryVolume],
+		() => {
+			if (selectedDateFilter) {
+				const relevant = workspace.dailyInquiryVolume.filter((row) => asText(row.inquiry_date) <= selectedDateFilter);
+				const rowsToUse = relevant.length ? relevant.slice(-8) : workspace.dailyInquiryVolume.slice(-8);
+				return rowsToUse.map((row) => ({
+					label: asText(row.inquiry_date).slice(5) || "day",
+					value: toNullableNumber(row.total_inquiries) ?? 0,
+				}));
+			}
+			return workspace.dailyInquiryVolume
+				.slice()
+				.reverse()
+				.slice(-8)
+				.map((row) => ({
+					label: asText(row.inquiry_date).slice(5) || "day",
+					value: toNullableNumber(row.total_inquiries) ?? 0,
+				}));
+		},
+		[workspace.dailyInquiryVolume, selectedDateFilter],
 	);
 	const overviewPipelineRows = useMemo(() => {
-		const counts = workspace.inquiries.reduce((acc: Record<string, number>, inquiry) => {
+		const counts = filteredInquiries.reduce((acc: Record<string, number>, inquiry) => {
 			const status = asText(inquiry.status || "new");
 			acc[status] = (acc[status] ?? 0) + 1;
 			return acc;
 		}, {});
 		return Object.entries(counts).map(([label, value]) => ({ label, value }));
-	}, [workspace.inquiries]);
+	}, [filteredInquiries]);
 	const recentOverviewInquiries = useMemo(
-		() => workspace.inquiries
+		() => filteredInquiries
 			.slice()
 			.sort((first, second) => new Date(asText(second.created_at)).getTime() - new Date(asText(first.created_at)).getTime())
 			.slice(0, 5),
-		[workspace.inquiries],
+		[filteredInquiries],
 	);
 	const listingPreviewRows = useMemo(
 		() => workspace.listingPerformance
@@ -3021,12 +2752,13 @@ export default function AdminCms({
 							) : null}
 						</div>
 						<div className="hidden items-center gap-2 md:flex">
-							<button type="button" className="inline-flex h-8 items-center gap-1 rounded-md border border-black/10 bg-white px-2.5 text-xs text-black/60">
-								<CalendarDays className="h-3.5 w-3.5" />
-								{new Date().toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
-							</button>
+							<AdminCalendarWidget
+								selectedDate={selectedDateFilter}
+								onSelectDate={setSelectedDateFilter}
+								countsByDate={activityCountsByDate}
+							/>
 							{isAdmin ? (
-								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", workspace.inquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-md bg-[#111111] px-3 text-xs font-medium text-white">
+								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-md bg-[#111111] px-3 text-xs font-medium text-white">
 									<Download className="h-3.5 w-3.5" />
 									Export CSV
 								</button>
@@ -3085,6 +2817,25 @@ export default function AdminCms({
 									</button>
 								</div>
 							</div>
+
+							{selectedDateFilter ? (
+								<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DE141C]/25 bg-white p-3.5 shadow-sm text-xs text-[#111111]">
+									<div className="flex items-center gap-2.5">
+										<span className="flex h-2.5 w-2.5 rounded-full bg-[#DE141C] animate-pulse" />
+										<span>
+											Filtered by date: <strong>{new Date(`${selectedDateFilter}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "long", day: "numeric", year: "numeric" })}</strong>
+											<span className="ml-2 font-medium text-black/55">({filteredInquiries.length} inquiries · {filteredEngagementEvents.length} events · {filteredActivityLogs.length} audit logs)</span>
+										</span>
+									</div>
+									<button
+										type="button"
+										onClick={() => setSelectedDateFilter(null)}
+										className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-[#DE141C] transition hover:bg-red-50 hover:border-red-200"
+									>
+										Clear filter (Show All Time)
+									</button>
+								</div>
+							) : null}
 
 						{currentSection === "overview" ? (
 							<>
@@ -3224,9 +2975,7 @@ export default function AdminCms({
 						{currentSection === "properties" ? (
 							canEditCatalog ? (
 								propertyCategoryFilter === "all" ? (
-									<EntityEditor
-										title="Properties"
-										description="Guided CRUD for creating public property listings without typing database IDs."
+									<PropertyWizard
 										rows={workspace.properties}
 										selectedId={selectedPropertyId}
 										fields={propertyEditorFields}
@@ -3314,7 +3063,10 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "developers" && isAdmin ? (
-							<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selectedDeveloperId} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => asText(row.contact_email ?? row.website_url ?? row.slug)} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
+							<div className="space-y-3">
+								<DeveloperRegistrationForm onRegistered={reloadWorkspace} />
+								<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selectedDeveloperId} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => asText(row.contact_email ?? row.website_url ?? row.slug)} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
+							</div>
 						) : null}
 
 						{currentSection === "profiles" && isAdmin ? (
@@ -3360,7 +3112,24 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "inquiries" || currentSection === "pipeline" || currentSection === "timeline" ? (
-							<InquiryPanel activeView={currentSection} inquiries={workspace.inquiries} agents={workspace.agents} currentRole={role} currentUserId={sessionUser.id} selectedId={selectedInquiryId} onSelect={(id) => setSelection((current) => ({ ...current, inquiries: id }))} onReload={reloadWorkspace} canEdit={canEditInquiries} canReassign={canReassignInquiries} />
+							<InquiryWorkflowManager
+								activeView={currentSection as "inquiries" | "pipeline" | "timeline"}
+								inquiries={filteredInquiries}
+								agents={workspace.agents}
+								properties={workspace.properties}
+								currentRole={role}
+								currentUserId={sessionUser?.id ?? null}
+								selectedId={selectedInquiryId}
+								onSelect={(id) => setSelection((current) => ({ ...current, inquiries: id }))}
+								onReload={reloadWorkspace}
+								canEdit={canEditInquiries}
+								canReassign={canReassignInquiries}
+								onViewChange={(view) => {
+									setActivePrimary("inquiries");
+									setActiveSection(view);
+									router.push(`/admin/inquiries${view === "inquiries" ? "" : `?section=${view}`}`);
+								}}
+							/>
 						) : null}
 
 						{currentSection === "gallery" && isAdmin ? (
@@ -3380,7 +3149,7 @@ export default function AdminCms({
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
-							<AnalyticsPanel activeReport={currentSection} isAdmin={isAdmin} properties={workspace.properties} inquiries={workspace.inquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} dailyInquiryVolume={workspace.dailyInquiryVolume} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} engagementEvents={workspace.engagementEvents} selectedPortfolioDeveloperId={selectedPortfolioDeveloperId} selectedPortfolioPropertyId={selectedPortfolioPropertyId} onSelectPortfolioDeveloper={setSelectedPortfolioDeveloperId} onSelectPortfolioProperty={setSelectedPortfolioPropertyId} />
+							<AnalyticsPanel activeReport={currentSection} isAdmin={isAdmin} properties={workspace.properties} inquiries={filteredInquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} dailyInquiryVolume={workspace.dailyInquiryVolume} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} engagementEvents={filteredEngagementEvents} selectedPortfolioDeveloperId={selectedPortfolioDeveloperId} selectedPortfolioPropertyId={selectedPortfolioPropertyId} onSelectPortfolioDeveloper={setSelectedPortfolioDeveloperId} onSelectPortfolioProperty={setSelectedPortfolioPropertyId} selectedDateFilter={selectedDateFilter} />
 						) : null}
 
 						{currentSection === "activityLogs" && isAdmin ? (
@@ -3396,8 +3165,8 @@ export default function AdminCms({
 											</tr>
 										</thead>
 										<tbody>
-											{workspace.activityLogs.length === 0 ? <tr><td colSpan={4} className="px-4 py-5 text-black/45">No activity logs found.</td></tr> : null}
-											{workspace.activityLogs.map((row, index) => (
+											{filteredActivityLogs.length === 0 ? <tr><td colSpan={4} className="px-4 py-5 text-black/45">No activity logs found.</td></tr> : null}
+											{filteredActivityLogs.map((row, index) => (
 												<tr key={asText(row.id ?? index)} className="border-t border-black/10">
 													<td className="px-4 py-3 text-black/60">{asText(row.created_at ?? row.occurred_at) || "—"}</td>
 													<td className="px-4 py-3 font-medium text-[#111111]">{row.action ?? row.event_type ?? "Activity"}</td>

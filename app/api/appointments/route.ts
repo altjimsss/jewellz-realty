@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 			buyer_email: buyerEmail,
 			buyer_phone: buyerPhone || null,
 			buyer_message: `Appointment request for ${propertyTitle || propertySlug || "property"} on ${text(body?.date)} at ${text(body?.time)}.`,
-			source: "appointment",
+			source: "direct",
 			status: "new",
 			priority: "high",
 		})
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
 		.single();
 
 	if (inquiryError) {
+		console.error("[appointments POST inquiry error]", inquiryError);
 		return NextResponse.json({ error: inquiryError.message }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
 
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
 		.single();
 
 	if (appointmentError) {
+		console.error("[appointments POST appointment error]", appointmentError);
 		return NextResponse.json({ error: appointmentError.message, inquiryId: inquiry.id }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
 

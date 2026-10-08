@@ -1,1 +1,11 @@
-export default function Page() { return <main className="p-6">C:\Users\AJ Martillan\OneDrive\Desktop\Jewellz\jewellz-realty\app\(dashboard)\agent\page.tsx</main>; }
+import type { Metadata } from "next";
+import AgentDashboard from "@/components/agent/AgentDashboard";
+
+export const metadata: Metadata = {
+	title: "Agent Portal | Jewellz Realty",
+	description: "Manage your assigned property inquiries, buyer leads, and profile.",
+};
+
+export default function AgentPage() {
+	return <AgentDashboard />;
+}

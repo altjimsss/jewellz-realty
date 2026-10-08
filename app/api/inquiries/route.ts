@@ -130,11 +130,35 @@ export async function POST(request: Request) {
 		lead_score: leadScore,
 	};
 
-	const { data, error } = await supabaseServer.from("inquiries").insert(payload).select("id").single();
+	let insertResult = await supabaseServer.from("inquiries").insert(payload).select("id").single();
 
-	if (error) {
-		return NextResponse.json({ error: error.message }, { status: 422, headers: rateLimitHeaders(limiter) });
+	if (insertResult.error) {
+		console.error("[inquiries POST error]", insertResult.error);
+		// Try fallback if column name mismatch (e.g. message vs buyer_message, or missing lead_score)
+		const fallbackPayload: Record<string, unknown> = {
+			property_id: propertyId || null,
+			buyer_name: buyerName,
+			buyer_email: buyerEmail,
+			buyer_phone: buyerPhone || null,
+			session_id: sessionId || null,
+			source: databaseSource(source),
+			status: "new",
+			priority: requestedPriority || "medium",
+		};
+		if (insertResult.error.message.includes("buyer_message")) {
+			fallbackPayload.message = buyerMessage || null;
+		} else {
+			fallbackPayload.buyer_message = buyerMessage || null;
+		}
+		const secondTry = await supabaseServer.from("inquiries").insert(fallbackPayload).select("id").single();
+		if (!secondTry.error) {
+			insertResult = secondTry;
+		}
 	}
 
-	return NextResponse.json({ ok: true, inquiryId: data?.id }, { headers: rateLimitHeaders(limiter) });
+	if (insertResult.error) {
+		return NextResponse.json({ error: insertResult.error.message }, { status: 422, headers: rateLimitHeaders(limiter) });
+	}
+
+	return NextResponse.json({ ok: true, inquiryId: insertResult.data?.id }, { headers: rateLimitHeaders(limiter) });
 }

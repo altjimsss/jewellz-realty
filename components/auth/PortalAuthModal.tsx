@@ -1,57 +1,58 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { PortalRole } from "@/components/auth/PortalAuthModal";
 
-export function LoginPage() {
+export type PortalRole = "agent" | "developer" | "admin";
+
+type PortalAuthModalProps = {
+	isOpen: boolean;
+	onClose: () => void;
+	initialRole?: PortalRole;
+};
+
+export function PortalAuthModal({
+	isOpen,
+	onClose,
+	initialRole = "agent",
+}: PortalAuthModalProps) {
+	if (!isOpen) return null;
+
 	return (
-		<Suspense fallback={<LoginShellLoading />}>
-			<LoginForm />
-		</Suspense>
+		<PortalAuthModalContent
+			key={`${initialRole}-${isOpen}`}
+			onClose={onClose}
+			initialRole={initialRole}
+		/>
 	);
 }
 
-function resolveTargetRoute(role: string, requestedNext: string | null): string {
-	if (requestedNext && requestedNext !== "/admin") {
-		if (requestedNext.startsWith("/admin") && role !== "admin") {
-			return role === "agent" ? "/agent" : role === "developer_partner" ? "/developer" : "/login";
-		}
-		if (requestedNext.startsWith("/agent") && role !== "agent" && role !== "admin") {
-			return role === "developer_partner" ? "/developer" : "/login";
-		}
-		if (requestedNext.startsWith("/developer") && role !== "developer_partner" && role !== "admin") {
-			return role === "agent" ? "/agent" : "/login";
-		}
-		return requestedNext;
-	}
-
-	if (role === "admin") return "/admin";
-	if (role === "agent") return "/agent";
-	if (role === "developer_partner") return "/developer";
-	return "/admin";
-}
-
-function LoginForm() {
+function PortalAuthModalContent({
+	onClose,
+	initialRole,
+}: {
+	onClose: () => void;
+	initialRole: PortalRole;
+}) {
 	const router = useRouter();
-	const searchParams = useSearchParams();
-	const nextParam = searchParams.get("next");
-
-	const defaultRole: PortalRole = nextParam?.startsWith("/developer")
-		? "developer"
-		: nextParam?.startsWith("/admin")
-			? "admin"
-			: "agent";
-
-	const [activeRole, setActiveRole] = useState<PortalRole>(defaultRole);
+	const [activeRole, setActiveRole] = useState<PortalRole>(initialRole);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
-	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
 	const [isForgotPassword, setIsForgotPassword] = useState(false);
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent) {
+			if (e.key === "Escape") {
+				onClose();
+			}
+		}
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [onClose]);
 
 	const roleConfig: Record<
 		PortalRole,
@@ -79,47 +80,8 @@ function LoginForm() {
 
 	const currentConfig = roleConfig[activeRole];
 
-	useEffect(() => {
-		// If arriving via a password recovery link/token, redirect to /reset-password immediately
-		if (typeof window !== "undefined") {
-			const hash = window.location.hash;
-			const search = window.location.search;
-			if (hash.includes("type=recovery") || search.includes("type=recovery")) {
-				router.replace(`/reset-password${search}${hash}`);
-				return;
-			}
-		}
-
-		void supabaseBrowser.auth
-			.getSession()
-			.then(async ({ data, error }) => {
-				if (error) {
-					await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
-					return;
-				}
-
-				if (data.session) {
-					const { data: profile } = await supabaseBrowser
-						.from("profiles")
-						.select("role, is_active")
-						.eq("id", data.session.user.id)
-						.maybeSingle();
-
-					if (profile?.is_active && profile?.role) {
-						const destination = resolveTargetRoute(profile.role, nextParam);
-						router.replace(destination);
-					} else {
-						router.replace(nextParam || "/admin");
-					}
-				}
-			})
-			.catch(async () => {
-				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
-			});
-	}, [nextParam, router]);
-
-	async function handlePasswordSignIn(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
+	async function handlePasswordSignIn(e: FormEvent) {
+		e.preventDefault();
 		if (!email.trim() || !password) return;
 
 		setLoading(true);
@@ -139,11 +101,12 @@ function LoginForm() {
 
 			const userId = data.user?.id;
 			if (!userId) {
-				setMessage({ text: "Signed in, but no user was returned.", type: "error" });
+				setMessage({ text: "Sign in succeeded, but no user was returned.", type: "error" });
 				setLoading(false);
 				return;
 			}
 
+			// Validate profile status and role
 			const { data: profile, error: profileError } = await supabaseBrowser
 				.from("profiles")
 				.select("role, is_active")
@@ -151,42 +114,54 @@ function LoginForm() {
 				.maybeSingle();
 
 			if (profileError) {
-				setMessage({ text: `Profile verification failed: ${profileError.message}`, type: "error" });
+				setMessage({ text: `Profile check failed: ${profileError.message}`, type: "error" });
 				setLoading(false);
 				return;
 			}
 
 			if (profile && profile.is_active === false) {
-				setMessage({ text: "This profile is inactive. Please contact the administrator.", type: "error" });
+				setMessage({ text: "Your account is inactive. Please contact the brokerage administrator.", type: "error" });
 				setLoading(false);
 				return;
 			}
 
-			const destination = resolveTargetRoute(profile?.role || "agent", nextParam || currentConfig.destination);
+			// Intelligent role destination fallback
+			let targetDestination = currentConfig.destination;
+			if (profile?.role) {
+				if (profile.role === "admin") {
+					targetDestination = "/admin";
+				} else if (profile.role === "agent") {
+					targetDestination = "/agent";
+				} else if (profile.role === "developer_partner") {
+					targetDestination = "/developer";
+				}
+			}
 
-			setMessage({ text: "Signed in! Opening workspace...", type: "success" });
-			router.replace(destination);
-			router.refresh();
+			setMessage({ text: "Authenticated! Opening your workspace...", type: "success" });
+			setTimeout(() => {
+				onClose();
+				router.replace(targetDestination);
+				router.refresh();
+			}, 700);
 		} catch {
 			setMessage({ text: "Connection error. Please try again.", type: "error" });
 			setLoading(false);
 		}
 	}
 
-	async function handleMagicLink() {
+	async function handleSendMagicLink() {
 		if (!email.trim()) {
-			setMessage({ text: "Enter an email address first.", type: "error" });
+			setMessage({ text: "Please enter your email address first.", type: "error" });
 			return;
 		}
 
 		setLoading(true);
 		setMessage({ text: "Sending a secure sign-in link...", type: "info" });
 
-		const redirectDestination = nextParam || currentConfig.destination;
 		const { error } = await supabaseBrowser.auth.signInWithOtp({
 			email: email.trim().toLowerCase(),
 			options: {
-				emailRedirectTo: `${window.location.origin}${redirectDestination}`,
+				emailRedirectTo: `${window.location.origin}${currentConfig.destination}`,
 			},
 		});
 
@@ -196,7 +171,7 @@ function LoginForm() {
 			return;
 		}
 
-		setMessage({ text: "Check your email for the login link.", type: "success" });
+		setMessage({ text: `Magic sign-in link sent to ${email}. Check your inbox!`, type: "success" });
 		setLoading(false);
 	}
 
@@ -220,23 +195,42 @@ function LoginForm() {
 			return;
 		}
 
-		setMessage({ text: `Password reset link sent to ${email}.`, type: "success" });
+		setMessage({
+			text: `Password reset instructions sent to ${email}.`,
+			type: "success",
+		});
 		setLoading(false);
 	}
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(222,20,28,0.07),_transparent_35%),linear-gradient(180deg,#fdf5f5_0%,#ffffff_100%)] px-6 py-12 text-[#111111]">
-			<section className="relative w-full max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white p-8 shadow-[0_20px_70px_rgba(17,17,17,0.08)]">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
-						<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#DE141C]">
-							Jewellz Realty
-						</p>
-					</div>
-					<Link href="/" className="text-xs font-semibold text-black/50 hover:text-black">
-						← Back to site
-					</Link>
+		<div
+			className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm transition-opacity duration-200"
+			onClick={(e) => {
+				if (e.target === e.currentTarget) onClose();
+			}}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="portal-modal-title"
+		>
+			<div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+				{/* Top Close Button */}
+				<button
+					type="button"
+					onClick={onClose}
+					className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-full bg-zinc-100 text-black/60 transition hover:bg-zinc-200 hover:text-black"
+					aria-label="Close portal sign in modal"
+				>
+					<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+						<path d="M18 6L6 18M6 6l12 12" />
+					</svg>
+				</button>
+
+				{/* Brand Tagline */}
+				<div className="flex items-center gap-2">
+					<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
+					<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#DE141C]">
+						Jewellz Realty Portals
+					</p>
 				</div>
 
 				{/* Role Tabs */}
@@ -285,17 +279,19 @@ function LoginForm() {
 					</button>
 				</div>
 
+				{/* Header Titles */}
 				<div className="mt-5">
-					<h1 className="text-2xl font-bold tracking-tight text-[#111111]">
+					<h2 id="portal-modal-title" className="text-2xl font-bold tracking-tight text-[#111111]">
 						{isForgotPassword ? "Reset Password" : currentConfig.title}
-					</h1>
+					</h2>
 					<p className="mt-1 text-xs leading-5 text-black/60">
 						{isForgotPassword
-							? "Enter your registered email address to receive password reset instructions."
+							? "Enter your registered email address to receive secure reset instructions."
 							: currentConfig.subtitle}
 					</p>
 				</div>
 
+				{/* Message Banner */}
 				{message ? (
 					<div
 						className={`mt-4 rounded-xl border p-3 text-xs font-medium leading-5 ${
@@ -310,6 +306,7 @@ function LoginForm() {
 					</div>
 				) : null}
 
+				{/* Forms */}
 				{isForgotPassword ? (
 					<form onSubmit={handleForgotPassword} className="mt-5 space-y-4">
 						<label className="block">
@@ -421,7 +418,7 @@ function LoginForm() {
 							<button
 								type="button"
 								disabled={loading}
-								onClick={handleMagicLink}
+								onClick={handleSendMagicLink}
 								className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-black/10 bg-white text-xs font-medium text-[#111111] transition hover:bg-black/5 disabled:opacity-50"
 							>
 								Send Magic Link Instead
@@ -430,24 +427,13 @@ function LoginForm() {
 					</form>
 				)}
 
-				<div className="mt-6 flex items-center justify-center gap-1.5 border-t border-black/5 pt-3 text-[11px] text-black/45">
+				<div className="mt-5 flex items-center justify-center gap-1.5 border-t border-black/5 pt-3 text-[11px] text-black/45">
 					<svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
 						<path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
 					</svg>
 					<span>Secured by Supabase Encrypted Authentication</span>
 				</div>
-			</section>
-		</main>
-	);
-}
-
-function LoginShellLoading() {
-	return (
-		<main className="flex min-h-screen items-center justify-center bg-zinc-50 p-6 text-[#111111]">
-			<div className="flex flex-col items-center gap-3">
-				<div className="h-8 w-8 animate-spin rounded-full border-2 border-black/20 border-t-[#DE141C]" />
-				<p className="text-xs font-medium text-black/50">Loading sign in...</p>
 			</div>
-		</main>
+		</div>
 	);
 }

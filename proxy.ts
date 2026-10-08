@@ -44,19 +44,41 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, is_active")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const role = profile?.role;
+  const isActive = profile?.is_active;
+
+  // Deactivated accounts are always sent back to /login
+  if (!isActive) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
 
   if (pathname.startsWith("/admin") && role !== "admin") {
-    return NextResponse.redirect(new URL(role === "agent" ? "/agent" : role === "developer_partner" ? "/developer" : "/login", request.url));
+    return NextResponse.redirect(
+      new URL(
+        role === "agent" ? "/agent" : role === "developer_partner" ? "/developer" : "/login",
+        request.url
+      )
+    );
   }
 
   if (pathname.startsWith("/agent") && role !== "agent" && role !== "admin") {
-    return NextResponse.redirect(new URL(role === "developer_partner" ? "/developer" : "/login", request.url));
+    return NextResponse.redirect(
+      new URL(role === "developer_partner" ? "/developer" : "/login", request.url)
+    );
   }
 
   if (pathname.startsWith("/developer") && role !== "developer_partner" && role !== "admin") {
-    return NextResponse.redirect(new URL(role === "agent" ? "/agent" : "/login", request.url));
+    return NextResponse.redirect(
+      new URL(role === "agent" ? "/agent" : "/login", request.url)
+    );
   }
 
   return response;

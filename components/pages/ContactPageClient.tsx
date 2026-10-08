@@ -58,14 +58,19 @@ export default function ContactPage() {
 			});
 
 			if (!response.ok) {
-				setSubmitStatus("Unable to save this inquiry. Opening email fallback...");
-				openMailFallback();
+				const errData = await response.json().catch(() => null);
+				console.error("[Contact submit error]", errData);
+				setSubmitStatus(errData?.error || "Unable to save this inquiry. Opening email fallback...");
+				if (!errData?.error || response.status >= 500) {
+					openMailFallback();
+				}
 				return;
 			}
 
 			setSubmitStatus("Message sent. Our team will contact you soon.");
 			setFormState({ name: "", email: "", phone: "", subject: "", message: "" });
-		} catch {
+		} catch (err) {
+			console.error("[Contact network error]", err);
 			setSubmitStatus("Unable to save this inquiry. Opening email fallback...");
 			openMailFallback();
 		}
