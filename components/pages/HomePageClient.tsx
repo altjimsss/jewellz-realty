@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
@@ -13,6 +13,7 @@ import { CountUpOnView } from "@/components/ui/CountUpOnView";
 import { formatPHPWhole } from "@/lib/currency";
 import { useHeroCarousel } from "@/hooks/useHeroCarousel";
 import { ServiceShowcase } from "@/components/home/ServiceShowcase";
+import type { Property } from "@/types/property";
 const HomeDiscoverySection = dynamic(() => import("@/components/home/HomeDiscoverySection"), { ssr: false });
 
 const LogoLoop = dynamic(() => import("@/components/home/LogoLoop"), { ssr: false });
@@ -63,6 +64,7 @@ const heroProperties = [
     bedroom: 8,
     bathroom: 3,
     garage: 2,
+    slug: "premium-homes-mountain-villa",
   },
   {
     image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80",
@@ -74,6 +76,7 @@ const heroProperties = [
     bedroom: 6,
     bathroom: 4,
     garage: 2,
+    slug: "skyper-pool-apartment",
   },
   {
     image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",
@@ -85,6 +88,7 @@ const heroProperties = [
     bedroom: 5,
     bathroom: 3,
     garage: 3,
+    slug: "diamond-manor-estate",
   },
 ];
 type HomeContent = {
@@ -93,6 +97,23 @@ type HomeContent = {
 	partnerLogos?: Array<{ name: string; logoUrl?: string; websiteUrl?: string }>;
 	testimonials?: Array<{ authorName: string; authorTitle?: string; quote: string; rating?: number }>;
 	agents?: Array<{ name: string; top: boolean; photoUrl?: string; licenseNumber?: string; specialization?: string; facebookUrl?: string; instagramUrl?: string; email?: string; phone?: string }>;
+};
+type HomepageFeaturedResponse = {
+	properties?: Property[];
+	refreshesAt?: string;
+	secondsUntilRefresh?: number;
+};
+type HeroDisplayProperty = {
+	image: string;
+	title: string;
+	price: string;
+	status: string;
+	location: string;
+	area: string;
+	bedroom: number;
+	bathroom: number;
+	garage: number;
+	slug?: string;
 };
 const HERO_DURATION_MS = 5000;
 const HERO_TICK_MS = 50;
@@ -105,26 +126,39 @@ const navLinks = [
   { label: "Contact", href: "/contact" },
   { label: "Career", href: "/career" },
 ];
-export default function Page() {
+type HomePageClientProps = {
+  initialFeaturedProperties?: Property[];
+  initialFeaturedRefreshesAt?: string | null;
+};
+
+export default function Page({
+  initialFeaturedProperties = [],
+  initialFeaturedRefreshesAt = null,
+}: HomePageClientProps) {
   const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
+  const [featuredProperties, setFeaturedProperties] = useState<Property[]>(initialFeaturedProperties);
+  const [featuredRefreshesAt, setFeaturedRefreshesAt] = useState<string | null>(initialFeaturedRefreshesAt);
   const [priceMax, setPriceMax] = useState(850000);
   const [areaMax, setAreaMax] = useState(170);
 
   const safePriceMax = Math.min(Math.max(priceMax, 0), 850000);
   const priceRangeLabel = `Price (${formatPHPWhole(0)}-${formatPHPWhole(safePriceMax)})`;
 
-  const cmsHeroProperties = homeContent?.heroBanners?.map((banner) => ({
-    image: banner.imageUrl,
-    title: banner.headline,
-    price: 0,
-    status: banner.ctaLabel ?? "Featured",
-    location: banner.subheadline ?? "Jewellz Realty",
-    area: "VIEW DETAILS",
-    bedroom: 0,
-    bathroom: 0,
-    garage: 0,
-  })) ?? [];
-  const displayedHeroProperties = cmsHeroProperties.length ? cmsHeroProperties : heroProperties;
+  const propertyHeroProperties: HeroDisplayProperty[] = featuredProperties.slice(0, 5).map((property) => ({
+    image: property.image?.trim() || property.images?.[0] || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
+    title: property.title,
+    price: formatPHPWhole(property.price),
+    status: property.category ?? (property.featured ? "Featured" : "Hot Pick"),
+    location: property.location ?? "Jewellz Realty",
+    area: property.areaSqm ? `${property.areaSqm.toLocaleString("en-PH")} sqm` : "View Details",
+    bedroom: property.beds ?? 0,
+    bathroom: property.baths ?? 0,
+    garage: Number(property.specs?.find((spec) => spec.label.toLowerCase().includes("garage"))?.value ?? 0) || 0,
+    slug: property.slug,
+  }));
+  const displayedHeroProperties: HeroDisplayProperty[] = propertyHeroProperties.length
+    ? propertyHeroProperties
+    : heroProperties.map((property) => ({ ...property, price: formatPHPWhole(property.price) }));
   const displayedStats = homeContent?.siteStats?.length ? homeContent.siteStats : [
     { key: "properties", label: "Properties", value: 500, suffix: "+" },
     { key: "agents", label: "Agents", value: 50, suffix: "+" },
@@ -146,7 +180,17 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
     tickMs: HERO_TICK_MS,
   });
 
-
+  const refreshFeaturedProperties = useCallback(async () => {
+    try {
+      const response = await fetch("/api/home/featured", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = (await response.json()) as HomepageFeaturedResponse;
+      setFeaturedProperties(Array.isArray(data.properties) ? data.properties : []);
+      setFeaturedRefreshesAt(data.refreshesAt ?? null);
+    } catch {
+      // Keep the current fallback content if analytics or database reads fail.
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -161,6 +205,13 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refreshFeaturedProperties();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [refreshFeaturedProperties]);
 
   const currentHero = displayedHeroProperties[heroIndex % displayedHeroProperties.length];
 
@@ -584,7 +635,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
         />
       </section>
 
-      <HomeDiscoverySection />
+      <HomeDiscoverySection
+        hotPicks={featuredProperties}
+        refreshesAt={featuredRefreshesAt}
+        onRefresh={refreshFeaturedProperties}
+      />
 
       <MeetAgents agents={homeContent?.agents?.length ? homeContent.agents : undefined} />
 

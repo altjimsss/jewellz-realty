@@ -33,6 +33,33 @@ type PropertyRow = {
 	developer_partners?: { company_name: string | null } | null;
 };
 
+export type HomepageFeaturedProperty = Property & {
+	interestScore: number;
+	interestSource: "analytics" | "fallback";
+	engagement: {
+		totalViews: number;
+		uniqueViews: number;
+		totalInquiries: number;
+		totalInteractions: number;
+		detailOpens: number;
+		galleryInteractions: number;
+		mapInteractions: number;
+		avgDwellSeconds: number;
+	};
+};
+
+type ListingPerformanceRow = {
+	property_id: string | null;
+	total_views?: number | string | null;
+	unique_views?: number | string | null;
+	total_inquiries?: number | string | null;
+	total_interactions?: number | string | null;
+	detail_opens?: number | string | null;
+	gallery_interactions?: number | string | null;
+	map_interactions?: number | string | null;
+	avg_dwell_seconds?: number | string | null;
+};
+
 function titleCase(value: string | null | undefined) {
 	if (!value) return undefined;
 	return value
@@ -46,6 +73,10 @@ function toNumber(value: number | string | null | undefined) {
 	if (value == null || value === "") return undefined;
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function metric(value: number | string | null | undefined) {
+	return toNumber(value) ?? 0;
 }
 
 function mapPropertyRow(row: PropertyRow): Property {
@@ -112,6 +143,105 @@ export async function getPublishedProperties() {
 	}
 
 	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
+}
+
+function scoreListing(row: ListingPerformanceRow) {
+	const totalViews = metric(row.total_views);
+	const uniqueViews = metric(row.unique_views);
+	const totalInquiries = metric(row.total_inquiries);
+	const totalInteractions = metric(row.total_interactions);
+	const detailOpens = metric(row.detail_opens);
+	const galleryInteractions = metric(row.gallery_interactions);
+	const mapInteractions = metric(row.map_interactions);
+	const avgDwellSeconds = metric(row.avg_dwell_seconds);
+
+	return {
+		score:
+			totalViews +
+			uniqueViews * 2 +
+			totalInteractions * 3 +
+			detailOpens * 4 +
+			galleryInteractions * 3 +
+			mapInteractions * 2 +
+			totalInquiries * 12 +
+			Math.min(avgDwellSeconds, 300) / 15,
+		engagement: {
+			totalViews,
+			uniqueViews,
+			totalInquiries,
+			totalInteractions,
+			detailOpens,
+			galleryInteractions,
+			mapInteractions,
+			avgDwellSeconds,
+		},
+	};
+}
+
+export async function getHomepageFeaturedProperties(limit = 12): Promise<HomepageFeaturedProperty[]> {
+	const [properties, performanceResult] = await Promise.all([
+		getPublishedProperties(),
+		supabaseServer.from("mv_listing_performance").select("*").limit(250),
+	]);
+
+	const performanceByProperty = new Map<string, ReturnType<typeof scoreListing>>();
+	if (performanceResult.error) {
+		console.error("Failed to load listing performance for homepage picks", performanceResult.error.message);
+	} else {
+		for (const row of (performanceResult.data ?? []) as ListingPerformanceRow[]) {
+			if (!row.property_id) continue;
+			const scored = scoreListing(row);
+			if (scored.score > 0) {
+				performanceByProperty.set(row.property_id, scored);
+			}
+		}
+	}
+
+	const analyticsRanked: HomepageFeaturedProperty[] = properties
+		.reduce<HomepageFeaturedProperty[]>((ranked, property) => {
+			const scored = performanceByProperty.get(property.id);
+			if (scored) {
+				ranked.push({
+						...property,
+						interestScore: scored.score,
+						interestSource: "analytics",
+						engagement: scored.engagement,
+					});
+			}
+			return ranked;
+		}, [])
+		.sort((first, second) => second.interestScore - first.interestScore || first.title.localeCompare(second.title));
+
+	const picked = new Map<string, HomepageFeaturedProperty>();
+	for (const property of analyticsRanked) {
+		if (picked.size >= limit) break;
+		picked.set(property.id, property);
+	}
+
+	const fallbackProperties = properties
+		.filter((property) => !picked.has(property.id))
+		.sort((first, second) => Number(Boolean(second.featured)) - Number(Boolean(first.featured)) || first.title.localeCompare(second.title));
+
+	for (const property of fallbackProperties) {
+		if (picked.size >= limit) break;
+		picked.set(property.id, {
+			...property,
+			interestScore: 0,
+			interestSource: "fallback",
+			engagement: {
+				totalViews: 0,
+				uniqueViews: 0,
+				totalInquiries: 0,
+				totalInteractions: 0,
+				detailOpens: 0,
+				galleryInteractions: 0,
+				mapInteractions: 0,
+				avgDwellSeconds: 0,
+			},
+		});
+	}
+
+	return Array.from(picked.values());
 }
 
 export async function getPublishedPropertyBySlug(slug: string) {
