@@ -107,7 +107,7 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "The agent's full name is required." }, { status: 400 });
 	}
 
-	const loginUrl = `${inviteBaseUrl(request)}/login?next=${encodeURIComponent("/agent")}`;
+	const loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/agent")}`;
 
 	// Creates the login account and emails the agent a secure link to set their
 	// own password (Supabase Auth sends this through your project's email system).

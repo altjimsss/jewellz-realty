@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
+function safeNextPath(value: string | null) {
+	if (!value || !value.startsWith("/") || value.startsWith("//")) return "/login";
+	return value;
+}
+
 export function ResetPasswordPage() {
 	const router = useRouter();
 	const [password, setPassword] = useState("");
@@ -91,6 +96,10 @@ export function ResetPasswordPage() {
 
 	async function handleSubmit(e: FormEvent) {
 		e.preventDefault();
+		const nextPath =
+			typeof window !== "undefined"
+				? safeNextPath(new URLSearchParams(window.location.search).get("next"))
+				: "/login";
 
 		if (password.length < 8) {
 			setMessage({ text: "Password must be at least 8 characters long.", type: "error" });
@@ -117,7 +126,7 @@ export function ResetPasswordPage() {
 		// Sign out and redirect to /login so they authenticate cleanly with the new credentials
 		setTimeout(async () => {
 			await supabaseBrowser.auth.signOut().catch(() => undefined);
-			router.replace("/login");
+			router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
 		}, 2000);
 	}
 

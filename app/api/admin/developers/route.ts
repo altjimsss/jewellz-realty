@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "The company name is required." }, { status: 400 });
 	}
 
-	const loginUrl = `${inviteBaseUrl(request)}/login?next=${encodeURIComponent("/developer")}`;
+	const loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
 
 	// Creates the login account and emails the developer a secure link to set their own password
 	const { data: created, error: inviteError } = await supabaseServer.auth.admin.inviteUserByEmail(email, {

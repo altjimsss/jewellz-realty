@@ -80,11 +80,17 @@ function LoginForm() {
 	const currentConfig = roleConfig[activeRole];
 
 	useEffect(() => {
-		// If arriving via a password recovery link/token, redirect to /reset-password immediately
+		// If arriving via a password setup link/token, redirect to /reset-password immediately.
 		if (typeof window !== "undefined") {
 			const hash = window.location.hash;
 			const search = window.location.search;
-			if (hash.includes("type=recovery") || search.includes("type=recovery")) {
+			if (
+				hash.includes("type=recovery") ||
+				search.includes("type=recovery") ||
+				hash.includes("type=invite") ||
+				search.includes("type=invite") ||
+				search.includes("code=")
+			) {
 				router.replace(`/reset-password${search}${hash}`);
 				return;
 			}

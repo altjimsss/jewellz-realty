@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
- * Global listener that intercepts password recovery flows.
+ * Global listener that intercepts password setup flows.
  * If a user clicks a reset password email link and Supabase redirects
  * them to any page (such as / or /login) with recovery credentials,
  * this listener redirects them directly to /reset-password so they can set a new password.
@@ -17,11 +17,17 @@ export function AuthRecoveryListener() {
 	useEffect(() => {
 		if (pathname === "/reset-password") return;
 
-		// Check if the current URL hash or query string indicates password recovery
+		// Check if the current URL hash or query string indicates password setup.
 		if (typeof window !== "undefined") {
 			const hash = window.location.hash;
 			const search = window.location.search;
-			if (hash.includes("type=recovery") || search.includes("type=recovery")) {
+			if (
+				hash.includes("type=recovery") ||
+				search.includes("type=recovery") ||
+				hash.includes("type=invite") ||
+				search.includes("type=invite") ||
+				search.includes("code=")
+			) {
 				router.replace(`/reset-password${search}${hash}`);
 				return;
 			}
