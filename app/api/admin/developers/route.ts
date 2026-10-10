@@ -13,6 +13,35 @@ function authInviteErrorMessage(message: string) {
 	return message;
 }
 
+function isLocalOrigin(origin: string) {
+	try {
+		const { hostname } = new URL(origin);
+		return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+	} catch {
+		return false;
+	}
+}
+
+function inviteBaseUrl(request: Request) {
+	const requestOrigin = new URL(request.url).origin;
+	const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+
+	if (configuredOrigin && !isLocalOrigin(configuredOrigin)) {
+		return configuredOrigin;
+	}
+
+	if (!isLocalOrigin(requestOrigin)) {
+		return requestOrigin;
+	}
+
+	const vercelOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim().replace(/\/+$/, "");
+	if (vercelOrigin) {
+		return vercelOrigin.startsWith("http") ? vercelOrigin : `https://${vercelOrigin}`;
+	}
+
+	return requestOrigin;
+}
+
 async function requireAdmin(request: Request) {
 	const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
 	let userId = "";
@@ -71,8 +100,7 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "The company name is required." }, { status: 400 });
 	}
 
-	const origin = new URL(request.url).origin;
-	const loginUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? origin}/login?next=${encodeURIComponent("/developer")}`;
+	const loginUrl = `${inviteBaseUrl(request)}/login?next=${encodeURIComponent("/developer")}`;
 
 	// Creates the login account and emails the developer a secure link to set their own password
 	const { data: created, error: inviteError } = await supabaseServer.auth.admin.inviteUserByEmail(email, {
