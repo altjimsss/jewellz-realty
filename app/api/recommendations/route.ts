@@ -4,6 +4,7 @@ import { extractSemanticSearchIntent, type PropertySearchIntent } from "@/lib/ai
 import { formatDistance } from "@/lib/nearby-places";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
+import { hasAiConfigured, runAiChatCompletion } from "@/lib/ai/client";
 
 type RecommendationFilters = {
 	keyword?: string;
@@ -279,20 +280,6 @@ function buildPrompt(category: string, filters: RecommendationFilters, candidate
 	].join("\n");
 }
 
-function getRecommendationModels() {
-	const configuredModels = (process.env.OPENROUTER_RECOMMENDATION_MODEL ?? "")
-		.split(",")
-		.map((model) => model.trim())
-		.filter(Boolean);
-
-	return [
-		...configuredModels,
-		"z-ai/glm-4.5-air:free",
-		"openai/gpt-oss-120b:free",
-		"nvidia/nemotron-3-super-120b-a12b:free",
-		"meta-llama/llama-3.2-3b-instruct:free",
-	].filter((model, index, models) => models.indexOf(model) === index);
-}
 
 function toNullableNumber(value: string | undefined) {
 	if (!value) return null;
@@ -528,10 +515,8 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Invalid request body." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
-	const apiKey = process.env.OPENROUTER_API_KEY;
-
-	if (!apiKey) {
-		return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
+	if (!hasAiConfigured()) {
+		return NextResponse.json({ error: "AI provider is not configured." }, { status: 500 });
 	}
 
 	const category = toText(body.category) || "All";
@@ -553,60 +538,34 @@ export async function POST(request: Request) {
 		});
 	}
 
-	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 45_000);
-
 	try {
-		let lastProviderStatus = 502;
-		let lastProviderError = "AI recommendation provider request failed.";
-
-		for (const model of getRecommendationModels()) {
-			const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-					"Content-Type": "application/json",
-					"HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-					"X-Title": "Jewellz Realty",
+		const aiResult = await runAiChatCompletion({
+			caller: "recommendations",
+			messages: [
+				{
+					role: "system",
+					content: "You are a strict JSON recommendation API. Output valid JSON only.",
 				},
-				body: JSON.stringify({
-					model,
-					messages: [
-						{
-							role: "system",
-							content: "You are a strict JSON recommendation API. Output valid JSON only.",
-						},
-						{ role: "user", content: buildPrompt(category, filters, numberedCandidates) },
-					],
-					max_tokens: 350,
-					response_format: { type: "json_object" },
-					reasoning: { enabled: false },
-					temperature: 0.2,
-				}),
-				signal: controller.signal,
+				{ role: "user", content: buildPrompt(category, filters, numberedCandidates) },
+			],
+			maxTokens: 400,
+			responseFormat: "json_object",
+			temperature: 0.2,
+			timeoutMs: 30_000,
+		});
+
+		const recommendations = aiResult?.content ? parseAiRecommendations(aiResult.content, numberedCandidates) : [];
+
+		if (recommendations.length > 0 && aiResult) {
+			return NextResponse.json({
+				recommendations: await persistRecommendations(recommendations, body, "ai"),
+				model: aiResult.model,
+				provider: aiResult.provider,
+				source: "ai",
 			});
-			const data: unknown = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				lastProviderStatus = response.status;
-				lastProviderError = `AI recommendation model failed: ${model}`;
-				if ([400, 404, 429, 502, 503].includes(response.status)) continue;
-				return NextResponse.json({ error: lastProviderError }, { status: response.status });
-			}
-
-			const content = extractContent(data);
-			const recommendations = content ? parseAiRecommendations(content, numberedCandidates) : [];
-
-			if (recommendations.length === 0) {
-				lastProviderStatus = 422;
-				lastProviderError = `AI model returned no valid property IDs: ${model}`;
-				continue;
-			}
-
-			return NextResponse.json({ recommendations: await persistRecommendations(recommendations, body, "ai"), model, source: "ai" });
 		}
 
-		return NextResponse.json({ error: lastProviderError }, { status: lastProviderStatus });
+		return NextResponse.json({ error: "AI recommendation provider returned no valid property recommendations." }, { status: 502 });
 	} catch (error) {
 		const isAbortError = error instanceof DOMException && error.name === "AbortError";
 
@@ -614,7 +573,5 @@ export async function POST(request: Request) {
 			{ error: isAbortError ? "AI recommendation request timed out." : "AI recommendation request failed." },
 			{ status: isAbortError ? 504 : 502 },
 		);
-	} finally {
-		clearTimeout(timeoutId);
 	}
 }

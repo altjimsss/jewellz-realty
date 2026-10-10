@@ -9,17 +9,22 @@ The CMS Analytics overview supports automatic AI reports for:
 Each report uses two layers:
 
 - deterministic analytics models: linear regression for inquiry forecasting and classification labels for listing/pipeline risk
-- AI narrative: OpenRouter turns the computed metrics into descriptive findings, predictive insights, actions, and risk flags
+- AI narrative: Groq (primary AI) or OpenRouter (fallback) turns the computed metrics into descriptive findings, predictive insights, actions, and risk flags
 
 ## Required Environment Variables
 
 ```env
+# Primary AI: Groq
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b
+
+# Fallback AI: OpenRouter (optional)
 OPENROUTER_API_KEY=your_openrouter_key
 OPENROUTER_ANALYTICS_MODEL=openai/gpt-oss-120b:free
 CRON_SECRET=use-a-long-random-secret
 ```
 
-`OPENROUTER_ANALYTICS_MODEL` is optional. If it is missing, the route falls back to `OPENROUTER_RECOMMENDATION_MODEL`, then to a default free model.
+`GROQ_API_KEY` is prioritized as the primary provider. If missing or rate-limited, the system falls back to `OPENROUTER_API_KEY`, followed by deterministic smart fallback reports.
 
 ## Supabase SQL
 

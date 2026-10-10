@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { extractPropertyChatContent } from "@/lib/property-chat";
 import { supabaseServer } from "@/lib/supabase/server";
+import { hasAiConfigured, runAiChatCompletion } from "@/lib/ai/client";
 
 type ChatMessage = {
 	role: "assistant" | "user";
@@ -271,69 +272,43 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Message is required." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
-	const apiKey = process.env.OPENROUTER_API_KEY;
-	if (!apiKey) {
+	if (!hasAiConfigured()) {
 		const context = await buildAnalyticsContext();
 		return NextResponse.json({
 			content: fallbackAnalyticsReply(context, message),
 			isFallback: true,
-			reason: "OPENROUTER_API_KEY is not configured.",
+			reason: "AI provider is not configured.",
 		}, { headers: rateLimitHeaders(limiter) });
 	}
 
 	const context = await buildAnalyticsContext();
 
 	try {
-		let lastStatus = 502;
-		for (const model of getAnalyticsChatModels()) {
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 8_000);
-			const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-					"Content-Type": "application/json",
-					"HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-					"X-Title": "Jewellz Realty CMS Analytics",
+		const aiResult = await runAiChatCompletion({
+			caller: "analytics-chat",
+			messages: [
+				{
+					role: "system",
+					content: "You are the Jewellz Realty CMS analytics assistant. Answer only the admin's latest question. Do not add unrelated summaries, extra sections, or unsolicited recommendations. Use only the supplied analytics context and chat history. Never invent metrics. If the question is outside CMS analytics, say you can only answer CMS analytics questions. If data is sparse or missing, say that briefly. Keep the response concise and directly scoped to the question.",
 				},
-				body: JSON.stringify({
-					model,
-					messages: [
-						{
-							role: "system",
-							content: "You are the Jewellz Realty CMS analytics assistant. Answer only the admin's latest question. Do not add unrelated summaries, extra sections, or unsolicited recommendations. Use only the supplied analytics context and chat history. Never invent metrics. If the question is outside CMS analytics, say you can only answer CMS analytics questions. If data is sparse or missing, say that briefly. Keep the response concise and directly scoped to the question.",
-						},
-						{
-							role: "user",
-							content: `Analytics context:\n${JSON.stringify(context)}\n\nRecent chat:\n${JSON.stringify(history)}\n\nAdmin question: ${message}`,
-						},
-					],
-					temperature: 0.25,
-					max_tokens: 420,
-				}),
-				signal: controller.signal,
-			}).catch((error: unknown) => {
-				if (error instanceof DOMException && error.name === "AbortError") return null;
-				throw error;
-			}).finally(() => clearTimeout(timeoutId));
+				{
+					role: "user",
+					content: `Analytics context:\n${JSON.stringify(context)}\n\nRecent chat:\n${JSON.stringify(history)}\n\nAdmin question: ${message}`,
+				},
+			],
+			temperature: 0.25,
+			maxTokens: 420,
+			timeoutMs: 15_000,
+		});
 
-			if (!response) continue;
-
-			const data: unknown = await response.json().catch(() => null);
-			if (!response.ok) {
-				lastStatus = response.status;
-				if ([400, 404, 429, 502, 503].includes(response.status)) continue;
-				return NextResponse.json({ error: "Analytics chat provider request failed." }, { status: response.status, headers: rateLimitHeaders(limiter) });
-			}
-
-			const content = extractPropertyChatContent(data);
-			if (content) return NextResponse.json({ content, model }, { headers: rateLimitHeaders(limiter) });
+		if (aiResult?.content) {
+			return NextResponse.json({ content: aiResult.content, model: aiResult.model, provider: aiResult.provider }, { headers: rateLimitHeaders(limiter) });
 		}
 
 		return NextResponse.json({
 			content: fallbackAnalyticsReply(context, message),
 			isFallback: true,
-			reason: `Analytics chat provider returned no usable response. Last status: ${lastStatus}.`,
+			reason: "AI provider returned no usable response.",
 		}, { headers: rateLimitHeaders(limiter) });
 	} catch (error) {
 		const isAbortError = error instanceof DOMException && error.name === "AbortError";

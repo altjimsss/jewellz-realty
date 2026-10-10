@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
+import { hasAiConfigured, runAiChatCompletion } from "@/lib/ai/client";
 
 type ReportPeriod = "daily" | "weekly" | "monthly";
 
@@ -416,20 +417,11 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 }
 
 async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>) {
-	const apiKey = process.env.OPENROUTER_API_KEY;
-	if (!apiKey) return fallbackReport(summary);
+	if (!hasAiConfigured()) return fallbackReport(summary);
 
-	const model = process.env.OPENROUTER_ANALYTICS_MODEL ?? process.env.OPENROUTER_RECOMMENDATION_MODEL ?? "openai/gpt-oss-120b:free";
-	const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${apiKey}`,
-			"Content-Type": "application/json",
-			"HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-			"X-Title": "Jewellz Realty CMS Analytics",
-		},
-		body: JSON.stringify({
-			model,
+	try {
+		const aiResult = await runAiChatCompletion({
+			caller: "analytics-report",
 			messages: [
 				{
 					role: "system",
@@ -441,13 +433,15 @@ async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalytic
 				},
 			],
 			temperature: 0.2,
-			max_tokens: 1400,
-		}),
-	});
+			maxTokens: 1400,
+			responseFormat: "json_object",
+			timeoutMs: 30_000,
+		});
 
-	if (!response.ok) return fallbackReport(summary);
-	const content = extractContent(await response.json().catch(() => null));
-	return content ? parseAiReport(content, summary) : fallbackReport(summary);
+		return aiResult?.content ? parseAiReport(aiResult.content, summary) : fallbackReport(summary);
+	} catch {
+		return fallbackReport(summary);
+	}
 }
 
 async function storeReport(report: AiAnalyticsReport, summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>, userId: string | null) {
