@@ -9,6 +9,14 @@ function booleanValue(value: unknown) {
 	return value === true || value === "true" || value === "on";
 }
 
+function authInviteErrorMessage(message: string) {
+	if (/database error (saving|creating) (new )?user/i.test(message)) {
+		return "Supabase could not create the auth user because the public.handle_new_user database trigger failed. Run supabase/fix-profiles-email-column.sql in the Supabase SQL Editor, then try again.";
+	}
+
+	return message;
+}
+
 async function requireAdmin(request: Request) {
 	const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
 	let userId = "";
@@ -81,7 +89,7 @@ export async function POST(request: Request) {
 	});
 
 	if (inviteError) {
-		return NextResponse.json({ error: inviteError.message }, { status: 422 });
+		return NextResponse.json({ error: authInviteErrorMessage(inviteError.message) }, { status: 422 });
 	}
 
 	const userId = created?.user?.id;
