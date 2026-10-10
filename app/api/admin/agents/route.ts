@@ -157,3 +157,50 @@ export async function POST(request: Request) {
 
 	return NextResponse.json({ ok: true, userId, email });
 }
+
+export async function DELETE(request: Request) {
+	const auth = await requireAdmin(request);
+	if ("error" in auth) {
+		return NextResponse.json({ error: auth.error }, { status: auth.status });
+	}
+
+	const body = await request.json().catch(() => null);
+	const agentId = text(body?.id);
+	const profileIdFromBody = text(body?.profileId);
+
+	if (!agentId && !profileIdFromBody) {
+		return NextResponse.json({ error: "An agent id or profile id is required." }, { status: 400 });
+	}
+
+	let profileId = profileIdFromBody;
+
+	if (!profileId && agentId) {
+		const { data: agent, error: agentLookupError } = await supabaseServer
+			.from("agents")
+			.select("profile_id")
+			.eq("id", agentId)
+			.maybeSingle();
+
+		if (agentLookupError) {
+			return NextResponse.json({ error: agentLookupError.message }, { status: 422 });
+		}
+
+		profileId = text(agent?.profile_id);
+	}
+
+	if (profileId) {
+		const { error: deleteUserError } = await supabaseServer.auth.admin.deleteUser(profileId);
+		if (deleteUserError) {
+			return NextResponse.json({ error: deleteUserError.message }, { status: 422 });
+		}
+
+		return NextResponse.json({ ok: true });
+	}
+
+	const { error: agentDeleteError } = await supabaseServer.from("agents").delete().eq("id", agentId);
+	if (agentDeleteError) {
+		return NextResponse.json({ error: agentDeleteError.message }, { status: 422 });
+	}
+
+	return NextResponse.json({ ok: true });
+}

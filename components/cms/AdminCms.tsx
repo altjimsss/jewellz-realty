@@ -2463,7 +2463,32 @@ export default function AdminCms({
 			onConfirm: async () => {
 				setMessage(`Deleting from ${table}...`);
 				setSaving(true);
-				await supabaseBrowser.from(table).delete().eq(idKey, currentRow[idKey]);
+				if (table === "agents") {
+					const { data } = await supabaseBrowser.auth.getSession();
+					const token = data.session?.access_token;
+					const response = await fetch("/api/admin/agents", {
+						method: "DELETE",
+						headers: {
+							"Content-Type": "application/json",
+							...(token ? { Authorization: `Bearer ${token}` } : {}),
+						},
+						credentials: "same-origin",
+						body: JSON.stringify({ id: currentRow.id, profileId: currentRow.profile_id }),
+					});
+					const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+					if (!response.ok || !payload?.ok) {
+						setMessage(payload?.error ?? "Unable to delete the agent account.");
+						setSaving(false);
+						return;
+					}
+				} else {
+					const result = await supabaseBrowser.from(table).delete().eq(idKey, currentRow[idKey]);
+					if (result.error) {
+						setMessage(result.error.message);
+						setSaving(false);
+						return;
+					}
+				}
 				setSaving(false);
 				await reloadWorkspace();
 			},
