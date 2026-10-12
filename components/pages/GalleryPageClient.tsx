@@ -68,6 +68,11 @@ function dedupePhotos(photos: Photo[]) {
 }
 
 const MIN_GALLERY_PHOTOS = 4;
+const CORE_GALLERY_TITLES = ["Achievements", "Events", "Trainings", "Service"];
+
+function normalizeSection(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
 // Ensure every section has enough photos for the fan to actually animate.
 // CMS photos stay first (front card); thin sections are padded with photos
@@ -114,6 +119,18 @@ function groupGalleryItems(items: CmsGalleryItem[]): Option[] {
       description: item.description,
     }))),
   })).filter((option) => option.cover && option.photos.length);
+}
+
+function mergeCoreOptions(options: Option[]) {
+  const optionBySection = new Map(options.map((option) => [normalizeSection(option.title), option]));
+  const baseBySection = new Map(OPTIONS.map((option) => [normalizeSection(option.title), option]));
+  const orderedOptions = CORE_GALLERY_TITLES.map((title) => {
+    const key = normalizeSection(title);
+    return optionBySection.get(key) ?? baseBySection.get(key);
+  }).filter((option): option is Option => Boolean(option));
+  const extraOptions = options.filter((option) => !CORE_GALLERY_TITLES.some((title) => normalizeSection(title) === normalizeSection(option.title)));
+
+  return [...orderedOptions, ...extraOptions];
 }
 
 const OPTIONS: Option[] = [
@@ -191,8 +208,9 @@ export default function GalleryPage() {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [cardWidth, setCardWidth] = useState(0);
   const [cmsOptions, setCmsOptions] = useState<Option[]>([]);
+  const [requestedSection, setRequestedSection] = useState("");
   const cardSwapRef = useRef<CardSwapHandle | null>(null);
-  const galleryOptions = padOptions(cmsOptions.length ? cmsOptions : OPTIONS);
+  const galleryOptions = useMemo(() => padOptions(mergeCoreOptions(cmsOptions.length ? cmsOptions : OPTIONS)), [cmsOptions]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -205,6 +223,21 @@ export default function GalleryPage() {
 
     return () => window.removeEventListener("resize", updateWidth);
   }, []);
+
+  useEffect(() => {
+    const section = new URLSearchParams(window.location.search).get("section") ?? "";
+    setRequestedSection(normalizeSection(section));
+  }, []);
+
+  useEffect(() => {
+    if (!requestedSection) return;
+
+    const requestedIndex = galleryOptions.findIndex((option) => normalizeSection(option.title) === requestedSection);
+    if (requestedIndex < 0) return;
+
+    setActiveIndex(requestedIndex);
+    setActivePhotoIndex(0);
+  }, [galleryOptions, requestedSection]);
 
   useEffect(() => {
     let active = true;
@@ -253,8 +286,8 @@ export default function GalleryPage() {
                 Milestones, moments & memories from our journey
               </p>
 
-              <div className="mt-6">
-                <div className="flex flex-wrap gap-3 border-b border-zinc-200 pb-5">
+              <div className="mt-6 max-w-[430px]">
+                <div className="flex gap-3 overflow-x-auto border-b border-zinc-200 pb-5 pr-2 [scrollbar-width:thin]">
                   {galleryOptions.map((option, index) => {
                     const isActive = index === safeActiveIndex;
 
@@ -266,7 +299,7 @@ export default function GalleryPage() {
                           setActiveIndex(index);
                           setActivePhotoIndex(0);
                         }}
-                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                           isActive
                             ? "border-[#DE141C] bg-[#DE141C] text-white"
                             : "border-zinc-200 bg-white text-zinc-700 hover:border-[#DE141C]/30 hover:text-[#DE141C]"
