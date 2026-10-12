@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bell, Bot, Building2, Download, FileText, FolderTree, Home, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
+import { BarChart3, Bell, Bot, BriefcaseBusiness, Building2, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -19,7 +19,7 @@ import type { Property } from "@/types/property";
 import { AgentRegistrationForm } from "./AgentRegistrationForm";
 import { DeveloperRegistrationForm } from "./DeveloperRegistrationForm";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { agentFields, developerFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
+import { agentFields, careerApplicationFields, careerJobFields, developerFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
@@ -1120,6 +1120,8 @@ function routeForSection(section: CmsSection) {
 		developers: "/admin/agents?section=developers",
 		profiles: "/admin/agents?section=profiles",
 		gallery: "/admin?section=gallery",
+		careerJobs: "/admin?section=careerJobs",
+		careerApplications: "/admin?section=careerApplications",
 		logos: "/admin?section=logos",
 		stats: "/admin?section=stats",
 		settings: "/admin/settings",
@@ -1130,6 +1132,7 @@ function routeForSection(section: CmsSection) {
 }
 
 const PROPERTY_IMAGE_BUCKET = "property-images";
+const GALLERY_IMAGE_FOLDER = "gallery";
 
 function sanitizeFileName(fileName: string) {
 	return fileName
@@ -1139,10 +1142,137 @@ function sanitizeFileName(fileName: string) {
 		.replace(/^-|-$/g, "");
 }
 
-function storagePathFromPublicUrl(url: string) {
-	const marker = `/storage/v1/object/public/${PROPERTY_IMAGE_BUCKET}/`;
+function storagePathFromPublicUrl(url: string, bucket = PROPERTY_IMAGE_BUCKET) {
+	const marker = `/storage/v1/object/public/${bucket}/`;
 	const markerIndex = url.indexOf(marker);
 	return markerIndex >= 0 ? decodeURIComponent(url.slice(markerIndex + marker.length)) : null;
+}
+
+function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete }: { galleryItem: CmsRow | null; canEdit: boolean; onChanged: () => Promise<void> | void; onRequestDelete: (action: DestructiveAction) => void }) {
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [uploadMessage, setUploadMessage] = useState("");
+	const [savingImage, setSavingImage] = useState(false);
+	const imageUrl = asText(galleryItem?.image_url);
+	const galleryItemId = asText(galleryItem?.id);
+
+	function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+		setSelectedFile(event.target.files?.[0] ?? null);
+		setUploadMessage("");
+	}
+
+	async function uploadReplacementImage() {
+		if (!galleryItemId || !selectedFile) return;
+
+		setSavingImage(true);
+		setUploadMessage("Uploading gallery photo...");
+
+		const extension = selectedFile.name.includes(".") ? selectedFile.name.split(".").pop() : "jpg";
+		const baseName = sanitizeFileName(selectedFile.name.replace(/\.[^.]+$/, "")) || "gallery-photo";
+		const filePath = `${GALLERY_IMAGE_FOLDER}/${galleryItemId}/${Date.now()}-${baseName}.${extension}`;
+
+		const { error: uploadError } = await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).upload(filePath, selectedFile, {
+			cacheControl: "3600",
+			upsert: false,
+		});
+
+		if (uploadError) {
+			setUploadMessage(`Upload failed: ${uploadError.message}. Check that the "${PROPERTY_IMAGE_BUCKET}" storage bucket exists and allows CMS uploads.`);
+			setSavingImage(false);
+			return;
+		}
+
+		const { data: publicUrlData } = supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).getPublicUrl(filePath);
+		const nextImageUrl = publicUrlData.publicUrl;
+		const { error: updateError } = await supabaseBrowser.from("gallery_items").update({ image_url: nextImageUrl }).eq("id", galleryItemId);
+
+		if (updateError) {
+			setUploadMessage(updateError.message);
+			setSavingImage(false);
+			return;
+		}
+
+		const previousStoragePath = storagePathFromPublicUrl(imageUrl, PROPERTY_IMAGE_BUCKET);
+		if (previousStoragePath?.startsWith(`${GALLERY_IMAGE_FOLDER}/`)) {
+			await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove([previousStoragePath]);
+		}
+
+		setSelectedFile(null);
+		setUploadMessage("Gallery photo updated. The Image URL field now uses the uploaded file.");
+		await onChanged();
+		setSavingImage(false);
+	}
+
+	function deleteGalleryItem() {
+		if (!galleryItem) return;
+
+		onRequestDelete({
+			title: "Delete this gallery photo?",
+			description: `This will permanently delete ${asText(galleryItem.title || "this gallery item")} from the public gallery.`,
+			confirmLabel: "Verify password and delete photo",
+			onConfirm: async () => {
+				const { error } = await supabaseBrowser.from("gallery_items").delete().eq("id", galleryItem.id);
+				if (error) {
+					setUploadMessage(error.message);
+					return;
+				}
+
+				const storagePath = storagePathFromPublicUrl(imageUrl, PROPERTY_IMAGE_BUCKET);
+				if (storagePath?.startsWith(`${GALLERY_IMAGE_FOLDER}/`)) {
+					await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove([storagePath]);
+				}
+
+				await onChanged();
+			},
+		});
+	}
+
+	if (!galleryItemId) {
+		return (
+			<div className="rounded-lg border border-dashed border-black/15 bg-zinc-50 px-4 py-5">
+				<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Gallery Photo</div>
+				<p className="mt-1 text-sm text-black/55">Create and save the gallery item first. After it exists, you can upload, replace, preview, or delete its photo here.</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Gallery Photo</div>
+					<p className="mt-1 text-sm text-black/55">Upload a replacement image or edit the Image URL field above, then save changes.</p>
+				</div>
+				{canEdit ? (
+					<button type="button" onClick={deleteGalleryItem} className="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium text-[#111111] transition hover:bg-zinc-100">
+						Delete photo
+					</button>
+				) : null}
+			</div>
+
+			{imageUrl ? (
+				<div className="mt-4 overflow-hidden rounded-xl border border-black/10 bg-white">
+					<Image src={imageUrl} alt={asText(galleryItem?.title || "Gallery image")} width={900} height={420} unoptimized className="h-56 w-full object-cover" />
+					<div className="border-t border-black/10 px-3 py-2 text-xs text-black/45">{imageUrl}</div>
+				</div>
+			) : (
+				<div className="mt-4 rounded-xl border border-dashed border-black/15 bg-white px-4 py-10 text-center text-sm text-black/45">No photo URL saved yet.</div>
+			)}
+
+			<div className="mt-4 rounded-xl border border-dashed border-black/15 bg-white p-4">
+				<label className="block">
+					<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Replace Photo</div>
+					<input type="file" accept="image/*" disabled={!canEdit || savingImage} onChange={handleFileChange} className="mt-2 block w-full text-sm text-black/60 file:mr-4 file:rounded-md file:border-0 file:bg-[#111111] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white disabled:cursor-not-allowed disabled:opacity-60" />
+				</label>
+				<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+					<p className="text-xs text-black/45">{selectedFile ? selectedFile.name : "Choose a JPG, PNG, or WebP image."}</p>
+					<button type="button" onClick={uploadReplacementImage} disabled={!canEdit || savingImage || !selectedFile} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-4 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
+						{savingImage ? "Uploading..." : "Upload and replace"}
+					</button>
+				</div>
+				{uploadMessage ? <p className="mt-2 text-xs text-black/55">{uploadMessage}</p> : null}
+			</div>
+		</div>
+	);
 }
 
 function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete }: { propertyId: string | null; canEdit: boolean; onChanged: () => Promise<void> | void; onRequestDelete: (action: DestructiveAction) => void }) {
@@ -1832,6 +1962,9 @@ export default function AdminCms({
 	const selectedDeveloperId = selection.developers === NEW_RECORD_ID ? NEW_RECORD_ID : selection.developers ?? optionalId(workspace.developers[0]);
 	const selectedAgentId = selection.agents === NEW_RECORD_ID ? NEW_RECORD_ID : selection.agents ?? optionalId(workspace.agents[0]);
 	const selectedInquiryId = selection.inquiries ?? null;
+	const selectedCareerJobId = selection.careerJobs === NEW_RECORD_ID ? NEW_RECORD_ID : selection.careerJobs ?? optionalId(workspace.careerJobs[0]);
+	const selectedCareerApplicationId = selection.careerApplications ?? optionalId(workspace.careerApplications[0]);
+	const selectedGalleryItem = workspace.galleryItems.find((row) => asText(row.id) === asText(selection.galleryItems)) ?? null;
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
 	const selectedPropertyImageUrls = useMemo(
 		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
@@ -1945,6 +2078,8 @@ export default function AdminCms({
 					icon: FileText,
 					items: [
 						{ id: "gallery", label: "Gallery", hint: `${workspace.galleryItems.length} items`, icon: FileText },
+						{ id: "careerJobs", label: "Career Cards", hint: `${workspace.careerJobs.length} roles`, icon: BriefcaseBusiness },
+						{ id: "careerApplications", label: "Applications", hint: `${workspace.careerApplications.length} received`, icon: Inbox },
 						{ id: "logos", label: "Partner Logos", hint: `${workspace.partnerLogos.length} logos`, icon: Building2 },
 						{ id: "stats", label: "Site Stats", hint: `${workspace.siteStats.length} counters`, icon: BarChart3 },
 					],
@@ -1962,7 +2097,7 @@ export default function AdminCms({
 		}
 
 		return groups;
-	}, [isAdmin, workspace.agents.length, workspace.developers.length, workspace.galleryItems.length, workspace.inquiries.length, workspace.partnerLogos.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length]);
+	}, [isAdmin, workspace.agents.length, workspace.careerApplications.length, workspace.careerJobs.length, workspace.developers.length, workspace.galleryItems.length, workspace.inquiries.length, workspace.partnerLogos.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length]);
 	const navItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
 	const currentSection = navItems.some((item) => item.id === activeSection) ? activeSection : "overview";
 	const activeNavItem = navItems.find((item) => item.id === currentSection);
@@ -2098,6 +2233,8 @@ export default function AdminCms({
 				developersResult,
 				agentsResult,
 				galleryResult,
+				careerJobsResult,
+				careerApplicationsResult,
 				partnerLogosResult,
 				siteStatsResult,
 				settingsResult,
@@ -2114,6 +2251,8 @@ export default function AdminCms({
 				supabaseBrowser.from("developer_partners").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("agents").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("gallery_items").select("*").order("sort_order", { ascending: true }),
+				supabaseBrowser.from("career_jobs").select("*").order("sort_order", { ascending: true }),
+				supabaseBrowser.from("career_applications").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("partner_logos").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("site_stats").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("system_settings").select("*").order("updated_at", { ascending: false }),
@@ -2131,6 +2270,8 @@ export default function AdminCms({
 			nextWorkspace.developers = developersResult.data ?? [];
 			nextWorkspace.agents = agentsResult.data ?? [];
 			nextWorkspace.galleryItems = galleryResult.data ?? [];
+			nextWorkspace.careerJobs = careerJobsResult.data ?? [];
+			nextWorkspace.careerApplications = careerApplicationsResult.data ?? [];
 			nextWorkspace.partnerLogos = partnerLogosResult.data ?? [];
 			nextWorkspace.siteStats = siteStatsResult.data ?? [];
 			nextWorkspace.settings = settingsResult.data ?? [];
@@ -2548,6 +2689,22 @@ export default function AdminCms({
 		}
 		if (sessionUser?.id && !currentRow) payload.created_by = sessionUser.id;
 		await saveEntity("gallery_items", payload, currentRow);
+	}
+
+	async function saveCareerJob(payload: CmsPayload, currentRow: CmsRow | null) {
+		if (!payload.title || !payload.description) {
+			setMessage("Career cards need title and description.");
+			return;
+		}
+		await saveEntity("career_jobs", payload, currentRow);
+	}
+
+	async function saveCareerApplication(payload: CmsPayload, currentRow: CmsRow | null) {
+		if (!currentRow) {
+			setMessage("Applications are created from the public Careers page. Select an existing application to update its status or notes.");
+			return;
+		}
+		await saveEntity("career_applications", payload, currentRow);
 	}
 
 	async function savePartnerLogo(payload: CmsPayload, currentRow: CmsRow | null) {
@@ -3158,7 +3315,15 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "gallery" && isAdmin ? (
-							<EntityEditor title="Gallery Items" description="Browse Gallery tiles for achievements, events, trainings, service, and general content." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.section ?? "general"} • ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} />
+							<EntityEditor title="Gallery Items" description="Browse Gallery tiles for achievements, events, trainings, service, and general content." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.section ?? "general"} • ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} extra={<GalleryImageManager galleryItem={selectedGalleryItem} canEdit={canEditContent} onChanged={reloadWorkspace} onRequestDelete={requestDestructiveAction} />} />
+						) : null}
+
+						{currentSection === "careerJobs" && isAdmin ? (
+							<EntityEditor title="Career Cards" description="Editable job cards shown on the public Careers page. Use details for the flipped-card bullet list." rows={workspace.careerJobs} selectedId={selectedCareerJobId} fields={careerJobFields} defaultValues={{ badge: "Full-Time", sort_order: workspace.careerJobs.length, is_active: true }} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.badge ?? "Role"} • ${row.is_active ? "active" : "hidden"}`} onSelect={(row) => setSelection((current) => ({ ...current, careerJobs: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, careerJobs: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("career_jobs", row)} onSubmit={saveCareerJob} saveLabel="Save career card" />
+						) : null}
+
+						{currentSection === "careerApplications" && isAdmin ? (
+							<EntityEditor title="Career Applications" description="Applications submitted from the public Careers page. Update status or admin notes here." rows={workspace.careerApplications} selectedId={selectedCareerApplicationId} fields={careerApplicationFields} canEdit={canEditContent} canCreate={false} rowLabel={(row) => asText(row.applicant_name || row.position_title || row.id)} rowMeta={(row) => `${row.position_title ?? "Applicant"} • ${row.status ?? "new"}`} onSelect={(row) => setSelection((current) => ({ ...current, careerApplications: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, careerApplications: null }))} onDelete={(row) => deleteEntity("career_applications", row)} onSubmit={saveCareerApplication} saveLabel="Save application" />
 						) : null}
 
 						{currentSection === "logos" && isAdmin ? (

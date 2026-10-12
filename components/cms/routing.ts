@@ -19,6 +19,8 @@ const sections = [
 	"developers",
 	"profiles",
 	"gallery",
+	"careerJobs",
+	"careerApplications",
 	"logos",
 	"stats",
 	"settings",
@@ -48,7 +50,7 @@ export function primaryForSection(section: CmsSection): CmsPrimary {
 	if (section === "inquiries" || section === "pipeline" || section === "timeline") return "inquiries";
 	if (section === "analytics" || section === "trafficBehavior" || section === "propertyPerformance" || section === "predictiveAnalytics" || section === "userEngagement" || section === "traffic" || section === "agentPerformance" || section === "developerPortfolio") return "analytics";
 	if (section === "agents" || section === "developers" || section === "profiles") return "people";
-	if (section === "gallery" || section === "logos" || section === "stats") return "content";
+	if (section === "gallery" || section === "careerJobs" || section === "careerApplications" || section === "logos" || section === "stats") return "content";
 	if (section === "settings" || section === "activityLogs") return "settings";
 	return "dashboard";
 }

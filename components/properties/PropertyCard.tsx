@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import type { Property } from "@/types/property";
 import { formatPHPWhole } from "@/lib/currency";
+import { PropertyDetailSkeleton } from "@/components/properties/PropertyDetailSkeleton";
+import { useState } from "react";
 
 type PropertyCardProps = {
 	property: Property;
@@ -10,6 +14,7 @@ type PropertyCardProps = {
 };
 
 export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) {
+	const [showPendingDetail, setShowPendingDetail] = useState(false);
 	const defaultSpecs = [
 		{ label: "Beds", value: String(property.beds ?? 0) },
 		{ label: "Baths", value: String(property.baths ?? 0) },
@@ -139,8 +144,29 @@ export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) 
 
 	if (href) {
 		return (
-			<Link href={href} className="block">
+			<Link
+				href={href}
+				className="block"
+				onClick={(event) => {
+					if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+						return;
+					}
+
+					setShowPendingDetail(true);
+				}}
+			>
 				{card}
+				{showPendingDetail ? (
+					<div className="fixed inset-0 z-[9999] overflow-y-auto bg-white" aria-live="polite" aria-busy="true">
+						<div className="border-b border-black/10 bg-white px-4 py-3">
+							<div className="mx-auto flex max-w-[1200px] items-center gap-3">
+								<div className="h-2 w-2 animate-pulse rounded-full bg-[#DE141C]" />
+								<p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/55">Opening property details</p>
+							</div>
+						</div>
+						<PropertyDetailSkeleton />
+					</div>
+				) : null}
 			</Link>
 		);
 	}

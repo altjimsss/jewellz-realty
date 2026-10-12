@@ -287,7 +287,10 @@ export default function GalleryPage() {
               </p>
 
               <div className="mt-6 max-w-[430px]">
-                <div className="flex gap-3 overflow-x-auto border-b border-zinc-200 pb-5 pr-2 [scrollbar-width:thin]">
+                <div className="relative border-b border-zinc-200 pb-5">
+                  <div className="pointer-events-none absolute bottom-5 left-0 top-0 z-10 w-6 bg-gradient-to-r from-white to-transparent" />
+                  <div className="pointer-events-none absolute bottom-5 right-0 top-0 z-10 w-8 bg-gradient-to-l from-white to-transparent" />
+                  <div className="flex gap-2 overflow-x-auto px-1 pb-2 pt-1 [scrollbar-color:#DE141C_#F4F4F5] [scrollbar-width:thin]">
                   {galleryOptions.map((option, index) => {
                     const isActive = index === safeActiveIndex;
 
@@ -299,10 +302,10 @@ export default function GalleryPage() {
                           setActiveIndex(index);
                           setActivePhotoIndex(0);
                         }}
-                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                        className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#DE141C]/25 ${
                           isActive
-                            ? "border-[#DE141C] bg-[#DE141C] text-white"
-                            : "border-zinc-200 bg-white text-zinc-700 hover:border-[#DE141C]/30 hover:text-[#DE141C]"
+                            ? "border-[#DE141C] bg-[#DE141C] text-white shadow-[0_10px_22px_rgba(222,20,28,0.18)]"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-[#DE141C]/40 hover:bg-zinc-50 hover:text-[#DE141C]"
                         }`}
                       >
                         <span className="text-[14px]">{option.icon}</span>
@@ -310,6 +313,7 @@ export default function GalleryPage() {
                       </button>
                     );
                   })}
+                  </div>
                 </div>
               </div>
 

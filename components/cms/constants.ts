@@ -7,6 +7,8 @@ export const emptyWorkspace: Workspace = {
 	agents: [],
 	inquiries: [],
 	galleryItems: [],
+	careerJobs: [],
+	careerApplications: [],
 	partnerLogos: [],
 	siteStats: [],
 	settings: [],
@@ -28,6 +30,8 @@ export const emptySelection: SelectionState = {
 	agents: null,
 	inquiries: null,
 	galleryItems: null,
+	careerJobs: null,
+	careerApplications: null,
 	partnerLogos: null,
 	siteStats: null,
 	settings: null,
@@ -175,6 +179,34 @@ export const galleryFields: FieldSpec[] = [
 	{ name: "link_url", label: "Link URL", type: "url" },
 	{ name: "sort_order", label: "Sort Order", type: "number" },
 	{ name: "is_published", label: "Published", type: "checkbox" },
+];
+
+export const careerJobFields: FieldSpec[] = [
+	{ name: "title", label: "Position Title", type: "text" },
+	{ name: "badge", label: "Badge", type: "text", placeholder: "Full-Time" },
+	{ name: "description", label: "Description", type: "textarea", rows: 5 },
+	{ name: "details", label: "Details", type: "array", rows: 6, help: "One bullet per line. These show on the flipped card." },
+	{ name: "sort_order", label: "Sort Order", type: "number" },
+	{ name: "is_active", label: "Active", type: "checkbox", help: "Show this career card on the public Careers page." },
+];
+
+export const careerApplicationFields: FieldSpec[] = [
+	{ name: "status", label: "Status", type: "select", options: [
+		{ label: "New", value: "new" },
+		{ label: "Reviewing", value: "reviewing" },
+		{ label: "Shortlisted", value: "shortlisted" },
+		{ label: "Rejected", value: "rejected" },
+		{ label: "Hired", value: "hired" },
+	] },
+	{ name: "position_title", label: "Position", type: "text" },
+	{ name: "applicant_name", label: "Applicant Name", type: "text" },
+	{ name: "applicant_email", label: "Email", type: "email" },
+	{ name: "applicant_phone", label: "Phone", type: "text" },
+	{ name: "referral", label: "Referral", type: "text" },
+	{ name: "subject", label: "Subject", type: "text" },
+	{ name: "resume_url", label: "CV / Resume Link", type: "url" },
+	{ name: "message", label: "Message", type: "textarea", rows: 5 },
+	{ name: "admin_notes", label: "Admin Notes", type: "textarea", rows: 4 },
 ];
 
 export const partnerLogoFields: FieldSpec[] = [

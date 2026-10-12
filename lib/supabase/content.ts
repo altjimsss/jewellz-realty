@@ -50,6 +50,15 @@ export type PublicGalleryItem = {
 	sortOrder?: number;
 };
 
+export type PublicCareerJob = {
+	id: string;
+	title: string;
+	badge: string;
+	description: string;
+	details: string[];
+	sortOrder?: number;
+};
+
 function asNumber(value: unknown) {
 	const numberValue = Number(value);
 	return Number.isFinite(numberValue) ? numberValue : 0;
@@ -129,4 +138,34 @@ export async function getPublicGalleryItems() {
 		linkUrl: row.link_url ? String(row.link_url) : undefined,
 		sortOrder: row.sort_order == null ? undefined : asNumber(row.sort_order),
 	})).filter((item) => item.title && item.imageUrl);
+}
+
+function asStringArray(value: unknown) {
+	if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean);
+	if (typeof value === "string") {
+		return value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+	}
+	return [];
+}
+
+export async function getPublicCareerJobs() {
+	const { data, error } = await supabaseServer
+		.from("career_jobs")
+		.select("*")
+		.eq("is_active", true)
+		.order("sort_order", { ascending: true });
+
+	if (error) {
+		console.error("Failed to load career jobs", error.message);
+		return [];
+	}
+
+	return (data ?? []).map((row): PublicCareerJob => ({
+		id: String(row.id ?? row.title ?? ""),
+		title: String(row.title ?? ""),
+		badge: String(row.badge ?? "Full-Time"),
+		description: String(row.description ?? ""),
+		details: asStringArray(row.details),
+		sortOrder: row.sort_order == null ? undefined : asNumber(row.sort_order),
+	})).filter((item) => item.id && item.title && item.description);
 }

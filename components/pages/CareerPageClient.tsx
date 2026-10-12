@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
@@ -19,6 +19,7 @@ const navLinks = [
 ];
 
 type Job = {
+	id?: string;
 	title: string;
 	badge: string;
 	description: string;
@@ -60,23 +61,39 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 	const [form, setForm] = useState({
 		name: "", email: "", phone: "", referral: "", subject: "", cv: "", message: "",
 	});
+	const [status, setStatus] = useState("");
+	const [submitting, setSubmitting] = useState(false);
 
-	function handleSubmit(e: React.FormEvent) {
+	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		const subject = encodeURIComponent(form.subject || `Application for ${job.title}`);
-		const body = encodeURIComponent(
-			[
-				`Position: ${job.title}`,
-				`Name: ${form.name}`,
-				`Email: ${form.email}`,
-				`Phone: ${form.phone}`,
-				`Referral: ${form.referral}`,
-				`CV/Resume: ${form.cv}`,
-				"",
-				form.message,
-			].join("\n")
-		);
-		window.location.href = `mailto:jobs@jewellzrealty.ph?subject=${subject}&body=${body}`;
+		setSubmitting(true);
+		setStatus("Submitting your application...");
+
+		try {
+			const response = await fetch("/api/career/applications", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					...form,
+					jobId: job.id,
+					positionTitle: job.title,
+				}),
+			});
+			const data = await response.json().catch(() => null) as { error?: string } | null;
+
+			if (!response.ok) {
+				setStatus(data?.error ?? "Unable to submit right now. Please try again.");
+				setSubmitting(false);
+				return;
+			}
+
+			setStatus("Application submitted. Our admin team can now review it in the dashboard.");
+			setForm({ name: "", email: "", phone: "", referral: "", subject: "", cv: "", message: "" });
+			setSubmitting(false);
+		} catch {
+			setStatus("Unable to submit right now. Please try again.");
+			setSubmitting(false);
+		}
 	}
 
 	return (
@@ -114,6 +131,7 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 								placeholder={placeholder}
 								value={form[key as keyof typeof form]}
 								onChange={(e) => setForm((s) => ({ ...s, [key]: e.target.value }))}
+								required={key === "name" || key === "email" || key === "phone"}
 								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
 							/>
 						))}
@@ -133,6 +151,7 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 								placeholder={placeholder}
 								value={form[key as keyof typeof form]}
 								onChange={(e) => setForm((s) => ({ ...s, [key]: e.target.value }))}
+								required={key === "subject" || key === "cv"}
 								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
 							/>
 						))}
@@ -147,11 +166,13 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 					/>
 
 					<div className="mt-5 flex justify-end">
+						{status ? <p className="mr-auto max-w-[330px] text-xs leading-5 text-black/55">{status}</p> : null}
 						<button
 							type="submit"
-							className="inline-flex h-10 items-center gap-2 rounded-md bg-[#DE141C] px-7 text-[12.5px] font-medium text-white transition-colors hover:bg-[#c51018]"
+							disabled={submitting}
+							className="inline-flex h-10 items-center gap-2 rounded-md bg-[#DE141C] px-7 text-[12.5px] font-medium text-white transition-colors hover:bg-[#c51018] disabled:cursor-not-allowed disabled:bg-black/20"
 						>
-							Apply
+							{submitting ? "Submitting..." : "Apply"}
 						</button>
 					</div>
 				</form>
@@ -254,6 +275,23 @@ function JobCard({ job, onApply }: { job: Job; onApply: () => void }) {
 
 export default function CareerPage() {
 	const [modal, setModal] = useState<ModalState>({ open: false });
+	const [careerJobs, setCareerJobs] = useState<Job[]>(jobs);
+
+	useEffect(() => {
+		let active = true;
+
+		void fetch("/api/content/career")
+			.then((response) => response.ok ? response.json() : null)
+			.then((data) => {
+				const nextJobs = Array.isArray(data?.jobs) ? data.jobs as Job[] : [];
+				if (active && nextJobs.length) setCareerJobs(nextJobs);
+			})
+			.catch(() => undefined);
+
+		return () => {
+			active = false;
+		};
+	}, []);
 
 	return (
 		<main className={`${poppins.className} min-h-screen bg-white text-[#111111]`}>
@@ -286,9 +324,9 @@ export default function CareerPage() {
 
 					{/* Job cards */}
 					<div className="space-y-4 pt-10 lg:pl-12 lg:pt-0">
-						{jobs.map((job) => (
+						{careerJobs.map((job) => (
 							<JobCard
-								key={job.title}
+								key={job.id ?? job.title}
 								job={job}
 								onApply={() => setModal({ open: true, job })}
 							/>
