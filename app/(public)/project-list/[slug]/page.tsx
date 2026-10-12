@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 
 import { getCachedNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { getNearbyPlaceGroups } from "@/lib/nearby-places";
+import { nearbyCategories } from "@/lib/nearby-places";
 import {
 	SAMPLE_PROPERTIES,
 	getPropertyBySlug,
@@ -40,14 +40,10 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 		notFound();
 	}
 
-	const [latitude, longitude] = property.coordinates ?? [];
-
 	const [relatedProperties, nearbyGroups] = await Promise.all([
 		getSupabaseRelatedProperties(property.id, { category: property.type, limit: 3 }),
 		getCachedNearbyPlaceGroups(property.id).then(
-			(cached) =>
-				cached ??
-				getNearbyPlaceGroups({ latitude, longitude, propertyType: property.type }),
+			(cached) => cached ?? nearbyCategories.map(({ category }) => ({ category, places: [] })),
 		),
 	]);
 	const fallbackRelatedProperties = relatedProperties.length
