@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { buildNaturalLanguageSearchHref } from "@/lib/property-search";
 
 export type NavLink = {
 	label: string;
@@ -37,7 +38,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 		if (!query) return;
 
 		setMobileMenuOpen(false);
-		router.push(`/project-list?search=${encodeURIComponent(query)}`);
+		router.push(buildNaturalLanguageSearchHref(query));
 	}
 
 	return (

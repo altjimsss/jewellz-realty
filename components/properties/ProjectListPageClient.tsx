@@ -13,6 +13,7 @@ import { PropertyFilters, type PropertyFiltersState } from "@/components/propert
 import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
 import { PropertyCard } from "@/components/properties/PropertyCard";
+import { mergeNaturalLanguageFilters } from "@/lib/property-search";
 import type { Property } from "@/types/property";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
@@ -96,6 +97,52 @@ function inferSearchIntent(filters: PropertyFiltersState) {
 	].join(" "));
 }
 
+function propertySearchText(property: Property) {
+	return normalizeText([
+		property.title,
+		property.type,
+		property.category,
+		property.location,
+		property.description,
+		...(property.specs ?? []).map((spec) => `${spec.label} ${spec.value}`),
+	].join(" "));
+}
+
+function scorePropertyRelevance(property: Property, activeCategory: (typeof CATEGORY_TABS)[number], filters: PropertyFiltersState) {
+	const intent = inferSearchIntent(filters);
+	const searchText = propertySearchText(property);
+	const keyword = normalizeText(filters.keyword);
+	const keywordTokens = keywordTokensForFiltering(filters.keyword);
+	const locationTokens = tokenize(`${filters.location} ${filters.subLocation}`);
+	const lookingFor = normalizeText(filters.lookingFor);
+	const type = normalizeText(property.type);
+	let score = 0;
+
+	if (activeCategory !== "All" && type === normalizeText(activeCategory)) score += 60;
+	if (lookingFor && type === lookingFor) score += 55;
+	if (lookingFor && type.includes(lookingFor)) score += 35;
+	if (intent.preferredTypes.some((preferredType) => type === normalizeText(preferredType))) score += 45;
+	if (keyword && normalizeText(property.title).includes(keyword)) score += 40;
+
+	for (const token of keywordTokens) {
+		if (normalizeText(property.title).includes(token)) score += 18;
+		else if (type.includes(token)) score += 16;
+		else if (normalizeText(property.location).includes(token)) score += 14;
+		else if (searchText.includes(token)) score += 8;
+	}
+
+	for (const token of locationTokens) {
+		if (normalizeText(property.location).includes(token)) score += 20;
+	}
+
+	if (intent.familySuitable && (property.beds ?? 0) >= 2) score += 12;
+	if (intent.budgetIntent === "affordable" && property.price > 0) score += Math.max(0, 20 - Math.floor(property.price / 1_000_000));
+	if (intent.budgetIntent === "luxury" && property.price > 0) score += Math.min(20, Math.floor(property.price / 1_000_000));
+	if (property.featured) score += 3;
+
+	return score;
+}
+
 function comparePropertiesByIntent(first: Property, second: Property, filters: PropertyFiltersState) {
 	const intent = inferSearchIntent(filters);
 
@@ -119,6 +166,18 @@ function comparePropertiesByIntent(first: Property, second: Property, filters: P
 	return 0;
 }
 
+function comparePropertiesBySearch(first: Property, second: Property, activeCategory: (typeof CATEGORY_TABS)[number], filters: PropertyFiltersState) {
+	const firstScore = scorePropertyRelevance(first, activeCategory, filters);
+	const secondScore = scorePropertyRelevance(second, activeCategory, filters);
+
+	if (firstScore !== secondScore) return secondScore - firstScore;
+
+	const intentComparison = comparePropertiesByIntent(first, second, filters);
+	if (intentComparison !== 0) return intentComparison;
+
+	return Number(Boolean(second.featured)) - Number(Boolean(first.featured)) || first.title.localeCompare(second.title);
+}
+
 function getFilteredProperties(properties: Property[], activeCategory: (typeof CATEGORY_TABS)[number], filters: PropertyFiltersState) {
 	const lookingFor = filters.lookingFor.trim().toLowerCase();
 	const location = filters.location.trim().toLowerCase();
@@ -130,14 +189,7 @@ function getFilteredProperties(properties: Property[], activeCategory: (typeof C
 
 	return properties.filter((property) => {
 		const matchesTab = activeCategory === "All" ? true : (property.type ?? "") === activeCategory;
-		const searchableText = normalizeText([
-			property.title,
-			property.type,
-			property.category,
-			property.location,
-			property.description,
-			...(property.specs ?? []).map((spec) => `${spec.label} ${spec.value}`),
-		].join(" "));
+		const searchableText = propertySearchText(property);
 
 		if (!matchesTab) return false;
 		if (inferredCategory && normalizeText(property.type) !== normalizeText(inferredCategory)) return false;
@@ -151,7 +203,7 @@ function getFilteredProperties(properties: Property[], activeCategory: (typeof C
 		if (filters.beds && (property.beds ?? 0) < Number(filters.beds.replace("+", ""))) return false;
 		if (filters.baths && (property.baths ?? 0) < Number(filters.baths.replace("+", ""))) return false;
 		return true;
-	}).sort((first, second) => comparePropertiesByIntent(first, second, filters));
+	}).sort((first, second) => comparePropertiesBySearch(first, second, activeCategory, filters));
 }
 
 function getRecommendationReason(property: Property, activeCategory: (typeof CATEGORY_TABS)[number], filters: PropertyFiltersState) {
@@ -250,7 +302,7 @@ type ProjectListPageClientProps = {
 };
 
 export function ProjectListPageClient({ properties, initialFilters = {} }: ProjectListPageClientProps) {
-	const normalizedInitialFilters: PropertyFiltersState = {
+	const normalizedInitialFilters = mergeNaturalLanguageFilters({
 		keyword: initialFilters.keyword?.trim() ?? "",
 		lookingFor: initialFilters.lookingFor?.trim() ?? "",
 		location: initialFilters.location?.trim() ?? "",
@@ -260,7 +312,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 		status: initialFilters.status?.trim() ?? "",
 		beds: initialFilters.beds?.trim() ?? "",
 		baths: initialFilters.baths?.trim() ?? "",
-	};
+	}, properties);
 	const initialCategoryParam = initialFilters.category?.trim() ?? "";
 	const initialCategory = isCategoryTab(initialCategoryParam) ? initialCategoryParam : "All";
 	const hasInitialFilters = initialCategory !== "All" || Object.values(normalizedInitialFilters).some(Boolean);
@@ -357,7 +409,9 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 					value={draftFilters}
 					onChange={setDraftFilters}
 					onSubmit={() => {
-						setAppliedFilters(draftFilters);
+						const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);
+						setDraftFilters(enrichedFilters);
+						setAppliedFilters(enrichedFilters);
 						setHasSearched(true);
 					}}
 				/>
