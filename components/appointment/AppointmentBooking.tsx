@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { ReCaptcha } from "@/components/security/ReCaptcha";
 
 const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const timeSlots = [
@@ -122,6 +123,8 @@ export function AppointmentBooking() {
   const [submitStatus, setSubmitStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calHeight, setCalHeight] = useState<number | undefined>(undefined);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   const calRef = useRef<HTMLDivElement>(null);
 
@@ -175,8 +178,18 @@ export function AppointmentBooking() {
   const inputBase =
     "w-full border border-black/12 rounded-lg bg-white text-[13px] text-black placeholder:text-black/28 outline-none focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/10 transition h-[34px]";
 
+  function resetCaptcha() {
+    setCaptchaToken("");
+    setCaptchaResetKey((current) => current + 1);
+  }
+
   async function confirmBooking() {
     if (!formValid || !formattedDate || !selectedTime || isSubmitting) return;
+    if (!captchaToken) {
+      setSubmitStatus("Please complete the captcha before confirming your appointment.");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus("Saving appointment request...");
     const response = await fetch("/api/appointments", {
@@ -190,15 +203,18 @@ export function AppointmentBooking() {
         time: selectedTime,
         propertySlug,
         propertyTitle: propertyLabel,
+        captchaToken,
       }),
     });
     setIsSubmitting(false);
     if (!response.ok) {
       const data = await response.json().catch(() => null);
       setSubmitStatus(data?.error || "Unable to save appointment. Please try again.");
+      resetCaptcha();
       return;
     }
     setSubmitStatus("");
+    resetCaptcha();
     setStep(2);
   }
 
@@ -411,6 +427,8 @@ export function AppointmentBooking() {
                   />
                 </div>
               </div>
+
+              <ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} className="mt-4" />
             </>
           )}
 

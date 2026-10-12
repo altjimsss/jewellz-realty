@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { getOrCreateSessionId } from "@/lib/session";
 import type { Property } from "@/types/property";
 
@@ -9,10 +10,22 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: "", name: "", subject: "", message: "" });
   const [status, setStatus] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const { track } = useAnalytics();
+
+  function resetCaptcha() {
+    setCaptchaToken("");
+    setCaptchaResetKey((current) => current + 1);
+  }
 
   async function submitInquiry() {
     if (previewMode) return;
+    if (!captchaToken) {
+      setStatus("Please complete the captcha before sending your inquiry.");
+      return;
+    }
+
     setStatus("Sending inquiry...");
     const response = await fetch("/api/inquiries", {
       method: "POST",
@@ -26,9 +39,17 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
         message: form.message,
         source: "property_detail",
         sessionId: getOrCreateSessionId(),
+        captchaToken,
       }),
     });
-    setStatus(response.ok ? "Inquiry sent. Our team will contact you soon." : "Unable to send inquiry right now.");
+    if (response.ok) {
+      setStatus("Inquiry sent. Our team will contact you soon.");
+      setForm({ email: "", name: "", subject: "", message: "" });
+    } else {
+      const data = await response.json().catch(() => null);
+      setStatus(data?.error || "Unable to send inquiry right now.");
+    }
+    resetCaptcha();
   }
 
   return (
@@ -79,6 +100,7 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
               disabled={previewMode}
             />
           ))}
+          <ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
           <button type="button" onClick={() => void submitInquiry()} disabled={previewMode || !form.name.trim() || !form.email.trim()} className="mt-2 h-10 w-full rounded-sm bg-[#DE141C] text-sm font-semibold text-white transition-colors hover:bg-[#c51018] disabled:cursor-not-allowed disabled:opacity-70">
             Send Inquiry
           </button>

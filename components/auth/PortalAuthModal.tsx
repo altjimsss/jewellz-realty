@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export type PortalRole = "agent" | "developer" | "admin";
@@ -43,6 +44,8 @@ function PortalAuthModalContent({
 	const [loading, setLoading] = useState(false);
 	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
 	const [isForgotPassword, setIsForgotPassword] = useState(false);
+	const [captchaToken, setCaptchaToken] = useState("");
+	const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
@@ -80,14 +83,47 @@ function PortalAuthModalContent({
 
 	const currentConfig = roleConfig[activeRole];
 
+	function resetCaptcha() {
+		setCaptchaToken("");
+		setCaptchaResetKey((current) => current + 1);
+	}
+
+	async function verifyCaptcha() {
+		if (!captchaToken) {
+			setMessage({ text: "Please complete the captcha before continuing.", type: "error" });
+			return false;
+		}
+
+		const response = await fetch("/api/recaptcha", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ token: captchaToken }),
+		});
+
+		if (!response.ok) {
+			const data = await response.json().catch(() => null);
+			setMessage({ text: data?.error || "Captcha verification failed. Please try again.", type: "error" });
+			resetCaptcha();
+			return false;
+		}
+
+		return true;
+	}
+
 	async function handlePasswordSignIn(e: FormEvent) {
 		e.preventDefault();
 		if (!email.trim() || !password) return;
 
 		setLoading(true);
-		setMessage({ text: "Authenticating credentials...", type: "info" });
+		setMessage({ text: "Verifying captcha...", type: "info" });
 
 		try {
+			if (!(await verifyCaptcha())) {
+				setLoading(false);
+				return;
+			}
+
+			setMessage({ text: "Authenticating credentials...", type: "info" });
 			const { data, error } = await supabaseBrowser.auth.signInWithPassword({
 				email: email.trim().toLowerCase(),
 				password,
@@ -95,6 +131,7 @@ function PortalAuthModalContent({
 
 			if (error) {
 				setMessage({ text: error.message, type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
@@ -102,6 +139,7 @@ function PortalAuthModalContent({
 			const userId = data.user?.id;
 			if (!userId) {
 				setMessage({ text: "Sign in succeeded, but no user was returned.", type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
@@ -115,12 +153,14 @@ function PortalAuthModalContent({
 
 			if (profileError) {
 				setMessage({ text: `Profile check failed: ${profileError.message}`, type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
 
 			if (profile && profile.is_active === false) {
 				setMessage({ text: "Your account is inactive. Please contact the brokerage administrator.", type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
@@ -145,6 +185,7 @@ function PortalAuthModalContent({
 			}, 700);
 		} catch {
 			setMessage({ text: "Connection error. Please try again.", type: "error" });
+			resetCaptcha();
 			setLoading(false);
 		}
 	}
@@ -156,6 +197,13 @@ function PortalAuthModalContent({
 		}
 
 		setLoading(true);
+		setMessage({ text: "Verifying captcha...", type: "info" });
+
+		if (!(await verifyCaptcha())) {
+			setLoading(false);
+			return;
+		}
+
 		setMessage({ text: "Sending a secure sign-in link...", type: "info" });
 
 		const { error } = await supabaseBrowser.auth.signInWithOtp({
@@ -167,11 +215,13 @@ function PortalAuthModalContent({
 
 		if (error) {
 			setMessage({ text: error.message, type: "error" });
+			resetCaptcha();
 			setLoading(false);
 			return;
 		}
 
 		setMessage({ text: `Magic sign-in link sent to ${email}. Check your inbox!`, type: "success" });
+		resetCaptcha();
 		setLoading(false);
 	}
 
@@ -183,6 +233,13 @@ function PortalAuthModalContent({
 		}
 
 		setLoading(true);
+		setMessage({ text: "Verifying captcha...", type: "info" });
+
+		if (!(await verifyCaptcha())) {
+			setLoading(false);
+			return;
+		}
+
 		setMessage({ text: "Sending password reset link...", type: "info" });
 
 		const { error } = await supabaseBrowser.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
@@ -191,6 +248,7 @@ function PortalAuthModalContent({
 
 		if (error) {
 			setMessage({ text: error.message, type: "error" });
+			resetCaptcha();
 			setLoading(false);
 			return;
 		}
@@ -199,6 +257,7 @@ function PortalAuthModalContent({
 			text: `Password reset instructions sent to ${email}.`,
 			type: "success",
 		});
+		resetCaptcha();
 		setLoading(false);
 	}
 
@@ -323,6 +382,8 @@ function PortalAuthModalContent({
 							/>
 						</label>
 
+						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
 						<div className="flex flex-col gap-2 pt-1">
 							<button
 								type="submit"
@@ -405,6 +466,8 @@ function PortalAuthModalContent({
 								</button>
 							</div>
 						</label>
+
+						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
 						<div className="flex flex-col gap-2 pt-2">
 							<button

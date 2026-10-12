@@ -6,6 +6,7 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import SectionHeader from "@/components/layout/SectionHeader";
+import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { getOrCreateSessionId } from "@/lib/session";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
@@ -22,6 +23,13 @@ const navLinks = [
 export default function ContactPage() {
 	const [formState, setFormState] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
 	const [submitStatus, setSubmitStatus] = useState("");
+	const [captchaToken, setCaptchaToken] = useState("");
+	const [captchaResetKey, setCaptchaResetKey] = useState(0);
+
+	function resetCaptcha() {
+		setCaptchaToken("");
+		setCaptchaResetKey((current) => current + 1);
+	}
 
 	function openMailFallback() {
 		const subject = encodeURIComponent(formState.subject || `Jewellz Realty inquiry from ${formState.name || "website visitor"}`);
@@ -40,6 +48,11 @@ export default function ContactPage() {
 			return;
 		}
 
+		if (!captchaToken) {
+			setSubmitStatus("Please complete the captcha before sending your message.");
+			return;
+		}
+
 		setSubmitStatus("Sending message...");
 
 		try {
@@ -54,6 +67,7 @@ export default function ContactPage() {
 					message: formState.message,
 					source: "contact_page",
 					sessionId: getOrCreateSessionId(),
+					captchaToken,
 				}),
 			});
 
@@ -61,6 +75,7 @@ export default function ContactPage() {
 				const errData = await response.json().catch(() => null);
 				console.error("[Contact submit error]", errData);
 				setSubmitStatus(errData?.error || "Unable to save this inquiry. Opening email fallback...");
+				resetCaptcha();
 				if (!errData?.error || response.status >= 500) {
 					openMailFallback();
 				}
@@ -69,9 +84,11 @@ export default function ContactPage() {
 
 			setSubmitStatus("Message sent. Our team will contact you soon.");
 			setFormState({ name: "", email: "", phone: "", subject: "", message: "" });
+			resetCaptcha();
 		} catch (err) {
 			console.error("[Contact network error]", err);
 			setSubmitStatus("Unable to save this inquiry. Opening email fallback...");
+			resetCaptcha();
 			openMailFallback();
 		}
 	}
@@ -171,6 +188,8 @@ export default function ContactPage() {
 							placeholder="Your Message"
 							className="mt-2.5 min-h-[148px] w-full rounded-md border border-black/5 bg-zinc-100 px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
 						/>
+
+						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} className="mt-4" />
 
 						<div className="mt-5 flex justify-end">
 							<button

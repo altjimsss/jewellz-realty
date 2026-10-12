@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
+import { verifyRecaptchaToken } from "@/lib/recaptcha";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function text(value: unknown) {
@@ -16,6 +17,11 @@ export async function POST(request: Request) {
 	const limiter = checkRateLimit(`appointments:${clientKey(request)}:${text(body?.buyerEmail) || "anonymous"}`, { limit: 4, windowMs: 10 * 60_000 });
 	if (!limiter.allowed) {
 		return NextResponse.json({ error: "Too many appointment requests. Please try again later." }, { status: 429, headers: rateLimitHeaders(limiter) });
+	}
+
+	const captcha = await verifyRecaptchaToken(text(body?.captchaToken), request);
+	if (!captcha.ok) {
+		return NextResponse.json({ error: captcha.error }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	const buyerName = text(body?.buyerName);

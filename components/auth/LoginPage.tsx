@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { PortalRole } from "@/components/auth/PortalAuthModal";
 
@@ -52,6 +53,8 @@ function LoginForm() {
 	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [isForgotPassword, setIsForgotPassword] = useState(false);
+	const [captchaToken, setCaptchaToken] = useState("");
+	const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
 	const roleConfig: Record<
 		PortalRole,
@@ -78,6 +81,33 @@ function LoginForm() {
 	};
 
 	const currentConfig = roleConfig[activeRole];
+
+	function resetCaptcha() {
+		setCaptchaToken("");
+		setCaptchaResetKey((current) => current + 1);
+	}
+
+	async function verifyCaptcha() {
+		if (!captchaToken) {
+			setMessage({ text: "Please complete the captcha before continuing.", type: "error" });
+			return false;
+		}
+
+		const response = await fetch("/api/recaptcha", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ token: captchaToken }),
+		});
+
+		if (!response.ok) {
+			const data = await response.json().catch(() => null);
+			setMessage({ text: data?.error || "Captcha verification failed. Please try again.", type: "error" });
+			resetCaptcha();
+			return false;
+		}
+
+		return true;
+	}
 
 	useEffect(() => {
 		// If arriving via a password setup link/token, redirect to /reset-password immediately.
@@ -129,9 +159,15 @@ function LoginForm() {
 		if (!email.trim() || !password) return;
 
 		setLoading(true);
-		setMessage({ text: "Authenticating credentials...", type: "info" });
+		setMessage({ text: "Verifying captcha...", type: "info" });
 
 		try {
+			if (!(await verifyCaptcha())) {
+				setLoading(false);
+				return;
+			}
+
+			setMessage({ text: "Authenticating credentials...", type: "info" });
 			const { data, error } = await supabaseBrowser.auth.signInWithPassword({
 				email: email.trim().toLowerCase(),
 				password,
@@ -139,6 +175,7 @@ function LoginForm() {
 
 			if (error) {
 				setMessage({ text: error.message, type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
@@ -146,6 +183,7 @@ function LoginForm() {
 			const userId = data.user?.id;
 			if (!userId) {
 				setMessage({ text: "Signed in, but no user was returned.", type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
@@ -158,12 +196,14 @@ function LoginForm() {
 
 			if (profileError) {
 				setMessage({ text: `Profile verification failed: ${profileError.message}`, type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
 
 			if (profile && profile.is_active === false) {
 				setMessage({ text: "This profile is inactive. Please contact the administrator.", type: "error" });
+				resetCaptcha();
 				setLoading(false);
 				return;
 			}
@@ -175,6 +215,7 @@ function LoginForm() {
 			router.refresh();
 		} catch {
 			setMessage({ text: "Connection error. Please try again.", type: "error" });
+			resetCaptcha();
 			setLoading(false);
 		}
 	}
@@ -186,6 +227,13 @@ function LoginForm() {
 		}
 
 		setLoading(true);
+		setMessage({ text: "Verifying captcha...", type: "info" });
+
+		if (!(await verifyCaptcha())) {
+			setLoading(false);
+			return;
+		}
+
 		setMessage({ text: "Sending a secure sign-in link...", type: "info" });
 
 		const redirectDestination = nextParam || currentConfig.destination;
@@ -198,11 +246,13 @@ function LoginForm() {
 
 		if (error) {
 			setMessage({ text: error.message, type: "error" });
+			resetCaptcha();
 			setLoading(false);
 			return;
 		}
 
 		setMessage({ text: "Check your email for the login link.", type: "success" });
+		resetCaptcha();
 		setLoading(false);
 	}
 
@@ -214,6 +264,13 @@ function LoginForm() {
 		}
 
 		setLoading(true);
+		setMessage({ text: "Verifying captcha...", type: "info" });
+
+		if (!(await verifyCaptcha())) {
+			setLoading(false);
+			return;
+		}
+
 		setMessage({ text: "Sending password reset link...", type: "info" });
 
 		const { error } = await supabaseBrowser.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
@@ -222,11 +279,13 @@ function LoginForm() {
 
 		if (error) {
 			setMessage({ text: error.message, type: "error" });
+			resetCaptcha();
 			setLoading(false);
 			return;
 		}
 
 		setMessage({ text: `Password reset link sent to ${email}.`, type: "success" });
+		resetCaptcha();
 		setLoading(false);
 	}
 
@@ -332,6 +391,8 @@ function LoginForm() {
 							/>
 						</label>
 
+						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
 						<div className="flex flex-col gap-2 pt-1">
 							<button
 								type="submit"
@@ -414,6 +475,8 @@ function LoginForm() {
 								</button>
 							</div>
 						</label>
+
+						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
 						<div className="flex flex-col gap-2 pt-2">
 							<button
