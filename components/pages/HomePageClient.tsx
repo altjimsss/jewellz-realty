@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
@@ -126,6 +127,31 @@ const navLinks = [
   { label: "Contact", href: "/contact" },
   { label: "Career", href: "/career" },
 ];
+
+const STATUS_QUERY_VALUES: Record<string, string> = {
+  "for-sale": "For Sale",
+  "pre-selling": "Pre-Selling",
+  ready: "Ready for Occupancy",
+};
+
+type HeroSearchFilters = {
+  location: string;
+  subLocation: string;
+  baths: string;
+  status: string;
+  guests: string;
+  beds: string;
+};
+
+const defaultHeroSearchFilters: HeroSearchFilters = {
+  location: "",
+  subLocation: "",
+  baths: "",
+  status: "",
+  guests: "",
+  beds: "",
+};
+
 type HomePageClientProps = {
   initialFeaturedProperties?: Property[];
   initialFeaturedRefreshesAt?: string | null;
@@ -135,11 +161,13 @@ export default function Page({
   initialFeaturedProperties = [],
   initialFeaturedRefreshesAt = null,
 }: HomePageClientProps) {
+  const router = useRouter();
   const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
   const [featuredProperties, setFeaturedProperties] = useState<Property[]>(initialFeaturedProperties);
   const [featuredRefreshesAt, setFeaturedRefreshesAt] = useState<string | null>(initialFeaturedRefreshesAt);
   const [priceMax, setPriceMax] = useState(850000);
   const [areaMax, setAreaMax] = useState(170);
+  const [heroSearchFilters, setHeroSearchFilters] = useState<HeroSearchFilters>(defaultHeroSearchFilters);
 
   const safePriceMax = Math.min(Math.max(priceMax, 0), 850000);
   const priceRangeLabel = `Price (${formatPHPWhole(0)}-${formatPHPWhole(safePriceMax)})`;
@@ -179,6 +207,24 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
     durationMs: HERO_DURATION_MS,
     tickMs: HERO_TICK_MS,
   });
+
+  const updateHeroSearchFilter = (key: keyof HeroSearchFilters, value: string) => {
+    setHeroSearchFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const submitHeroSearch = () => {
+    const params = new URLSearchParams();
+
+    if (heroSearchFilters.location) params.set("location", heroSearchFilters.location);
+    if (heroSearchFilters.subLocation) params.set("subLocation", heroSearchFilters.subLocation);
+    if (heroSearchFilters.status) params.set("status", STATUS_QUERY_VALUES[heroSearchFilters.status] ?? heroSearchFilters.status);
+    if (heroSearchFilters.beds) params.set("beds", heroSearchFilters.beds);
+    if (heroSearchFilters.baths) params.set("baths", heroSearchFilters.baths);
+    if (safePriceMax > 0 && safePriceMax < 850000) params.set("priceMax", String(safePriceMax));
+
+    const query = params.toString();
+    router.push(query ? `/project-list?${query}` : "/project-list");
+  };
 
   const refreshFeaturedProperties = useCallback(async () => {
     try {
@@ -297,15 +343,25 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
           <SparkleSvg className="mt-1 h-auto w-[120px] shrink-0" />
         </div>
 
-        <div className="absolute left-10 top-52 hidden w-[370px] md:block">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitHeroSearch();
+          }}
+          className="absolute left-10 top-52 hidden w-[370px] md:block"
+        >
           <div className="grid grid-cols-2 gap-3.5">
             <div className="relative">
-              <select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
+              <select
+                value={heroSearchFilters.location}
+                onChange={(e) => updateHeroSearchFilter("location", e.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+              >
                 <option value="">Location</option>
-                <option value="batangas">Batangas</option>
-                <option value="cavite">Cavite</option>
-                <option value="laguna">Laguna</option>
-                <option value="quezon-city">Quezon City</option>
+                <option value="Batangas">Batangas</option>
+                <option value="Cavite">Cavite</option>
+                <option value="Laguna">Laguna</option>
+                <option value="Quezon City">Quezon City</option>
               </select>
               <svg
                 aria-hidden="true"
@@ -317,12 +373,16 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </svg>
             </div>
             <div className="relative">
-              <select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
+              <select
+                value={heroSearchFilters.subLocation}
+                onChange={(e) => updateHeroSearchFilter("subLocation", e.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+              >
                 <option value="">Sub-Location</option>
-                <option value="lipa">Lipa</option>
-                <option value="nuvali">Nuvali</option>
-                <option value="tagaytay">Tagaytay</option>
-                <option value="alabang">Alabang</option>
+                <option value="Lipa">Lipa</option>
+                <option value="Nuvali">Nuvali</option>
+                <option value="Tagaytay">Tagaytay</option>
+                <option value="Alabang">Alabang</option>
               </select>
               <svg
                 aria-hidden="true"
@@ -334,7 +394,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </svg>
             </div>
             <div className="relative">
-              <select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
+              <select
+                value={heroSearchFilters.baths}
+                onChange={(e) => updateHeroSearchFilter("baths", e.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+              >
                 <option value="">No. of Bathrooms</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
@@ -351,7 +415,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </svg>
             </div>
             <div className="relative">
-              <select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
+              <select
+                value={heroSearchFilters.status}
+                onChange={(e) => updateHeroSearchFilter("status", e.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+              >
                 <option value="">Status</option>
                 <option value="for-sale">For Sale</option>
                 <option value="pre-selling">Pre-Selling</option>
@@ -367,7 +435,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </svg>
             </div>
             <div className="relative">
-              <select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
+              <select
+                value={heroSearchFilters.guests}
+                onChange={(e) => updateHeroSearchFilter("guests", e.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+              >
                 <option value="">No. of Guest</option>
                 <option value="1-2">1-2</option>
                 <option value="3-4">3-4</option>
@@ -384,7 +456,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </svg>
             </div>
             <div className="relative">
-              <select className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]">
+              <select
+                value={heroSearchFilters.beds}
+                onChange={(e) => updateHeroSearchFilter("beds", e.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+              >
                 <option value="">No. of Bedrooms</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
@@ -429,8 +505,8 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               />
             </div>
           </div>
-                    <button type="button" className="mx-auto mt-5 block h-10 w-[170px] rounded bg-[#DE141C] text-xs font-bold text-white">Search Property</button>
-        </div>
+          <button type="submit" className="mx-auto mt-5 block h-10 w-[170px] rounded bg-[#DE141C] text-xs font-bold text-white">Search Property</button>
+        </form>
 
         <div className="md:hidden">
           <div className="px-4 pb-6 pt-8">
@@ -505,32 +581,50 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <div className="h-full bg-[#DE141C] transition-[width] duration-75 ease-linear" style={{ width: `${heroProgress}%` }} />
             </div>
           </div>
-          <div className="space-y-2 bg-black px-[15px] pb-[15px] pt-5">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitHeroSearch();
+            }}
+            className="space-y-2 bg-black px-[15px] pb-[15px] pt-5"
+          >
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
-                <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+                <select
+                  value={heroSearchFilters.location}
+                  onChange={(e) => updateHeroSearchFilter("location", e.target.value)}
+                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                >
                   <option value="">Location</option>
-                  <option value="batangas">Batangas</option>
-                  <option value="cavite">Cavite</option>
-                  <option value="laguna">Laguna</option>
+                  <option value="Batangas">Batangas</option>
+                  <option value="Cavite">Cavite</option>
+                  <option value="Laguna">Laguna</option>
                 </select>
                 <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <div className="relative">
-                <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+                <select
+                  value={heroSearchFilters.subLocation}
+                  onChange={(e) => updateHeroSearchFilter("subLocation", e.target.value)}
+                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                >
                   <option value="">Sub-Location</option>
-                  <option value="lipa">Lipa</option>
-                  <option value="nuvali">Nuvali</option>
-                  <option value="tagaytay">Tagaytay</option>
+                  <option value="Lipa">Lipa</option>
+                  <option value="Nuvali">Nuvali</option>
+                  <option value="Tagaytay">Tagaytay</option>
                 </select>
                 <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <div className="relative">
-                <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+                <select
+                  value={heroSearchFilters.baths}
+                  onChange={(e) => updateHeroSearchFilter("baths", e.target.value)}
+                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                >
                   <option value="">No. of Bathrooms</option>
                   <option value="1">1</option>
                   <option value="2">2</option>
@@ -542,7 +636,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 </svg>
               </div>
               <div className="relative">
-                <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+                <select
+                  value={heroSearchFilters.status}
+                  onChange={(e) => updateHeroSearchFilter("status", e.target.value)}
+                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                >
                   <option value="">Status</option>
                   <option value="for-sale">For Sale</option>
                   <option value="pre-selling">Pre-Selling</option>
@@ -553,7 +651,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 </svg>
               </div>
               <div className="relative">
-                <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+                <select
+                  value={heroSearchFilters.guests}
+                  onChange={(e) => updateHeroSearchFilter("guests", e.target.value)}
+                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                >
                   <option value="">No. of Guest</option>
                   <option value="1-2">1-2</option>
                   <option value="3-4">3-4</option>
@@ -565,7 +667,11 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 </svg>
               </div>
               <div className="relative">
-                <select className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]">
+                <select
+                  value={heroSearchFilters.beds}
+                  onChange={(e) => updateHeroSearchFilter("beds", e.target.value)}
+                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                >
                   <option value="">No. of Bedrooms</option>
                   <option value="1">1</option>
                   <option value="2">2</option>
@@ -605,10 +711,10 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 />
               </div>
             </div>
-            <button type="button" className="mt-1 h-10 w-full rounded-sm bg-[#DE141C] text-xs font-semibold text-white">
+            <button type="submit" className="mt-1 h-10 w-full rounded-sm bg-[#DE141C] text-xs font-semibold text-white">
               Search Property
             </button>
-          </div>
+          </form>
         </div>
       </section>
 

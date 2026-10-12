@@ -8,6 +8,8 @@ export type PropertyFiltersState = {
 	priceMin: string;
 	priceMax: string;
 	status: string;
+	beds: string;
+	baths: string;
 };
 
 type PropertyFiltersProps = {
@@ -248,4 +250,3 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 		</form>
 	);
 }
-

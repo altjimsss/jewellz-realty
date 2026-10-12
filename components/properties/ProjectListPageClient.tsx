@@ -58,6 +58,10 @@ function normalizeText(value: unknown) {
 	return String(value ?? "").trim().toLowerCase();
 }
 
+function isCategoryTab(value: string): value is (typeof CATEGORY_TABS)[number] {
+	return CATEGORY_TABS.includes(value as (typeof CATEGORY_TABS)[number]);
+}
+
 function tokenize(value: string) {
 	return normalizeText(value)
 		.split(/[\s,.-]+/)
@@ -143,6 +147,9 @@ function getFilteredProperties(properties: Property[], activeCategory: (typeof C
 		if (subLocation && !(property.location ?? "").toLowerCase().includes(subLocation)) return false;
 		if (Number.isFinite(priceMin) && property.price < (priceMin as number)) return false;
 		if (Number.isFinite(priceMax) && property.price > (priceMax as number)) return false;
+		if (filters.status && normalizeText(property.category) !== normalizeText(filters.status)) return false;
+		if (filters.beds && (property.beds ?? 0) < Number(filters.beds.replace("+", ""))) return false;
+		if (filters.baths && (property.baths ?? 0) < Number(filters.baths.replace("+", ""))) return false;
 		return true;
 	}).sort((first, second) => comparePropertiesByIntent(first, second, filters));
 }
@@ -237,31 +244,30 @@ function getFallbackRecommendedProperties(properties: Property[], activeCategory
 
 type ProjectListPageClientProps = {
 	properties: Property[];
-	initialSearch?: string;
+	initialFilters?: Partial<PropertyFiltersState> & {
+		category?: string;
+	};
 };
 
-export function ProjectListPageClient({ properties, initialSearch = "" }: ProjectListPageClientProps) {
-	const normalizedInitialSearch = initialSearch.trim();
-	const [activeCategory, setActiveCategory] = useState<(typeof CATEGORY_TABS)[number]>("All");
-	const [draftFilters, setDraftFilters] = useState<PropertyFiltersState>({
-		keyword: normalizedInitialSearch,
-		lookingFor: "",
-		location: "",
-		subLocation: "",
-		priceMin: "",
-		priceMax: "",
-		status: "",
-	});
-	const [appliedFilters, setAppliedFilters] = useState<PropertyFiltersState>({
-		keyword: normalizedInitialSearch,
-		lookingFor: "",
-		location: "",
-		subLocation: "",
-		priceMin: "",
-		priceMax: "",
-		status: "",
-	});
-	const [hasSearched, setHasSearched] = useState(Boolean(normalizedInitialSearch));
+export function ProjectListPageClient({ properties, initialFilters = {} }: ProjectListPageClientProps) {
+	const normalizedInitialFilters: PropertyFiltersState = {
+		keyword: initialFilters.keyword?.trim() ?? "",
+		lookingFor: initialFilters.lookingFor?.trim() ?? "",
+		location: initialFilters.location?.trim() ?? "",
+		subLocation: initialFilters.subLocation?.trim() ?? "",
+		priceMin: initialFilters.priceMin?.trim() ?? "",
+		priceMax: initialFilters.priceMax?.trim() ?? "",
+		status: initialFilters.status?.trim() ?? "",
+		beds: initialFilters.beds?.trim() ?? "",
+		baths: initialFilters.baths?.trim() ?? "",
+	};
+	const initialCategoryParam = initialFilters.category?.trim() ?? "";
+	const initialCategory = isCategoryTab(initialCategoryParam) ? initialCategoryParam : "All";
+	const hasInitialFilters = initialCategory !== "All" || Object.values(normalizedInitialFilters).some(Boolean);
+	const [activeCategory, setActiveCategory] = useState<(typeof CATEGORY_TABS)[number]>(initialCategory);
+	const [draftFilters, setDraftFilters] = useState<PropertyFiltersState>(normalizedInitialFilters);
+	const [appliedFilters, setAppliedFilters] = useState<PropertyFiltersState>(normalizedInitialFilters);
+	const [hasSearched, setHasSearched] = useState(hasInitialFilters);
 	const filteredProperties = useMemo(() => getFilteredProperties(properties, activeCategory, appliedFilters), [activeCategory, appliedFilters, properties]);
 	const fallbackRecommendedProperties = useMemo(
 		() => (filteredProperties.length === 0 ? getFallbackRecommendedProperties(properties, activeCategory, appliedFilters) : []),

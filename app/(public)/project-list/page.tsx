@@ -18,8 +18,19 @@ function getSearchValue(value: string | string[] | undefined) {
 
 export default async function Page({ searchParams }: PageProps) {
 	const resolvedSearchParams = await searchParams;
-	const initialSearch = getSearchValue(resolvedSearchParams?.search);
+	const initialFilters = {
+		keyword: getSearchValue(resolvedSearchParams?.search),
+		lookingFor: getSearchValue(resolvedSearchParams?.lookingFor),
+		location: getSearchValue(resolvedSearchParams?.location),
+		subLocation: getSearchValue(resolvedSearchParams?.subLocation),
+		priceMin: getSearchValue(resolvedSearchParams?.priceMin),
+		priceMax: getSearchValue(resolvedSearchParams?.priceMax),
+		status: getSearchValue(resolvedSearchParams?.status),
+		beds: getSearchValue(resolvedSearchParams?.beds),
+		baths: getSearchValue(resolvedSearchParams?.baths),
+		category: getSearchValue(resolvedSearchParams?.category),
+	};
 	const properties = await getPublishedProperties();
 
-	return <ProjectListPageClient key={initialSearch} properties={properties} initialSearch={initialSearch} />;
+	return <ProjectListPageClient key={JSON.stringify(initialFilters)} properties={properties} initialFilters={initialFilters} />;
 }

@@ -88,7 +88,6 @@ function isProperty(pick: Property | FallbackHotPick): pick is Property {
 
 export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRefresh }: HomeDiscoverySectionProps) {
   const [total, setTotal] = useState(86400);
-  const [activeCat, setActiveCat] = useState("");
   const [hotPicksPage, setHotPicksPage] = useState(0);
   const [hotPicksLoading, setHotPicksLoading] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -270,20 +269,16 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 md:grid-cols-5">
           {categories.map((category) => (
-            <button type="button"
+            <Link
               key={category.label}
-              onClick={() => setActiveCat(category.label)}
+              href={`/project-list?category=${encodeURIComponent(category.label)}`}
               className={`group flex h-24 flex-col items-center justify-center gap-1.5 rounded border transition-all duration-200 sm:h-36 sm:gap-2 ${
                 category.label === "Memorial" ? "col-span-2 mx-auto w-[48%] sm:col-span-1 sm:w-full" : ""
-              } ${
-                activeCat === category.label
-                  ? "border-[#DE141C] bg-[#DE141C] text-white"
-                  : "border-black/10 bg-white text-black hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white"
-              }`}
+              } border-black/10 bg-white text-black hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white`}
             >
               <span className="scale-90 sm:scale-100">{category.icon}</span>
               <span className="text-xs font-semibold sm:text-sm">{category.label}</span>
-            </button>
+            </Link>
           ))}
         </div>
       </section>
