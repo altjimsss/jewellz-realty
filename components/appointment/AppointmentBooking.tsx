@@ -172,7 +172,12 @@ export function AppointmentBooking() {
 
   const isPast = (day: number) => new Date(curYear, curMonth, day) < minBookDate;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const phoneValid = phone.trim().length >= 7;
+  const phoneDigits = phone.replace(/[\s()-]/g, "");
+  const phoneValid = /^(09\d{9}|\+639\d{9})$/.test(phoneDigits);
+  const phoneError = phone.trim().length > 0 && !phoneValid
+    ? "Enter a valid PH mobile number (09XXXXXXXXX or +639XXXXXXXXX)."
+    : "";
+  const emailError = email.trim().length > 0 && !emailValid ? "Enter a valid email address." : "";
   const formValid = emailValid && phoneValid && name.trim().length > 0;
   const formattedDate = selectedDay ? `${MONTHS[curMonth]} ${selectedDay}, ${curYear}` : "";
   const inputBase =
@@ -403,10 +408,12 @@ export function AppointmentBooking() {
                       value={phone}
                       onChange={(event) => setPhone(event.target.value)}
                       aria-label="+63 912 345 6789"
+                      aria-invalid={phoneError ? true : undefined}
                       placeholder="+63 912 345 6789"
-                      className={`${inputBase} pl-7 pr-3`}
+                      className={`${inputBase} pl-7 pr-3 ${phoneError ? "border-[#DE141C] focus:ring-[#DE141C]/20" : ""}`}
                     />
                   </div>
+                  {phoneError ? <p className="mt-1 text-[11px] text-[#DE141C]">{phoneError}</p> : null}
                 </div>
               </div>
 
@@ -416,17 +423,19 @@ export function AppointmentBooking() {
                   <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-black/30">
                     <IconMail />
                   </span>
-                  <input
-                    id="appointment-email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    aria-label="you@example.com"
-                    placeholder="you@example.com"
-                    className={`${inputBase} pl-7 pr-3`}
-                  />
+                    <input
+                      id="appointment-email"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      aria-label="you@example.com"
+                      aria-invalid={emailError ? true : undefined}
+                      placeholder="you@example.com"
+                      className={`${inputBase} pl-7 pr-3 ${emailError ? "border-[#DE141C] focus:ring-[#DE141C]/20" : ""}`}
+                    />
+                  </div>
+                  {emailError ? <p className="mt-1 text-[11px] text-[#DE141C]">{emailError}</p> : null}
                 </div>
-              </div>
 
               <ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} className="mt-4" />
             </>

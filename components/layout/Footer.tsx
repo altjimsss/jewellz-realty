@@ -4,6 +4,29 @@ import { useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { PortalAuthModal, type PortalRole } from "@/components/auth/PortalAuthModal";
 
+const socialLinks = [
+	{
+		label: "Facebook",
+		href: "https://www.facebook.com/jewellzrealty",
+		icon: <path d="M13 21v-8h2.7l.4-3H13V8.1c0-.9.3-1.5 1.6-1.5H16V4c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2V10H7v3h2.5v8H13z" />,
+	},
+	{
+		label: "Instagram",
+		href: "https://www.instagram.com/jewellzrealty",
+		icon: <path d="M7.8 2h8.4A5.8 5.8 0 0122 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8A5.8 5.8 0 012 16.2V7.8A5.8 5.8 0 017.8 2zm0 2A3.8 3.8 0 004 7.8v8.4A3.8 3.8 0 007.8 20h8.4a3.8 3.8 0 003.8-3.8V7.8A3.8 3.8 0 0016.2 4H7.8zm9.6 1.3a1.1 1.1 0 110 2.2 1.1 1.1 0 010-2.2zM12 7a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z" />,
+	},
+	{
+		label: "LinkedIn",
+		href: "https://www.linkedin.com/company/jewellzrealty",
+		icon: <path d="M6.94 5A2 2 0 113 5a2 2 0 013.94 0zM3.5 8.5h3.8V21H3.5V8.5zm6 0h3.64v1.7h.05c.5-.95 1.74-1.95 3.58-1.95 3.83 0 4.53 2.52 4.53 5.8V21h-3.8v-5.6c0-1.34-.02-3.06-1.86-3.06-1.86 0-2.14 1.45-2.14 2.96V21H9.5V8.5z" />,
+	},
+	{
+		label: "YouTube",
+		href: "https://www.youtube.com/@jewellzrealty",
+		icon: <path d="M21.6 7.2a2.5 2.5 0 00-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 002.4 7.2 26 26 0 002 12a26 26 0 00.4 4.8 2.5 2.5 0 001.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 001.8-1.8A26 26 0 0022 12a26 26 0 00-.4-4.8zM10 15V9l5.2 3-5.2 3z" />,
+	},
+];
+
 export function Footer() {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [initialRole, setInitialRole] = useState<PortalRole>("agent");
@@ -54,10 +77,21 @@ export function Footer() {
 				<div className="col-span-2 text-center md:col-span-1 md:text-left">
 					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Follow Us</h4>
 					<div className="mt-2 flex items-center justify-center gap-2 sm:mt-4 md:justify-start">
-						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">f</span>
-						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">ig</span>
-						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">in</span>
-						<span className="grid h-8 w-8 place-items-center border border-white/20 text-[11px] text-white/85 sm:h-9 sm:w-9">yt</span>
+						{socialLinks.map((social) => (
+							<a
+								key={social.label}
+								href={social.href}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`Jewellz Realty on ${social.label}`}
+								title={social.label}
+								className="grid h-8 w-8 place-items-center rounded-sm border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9"
+							>
+								<svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+									{social.icon}
+								</svg>
+							</a>
+						))}
 					</div>
 					<p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm md:mx-0">Stay updated with listings, open houses, and real estate tips.</p>
 				</div>

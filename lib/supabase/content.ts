@@ -70,7 +70,7 @@ export async function getPublicHomeContent() {
 		supabaseServer.from("site_stats").select("*").order("sort_order", { ascending: true }),
 		supabaseServer.from("partner_logos").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("testimonials").select("*").eq("is_published", true).order("sort_order", { ascending: true }),
-		supabaseServer.from("agents").select("*").eq("is_top_agent", true).order("created_at", { ascending: false }),
+		supabaseServer.from("agents").select("*").eq("is_active", true).order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
 		supabaseServer.from("profiles").select("id, email"),
 	]);
 

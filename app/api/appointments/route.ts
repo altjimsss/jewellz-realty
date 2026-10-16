@@ -35,6 +35,13 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Name, email, date, and time are required." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
+	if (buyerPhone && !/^(09\d{9}|\+639\d{9})$/.test(buyerPhone.replace(/[\s()-]/g, ""))) {
+		return NextResponse.json(
+			{ error: "Please enter a valid PH mobile number (09XXXXXXXXX or +639XXXXXXXXX)." },
+			{ status: 400, headers: rateLimitHeaders(limiter) },
+		);
+	}
+
 	let propertyId: string | null = null;
 	if (propertySlug) {
 		const { data } = await supabaseServer.from("properties").select("id").eq("slug", propertySlug).maybeSingle();
@@ -58,7 +65,10 @@ export async function POST(request: Request) {
 
 	if (inquiryError) {
 		console.error("[appointments POST inquiry error]", inquiryError);
-		return NextResponse.json({ error: inquiryError.message }, { status: 422, headers: rateLimitHeaders(limiter) });
+		return NextResponse.json(
+			{ error: "We couldn't save your appointment right now. Please try again, or contact us at inquiries@jewellzrealty.com." },
+			{ status: 422, headers: rateLimitHeaders(limiter) },
+		);
 	}
 
 	const { data: appointment, error: appointmentError } = await supabaseServer
@@ -78,7 +88,10 @@ export async function POST(request: Request) {
 
 	if (appointmentError) {
 		console.error("[appointments POST appointment error]", appointmentError);
-		return NextResponse.json({ error: appointmentError.message, inquiryId: inquiry.id }, { status: 422, headers: rateLimitHeaders(limiter) });
+		return NextResponse.json(
+			{ error: "Your request was received but we couldn't finalize it. Please try again, or contact us at inquiries@jewellzrealty.com.", inquiryId: inquiry.id },
+			{ status: 422, headers: rateLimitHeaders(limiter) },
+		);
 	}
 
 	return NextResponse.json({ ok: true, inquiryId: inquiry.id, appointmentId: appointment.id }, { headers: rateLimitHeaders(limiter) });

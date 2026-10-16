@@ -26,20 +26,28 @@ function inviteBaseUrl(request: Request) {
 	const requestOrigin = new URL(request.url).origin;
 	const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
 
+	// Prefer explicitly configured production URL.
 	if (configuredOrigin && !isLocalOrigin(configuredOrigin)) {
 		return configuredOrigin;
 	}
 
+	// Fall back to the origin of the incoming request (works in production deployments).
 	if (!isLocalOrigin(requestOrigin)) {
 		return requestOrigin;
 	}
 
+	// Fall back to the Vercel production URL env var (set automatically by Vercel).
 	const vercelOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim().replace(/\/+$/, "");
 	if (vercelOrigin) {
 		return vercelOrigin.startsWith("http") ? vercelOrigin : `https://${vercelOrigin}`;
 	}
 
-	return requestOrigin;
+	// Refuse to embed a localhost URL in an invitation email — it would be unreachable
+	// for the invited user. Set NEXT_PUBLIC_SITE_URL to your production domain to fix this.
+	throw new Error(
+		"Cannot send invitation email: no production site URL is configured. " +
+		"Set NEXT_PUBLIC_SITE_URL to your production domain (e.g. https://jewellz-realty.vercel.app)."
+	);
 }
 
 async function requireAdmin(request: Request) {
@@ -100,7 +108,13 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "The company name is required." }, { status: 400 });
 	}
 
-	const loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
+	let loginUrl: string;
+	try {
+		loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : "No production site URL is configured.";
+		return NextResponse.json({ error: msg }, { status: 500 });
+	}
 
 	// Creates the login account and emails the developer a secure link to set their own password
 	const { data: created, error: inviteError } = await supabaseServer.auth.admin.inviteUserByEmail(email, {
