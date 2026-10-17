@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
 	Activity,
@@ -817,8 +818,8 @@ export default function AgentDashboard() {
 				{/* Primary icon rail */}
 				<aside className="hidden border-r border-black/10 bg-[#fbfbfa] py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
-						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-lg font-bold ring-1 ring-black/10">
-							J<span className="text-[#DE141C]">.</span>
+						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-md bg-white ring-1 ring-black/10" title="Jewellz Realty">
+							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
 						</Link>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {
@@ -1084,7 +1085,7 @@ export default function AgentDashboard() {
 										<div className="rounded-lg border border-black/10 bg-white p-4">
 											<div className="text-sm font-semibold text-[#111111]">Pipeline distribution</div>
 											<p className="mt-1 text-xs text-black/45">Leads by current stage.</p>
-											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} /></div>
+											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} emptyLabel="No leads assigned yet" emptyHint="Your pipeline fills up as Admin assigns leads to you." /></div>
 										</div>
 									</div>
 
@@ -1407,7 +1408,7 @@ export default function AgentDashboard() {
 										<div className="rounded-lg border border-black/10 bg-white p-4">
 											<div className="text-sm font-semibold text-[#111111]">Portfolio by category</div>
 											<p className="mt-1 text-xs text-black/45">How your listings break down by category.</p>
-											<div className="mt-3"><AgentDonut rows={categoryRows} centerLabel="Listings" centerValue={properties.length} /></div>
+											<div className="mt-3"><AgentDonut rows={categoryRows} centerLabel="Listings" centerValue={properties.length} emptyLabel="No listings to show" emptyHint="Assigned listings will break down here by category." /></div>
 										</div>
 										<div className="rounded-lg border border-black/10 bg-white p-4">
 											<div className="text-sm font-semibold text-[#111111]">Listings by status</div>
@@ -1502,7 +1503,7 @@ export default function AgentDashboard() {
 										<div className="rounded-lg border border-black/10 bg-white p-4">
 											<div className="text-sm font-semibold text-[#111111]">Stage mix</div>
 											<p className="mt-1 text-xs text-black/45">Share of leads in each pipeline stage.</p>
-											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} /></div>
+											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} emptyLabel="No leads assigned yet" emptyHint="Your pipeline fills up as Admin assigns leads to you." /></div>
 										</div>
 									</div>
 								</div>

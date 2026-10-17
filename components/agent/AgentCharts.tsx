@@ -98,33 +98,51 @@ export function AgentBarChart({ rows, name = "Value", horizontal = false, color 
 	);
 }
 
-export function AgentDonut({ rows, centerLabel, centerValue }: { rows: AgentChartRow[]; centerLabel?: string; centerValue?: string | number }) {
+export function AgentDonut({
+	rows,
+	centerLabel,
+	centerValue,
+	emptyLabel = "Nothing to show yet",
+	emptyHint = "This chart fills up as activity comes in.",
+}: {
+	rows: AgentChartRow[];
+	centerLabel?: string;
+	centerValue?: string | number;
+	emptyLabel?: string;
+	emptyHint?: string;
+}) {
 	const total = rows.reduce((sum, row) => sum + row.value, 0);
 	const data = rows.filter((row) => row.value > 0);
+
+	if (!data.length) {
+		return (
+			<div className="flex h-48 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/10 bg-zinc-50 px-6 text-center">
+				<p className="text-xs font-semibold text-black/50">{emptyLabel}</p>
+				<p className="text-[11px] text-black/35">{emptyHint}</p>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 			<div className="relative h-44 w-44 shrink-0 self-center">
-				{data.length ? (
-					<ResponsiveContainer width="100%" height="100%">
-						<PieChart>
-							<Pie data={data} dataKey="value" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={2} stroke="none">
-								{data.map((row, index) => (
-									<Cell key={row.label} fill={row.color ?? AGENT_CHART_PALETTE[index % AGENT_CHART_PALETTE.length]} />
-								))}
-							</Pie>
-							<Tooltip content={<AgentChartTooltip />} />
-						</PieChart>
-					</ResponsiveContainer>
-				) : (
-					<div className="grid h-full w-full place-items-center rounded-full border border-dashed border-black/10 text-xs text-black/40">No data</div>
-				)}
+				<ResponsiveContainer width="100%" height="100%">
+					<PieChart>
+						<Pie data={data} dataKey="value" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={2} stroke="none">
+							{data.map((row, index) => (
+								<Cell key={row.label} fill={row.color ?? AGENT_CHART_PALETTE[index % AGENT_CHART_PALETTE.length]} />
+							))}
+						</Pie>
+						<Tooltip content={<AgentChartTooltip />} />
+					</PieChart>
+				</ResponsiveContainer>
 				<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
 					<span className="text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{centerValue ?? total}</span>
 					{centerLabel ? <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">{centerLabel}</span> : null}
 				</div>
 			</div>
 			<div className="min-w-0 flex-1 space-y-1.5">
-				{rows.map((row, index) => {
+				{data.map((row, index) => {
 					const percent = total ? Math.round((row.value / total) * 100) : 0;
 					return (
 						<div key={row.label} className="flex items-center justify-between gap-3 text-xs">
