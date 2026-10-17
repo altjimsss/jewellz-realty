@@ -17,6 +17,9 @@ import {
 	Search,
 	X,
 	Eye,
+	LandPlot,
+	Tractor,
+	Flower2,
 } from "lucide-react";
 import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
@@ -41,6 +44,18 @@ export type PropertyWizardProps = {
 };
 
 // ─── Step definitions ────────────────────────────────────────────────────────
+
+const PROPERTY_CATEGORY_ICONS: Record<string, typeof Building2> = {
+	condo: Building2,
+	house: Home,
+	lot: LandPlot,
+	farm: Tractor,
+	memorial: Flower2,
+};
+
+function propertyCategoryIcon(category: string) {
+	return PROPERTY_CATEGORY_ICONS[category.trim().toLowerCase()] ?? Building2;
+}
 
 type StepDef = {
 	id: string;
@@ -444,6 +459,7 @@ export function PropertyWizard({
 									unpublished: "bg-zinc-50 text-zinc-500 border-zinc-200",
 								};
 								const statusClass = statusColors[status] ?? statusColors["draft"];
+								const CategoryIcon = propertyCategoryIcon(asText(row.category));
 
 								return (
 									<div
@@ -457,7 +473,7 @@ export function PropertyWizard({
 											</span>
 										)}
 										<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-											<Building2 className="h-5 w-5 text-black/40" />
+											<CategoryIcon className="h-5 w-5 text-black/40" />
 										</div>
 										<div className="truncate text-sm font-semibold text-[#111111]">
 											{rowLabel(row)}
