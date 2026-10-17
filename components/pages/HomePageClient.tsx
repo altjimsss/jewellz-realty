@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -156,18 +156,40 @@ const defaultHeroSearchFilters: HeroSearchFilters = {
 type HomePageClientProps = {
   initialFeaturedProperties?: Property[];
   initialFeaturedRefreshesAt?: string | null;
+  initialHomeContent?: HomeContent | null;
 };
 
 export default function Page({
   initialFeaturedProperties = [],
   initialFeaturedRefreshesAt = null,
+  initialHomeContent = null,
 }: HomePageClientProps) {
   const router = useRouter();
-  const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
+  const [homeContent, setHomeContent] = useState<HomeContent | null>(initialHomeContent);
   const [featuredProperties, setFeaturedProperties] = useState<Property[]>(initialFeaturedProperties);
   const [featuredRefreshesAt, setFeaturedRefreshesAt] = useState<string | null>(initialFeaturedRefreshesAt);
   const [priceMax, setPriceMax] = useState(850000);
   const [areaMax, setAreaMax] = useState(170);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadFreshHomeContent() {
+      try {
+        const response = await fetch("/api/content/home", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as HomeContent;
+        if (isMounted && data) {
+          setHomeContent(data);
+        }
+      } catch {
+        // Fall back to initial content if fetch fails
+      }
+    }
+    loadFreshHomeContent();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [heroSearchFilters, setHeroSearchFilters] = useState<HeroSearchFilters>(defaultHeroSearchFilters);
 
   const safePriceMax = Math.min(Math.max(priceMax, 0), 850000);

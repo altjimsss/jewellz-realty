@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import HomePageClient from "@/components/pages/HomePageClient";
 import { getHomepageFeaturedProperties } from "@/lib/supabase/properties";
+import { getPublicHomeContent } from "@/lib/supabase/content";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
 	title: "Jewellz Realty | Premium Properties in the Philippines",
@@ -23,15 +27,17 @@ function getNextManilaMidnight(now = new Date()) {
 }
 
 export default async function HomePage() {
-	const [featuredProperties, refreshesAt] = await Promise.all([
+	const [featuredProperties, refreshesAt, homeContent] = await Promise.all([
 		getHomepageFeaturedProperties(12),
 		Promise.resolve(getNextManilaMidnight().toISOString()),
+		getPublicHomeContent().catch(() => null),
 	]);
 
 	return (
 		<HomePageClient
 			initialFeaturedProperties={featuredProperties}
 			initialFeaturedRefreshesAt={refreshesAt}
+			initialHomeContent={homeContent}
 		/>
 	);
 }

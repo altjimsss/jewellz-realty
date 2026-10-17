@@ -26,12 +26,14 @@ export function ResetPasswordPage() {
 	useEffect(() => {
 		let isMounted = true;
 
-		// 1. Check for errors in search params or hash (e.g. otp_expired)
-		if (typeof window !== "undefined") {
+		async function bootstrap() {
+			if (typeof window === "undefined") return;
+
 			const searchParams = new URLSearchParams(window.location.search);
 			const hash = window.location.hash.replace(/^#/, "");
 			const hashParams = new URLSearchParams(hash);
 
+			// 1. Check for errors in search params or hash (e.g. otp_expired)
 			const errorDesc = searchParams.get("error_description") || hashParams.get("error_description");
 			const errorCode = searchParams.get("error_code") || hashParams.get("error_code") || searchParams.get("error");
 
@@ -44,35 +46,59 @@ export function ResetPasswordPage() {
 				return;
 			}
 
-			// 2. Handle PKCE code exchange if present
+			const accessToken = hashParams.get("access_token");
+			const refreshToken = hashParams.get("refresh_token");
 			const code = searchParams.get("code");
-			if (code) {
-				void supabaseBrowser.auth
-					.exchangeCodeForSession(code)
-					.then(({ data, error }) => {
-						if (!isMounted) return;
-						if (error) {
-							setMessage({
-								text: error.message || "Failed to verify the password reset code. It may have expired.",
-								type: "error",
-							});
-							setIsExpired(true);
-						} else if (data.session) {
-							setReady(true);
-						}
-					})
-					.catch((err) => {
-						if (!isMounted) return;
-						setMessage({
-							text: err?.message || "Error validating reset token.",
-							type: "error",
-						});
-						setIsExpired(true);
+
+			// 2. Invite / recovery tokens in the URL hash (implicit flow).
+			// Clear any existing session FIRST so the password change always applies to the
+			// invited/recovery account — never to whoever is already signed in on this browser
+			// (e.g. an admin who opened an agent's invite link in the same browser).
+			if (accessToken && refreshToken) {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+				const { data, error } = await supabaseBrowser.auth.setSession({
+					access_token: accessToken,
+					refresh_token: refreshToken,
+				});
+				if (!isMounted) return;
+				if (error || !data.session) {
+					setMessage({
+						text: error?.message || "Failed to verify the reset link. It may have expired.",
+						type: "error",
 					});
+					setIsExpired(true);
+					return;
+				}
+				setReady(true);
+				return;
 			}
+
+			// 3. Handle PKCE code exchange if present (also targets the linked account).
+			if (code) {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+				const { data, error } = await supabaseBrowser.auth.exchangeCodeForSession(code);
+				if (!isMounted) return;
+				if (error || !data.session) {
+					setMessage({
+						text: error?.message || "Failed to verify the password reset code. It may have expired.",
+						type: "error",
+					});
+					setIsExpired(true);
+					return;
+				}
+				setReady(true);
+				return;
+			}
+
+			// 4. No link tokens — allow an already-authenticated user to change their own password.
+			const { data } = await supabaseBrowser.auth.getSession();
+			if (!isMounted) return;
+			if (data.session) setReady(true);
 		}
 
-		// 3. Listen for Supabase auth state change (e.g. PASSWORD_RECOVERY or SIGNED_IN)
+		void bootstrap();
+
+		// Listen for Supabase auth state change (e.g. PASSWORD_RECOVERY or SIGNED_IN)
 		const {
 			data: { subscription },
 		} = supabaseBrowser.auth.onAuthStateChange((event, session) => {
@@ -80,12 +106,6 @@ export function ResetPasswordPage() {
 			if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
 				setReady(true);
 			}
-		});
-
-		// 4. Also check if there is already an active session
-		void supabaseBrowser.auth.getSession().then(({ data }) => {
-			if (!isMounted) return;
-			if (data.session) setReady(true);
 		});
 
 		return () => {

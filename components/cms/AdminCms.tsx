@@ -18,6 +18,7 @@ import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 import { AgentRegistrationForm } from "./AgentRegistrationForm";
 import { DeveloperRegistrationForm } from "./DeveloperRegistrationForm";
+import { DeveloperPartnerManager } from "./DeveloperPartnerManager";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
 import { agentFields, careerApplicationFields, careerJobFields, developerFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
@@ -1966,6 +1967,7 @@ export default function AdminCms({
 	const selectedCareerApplicationId = selection.careerApplications ?? optionalId(workspace.careerApplications[0]);
 	const selectedGalleryItem = workspace.galleryItems.find((row) => asText(row.id) === asText(selection.galleryItems)) ?? null;
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
+	const selectedDeveloperRow = workspace.developers.find((row) => asText(row.id) === asText(selectedDeveloperId)) ?? null;
 	const selectedPropertyImageUrls = useMemo(
 		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
 		[selectedPropertyImages],
@@ -3247,7 +3249,21 @@ export default function AdminCms({
 						{currentSection === "developers" && isAdmin ? (
 							<div className="space-y-3">
 								<DeveloperRegistrationForm onRegistered={reloadWorkspace} />
-								<EntityEditor title="Developer Partners" description="Company profile CRUD for developer partners." rows={workspace.developers} selectedId={selectedDeveloperId} fields={developerFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => asText(row.contact_email ?? row.website_url ?? row.slug)} onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("developer_partners", row)} onSubmit={saveDeveloper} />
+								<EntityEditor
+									title="Developer Partners"
+									description="Company profile CRUD for developer partners. Accredited developer partners with an active login account are automatically showcased in the public website marquee."
+									rows={workspace.developers}
+									selectedId={selectedDeveloperId}
+									fields={developerFields}
+									canEdit={isAdmin}
+									rowLabel={labelForRow}
+									rowMeta={(row) => `${row.profile_id ? "✓ Active Account (In Marquee)" : "⚠ No Account"} • ${row.logo_url ? "Has Logo" : "No Logo"} • ${asText(row.contact_email ?? row.website_url ?? row.slug)}`}
+									onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))}
+									onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))}
+									onDelete={(row) => deleteEntity("developer_partners", row)}
+									onSubmit={saveDeveloper}
+									extra={<DeveloperPartnerManager developer={selectedDeveloperRow} onUpdated={reloadWorkspace} />}
+								/>
 							</div>
 						) : null}
 

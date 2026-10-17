@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Upload, Trash2 } from "lucide-react";
 import { ListingPerformanceChart } from "@/components/dashboard/ListingPerformanceChart";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -97,6 +98,7 @@ export default function DeveloperDashboard() {
 	// Profile Form
 	const [profileForm, setProfileForm] = useState<Partial<DeveloperCompany>>({});
 	const [savingProfile, setSavingProfile] = useState(false);
+	const [uploadingLogo, setUploadingLogo] = useState(false);
 	const [profileMessage, setProfileMessage] = useState("");
 
 	// Inquiry Filter
@@ -266,6 +268,37 @@ export default function DeveloperDashboard() {
 		} finally {
 			setSavingProfile(false);
 			setTimeout(() => setProfileMessage(""), 4000);
+		}
+	}
+
+	async function handleUploadLogo(e: ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		setUploadingLogo(true);
+		setProfileMessage("Uploading company logo...");
+
+		try {
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("folder", "developer-logos");
+
+			const res = await fetch("/api/upload", {
+				method: "POST",
+				body: formData,
+			});
+
+			const data = await res.json();
+			if (!res.ok || !data?.url) {
+				setProfileMessage(data?.error || "Failed to upload logo.");
+			} else {
+				setProfileForm((prev) => ({ ...prev, logo_url: data.url }));
+				setProfileMessage("Logo uploaded! Click 'Save Company Profile' to update your logo in the website marquee.");
+			}
+		} catch {
+			setProfileMessage("Error uploading logo image.");
+		} finally {
+			setUploadingLogo(false);
 		}
 	}
 
@@ -1002,19 +1035,71 @@ export default function DeveloperDashboard() {
 											className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-[#DE141C]"
 										/>
 									</div>
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Company Logo URL
-										</label>
-										<input
-											type="url"
-											value={profileForm.logo_url || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, logo_url: e.target.value }))
-											}
-											placeholder="https://.../logo.png"
-											className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-[#DE141C]"
-										/>
+									<div className="sm:col-span-2 rounded-xl border border-black/10 bg-zinc-50/60 p-4 space-y-3">
+										<div className="flex items-center justify-between">
+											<div>
+												<label className="block text-xs font-semibold uppercase tracking-wider text-black/70">
+													Company Logo (Featured in Website Marquee)
+												</label>
+												<p className="text-[11px] text-black/50">
+													Upload your official company logo. It will be showcased to prospective buyers in the partner marquee.
+												</p>
+											</div>
+											{profileForm.logo_url ? (
+												<button
+													type="button"
+													onClick={() => setProfileForm((prev) => ({ ...prev, logo_url: "" }))}
+													className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1 font-medium"
+												>
+													<Trash2 className="h-3 w-3" />
+													Remove
+												</button>
+											) : null}
+										</div>
+
+										{/* Logo Preview */}
+										<div className="flex items-center gap-4">
+											<div className="flex h-14 min-w-[120px] max-w-[180px] items-center justify-center rounded-lg border border-dashed border-black/15 bg-white p-2">
+												{profileForm.logo_url ? (
+													<Image
+														src={profileForm.logo_url}
+														alt="Company Logo"
+														width={160}
+														height={44}
+														unoptimized
+														className="max-h-10 w-auto object-contain"
+													/>
+												) : (
+													<span className="text-xs font-semibold text-black/40">
+														No Logo Uploaded
+													</span>
+												)}
+											</div>
+
+											<div className="flex-1 space-y-2">
+												<label className="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-black/15 bg-white px-3 py-2 text-xs font-semibold text-[#111111] shadow-xs hover:bg-black/5">
+													<Upload className="h-3.5 w-3.5 text-black/60" />
+													<span>{uploadingLogo ? "Uploading..." : "Upload Logo File (PNG / SVG / JPG)"}</span>
+													<input
+														type="file"
+														accept="image/*"
+														onChange={handleUploadLogo}
+														disabled={uploadingLogo}
+														className="hidden"
+													/>
+												</label>
+
+												<input
+													type="url"
+													value={profileForm.logo_url || ""}
+													onChange={(e) =>
+														setProfileForm((prev) => ({ ...prev, logo_url: e.target.value }))
+													}
+													placeholder="Or enter image URL (https://...)"
+													className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-xs outline-none transition focus:border-[#DE141C]"
+												/>
+											</div>
+										</div>
 									</div>
 								</div>
 
