@@ -61,10 +61,11 @@ type InquiryRow = {
 	status?: string | null;
 	priority?: string | null;
 	lead_score?: number | null;
-	message?: string | null;
-	notes?: string | null;
+	buyer_message?: string | null;
 	created_at?: string | null;
 	last_activity_at?: string | null;
+	first_contacted_at?: string | null;
+	closed_at?: string | null;
 	properties?: {
 		title?: string | null;
 		slug?: string | null;
@@ -501,7 +502,7 @@ export default function AgentDashboard() {
 	function openInquiryEditor(inquiry: InquiryRow) {
 		setEditingInquiry(inquiry);
 		setEditStatus(inquiry.status || "new");
-		setEditNotes(inquiry.notes || "");
+		setEditNotes(inquiry.buyer_message || "");
 		setActiveSection("inquiries");
 	}
 
@@ -575,9 +576,22 @@ export default function AgentDashboard() {
 			const target = inquiries.find((item) => item.id === inquiryId);
 			const oldStatus = target?.status || "new";
 
+			const payload: {
+				status: string;
+				last_activity_at: string;
+				first_contacted_at?: string;
+				closed_at?: string;
+			} = { status: newStatus, last_activity_at: now };
+			if (newStatus === "contacted" && !target?.first_contacted_at) {
+				payload.first_contacted_at = now;
+			}
+			if (["reserved", "closed_won", "closed_lost"].includes(newStatus) && !target?.closed_at) {
+				payload.closed_at = now;
+			}
+
 			const { error } = await supabaseBrowser
 				.from("inquiries")
-				.update({ status: newStatus, notes, last_activity_at: now })
+				.update(payload)
 				.eq("id", inquiryId);
 
 			if (!error) {
@@ -591,7 +605,11 @@ export default function AgentDashboard() {
 						: `Agent ${agent?.full_name || ""} moved lead to ${newStatus.replace("_", " ")}.`,
 				});
 				setInquiries((prev) =>
-					prev.map((item) => (item.id === inquiryId ? { ...item, status: newStatus, notes, last_activity_at: now } : item)),
+					prev.map((item) =>
+						item.id === inquiryId
+							? { ...item, ...payload }
+							: item,
+					),
 				);
 				setEditingInquiry(null);
 				setStatusMessage(`Lead moved to ${newStatus.replace("_", " ")}.`);
@@ -608,8 +626,8 @@ export default function AgentDashboard() {
 
 	async function handleQuickContact(inquiry: InquiryRow, method: "call" | "email" | "manual") {
 		const methodText = method === "call" ? "Phone call" : method === "email" ? "Email" : "Agent contact";
-		const contactNote = inquiry.notes
-			? `${inquiry.notes}\n[${new Date().toLocaleDateString()}] Reached out via ${methodText}`
+		const contactNote = inquiry.buyer_message
+			? `${inquiry.buyer_message}\n[${new Date().toLocaleDateString()}] Reached out via ${methodText}`
 			: `Reached out via ${methodText} on ${new Date().toLocaleDateString()}`;
 		await handleUpdateInquiryStatus(inquiry.id, "contacted", contactNote);
 	}
@@ -1178,7 +1196,7 @@ export default function AgentDashboard() {
 														Phone:{" "}
 														{editingInquiry.buyer_phone ? <a href={`tel:${editingInquiry.buyer_phone}`} className="text-[#DE141C] hover:underline">{editingInquiry.buyer_phone}</a> : "—"}
 													</div>
-													{editingInquiry.message ? <p className="mt-2 rounded-md bg-zinc-50 px-3 py-2 text-xs leading-5 text-black/60">{editingInquiry.message}</p> : null}
+													{editingInquiry.buyer_message ? <p className="mt-2 rounded-md bg-zinc-50 px-3 py-2 text-xs leading-5 text-black/60">{editingInquiry.buyer_message}</p> : null}
 													{editingInquiry.properties?.title ? (
 														<div className="mt-2 text-xs font-medium text-black/70">
 															Property: {editingInquiry.properties.title} ({editingInquiry.properties.city ?? "Batangas"})
