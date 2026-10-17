@@ -1,26 +1,54 @@
 "use client";
 
-import { useEffect, useState, useMemo, type FormEvent } from "react";
-import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+	Activity,
+	ArrowUpRight,
+	BarChart3,
 	Bell,
-	Sparkles,
-	X,
+	Building2,
+	Building,
 	CheckCheck,
-	Clock,
-	ExternalLink,
 	ChevronRight,
-	UserCheck,
-	MessageSquare,
-	Phone,
+	Clock,
+	Inbox,
+	LayoutDashboard,
+	LogOut,
 	Mail,
-	CheckCircle2,
+	MapPin,
+	MessageSquare,
+	PanelLeftClose,
+	PanelLeftOpen,
+	Phone,
+	RefreshCw,
+	Search,
+	Settings,
+	ShieldCheck,
+	Sparkles,
+	Star,
+	Target,
+	TrendingUp,
+	UserCircle,
+	Users,
+	Wallet,
+	X,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { AgentBarChart, AgentDonut, AgentFunnel, AgentTrendChart, type AgentChartRow } from "./AgentCharts";
 
-type TabKey = "overview" | "inquiries" | "properties" | "profile";
+type SectionId =
+	| "overview"
+	| "inquiries"
+	| "pipeline"
+	| "activity"
+	| "listings"
+	| "listingInsights"
+	| "performance"
+	| "trends"
+	| "profile"
+	| "security";
 
 type InquiryRow = {
 	id: string;
@@ -31,6 +59,7 @@ type InquiryRow = {
 	assigned_agent_id?: string | null;
 	status?: string | null;
 	priority?: string | null;
+	lead_score?: number | null;
 	message?: string | null;
 	notes?: string | null;
 	created_at?: string | null;
@@ -77,7 +106,16 @@ type AgentProfile = {
 	is_top_agent?: boolean | null;
 };
 
-export type AgentNotification = {
+type TimelineRow = {
+	id?: string | null;
+	inquiry_id?: string | null;
+	old_status?: string | null;
+	new_status?: string | null;
+	note?: string | null;
+	created_at?: string | null;
+};
+
+type AgentNotification = {
 	id: string;
 	inquiryId: string;
 	title: string;
@@ -89,6 +127,78 @@ export type AgentNotification = {
 	read: boolean;
 };
 
+type NavItem = { id: SectionId; label: string; hint: string; icon: typeof LayoutDashboard };
+type NavGroup = { id: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
+
+const STATUS_ORDER = ["new", "assigned", "contacted", "viewing_scheduled", "negotiating", "reserved", "closed_won", "closed_lost"] as const;
+
+const STATUS_META: Record<string, { label: string; pill: string; dot: string }> = {
+	new: { label: "New", pill: "border-blue-200 bg-blue-50 text-blue-700", dot: "#2563eb" },
+	assigned: { label: "Assigned", pill: "border-black/10 bg-zinc-100 text-black/70", dot: "#52525b" },
+	contacted: { label: "Contacted", pill: "border-amber-200 bg-amber-50 text-amber-700", dot: "#d97706" },
+	viewing_scheduled: { label: "Viewing", pill: "border-purple-200 bg-purple-50 text-purple-700", dot: "#7c3aed" },
+	negotiating: { label: "Negotiating", pill: "border-indigo-200 bg-indigo-50 text-indigo-700", dot: "#4f46e5" },
+	reserved: { label: "Reserved", pill: "border-emerald-200 bg-emerald-50 text-emerald-700", dot: "#059669" },
+	closed_won: { label: "Closed Won", pill: "border-emerald-300 bg-emerald-600 text-white", dot: "#047857" },
+	closed_lost: { label: "Closed Lost", pill: "border-red-200 bg-red-50 text-red-600", dot: "#dc2626" },
+};
+
+const PRIORITY_META: Record<string, string> = {
+	low: "border-black/10 bg-zinc-100 text-black/55",
+	medium: "border-black/10 bg-white text-black/65",
+	high: "border-amber-200 bg-amber-50 text-amber-700",
+	urgent: "border-red-200 bg-red-50 text-red-600",
+};
+
+function statusMeta(status?: string | null) {
+	return STATUS_META[status ?? "new"] ?? STATUS_META.new;
+}
+
+function formatCurrency(value?: number | null) {
+	if (value == null) return "Price on request";
+	return `₱${Number(value).toLocaleString()}`;
+}
+
+function formatDate(value?: string | null) {
+	if (!value) return "—";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "—";
+	return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatTimeAgo(isoString?: string | null) {
+	if (!isoString) return "Recently";
+	const diff = Date.now() - new Date(isoString).getTime();
+	if (Number.isNaN(diff) || diff < 0) return "Just now";
+	const minutes = Math.floor(diff / 60000);
+	if (minutes < 1) return "Just now";
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
+}
+
+function buildDailyTrend(rows: InquiryRow[], days: number): AgentChartRow[] {
+	const buckets: AgentChartRow[] = [];
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	for (let offset = days - 1; offset >= 0; offset -= 1) {
+		const day = new Date(today);
+		day.setDate(today.getDate() - offset);
+		buckets.push({ label: `${day.getMonth() + 1}/${day.getDate()}`, value: 0 });
+	}
+	rows.forEach((row) => {
+		if (!row.created_at) return;
+		const created = new Date(row.created_at);
+		if (Number.isNaN(created.getTime())) return;
+		const key = `${created.getMonth() + 1}/${created.getDate()}`;
+		const index = buckets.findIndex((bucket) => bucket.label === key);
+		if (index >= 0) buckets[index].value += 1;
+	});
+	return buckets;
+}
+
 function playNotificationChime() {
 	if (typeof window === "undefined") return;
 	try {
@@ -97,9 +207,7 @@ function playNotificationChime() {
 			(window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
 		if (!AudioContextClass) return;
 		const ctx = new AudioContextClass();
-		if (ctx.state === "suspended") {
-			void ctx.resume();
-		}
+		if (ctx.state === "suspended") void ctx.resume();
 		const osc = ctx.createOscillator();
 		const gain = ctx.createGain();
 		osc.type = "sine";
@@ -116,46 +224,60 @@ function playNotificationChime() {
 	}
 }
 
-function formatTimeAgo(isoString?: string | null) {
-	if (!isoString) return "Recently";
-	const diff = Date.now() - new Date(isoString).getTime();
-	if (Number.isNaN(diff) || diff < 0) return "Just now";
-	const minutes = Math.floor(diff / 60000);
-	if (minutes < 1) return "Just now";
-	if (minutes < 60) return `${minutes}m ago`;
-	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours}h ago`;
-	const days = Math.floor(hours / 24);
-	return `${days}d ago`;
+function StatusPill({ status }: { status?: string | null }) {
+	const meta = statusMeta(status);
+	return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${meta.pill}`}>{meta.label}</span>;
+}
+
+function PriorityPill({ priority }: { priority?: string | null }) {
+	const tone = PRIORITY_META[priority ?? "medium"] ?? PRIORITY_META.medium;
+	return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone}`}>{priority ?? "medium"}</span>;
+}
+
+function StatCard({ label, value, hint, accent = false, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
+	return (
+		<div className="rounded-lg border border-black/10 bg-white p-4">
+			<div className="flex items-center justify-between gap-2">
+				<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">{label}</div>
+				{Icon ? <Icon className="h-4 w-4 text-black/30" /> : null}
+			</div>
+			<div className={`mt-3 text-3xl font-semibold tracking-[-0.05em] ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
+			<p className="mt-2 text-xs text-black/50">{hint}</p>
+		</div>
+	);
 }
 
 export default function AgentDashboard() {
 	const router = useRouter();
-	const [activeTab, setActiveTab] = useState<TabKey>("overview");
 	const [loading, setLoading] = useState(true);
 	const [userEmail, setUserEmail] = useState("");
 	const [agent, setAgent] = useState<AgentProfile | null>(null);
 	const [inquiries, setInquiries] = useState<InquiryRow[]>([]);
 	const [properties, setProperties] = useState<PropertyRow[]>([]);
+	const [timeline, setTimeline] = useState<TimelineRow[]>([]);
 	const [statusMessage, setStatusMessage] = useState("");
 
-	// Live Notifications State
+	const [activeSection, setActiveSection] = useState<SectionId>("overview");
+	const [showSidebar, setShowSidebar] = useState(true);
+	const [showProfileMenu, setShowProfileMenu] = useState(false);
+	const [headerSearch, setHeaderSearch] = useState("");
+
 	const [notifications, setNotifications] = useState<AgentNotification[]>([]);
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [toastNotification, setToastNotification] = useState<AgentNotification | null>(null);
 
-	// Inquiry Filter & Search state
 	const [inquirySearch, setInquirySearch] = useState("");
 	const [inquiryStatusFilter, setInquiryStatusFilter] = useState("all");
 	const [editingInquiry, setEditingInquiry] = useState<InquiryRow | null>(null);
+	const [editStatus, setEditStatus] = useState("new");
+	const [editNotes, setEditNotes] = useState("");
 	const [updatingInquiry, setUpdatingInquiry] = useState(false);
 
-	// Profile Form State
 	const [profileForm, setProfileForm] = useState<Partial<AgentProfile>>({});
 	const [savingProfile, setSavingProfile] = useState(false);
 	const [profileMessage, setProfileMessage] = useState("");
 
-	const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+	const unreadCount = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -164,37 +286,26 @@ export default function AgentDashboard() {
 			try {
 				const { data: sessionResult } = await supabaseBrowser.auth.getSession();
 				const user = sessionResult.session?.user;
-
 				if (!user) {
 					router.replace("/login?next=/agent");
 					return;
 				}
+				if (isMounted) setUserEmail(user.email ?? "");
 
-				if (isMounted) {
-					setUserEmail(user.email ?? "");
-				}
-
-				// Fetch agent profile
-				const { data: agentRow, error: agentError } = await supabaseBrowser
+				const { data: agentRow } = await supabaseBrowser
 					.from("agents")
 					.select("*")
 					.eq("profile_id", user.id)
 					.maybeSingle();
 
-				if (agentError) {
-					console.error("Agent profile fetch error:", agentError);
-				}
-
 				let currentAgent = agentRow as AgentProfile | null;
 
-				// Fallback: If not found by profile_id, check profiles table for full_name
 				if (!currentAgent) {
 					const { data: userProfile } = await supabaseBrowser
 						.from("profiles")
 						.select("full_name, role")
 						.eq("id", user.id)
 						.maybeSingle();
-
 					if (userProfile) {
 						currentAgent = {
 							id: user.id,
@@ -204,58 +315,68 @@ export default function AgentDashboard() {
 					}
 				}
 
-				if (!isMounted) return;
+				if (!isMounted || !currentAgent) {
+					if (isMounted) setLoading(false);
+					return;
+				}
 
-				if (currentAgent) {
-					setAgent(currentAgent);
-					setProfileForm(currentAgent);
+				setAgent(currentAgent);
+				setProfileForm(currentAgent);
 
-					// Fetch assigned inquiries
-					const { data: inquiryData } = await supabaseBrowser
+				const [{ data: inquiryData }, { data: propertyData }] = await Promise.all([
+					supabaseBrowser
 						.from("inquiries")
 						.select("*, properties(title, slug, price, city)")
 						.eq("assigned_agent_id", currentAgent.id)
-						.order("created_at", { ascending: false });
-
-					// Fetch assigned properties
-					const { data: propertyData } = await supabaseBrowser
+						.order("created_at", { ascending: false }),
+					supabaseBrowser
 						.from("properties")
 						.select("*")
 						.eq("assigned_agent_id", currentAgent.id)
-						.order("created_at", { ascending: false });
+						.order("created_at", { ascending: false }),
+				]);
 
-					if (isMounted) {
-						const inqList = (inquiryData as InquiryRow[]) ?? [];
-						setInquiries(inqList);
-						setProperties((propertyData as PropertyRow[]) ?? []);
+				if (!isMounted) return;
 
-						// Load read notification IDs from localStorage
-						const readKey = `agent_read_inquiries_${currentAgent.id}`;
-						let readIds: string[] = [];
-						try {
-							readIds = JSON.parse(localStorage.getItem(readKey) || "[]");
-						} catch {}
+				const inqList = (inquiryData as InquiryRow[]) ?? [];
+				setInquiries(inqList);
+				setProperties((propertyData as PropertyRow[]) ?? []);
 
-						// Generate notifications for assigned leads
-						const initialNotifs: AgentNotification[] = inqList.map((inq) => ({
-							id: `notif_${inq.id}`,
-							inquiryId: inq.id,
-							title: "Lead Assigned",
-							message: `${inq.buyer_name || "A buyer"} was assigned to you by Admin.`,
-							propertyTitle: inq.properties?.title || "Property Inquiry",
-							buyerEmail: inq.buyer_email,
-							buyerPhone: inq.buyer_phone,
-							timestamp: inq.created_at || new Date().toISOString(),
-							read: readIds.includes(inq.id) || !["new", "assigned"].includes(inq.status || ""),
-						}));
-
-						setNotifications(initialNotifs);
-					}
+				const inquiryIds = inqList.map((item) => item.id);
+				if (inquiryIds.length) {
+					const { data: timelineData } = await supabaseBrowser
+						.from("inquiry_timeline")
+						.select("id, inquiry_id, old_status, new_status, note, created_at")
+						.in("inquiry_id", inquiryIds)
+						.order("created_at", { ascending: false })
+						.limit(120);
+					if (isMounted) setTimeline((timelineData as TimelineRow[]) ?? []);
 				}
 
+				const readKey = `agent_read_inquiries_${currentAgent.id}`;
+				let readIds: string[] = [];
+				try {
+					readIds = JSON.parse(localStorage.getItem(readKey) || "[]");
+				} catch {
+					readIds = [];
+				}
+
+				const initialNotifs: AgentNotification[] = inqList.map((inq) => ({
+					id: `notif_${inq.id}`,
+					inquiryId: inq.id,
+					title: "Lead Assigned",
+					message: `${inq.buyer_name || "A buyer"} was assigned to you by Admin.`,
+					propertyTitle: inq.properties?.title || "Property Inquiry",
+					buyerEmail: inq.buyer_email,
+					buyerPhone: inq.buyer_phone,
+					timestamp: inq.created_at || new Date().toISOString(),
+					read: readIds.includes(inq.id) || !["new", "assigned"].includes(inq.status || ""),
+				}));
+				setNotifications(initialNotifs);
+
 				setLoading(false);
-			} catch (err) {
-				console.error("Error loading agent dashboard:", err);
+			} catch (error) {
+				console.error("Error loading agent dashboard:", error);
 				if (isMounted) setLoading(false);
 			}
 		}
@@ -267,81 +388,62 @@ export default function AgentDashboard() {
 		};
 	}, [router]);
 
-	// Auto-dismiss floating toast notification after 8 seconds
 	useEffect(() => {
 		if (!toastNotification) return;
-		const timer = setTimeout(() => {
-			setToastNotification(null);
-		}, 8000);
+		const timer = setTimeout(() => setToastNotification(null), 8000);
 		return () => clearTimeout(timer);
 	}, [toastNotification]);
 
-	// Real-time Supabase listener & fallback polling for newly assigned inquiries
 	useEffect(() => {
 		if (!agent?.id) return;
 		let mounted = true;
 
-		// 1. Supabase Realtime channel subscription on inquiries table
 		const channel = supabaseBrowser
 			.channel(`agent_inquiries_realtime_${agent.id}`)
 			.on(
 				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "inquiries",
-				},
+				{ event: "*", schema: "public", table: "inquiries" },
 				async (payload) => {
 					if (!mounted) return;
 					const newRow = payload.new as InquiryRow & { assigned_agent_id?: string | null };
 					if (!newRow || !newRow.id) return;
+					if (newRow.assigned_agent_id !== agent.id) return;
 
-					// Check if this inquiry was assigned to this agent
-					if (newRow.assigned_agent_id === agent.id) {
-						let propertyInfo = newRow.properties;
-						if (!propertyInfo && newRow.property_id) {
-							const { data: prop } = await supabaseBrowser
-								.from("properties")
-								.select("title, slug, price, city")
-								.eq("id", newRow.property_id)
-								.maybeSingle();
-							propertyInfo = prop;
-						}
-
-						const fullInquiry: InquiryRow = {
-							...newRow,
-							properties: propertyInfo,
-						};
-
-						setInquiries((prev) => {
-							const exists = prev.some((i) => i.id === fullInquiry.id);
-							if (exists) {
-								return prev.map((i) => (i.id === fullInquiry.id ? fullInquiry : i));
-							}
-							return [fullInquiry, ...prev];
-						});
-
-						const notif: AgentNotification = {
-							id: `notif_${fullInquiry.id}_${Date.now()}`,
-							inquiryId: fullInquiry.id,
-							title: "New Lead Assigned!",
-							message: `${fullInquiry.buyer_name || "A buyer"} was assigned to you by Admin.`,
-							propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
-							buyerEmail: fullInquiry.buyer_email,
-							buyerPhone: fullInquiry.buyer_phone,
-							timestamp: new Date().toISOString(),
-							read: false,
-						};
-
-						setNotifications((prev) => [notif, ...prev.filter((n) => n.inquiryId !== notif.inquiryId)]);
-						setToastNotification(notif);
-						playNotificationChime();
+					let propertyInfo = newRow.properties;
+					if (!propertyInfo && newRow.property_id) {
+						const { data: prop } = await supabaseBrowser
+							.from("properties")
+							.select("title, slug, price, city")
+							.eq("id", newRow.property_id)
+							.maybeSingle();
+						propertyInfo = prop;
 					}
-				}
+
+					const fullInquiry: InquiryRow = { ...newRow, properties: propertyInfo };
+					setInquiries((prev) => {
+						const exists = prev.some((item) => item.id === fullInquiry.id);
+						if (exists) return prev.map((item) => (item.id === fullInquiry.id ? fullInquiry : item));
+						return [fullInquiry, ...prev];
+					});
+
+					const notif: AgentNotification = {
+						id: `notif_${fullInquiry.id}_${Date.now()}`,
+						inquiryId: fullInquiry.id,
+						title: "New Lead Assigned!",
+						message: `${fullInquiry.buyer_name || "A buyer"} was assigned to you by Admin.`,
+						propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
+						buyerEmail: fullInquiry.buyer_email,
+						buyerPhone: fullInquiry.buyer_phone,
+						timestamp: new Date().toISOString(),
+						read: false,
+					};
+					setNotifications((prev) => [notif, ...prev.filter((item) => item.inquiryId !== notif.inquiryId)]);
+					setToastNotification(notif);
+					playNotificationChime();
+				},
 			)
 			.subscribe();
 
-		// 2. Periodic polling every 15s ensuring notification triggers even if socket drops
 		const pollInterval = setInterval(async () => {
 			if (!mounted) return;
 			const { data: latestData } = await supabaseBrowser
@@ -352,9 +454,8 @@ export default function AgentDashboard() {
 
 			if (latestData && Array.isArray(latestData) && mounted) {
 				setInquiries((prev) => {
-					const existingIds = new Set(prev.map((i) => i.id));
+					const existingIds = new Set(prev.map((item) => item.id));
 					const brandNew = (latestData as InquiryRow[]).filter((item) => !existingIds.has(item.id));
-
 					if (brandNew.length > 0) {
 						const newest = brandNew[0];
 						const notif: AgentNotification = {
@@ -368,11 +469,10 @@ export default function AgentDashboard() {
 							timestamp: new Date().toISOString(),
 							read: false,
 						};
-						setNotifications((prevNotifs) => [notif, ...prevNotifs.filter((n) => n.inquiryId !== notif.inquiryId)]);
+						setNotifications((prevNotifs) => [notif, ...prevNotifs.filter((item) => item.inquiryId !== notif.inquiryId)]);
 						setToastNotification(notif);
 						playNotificationChime();
 					}
-
 					return latestData as InquiryRow[];
 				});
 			}
@@ -385,41 +485,38 @@ export default function AgentDashboard() {
 		};
 	}, [agent?.id]);
 
-	function handleOpenNotification(notif: AgentNotification) {
-		// Mark as read
-		setNotifications((prev) =>
-			prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
-		);
-		setShowNotifications(false);
-		setToastNotification(null);
-
-		if (agent?.id) {
-			const readKey = `agent_read_inquiries_${agent.id}`;
-			try {
-				const existing = JSON.parse(localStorage.getItem(readKey) || "[]");
-				if (!existing.includes(notif.inquiryId)) {
-					localStorage.setItem(readKey, JSON.stringify([...existing, notif.inquiryId]));
-				}
-			} catch {}
-		}
-
-		// Navigate to Inquiries tab & open inquiry details
-		setActiveTab("inquiries");
-		const targetInquiry = inquiries.find((i) => i.id === notif.inquiryId);
-		if (targetInquiry) {
-			setEditingInquiry(targetInquiry);
+	function markInquiriesRead(ids: string[]) {
+		if (!agent?.id) return;
+		const readKey = `agent_read_inquiries_${agent.id}`;
+		try {
+			const existing = JSON.parse(localStorage.getItem(readKey) || "[]") as string[];
+			const merged = Array.from(new Set([...existing, ...ids]));
+			localStorage.setItem(readKey, JSON.stringify(merged));
+		} catch {
+			// ignore storage errors
 		}
 	}
 
+	function openInquiryEditor(inquiry: InquiryRow) {
+		setEditingInquiry(inquiry);
+		setEditStatus(inquiry.status || "new");
+		setEditNotes(inquiry.notes || "");
+		setActiveSection("inquiries");
+	}
+
+	function handleOpenNotification(notif: AgentNotification) {
+		setNotifications((prev) => prev.map((item) => (item.id === notif.id ? { ...item, read: true } : item)));
+		setShowNotifications(false);
+		setToastNotification(null);
+		markInquiriesRead([notif.inquiryId]);
+		const target = inquiries.find((item) => item.id === notif.inquiryId);
+		if (target) openInquiryEditor(target);
+		else setActiveSection("inquiries");
+	}
+
 	function handleMarkAllAsRead() {
-		setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-		if (agent?.id) {
-			const readKey = `agent_read_inquiries_${agent.id}`;
-			try {
-				const allIds = inquiries.map((i) => i.id);
-				localStorage.setItem(readKey, JSON.stringify(allIds));
-			} catch {}
-		}
+		setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+		markInquiriesRead(inquiries.map((item) => item.id));
 	}
 
 	async function handleSignOut() {
@@ -427,33 +524,39 @@ export default function AgentDashboard() {
 		router.replace("/login");
 	}
 
-	async function handleSaveProfile(e: FormEvent) {
-		e.preventDefault();
+	async function reloadInquiries() {
+		if (!agent?.id) return;
+		const { data } = await supabaseBrowser
+			.from("inquiries")
+			.select("*, properties(title, slug, price, city)")
+			.eq("assigned_agent_id", agent.id)
+			.order("created_at", { ascending: false });
+		if (data) setInquiries(data as InquiryRow[]);
+	}
+
+	async function handleSaveProfile(event: FormEvent) {
+		event.preventDefault();
 		if (!agent) return;
 		setSavingProfile(true);
 		setProfileMessage("Saving updates...");
-
 		try {
-			const { error } = await supabaseBrowser
-				.from("agents")
-				.upsert({
-					id: agent.id,
-					profile_id: agent.profile_id,
-					full_name: profileForm.full_name || agent.full_name,
-					license_number: profileForm.license_number || null,
-					specialization: profileForm.specialization || null,
-					bio: profileForm.bio || null,
-					photo_url: profileForm.photo_url || null,
-					facebook_url: profileForm.facebook_url || null,
-					instagram_url: profileForm.instagram_url || null,
-					twitter_url: profileForm.twitter_url || null,
-					linkedin_url: profileForm.linkedin_url || null,
-				});
-
+			const { error } = await supabaseBrowser.from("agents").upsert({
+				id: agent.id,
+				profile_id: agent.profile_id,
+				full_name: profileForm.full_name || agent.full_name,
+				license_number: profileForm.license_number || null,
+				specialization: profileForm.specialization || null,
+				bio: profileForm.bio || null,
+				photo_url: profileForm.photo_url || null,
+				facebook_url: profileForm.facebook_url || null,
+				instagram_url: profileForm.instagram_url || null,
+				twitter_url: profileForm.twitter_url || null,
+				linkedin_url: profileForm.linkedin_url || null,
+			});
 			if (error) {
 				setProfileMessage(`Error: ${error.message}`);
 			} else {
-				setProfileMessage("Profile updated successfully!");
+				setProfileMessage("Profile updated successfully.");
 				setAgent((prev) => (prev ? { ...prev, ...profileForm } : null));
 			}
 		} catch {
@@ -468,20 +571,15 @@ export default function AgentDashboard() {
 		setUpdatingInquiry(true);
 		try {
 			const now = new Date().toISOString();
-			const targetInquiry = inquiries.find((i) => i.id === inquiryId);
-			const oldStatus = targetInquiry?.status || "new";
+			const target = inquiries.find((item) => item.id === inquiryId);
+			const oldStatus = target?.status || "new";
 
 			const { error } = await supabaseBrowser
 				.from("inquiries")
-				.update({
-					status: newStatus,
-					notes: notes,
-					last_activity_at: now,
-				})
+				.update({ status: newStatus, notes, last_activity_at: now })
 				.eq("id", inquiryId);
 
 			if (!error) {
-				// Record into inquiry_timeline for admin pipeline tracking
 				await supabaseBrowser.from("inquiry_timeline").insert({
 					inquiry_id: inquiryId,
 					changed_by: agent?.profile_id || agent?.id,
@@ -491,11 +589,8 @@ export default function AgentDashboard() {
 						? `Agent ${agent?.full_name || ""} updated status to ${newStatus.replace("_", " ")}: ${notes}`
 						: `Agent ${agent?.full_name || ""} moved lead to ${newStatus.replace("_", " ")}.`,
 				});
-
 				setInquiries((prev) =>
-					prev.map((inq) =>
-						inq.id === inquiryId ? { ...inq, status: newStatus, notes, last_activity_at: now } : inq
-					)
+					prev.map((item) => (item.id === inquiryId ? { ...item, status: newStatus, notes, last_activity_at: now } : item)),
 				);
 				setEditingInquiry(null);
 				setStatusMessage(`Lead moved to ${newStatus.replace("_", " ")}.`);
@@ -515,7 +610,6 @@ export default function AgentDashboard() {
 		const contactNote = inquiry.notes
 			? `${inquiry.notes}\n[${new Date().toLocaleDateString()}] Reached out via ${methodText}`
 			: `Reached out via ${methodText} on ${new Date().toLocaleDateString()}`;
-
 		await handleUpdateInquiryStatus(inquiry.id, "contacted", contactNote);
 	}
 
@@ -525,19 +619,13 @@ export default function AgentDashboard() {
 		const { error } = await supabaseBrowser.auth.resetPasswordForEmail(userEmail, {
 			redirectTo: `${window.location.origin}/reset-password`,
 		});
-		if (error) {
-			setStatusMessage(`Error: ${error.message}`);
-		} else {
-			setStatusMessage(`Password reset link sent to ${userEmail}`);
-		}
+		setStatusMessage(error ? `Error: ${error.message}` : `Password reset link sent to ${userEmail}`);
 		setTimeout(() => setStatusMessage(""), 5000);
 	}
 
-	// Filtered inquiries calculation
 	const filteredInquiries = useMemo(() => {
 		return inquiries.filter((inq) => {
-			const matchesStatus =
-				inquiryStatusFilter === "all" || inq.status === inquiryStatusFilter;
+			const matchesStatus = inquiryStatusFilter === "all" || inq.status === inquiryStatusFilter;
 			const query = inquirySearch.toLowerCase().trim();
 			const matchesQuery =
 				!query ||
@@ -549,1066 +637,1018 @@ export default function AgentDashboard() {
 		});
 	}, [inquiries, inquirySearch, inquiryStatusFilter]);
 
-	// KPI Stats
-	const totalLeads = inquiries.length;
-	const activeDeals = inquiries.filter((i) =>
-		["assigned", "contacted", "viewing_scheduled", "negotiating"].includes(i.status ?? "")
-	).length;
-	const closedWon = inquiries.filter((i) =>
-		["reserved", "closed_won"].includes(i.status ?? "")
-	).length;
-	const conversionRate = totalLeads > 0 ? ((closedWon / totalLeads) * 100).toFixed(1) : "0.0";
+	const stats = useMemo(() => {
+		const total = inquiries.length;
+		const open = inquiries.filter((item) => !["reserved", "closed_won", "closed_lost"].includes(item.status ?? "")).length;
+		const active = inquiries.filter((item) => ["assigned", "contacted", "viewing_scheduled", "negotiating"].includes(item.status ?? "")).length;
+		const won = inquiries.filter((item) => ["reserved", "closed_won"].includes(item.status ?? "")).length;
+		const lost = inquiries.filter((item) => item.status === "closed_lost").length;
+		const newLeads = inquiries.filter((item) => ["new", "assigned"].includes(item.status ?? "")).length;
+		const responded = inquiries.filter((item) => !["new", "assigned"].includes(item.status ?? "")).length;
+		const conversion = total > 0 ? ((won / total) * 100).toFixed(1) : "0.0";
+		const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
+		const pipelineValue = inquiries
+			.filter((item) => !["closed_lost"].includes(item.status ?? ""))
+			.reduce((sum, item) => sum + (Number(item.properties?.price) || 0), 0);
+		const publishedListings = properties.filter((item) => (item.status ?? "published") === "published").length;
+		return { total, open, active, won, lost, newLeads, responded, conversion, responseRate, pipelineValue, publishedListings };
+	}, [inquiries, properties]);
+
+	const statusRows: AgentChartRow[] = useMemo(
+		() =>
+			STATUS_ORDER.map((status) => ({
+				label: statusMeta(status).label,
+				value: inquiries.filter((item) => (item.status ?? "new") === status).length,
+				color: statusMeta(status).dot,
+			})).filter((row) => row.value > 0),
+		[inquiries],
+	);
+
+	const priorityRows: AgentChartRow[] = useMemo(() => {
+		const order = ["urgent", "high", "medium", "low"];
+		return order
+			.map((priority) => ({
+				label: priority,
+				value: inquiries.filter((item) => (item.priority ?? "medium") === priority).length,
+				color: priority === "urgent" ? "#dc2626" : priority === "high" ? "#d97706" : priority === "medium" ? "#111111" : "#d4d4d8",
+			}))
+			.filter((row) => row.value > 0);
+	}, [inquiries]);
+
+	const trendRows = useMemo(() => buildDailyTrend(inquiries, 14), [inquiries]);
+	const monthTrendRows = useMemo(() => buildDailyTrend(inquiries, 30), [inquiries]);
+
+	const weekdayRows: AgentChartRow[] = useMemo(() => {
+		const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		const counts = new Array(7).fill(0) as number[];
+		inquiries.forEach((item) => {
+			if (!item.created_at) return;
+			const date = new Date(item.created_at);
+			if (!Number.isNaN(date.getTime())) counts[date.getDay()] += 1;
+		});
+		return names.map((name, index) => ({ label: name, value: counts[index] }));
+	}, [inquiries]);
+
+	const categoryRows: AgentChartRow[] = useMemo(() => {
+		const counts = new Map<string, number>();
+		properties.forEach((item) => {
+			const key = (item.category ?? "other").toLowerCase();
+			counts.set(key, (counts.get(key) ?? 0) + 1);
+		});
+		return Array.from(counts.entries()).map(([label, value]) => ({ label, value }));
+	}, [properties]);
+
+	const listingStatusRows: AgentChartRow[] = useMemo(() => {
+		const counts = new Map<string, number>();
+		properties.forEach((item) => {
+			const key = (item.status ?? "published").toLowerCase();
+			counts.set(key, (counts.get(key) ?? 0) + 1);
+		});
+		return Array.from(counts.entries()).map(([label, value]) => ({ label, value }));
+	}, [properties]);
+
+	const listingValue = properties.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+	const funnelRows: AgentChartRow[] = useMemo(
+		() => [
+			{ label: "Leads", value: inquiries.length, color: "#111111" },
+			{ label: "Engaged", value: inquiries.filter((item) => !["new", "assigned"].includes(item.status ?? "")).length, color: "#d97706" },
+			{ label: "Viewing", value: inquiries.filter((item) => ["viewing_scheduled", "negotiating", "reserved", "closed_won"].includes(item.status ?? "")).length, color: "#7c3aed" },
+			{ label: "Negotiating", value: inquiries.filter((item) => ["negotiating", "reserved", "closed_won"].includes(item.status ?? "")).length, color: "#4f46e5" },
+			{ label: "Closed", value: inquiries.filter((item) => ["reserved", "closed_won"].includes(item.status ?? "")).length, color: "#059669" },
+		],
+		[inquiries],
+	);
+
+	const headerSearchResults = useMemo(() => {
+		const query = headerSearch.toLowerCase().trim();
+		if (!query) return [];
+		return inquiries
+			.filter((inq) =>
+				[inq.buyer_name, inq.buyer_email, inq.buyer_phone, inq.properties?.title]
+					.some((value) => (value ?? "").toLowerCase().includes(query)),
+			)
+			.slice(0, 6);
+	}, [headerSearch, inquiries]);
+
+	const navGroups: NavGroup[] = useMemo(
+		() => [
+			{
+				id: "dashboard",
+				label: "Dashboard",
+				icon: LayoutDashboard,
+				items: [{ id: "overview", label: "Overview", hint: "KPIs & activity", icon: LayoutDashboard }],
+			},
+			{
+				id: "leads",
+				label: "Leads",
+				icon: MessageSquare,
+				items: [
+					{ id: "inquiries", label: "Assigned Inquiries", hint: `${inquiries.length} total`, icon: Inbox },
+					{ id: "pipeline", label: "Pipeline", hint: `${stats.active} active`, icon: Target },
+					{ id: "activity", label: "Activity History", hint: `${timeline.length} events`, icon: Activity },
+				],
+			},
+			{
+				id: "listings",
+				label: "Listings",
+				icon: Building2,
+				items: [
+					{ id: "listings", label: "My Listings", hint: `${properties.length} listings`, icon: Building },
+					{ id: "listingInsights", label: "Listing Insights", hint: "Portfolio mix", icon: MapPin },
+				],
+			},
+			{
+				id: "analytics",
+				label: "Analytics",
+				icon: BarChart3,
+				items: [
+					{ id: "performance", label: "Performance", hint: "Conversion & funnel", icon: BarChart3 },
+					{ id: "trends", label: "Lead Trends", hint: "Volume over time", icon: TrendingUp },
+				],
+			},
+			{
+				id: "account",
+				label: "Account",
+				icon: Settings,
+				items: [
+					{ id: "profile", label: "Profile & Credentials", hint: "Public details", icon: UserCircle },
+					{ id: "security", label: "Account Security", hint: "Sign-in & password", icon: ShieldCheck },
+				],
+			},
+		],
+		[inquiries.length, properties.length, stats.active, timeline.length],
+	);
+
+	const activeGroup = useMemo(() => navGroups.find((group) => group.items.some((item) => item.id === activeSection)) ?? navGroups[0], [navGroups, activeSection]);
+	const activeItem = activeGroup.items.find((item) => item.id === activeSection) ?? activeGroup.items[0];
+
+	const badgeFor = (id: SectionId) => {
+		if (id === "inquiries") return inquiries.length ? String(inquiries.length) : null;
+		if (id === "listings") return properties.length ? String(properties.length) : null;
+		if (id === "activity") return timeline.length ? String(timeline.length) : null;
+		return null;
+	};
+
+	const openSection = useCallback((section: SectionId) => {
+		setActiveSection(section);
+		setShowSidebar(true);
+		setShowNotifications(false);
+		setShowProfileMenu(false);
+	}, []);
 
 	if (loading) {
 		return (
-			<main className="flex min-h-screen items-center justify-center bg-zinc-50 p-6 text-[#111111]">
-				<div className="flex flex-col items-center gap-3">
-					<div className="h-8 w-8 animate-spin rounded-full border-2 border-black/20 border-t-[#DE141C]" />
-					<p className="text-sm font-medium text-black/60">Loading Agent Portal...</p>
+			<main className="flex min-h-screen items-center justify-center bg-[#f2f2ef] p-6 text-[#111111]">
+				<div className="skeleton-delayed flex w-full max-w-6xl flex-col gap-3">
+					<div className="skeleton-shimmer h-16 rounded-lg bg-black/5" />
+					<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+						{[0, 1, 2, 3].map((key) => <div key={key} className="skeleton-shimmer h-28 rounded-lg bg-black/5" />)}
+					</div>
+					<div className="skeleton-shimmer h-64 rounded-lg bg-black/5" />
 				</div>
 			</main>
 		);
 	}
 
 	return (
-		<main className="min-h-screen bg-[#F8F9FA] pb-16 text-[#111111]">
-			{/* Top Bar Header */}
-			<header className="sticky top-0 z-40 border-b border-black/10 bg-white/95 px-4 py-3.5 backdrop-blur-md sm:px-8">
-				<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-					<div className="flex items-center gap-3">
-						<Link href="/" className="font-bold text-lg tracking-tight text-[#111111]">
-							Jewellz<span className="text-[#DE141C]">.</span>
+		<main className="min-h-screen bg-[#f2f2ef] text-[#111111]">
+			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
+				{/* Primary icon rail */}
+				<aside className="hidden border-r border-black/10 bg-[#fbfbfa] py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+					<div className="flex flex-col items-center gap-4">
+						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-lg font-bold ring-1 ring-black/10">
+							J<span className="text-[#DE141C]">.</span>
 						</Link>
-						<span className="h-4 w-px bg-black/15" />
-						<div className="flex items-center gap-2">
-							<span className="rounded-full bg-[#DE141C]/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-[#DE141C]">
-								Agent Portal
-							</span>
-							{agent?.is_top_agent ? (
-								<span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-									★ Top Agent
-								</span>
-							) : null}
+						<div className="flex flex-col gap-2">
+							{navGroups.map((group) => {
+								const Icon = group.icon;
+								const active = activeGroup.id === group.id;
+								return (
+									<button
+										key={group.id}
+										type="button"
+										onClick={() => openSection(group.items[0].id)}
+										className={`relative flex h-9 w-9 items-center justify-center rounded-md transition ${active ? "bg-[#111111] text-white" : "text-black/55 hover:bg-white hover:text-[#111111]"}`}
+										title={group.label}
+									>
+										<Icon className="h-4 w-4" />
+										{group.id === "leads" && unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#DE141C]" /> : null}
+									</button>
+								);
+							})}
 						</div>
 					</div>
+					<div className="flex flex-col gap-2">
+						<button type="button" onClick={() => void reloadInquiries()} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Refresh">
+							<RefreshCw className="h-4 w-4" />
+						</button>
+						<button type="button" onClick={handleSignOut} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+							<LogOut className="h-4 w-4" />
+						</button>
+					</div>
+				</aside>
 
-					<div className="flex items-center gap-3">
-						{/* Notification Bell */}
-						<div className="relative">
-							<button
-								type="button"
-								onClick={() => setShowNotifications((prev) => !prev)}
-								className="relative flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-black/70 transition hover:bg-black/5 hover:text-black focus:outline-none"
-								title="Notifications"
-								aria-label="View notifications"
-							>
+				{/* Secondary navigation */}
+				<aside className={`${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-black/10 bg-[#fbfbfa] lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r`}>
+					<nav className="flex max-h-[60vh] flex-col overflow-auto px-2 py-3 lg:max-h-[calc(100vh-96px)]">
+						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">{activeGroup.label}</div>
+						<div className="space-y-1">
+							{activeGroup.items.map((item) => {
+								const Icon = item.icon;
+								const active = activeSection === item.id;
+								const badge = badgeFor(item.id);
+								return (
+									<button
+										key={item.id}
+										type="button"
+										onClick={() => openSection(item.id)}
+										className={`relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition ${active ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
+									>
+										<Icon className="h-4 w-4 shrink-0" />
+										<span className="min-w-0 flex-1">
+											<span className="block truncate text-sm font-medium">{item.label}</span>
+											<span className="block truncate text-[11px] text-black/45">{item.hint}</span>
+										</span>
+										{badge ? <span className="shrink-0 rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/55">{badge}</span> : null}
+									</button>
+								);
+							})}
+						</div>
+					</nav>
+
+					{/* Agent summary */}
+					<div className="border-t border-black/10 px-3 py-3">
+						<div className="flex items-center gap-2.5">
+							{agent?.photo_url ? (
+								// eslint-disable-next-line @next/next/no-img-element
+								<img src={agent.photo_url} alt={agent.full_name} className="h-9 w-9 rounded-full border border-black/10 object-cover" />
+							) : (
+								<div className="grid h-9 w-9 place-items-center rounded-full bg-[#111111] text-xs font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
+							)}
+							<div className="min-w-0">
+								<div className="truncate text-xs font-semibold text-[#111111]">{agent?.full_name}</div>
+								<div className="truncate text-[11px] text-black/45">{agent?.license_number || "PRC Accredited"}</div>
+							</div>
+						</div>
+						<div className="mt-3 flex gap-2 lg:hidden">
+							<button type="button" onClick={() => void reloadInquiries()} className="flex-1 rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-medium">Refresh</button>
+							<button type="button" onClick={handleSignOut} className="flex-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+						</div>
+					</div>
+				</aside>
+
+				{/* Main column */}
+				<section className="flex min-w-0 flex-col bg-[#f2f2ef]">
+					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-black/10 bg-[#fbfbfa] px-4">
+						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-md border border-black/10 bg-white text-black/60 transition hover:text-[#111111]" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
+							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+						</button>
+						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-black/45 md:flex">
+							<span>{activeGroup.label}</span>
+							<span>/</span>
+							<strong className="truncate text-[#111111]">{activeItem.label}</strong>
+						</div>
+						<div className="relative ml-auto hidden w-full max-w-xs md:block">
+							<div className="flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm text-black/60">
+								<Search className="h-4 w-4" />
+								<input
+									aria-label="Search leads"
+									value={headerSearch}
+									onChange={(event) => setHeaderSearch(event.target.value)}
+									placeholder="Search leads..."
+									className="w-full bg-transparent text-sm outline-none placeholder:text-black/35"
+								/>
+							</div>
+							{headerSearch.trim() ? (
+								<div className="absolute right-0 top-10 z-30 w-full overflow-hidden rounded-lg border border-black/10 bg-white shadow-xl">
+									{headerSearchResults.length === 0 ? <div className="px-3 py-3 text-xs text-black/45">No matching leads.</div> : null}
+									{headerSearchResults.map((inq) => (
+										<button
+											key={inq.id}
+											type="button"
+											onClick={() => {
+												openInquiryEditor(inq);
+												setHeaderSearch("");
+											}}
+											className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100"
+										>
+											<span className="font-medium text-[#111111]">{inq.buyer_name || inq.buyer_email || "Lead"}</span>
+											<span className="ml-2 text-xs text-black/45">{inq.properties?.title ?? "General inquiry"}</span>
+										</button>
+									))}
+								</div>
+							) : null}
+						</div>
+						<div className="relative ml-auto flex items-center gap-2 text-black/60 md:ml-1">
+							<button type="button" onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); }} className="relative rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title="Notifications">
 								<Bell className="h-4 w-4" />
-								{unreadCount > 0 ? (
-									<span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#DE141C] px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-pulse">
-										{unreadCount}
-									</span>
-								) : null}
+								{unreadCount > 0 ? <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#DE141C] px-1 text-[10px] font-bold text-white ring-2 ring-[#fbfbfa]">{unreadCount}</span> : null}
+							</button>
+							<button type="button" onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); }} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title={agent?.full_name}>
+								<UserCircle className="h-5 w-5" />
 							</button>
 
-							{/* Notification Dropdown Popover */}
 							{showNotifications ? (
-								<div className="absolute right-0 top-11 z-50 w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 shadow-xl text-left">
-									<div className="flex items-center justify-between pb-3 border-b border-black/5">
-										<div className="flex items-center gap-2">
-											<div className="font-semibold text-sm text-[#111111]">Notifications</div>
-											{unreadCount > 0 ? (
-												<span className="rounded-full bg-[#DE141C]/10 px-2 py-0.5 text-[10px] font-bold text-[#DE141C]">
-													{unreadCount} new
-												</span>
-											) : null}
-										</div>
+								<div className="absolute right-8 top-10 z-30 w-80 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl sm:w-96">
+									<div className="flex items-center justify-between border-b border-black/5 pb-2">
+										<div className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">Notifications</div>
 										{notifications.length > 0 ? (
-											<button
-												type="button"
-												onClick={handleMarkAllAsRead}
-												className="flex items-center gap-1 text-[11px] font-medium text-black/50 hover:text-black transition"
-											>
+											<button type="button" onClick={handleMarkAllAsRead} className="flex items-center gap-1 text-[11px] font-medium text-black/50 transition hover:text-black">
 												<CheckCheck className="h-3 w-3" />
 												Mark all read
 											</button>
 										) : null}
 									</div>
-
-									{/* Notification Items List */}
-									<div className="mt-2 max-h-80 overflow-y-auto divide-y divide-black/5">
+									<div className="mt-2 max-h-80 space-y-1 overflow-y-auto">
 										{notifications.length === 0 ? (
-											<div className="py-8 text-center text-xs text-black/40">
-												No notifications yet. New lead assignments will appear here.
-											</div>
+											<div className="py-8 text-center text-xs text-black/40">No notifications yet. New lead assignments appear here.</div>
 										) : (
 											notifications.slice(0, 15).map((notif) => (
-												<div
+												<button
 													key={notif.id}
+													type="button"
 													onClick={() => handleOpenNotification(notif)}
-													className={`group flex items-start gap-3 p-2.5 rounded-xl transition cursor-pointer hover:bg-black/5 ${
-														!notif.read ? "bg-red-50/40" : ""
-													}`}
+													className={`flex w-full items-start gap-3 rounded-md p-2.5 text-left transition hover:bg-black/5 ${!notif.read ? "bg-red-50/50" : ""}`}
 												>
-													<div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-														!notif.read ? "bg-[#DE141C]/10 text-[#DE141C]" : "bg-black/5 text-black/40"
-													}`}>
-														<UserCheck className="h-3.5 w-3.5" />
-													</div>
-													<div className="flex-1 min-w-0">
-														<div className="flex items-center justify-between gap-1">
-															<span className={`text-xs font-semibold ${!notif.read ? "text-[#DE141C]" : "text-[#111111]"}`}>
-																{notif.title}
-															</span>
-															<span className="text-[10px] text-black/40 whitespace-nowrap">
-																{formatTimeAgo(notif.timestamp)}
-															</span>
-														</div>
-														<p className="text-xs text-black/80 font-medium truncate mt-0.5">
-															{notif.message}
-														</p>
-														{notif.propertyTitle ? (
-															<p className="text-[11px] text-black/50 truncate">
-																Property: {notif.propertyTitle}
-															</p>
-														) : null}
-													</div>
-													{!notif.read ? (
-														<span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#DE141C]" />
-													) : null}
-												</div>
+													<span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${!notif.read ? "bg-[#DE141C]/10 text-[#DE141C]" : "bg-black/5 text-black/40"}`}>
+														<Users className="h-3.5 w-3.5" />
+													</span>
+													<span className="min-w-0 flex-1">
+														<span className="flex items-center justify-between gap-2">
+															<span className={`text-xs font-semibold ${!notif.read ? "text-[#DE141C]" : "text-[#111111]"}`}>{notif.title}</span>
+															<span className="shrink-0 text-[10px] text-black/40">{formatTimeAgo(notif.timestamp)}</span>
+														</span>
+														<span className="mt-0.5 block truncate text-xs font-medium text-black/75">{notif.message}</span>
+														{notif.propertyTitle ? <span className="block truncate text-[11px] text-black/50">{notif.propertyTitle}</span> : null}
+													</span>
+												</button>
 											))
 										)}
 									</div>
 								</div>
 							) : null}
-						</div>
 
-						<div className="hidden text-right sm:block">
-							<div className="text-sm font-semibold text-[#111111]">{agent?.full_name}</div>
-							<div className="text-xs text-black/50">{userEmail}</div>
+							{showProfileMenu ? (
+								<div className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
+									<div className="font-medium text-[#111111]">{agent?.full_name ?? "Agent"}</div>
+									<div className="mt-1 truncate text-xs text-black/45">{userEmail}</div>
+									<div className="mt-2 inline-flex rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{agent?.license_number || "Licensed Agent"}</div>
+									<button type="button" onClick={handleSignOut} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+								</div>
+							) : null}
 						</div>
-						{agent?.photo_url ? (
-							<div className="relative h-9 w-9 overflow-hidden rounded-full border border-black/10">
-								<Image
-									src={agent.photo_url}
-									alt={agent.full_name}
-									fill
-									className="object-cover"
-								/>
+					</header>
+
+					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
+						<div className="mx-auto flex max-w-7xl flex-col gap-3">
+							<div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+								{navGroups.map((group) => {
+									const Icon = group.icon;
+									const active = activeGroup.id === group.id;
+									return (
+										<button
+											key={group.id}
+											type="button"
+											onClick={() => openSection(group.items[0].id)}
+											className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active ? "border-[#111111] bg-[#111111] text-white" : "border-black/10 bg-white text-black/65"}`}
+										>
+											<Icon className="h-3.5 w-3.5" />
+											{group.label}
+										</button>
+									);
+								})}
 							</div>
-						) : (
-							<div className="grid h-9 w-9 place-items-center rounded-full bg-[#DE141C] text-xs font-bold text-white">
-								{agent?.full_name?.charAt(0) ?? "A"}
+							<div className="flex flex-wrap items-end justify-between gap-3">
+								<div>
+									<div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">
+										<span>Agent Workspace</span>
+										{agent?.is_top_agent ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700"><Star className="h-3 w-3" />Top Agent</span> : null}
+									</div>
+									<h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
+										{activeSection === "overview" ? `Welcome back, ${agent?.full_name?.split(" ")[0] || "Agent"}` : activeItem.label}
+									</h1>
+								</div>
+								<div className="flex items-center gap-2">
+									<button type="button" onClick={() => openSection("inquiries")} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+										<Inbox className="h-3.5 w-3.5" />
+										Leads ({inquiries.length})
+									</button>
+									<button type="button" onClick={() => void reloadInquiries()} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+										<RefreshCw className="h-3.5 w-3.5" />
+										Refresh
+									</button>
+								</div>
 							</div>
-						)}
-						<button
-							onClick={handleSignOut}
-							className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-black/70 transition hover:bg-black/5 hover:text-black"
-						>
-							Sign out
-						</button>
+
+							{statusMessage ? <div className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-medium text-[#111111] shadow-sm">{statusMessage}</div> : null}
+
+							{/* ── OVERVIEW ───────────────────────────────────────────── */}
+							{activeSection === "overview" ? (
+								<>
+									{unreadCount > 0 ? (
+										<div className="flex flex-col gap-3 rounded-lg border border-[#DE141C]/25 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+											<div className="flex items-center gap-3">
+												<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#DE141C] text-white"><Bell className="h-5 w-5" /></span>
+												<div>
+													<div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#DE141C]">Action required</div>
+													<div className="text-sm font-semibold text-[#111111]">You have {unreadCount} new lead{unreadCount > 1 ? "s" : ""} assigned by Admin.</div>
+													<div className="text-xs text-black/55">Review client details and reach out to start the conversation.</div>
+												</div>
+											</div>
+											<button type="button" onClick={() => openSection("inquiries")} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/80">
+												View leads
+												<ChevronRight className="h-3.5 w-3.5" />
+											</button>
+										</div>
+									) : null}
+
+									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+										<StatCard label="Total leads" value={stats.total} hint={`${stats.newLeads} awaiting first contact`} icon={Inbox} />
+										<StatCard label="Active pipeline" value={stats.active} hint="Contacted, viewing or negotiating" accent icon={Target} />
+										<StatCard label="Reserved / closed" value={stats.won} hint={`${stats.lost} lost deals`} icon={CheckCheck} />
+										<StatCard label="Conversion rate" value={`${stats.conversion}%`} hint={`${stats.responseRate}% response rate`} icon={TrendingUp} />
+									</div>
+
+									<div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="flex items-start justify-between gap-3">
+												<div>
+													<div className="text-sm font-semibold text-[#111111]">Lead volume (last 14 days)</div>
+													<p className="mt-1 text-xs text-black/45">Buyer inquiries assigned to you over time.</p>
+												</div>
+												<button type="button" onClick={() => openSection("trends")} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">View report</button>
+											</div>
+											<div className="mt-3"><AgentTrendChart rows={trendRows} name="Leads" /></div>
+										</div>
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Pipeline distribution</div>
+											<p className="mt-1 text-xs text-black/45">Leads by current stage.</p>
+											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} /></div>
+										</div>
+									</div>
+
+									<div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="flex items-center justify-between gap-3">
+												<div>
+													<div className="text-sm font-semibold text-[#111111]">Recent leads</div>
+													<p className="mt-1 text-xs text-black/45">Newest buyer inquiries needing attention.</p>
+												</div>
+												<button type="button" onClick={() => openSection("inquiries")} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Open queue</button>
+											</div>
+											<div className="mt-3 space-y-2">
+												{inquiries.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-4 text-sm text-black/50">No inquiries assigned yet.</p> : null}
+												{inquiries.slice(0, 5).map((inq) => (
+													<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-left transition hover:bg-zinc-50">
+														<div className="flex items-start justify-between gap-3">
+															<div className="min-w-0">
+																<div className="truncate text-sm font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
+																<div className="mt-1 truncate text-xs text-black/50">{inq.properties?.title ?? "General inquiry"} · {formatTimeAgo(inq.created_at)}</div>
+															</div>
+															<StatusPill status={inq.status} />
+														</div>
+													</button>
+												))}
+											</div>
+										</div>
+
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Agent card preview</div>
+											<p className="mt-1 text-xs text-black/45">How clients see you on the public site.</p>
+											<div className="mt-4 flex flex-col items-center text-center">
+												{agent?.photo_url ? (
+													// eslint-disable-next-line @next/next/no-img-element
+													<img src={agent.photo_url} alt={agent.full_name} className="h-20 w-20 rounded-full border border-black/10 object-cover" />
+												) : (
+													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
+												)}
+												<div className="mt-3 text-base font-semibold text-[#111111]">{agent?.full_name}</div>
+												<div className="text-xs font-medium text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
+												<div className="mt-1 text-[11px] text-black/45">License: {agent?.license_number || "PRC Accredited"}</div>
+												{agent?.bio ? <p className="mt-3 line-clamp-3 text-xs leading-5 text-black/60">{agent.bio}</p> : null}
+												<button type="button" onClick={() => openSection("profile")} className="mt-4 w-full rounded-md border border-black/10 py-2 text-xs font-semibold text-[#111111] transition hover:bg-black/5">Edit public details</button>
+											</div>
+										</div>
+									</div>
+								</>
+							) : null}
+
+							{/* ── INQUIRIES ──────────────────────────────────────────── */}
+							{activeSection === "inquiries" ? (
+								<div className="space-y-3">
+									<div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+										<input
+											type="search"
+											value={inquirySearch}
+											onChange={(event) => setInquirySearch(event.target.value)}
+											placeholder="Search by buyer name, email, phone, or property..."
+											className="h-9 flex-1 rounded-md border border-black/10 bg-zinc-50 px-3 text-xs text-[#111111] outline-none transition focus:border-black/30 focus:bg-white"
+										/>
+										<div className="flex items-center gap-2">
+											<span className="text-xs font-medium text-black/50">Status</span>
+											<select value={inquiryStatusFilter} onChange={(event) => setInquiryStatusFilter(event.target.value)} className="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none">
+												<option value="all">All ({inquiries.length})</option>
+												{STATUS_ORDER.map((status) => (
+													<option key={status} value={status}>{statusMeta(status).label}</option>
+												))}
+											</select>
+										</div>
+									</div>
+
+									{editingInquiry ? (
+										<div className="rounded-lg border border-[#DE141C]/30 bg-white p-4">
+											<div className="flex items-center justify-between border-b border-black/10 pb-3">
+												<div>
+													<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Updating lead status</div>
+													<h3 className="text-base font-bold text-[#111111]">{editingInquiry.buyer_name || "Lead details"}</h3>
+												</div>
+												<button type="button" onClick={() => setEditingInquiry(null)} className="rounded-md border border-black/10 px-2.5 py-1 text-xs font-medium text-black/60 hover:bg-black/5">Cancel</button>
+											</div>
+											<div className="mt-4 grid gap-4 sm:grid-cols-2">
+												<div>
+													<div className="text-xs font-semibold uppercase tracking-wider text-black/60">Buyer contact</div>
+													<div className="mt-1 text-sm font-medium text-[#111111]">{editingInquiry.buyer_name || "—"}</div>
+													<div className="text-xs text-black/50">
+														Email:{" "}
+														{editingInquiry.buyer_email ? <a href={`mailto:${editingInquiry.buyer_email}`} className="break-all text-[#DE141C] hover:underline">{editingInquiry.buyer_email}</a> : "—"}
+													</div>
+													<div className="text-xs text-black/50">
+														Phone:{" "}
+														{editingInquiry.buyer_phone ? <a href={`tel:${editingInquiry.buyer_phone}`} className="text-[#DE141C] hover:underline">{editingInquiry.buyer_phone}</a> : "—"}
+													</div>
+													{editingInquiry.message ? <p className="mt-2 rounded-md bg-zinc-50 px-3 py-2 text-xs leading-5 text-black/60">{editingInquiry.message}</p> : null}
+													{editingInquiry.properties?.title ? (
+														<div className="mt-2 text-xs font-medium text-black/70">
+															Property: {editingInquiry.properties.title} ({editingInquiry.properties.city ?? "Batangas"})
+														</div>
+													) : null}
+													<div className="mt-3 flex flex-wrap items-center gap-2">
+														{editingInquiry.buyer_phone ? (
+															<a href={`tel:${editingInquiry.buyer_phone}`} onClick={() => { if (["new", "assigned"].includes(editingInquiry.status ?? "")) void handleQuickContact(editingInquiry, "call"); }} className="inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-sm transition hover:border-black/30" title="Call buyer & mark contacted">
+																<Phone className="h-3.5 w-3.5 text-emerald-600" />Call
+															</a>
+														) : null}
+														{editingInquiry.buyer_email ? (
+															<a href={`mailto:${editingInquiry.buyer_email}`} onClick={() => { if (["new", "assigned"].includes(editingInquiry.status ?? "")) void handleQuickContact(editingInquiry, "email"); }} className="inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-sm transition hover:border-black/30" title="Email buyer & mark contacted">
+																<Mail className="h-3.5 w-3.5 text-blue-600" />Email
+															</a>
+														) : null}
+														{!["contacted", "viewing_scheduled", "negotiating", "reserved", "closed_won"].includes(editingInquiry.status ?? "") ? (
+															<button type="button" onClick={() => void handleQuickContact(editingInquiry, "manual")} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+																Mark contacted
+															</button>
+														) : null}
+													</div>
+												</div>
+												<div>
+													<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">Pipeline stage</label>
+													<select value={editStatus} onChange={(event) => setEditStatus(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none">
+														{STATUS_ORDER.map((status) => (
+															<option key={status} value={status}>{statusMeta(status).label}</option>
+														))}
+													</select>
+													<label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-black/60">Follow-up notes</label>
+													<textarea value={editNotes} onChange={(event) => setEditNotes(event.target.value)} rows={3} placeholder="e.g. Scheduled site visit Saturday 2PM..." className="mt-1 w-full rounded-md border border-black/10 bg-white p-2.5 text-xs text-[#111111] outline-none focus:border-black/30" />
+													<button type="button" disabled={updatingInquiry} onClick={() => void handleUpdateInquiryStatus(editingInquiry.id, editStatus, editNotes)} className="mt-3 inline-flex h-9 items-center justify-center rounded-md bg-[#111111] px-4 text-xs font-semibold text-white transition hover:bg-black/80 disabled:opacity-50">
+														{updatingInquiry ? "Saving..." : "Save status & notes"}
+													</button>
+												</div>
+											</div>
+										</div>
+									) : null}
+
+									<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+										<div className="overflow-x-auto">
+											<table className="min-w-full text-left text-xs">
+												<thead className="border-b border-black/10 bg-zinc-50 font-semibold uppercase tracking-[0.12em] text-black/50">
+													<tr>
+														<th className="px-4 py-3">Buyer</th>
+														<th className="px-4 py-3">Property</th>
+														<th className="px-4 py-3">Status</th>
+														<th className="px-4 py-3">Priority</th>
+														<th className="px-4 py-3">Date</th>
+														<th className="px-4 py-3 text-right">Action</th>
+													</tr>
+												</thead>
+												<tbody className="divide-y divide-black/5">
+													{filteredInquiries.length === 0 ? (
+														<tr><td colSpan={6} className="px-4 py-10 text-center text-black/45">No inquiries match your filters.</td></tr>
+													) : (
+														filteredInquiries.map((inq) => (
+															<tr key={inq.id} className="transition hover:bg-zinc-50/70">
+																<td className="px-4 py-3">
+																	<div className="text-sm font-semibold text-[#111111]">{inq.buyer_name || "—"}</div>
+																	<div className="break-all text-black/50">{inq.buyer_email || inq.buyer_phone}</div>
+																</td>
+																<td className="px-4 py-3">
+																	{inq.properties?.title ? (
+																		<>
+																			<div className="font-medium text-[#111111]">{inq.properties.title}</div>
+																			<div className="text-black/45">{inq.properties.city ?? "Batangas"}</div>
+																		</>
+																	) : (
+																		<span className="text-black/40">General inquiry</span>
+																	)}
+																</td>
+																<td className="px-4 py-3"><StatusPill status={inq.status} /></td>
+																<td className="px-4 py-3"><PriorityPill priority={inq.priority} /></td>
+																<td className="px-4 py-3 text-black/50">{formatDate(inq.created_at)}</td>
+																<td className="px-4 py-3 text-right">
+																	<div className="inline-flex items-center justify-end gap-1.5">
+																		{["new", "assigned"].includes(inq.status ?? "") ? (
+																			<button type="button" onClick={() => void handleQuickContact(inq, "manual")} className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100">Mark contacted</button>
+																		) : null}
+																		<button type="button" onClick={() => openInquiryEditor(inq)} className="rounded-md border border-black/10 px-3 py-1 text-xs font-semibold text-[#111111] transition hover:bg-black/5">Update</button>
+																	</div>
+																</td>
+															</tr>
+														))
+													)}
+												</tbody>
+											</table>
+										</div>
+									</div>
+								</div>
+							) : null}
+
+							{/* ── PIPELINE ───────────────────────────────────────────── */}
+							{activeSection === "pipeline" ? (
+								<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-3">
+										<StatCard label="Active deals" value={stats.active} hint="In active conversation" accent />
+										<StatCard label="Open leads" value={stats.open} hint="Not yet closed" />
+										<StatCard label="Pipeline value" value={formatCurrency(stats.pipelineValue)} hint="Sum of lead listing prices" />
+									</div>
+									<div className="flex gap-3 overflow-x-auto pb-2">
+										{STATUS_ORDER.map((status) => {
+											const meta = statusMeta(status);
+											const items = inquiries.filter((inq) => (inq.status ?? "new") === status);
+											return (
+												<div key={status} className="flex w-72 shrink-0 flex-col rounded-lg border border-black/10 bg-white">
+													<div className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5">
+														<div className="flex items-center gap-2">
+															<span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.dot }} />
+															<span className="text-xs font-semibold uppercase tracking-wider text-black/65">{meta.label}</span>
+														</div>
+														<span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/55">{items.length}</span>
+													</div>
+													<div className="flex max-h-[520px] flex-col gap-2 overflow-y-auto p-2">
+														{items.length === 0 ? <p className="px-2 py-4 text-center text-xs text-black/35">No leads</p> : null}
+														{items.map((inq) => (
+															<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="rounded-md border border-black/10 bg-white p-2.5 text-left transition hover:border-black/25 hover:bg-zinc-50">
+																<div className="truncate text-xs font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
+																<div className="mt-1 truncate text-[11px] text-black/50">{inq.properties?.title ?? "General inquiry"}</div>
+																<div className="mt-2 flex items-center justify-between gap-2">
+																	<PriorityPill priority={inq.priority} />
+																	<span className="text-[10px] text-black/40">{formatTimeAgo(inq.created_at)}</span>
+																</div>
+															</button>
+														))}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							) : null}
+
+							{/* ── ACTIVITY ───────────────────────────────────────────── */}
+							{activeSection === "activity" ? (
+								<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="text-sm font-semibold text-[#111111]">Activity history</div>
+									<p className="mt-1 text-xs text-black/45">Status changes recorded across your assigned leads.</p>
+									<div className="mt-4 space-y-3">
+										{timeline.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-6 text-center text-sm text-black/50">No activity recorded yet.</p> : null}
+										{timeline.map((event, index) => {
+											const related = inquiries.find((inq) => inq.id === event.inquiry_id);
+											return (
+												<div key={event.id ?? `${event.inquiry_id}-${index}`} className="flex gap-3">
+													<div className="flex flex-col items-center">
+														<span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: statusMeta(event.new_status).dot }} />
+														<span className="mt-1 w-px flex-1 bg-black/10" />
+													</div>
+													<div className="min-w-0 flex-1 pb-3">
+														<div className="flex flex-wrap items-center gap-2">
+															<span className="text-xs font-semibold text-[#111111]">{related?.buyer_name || "Lead"}</span>
+															<StatusPill status={event.old_status} />
+															<ChevronRight className="h-3 w-3 text-black/30" />
+															<StatusPill status={event.new_status} />
+															<span className="ml-auto text-[10px] text-black/40">{formatTimeAgo(event.created_at)}</span>
+														</div>
+														{event.note ? <p className="mt-1 text-xs leading-5 text-black/60">{event.note}</p> : null}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							) : null}
+
+							{/* ── LISTINGS ───────────────────────────────────────────── */}
+							{activeSection === "listings" ? (
+								<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-3">
+										<StatCard label="Assigned listings" value={properties.length} hint="Properties tagged to you" icon={Building2} />
+										<StatCard label="Published" value={stats.publishedListings} hint="Live on the public site" />
+										<StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" />
+									</div>
+									{properties.length === 0 ? (
+										<div className="rounded-lg border border-dashed border-black/15 bg-white py-16 text-center">
+											<p className="text-sm font-semibold text-[#111111]">No listings assigned yet</p>
+											<p className="mt-1 text-xs text-black/50">The brokerage admin can assign property listings to your account in the CMS.</p>
+										</div>
+									) : (
+										<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+											{properties.map((prop) => (
+												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-lg border border-black/10 bg-white transition hover:shadow-md">
+													<div className="relative aspect-[16/10] w-full bg-zinc-100">
+														{prop.featured_image_url || prop.images?.[0] ? (
+															// eslint-disable-next-line @next/next/no-img-element
+															<img src={prop.featured_image_url || prop.images?.[0] || ""} alt={prop.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+														) : (
+															<div className="grid h-full w-full place-items-center text-xs text-black/40">No photo</div>
+														)}
+														<span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">{prop.status || "Published"}</span>
+													</div>
+													<div className="flex flex-1 flex-col p-4">
+														<div className="text-[11px] font-semibold uppercase tracking-wider text-[#DE141C]">{prop.category || "Residential"}</div>
+														<h3 className="mt-1 line-clamp-1 text-base font-semibold tracking-tight text-[#111111]">{prop.title}</h3>
+														<p className="flex items-center gap-1 text-xs text-black/50"><MapPin className="h-3 w-3" />{prop.city ?? "Batangas"}, {prop.province ?? "Philippines"}</p>
+														<div className="mt-3 flex items-center gap-3 border-t border-black/5 pt-2 text-xs text-black/60">
+															{prop.bedrooms ? <span>{prop.bedrooms} beds</span> : null}
+															{prop.bathrooms ? <span>{prop.bathrooms} baths</span> : null}
+															{prop.lot_area_sqm ? <span>{prop.lot_area_sqm} sqm</span> : null}
+														</div>
+														<div className="mt-auto flex items-center justify-between border-t border-black/10 pt-3">
+															<div className="text-sm font-bold text-[#111111]">{formatCurrency(prop.price)}</div>
+															<Link href={`/project-list/${prop.slug}`} target="_blank" className="inline-flex items-center gap-1 text-xs font-semibold text-black/70 hover:text-[#DE141C]">
+																View<ArrowUpRight className="h-3.5 w-3.5" />
+															</Link>
+														</div>
+													</div>
+												</div>
+											))}
+										</div>
+									)}
+								</div>
+							) : null}
+
+							{/* ── LISTING INSIGHTS ───────────────────────────────────── */}
+							{activeSection === "listingInsights" ? (
+								<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-4">
+										<StatCard label="Listings" value={properties.length} hint="Total assigned" />
+										<StatCard label="Published" value={stats.publishedListings} hint="Publicly visible" />
+										<StatCard label="Avg price" value={formatCurrency(properties.length ? Math.round(listingValue / properties.length) : 0)} hint="Across your listings" />
+										<StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" />
+									</div>
+									<div className="grid gap-3 xl:grid-cols-2">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Portfolio by category</div>
+											<p className="mt-1 text-xs text-black/45">How your listings break down by category.</p>
+											<div className="mt-3"><AgentDonut rows={categoryRows} centerLabel="Listings" centerValue={properties.length} /></div>
+										</div>
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Listings by status</div>
+											<p className="mt-1 text-xs text-black/45">Publication status of your portfolio.</p>
+											<div className="mt-3"><AgentBarChart rows={listingStatusRows} name="Listings" horizontal /></div>
+										</div>
+									</div>
+									<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+										<div className="border-b border-black/10 px-4 py-3 text-sm font-semibold text-[#111111]">Listing breakdown</div>
+										<div className="overflow-x-auto">
+											<table className="min-w-full text-left text-xs">
+												<thead className="border-b border-black/10 bg-zinc-50 font-semibold uppercase tracking-[0.12em] text-black/50">
+													<tr>
+														<th className="px-4 py-3">Listing</th>
+														<th className="px-4 py-3">Category</th>
+														<th className="px-4 py-3">Status</th>
+														<th className="px-4 py-3 text-right">Price</th>
+													</tr>
+												</thead>
+												<tbody className="divide-y divide-black/5">
+													{properties.length === 0 ? <tr><td colSpan={4} className="px-4 py-10 text-center text-black/45">No listings assigned.</td></tr> : null}
+													{properties.map((prop) => (
+														<tr key={prop.id} className="transition hover:bg-zinc-50/70">
+															<td className="px-4 py-3 font-medium text-[#111111]">{prop.title}</td>
+															<td className="px-4 py-3 capitalize text-black/55">{prop.category ?? "—"}</td>
+															<td className="px-4 py-3"><span className="rounded-full border border-black/10 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-black/60">{prop.status ?? "published"}</span></td>
+															<td className="px-4 py-3 text-right font-medium text-[#111111]">{formatCurrency(prop.price)}</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
+										</div>
+									</div>
+								</div>
+							) : null}
+
+							{/* ── PERFORMANCE ────────────────────────────────────────── */}
+							{activeSection === "performance" ? (
+								<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+										<StatCard label="Total leads" value={stats.total} hint="All-time assigned" icon={Inbox} />
+										<StatCard label="Response rate" value={`${stats.responseRate}%`} hint="Leads you engaged with" />
+										<StatCard label="Conversion rate" value={`${stats.conversion}%`} hint="Lead to closed ratio" icon={TrendingUp} />
+										<StatCard label="Closed deals" value={stats.won} hint={`${stats.lost} lost`} icon={CheckCheck} />
+									</div>
+									<div className="grid gap-3 xl:grid-cols-2">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Engagement funnel</div>
+											<p className="mt-1 text-xs text-black/45">How leads progress through your pipeline.</p>
+											<div className="mt-4"><AgentFunnel rows={funnelRows} /></div>
+										</div>
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Leads by stage</div>
+											<p className="mt-1 text-xs text-black/45">Current distribution of your pipeline.</p>
+											<div className="mt-3"><AgentBarChart rows={statusRows} name="Leads" horizontal /></div>
+										</div>
+									</div>
+									<div className="grid gap-3 xl:grid-cols-2">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Leads by priority</div>
+											<p className="mt-1 text-xs text-black/45">Focus on high and urgent leads first.</p>
+											<div className="mt-3"><AgentBarChart rows={priorityRows} name="Leads" horizontal /></div>
+										</div>
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Weekly lead rhythm</div>
+											<p className="mt-1 text-xs text-black/45">Which weekdays generate the most leads.</p>
+											<div className="mt-3"><AgentBarChart rows={weekdayRows} name="Leads" /></div>
+										</div>
+									</div>
+								</div>
+							) : null}
+
+							{/* ── TRENDS ─────────────────────────────────────────────── */}
+							{activeSection === "trends" ? (
+								<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-3">
+										<StatCard label="Leads (14 days)" value={trendRows.reduce((sum, row) => sum + row.value, 0)} hint="Recent lead flow" icon={TrendingUp} />
+										<StatCard label="Leads (30 days)" value={monthTrendRows.reduce((sum, row) => sum + row.value, 0)} hint="Last month" />
+										<StatCard label="Avg per day" value={(monthTrendRows.reduce((sum, row) => sum + row.value, 0) / 30).toFixed(1)} hint="30-day average" />
+									</div>
+									<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="text-sm font-semibold text-[#111111]">Lead volume (last 30 days)</div>
+										<p className="mt-1 text-xs text-black/45">Daily count of inquiries assigned to you.</p>
+										<div className="mt-3"><AgentTrendChart rows={monthTrendRows} name="Leads" /></div>
+									</div>
+									<div className="grid gap-3 xl:grid-cols-2">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Leads by weekday</div>
+											<p className="mt-1 text-xs text-black/45">All-time distribution across the week.</p>
+											<div className="mt-3"><AgentBarChart rows={weekdayRows} name="Leads" /></div>
+										</div>
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<div className="text-sm font-semibold text-[#111111]">Stage mix</div>
+											<p className="mt-1 text-xs text-black/45">Share of leads in each pipeline stage.</p>
+											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} /></div>
+										</div>
+									</div>
+								</div>
+							) : null}
+
+							{/* ── PROFILE ────────────────────────────────────────────── */}
+							{activeSection === "profile" ? (
+								<div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
+									<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="border-b border-black/10 pb-3">
+											<h2 className="text-sm font-semibold text-[#111111]">Profile & credentials</h2>
+											<p className="mt-1 text-xs text-black/50">Manage your public credentials, biography, and contact links.</p>
+										</div>
+										{profileMessage ? <div className="mt-3 rounded-md border border-black/10 bg-zinc-50 p-3 text-xs font-semibold text-[#DE141C]">{profileMessage}</div> : null}
+										<form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
+											<div className="grid gap-4 sm:grid-cols-2">
+												<label className="block">
+													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Full name</span>
+													<input type="text" required value={profileForm.full_name || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, full_name: event.target.value }))} className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+												</label>
+												<label className="block">
+													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">PRC license number</span>
+													<input type="text" value={profileForm.license_number || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, license_number: event.target.value }))} placeholder="e.g. PRC-0012345" className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+												</label>
+												<label className="block">
+													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Specialization</span>
+													<input type="text" value={profileForm.specialization || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, specialization: event.target.value }))} placeholder="e.g. Residential & Condominium" className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+												</label>
+												<label className="block">
+													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Photo URL</span>
+													<input type="url" value={profileForm.photo_url || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, photo_url: event.target.value }))} placeholder="https://..." className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+												</label>
+											</div>
+											<label className="block">
+												<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Biography</span>
+												<textarea rows={4} value={profileForm.bio || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, bio: event.target.value }))} placeholder="Introduce your experience, focus areas, and commitment to clients..." className="mt-1 w-full rounded-md border border-black/10 bg-white p-3 text-sm outline-none transition focus:border-black/30" />
+											</label>
+											<div className="border-t border-black/10 pt-4">
+												<h3 className="text-xs font-bold uppercase tracking-wider text-black/60">Social links</h3>
+												<div className="mt-3 grid gap-3 sm:grid-cols-2">
+													{([
+														["facebook_url", "Facebook profile URL"],
+														["instagram_url", "Instagram profile URL"],
+														["linkedin_url", "LinkedIn profile URL"],
+														["twitter_url", "Twitter / X profile URL"],
+													] as const).map(([key, placeholder]) => (
+														<input key={key} type="url" placeholder={placeholder} value={(profileForm[key] as string) || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, [key]: event.target.value }))} className="h-9 rounded-md border border-black/10 bg-white px-3 text-xs outline-none focus:border-black/30" />
+													))}
+												</div>
+											</div>
+											<button type="submit" disabled={savingProfile} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-6 text-xs font-semibold text-white transition hover:bg-black/80 disabled:opacity-50">
+												{savingProfile ? "Saving..." : "Save profile details"}
+											</button>
+										</form>
+									</div>
+									<div className="space-y-3">
+										<div className="rounded-lg border border-black/10 bg-white p-4">
+											<h2 className="text-sm font-semibold text-[#111111]">Public preview</h2>
+											<div className="mt-4 flex flex-col items-center text-center">
+												{agent?.photo_url ? (
+													// eslint-disable-next-line @next/next/no-img-element
+													<img src={agent.photo_url} alt={agent.full_name} className="h-20 w-20 rounded-full border border-black/10 object-cover" />
+												) : (
+													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
+												)}
+												<div className="mt-3 text-base font-semibold text-[#111111]">{agent?.full_name}</div>
+												<div className="text-xs font-medium text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
+												<div className="mt-1 text-[11px] text-black/45">{agent?.license_number || "PRC Accredited"}</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							) : null}
+
+							{/* ── SECURITY ───────────────────────────────────────────── */}
+							{activeSection === "security" ? (
+								<div className="grid gap-3 xl:grid-cols-2">
+									<div className="rounded-lg border border-black/10 bg-white p-4">
+										<h2 className="text-sm font-semibold text-[#111111]">Account security</h2>
+										<p className="mt-1 text-xs text-black/50">Your authentication credentials and access.</p>
+										<div className="mt-4 space-y-3">
+											<div>
+												<span className="text-[11px] font-semibold uppercase tracking-wider text-black/45">Sign-in email</span>
+												<div className="mt-0.5 break-all text-xs font-medium text-[#111111]">{userEmail || "—"}</div>
+											</div>
+											<div>
+												<span className="text-[11px] font-semibold uppercase tracking-wider text-black/45">Account type</span>
+												<div className="mt-0.5 text-xs text-black/60">Licensed Real Estate Agent</div>
+											</div>
+											<div className="flex items-center gap-2 rounded-md bg-zinc-50 px-3 py-2 text-xs text-black/55">
+												<ShieldCheck className="h-4 w-4 text-emerald-600" />
+												Session secured by Supabase Auth.
+											</div>
+											<button type="button" onClick={handleSendPasswordReset} className="w-full rounded-md border border-black/10 bg-zinc-50 py-2.5 text-xs font-semibold text-[#111111] transition hover:bg-black/5">Send password reset email</button>
+											<button type="button" onClick={handleSignOut} className="w-full rounded-md bg-[#111111] py-2.5 text-xs font-semibold text-white transition hover:bg-black/80">Sign out</button>
+										</div>
+									</div>
+									<div className="rounded-lg border border-black/10 bg-white p-4">
+										<h2 className="text-sm font-semibold text-[#111111]">Workspace at a glance</h2>
+										<p className="mt-1 text-xs text-black/50">Your current workload.</p>
+										<div className="mt-4 space-y-3">
+											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
+												<span className="flex items-center gap-2 text-xs text-black/60"><Inbox className="h-4 w-4" />Assigned leads</span>
+												<span className="text-sm font-semibold text-[#111111]">{stats.total}</span>
+											</div>
+											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
+												<span className="flex items-center gap-2 text-xs text-black/60"><Building2 className="h-4 w-4" />Assigned listings</span>
+												<span className="text-sm font-semibold text-[#111111]">{properties.length}</span>
+											</div>
+											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
+												<span className="flex items-center gap-2 text-xs text-black/60"><Wallet className="h-4 w-4" />Pipeline value</span>
+												<span className="text-sm font-semibold text-[#111111]">{formatCurrency(stats.pipelineValue)}</span>
+											</div>
+											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
+												<span className="flex items-center gap-2 text-xs text-black/60"><Clock className="h-4 w-4" />Last activity</span>
+												<span className="text-sm font-semibold text-[#111111]">{formatTimeAgo(inquiries[0]?.last_activity_at ?? inquiries[0]?.created_at)}</span>
+											</div>
+										</div>
+									</div>
+								</div>
+							) : null}
+						</div>
 					</div>
-				</div>
-			</header>
+				</section>
+			</div>
 
-			{/* Floating Live Assignment Notification Toast */}
+			{/* Floating live assignment toast */}
 			{toastNotification ? (
-				<div className="fixed top-20 right-4 sm:right-8 z-50 flex max-w-sm sm:max-w-md items-start gap-3 rounded-2xl border border-[#DE141C]/25 bg-white p-4 shadow-2xl ring-1 ring-black/5 transition duration-200 animate-in slide-in-from-top-4">
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DE141C]/10 text-[#DE141C]">
-						<Sparkles className="h-5 w-5" />
-					</div>
-					<div className="flex-1 min-w-0">
+				<div className="fixed right-4 top-20 z-50 flex max-w-sm items-start gap-3 rounded-lg border border-[#DE141C]/25 bg-white p-4 shadow-2xl sm:right-8 sm:max-w-md">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DE141C]/10 text-[#DE141C]"><Sparkles className="h-5 w-5" /></div>
+					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">
-								New Lead Assigned By Admin
-							</p>
-							<button
-								type="button"
-								onClick={() => setToastNotification(null)}
-								className="text-black/40 hover:text-black p-0.5 rounded transition"
-								title="Dismiss"
-							>
-								<X className="h-3.5 w-3.5" />
-							</button>
+							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">New lead assigned by Admin</p>
+							<button type="button" onClick={() => setToastNotification(null)} className="rounded p-0.5 text-black/40 transition hover:text-black" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
 						</div>
-						<p className="mt-1 text-sm font-semibold text-[#111111] leading-snug">
-							{toastNotification.message}
-						</p>
-						{toastNotification.propertyTitle ? (
-							<p className="text-xs text-black/55 mt-0.5 truncate">
-								Listing: <span className="font-medium text-black/75">{toastNotification.propertyTitle}</span>
-							</p>
-						) : null}
+						<p className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{toastNotification.message}</p>
+						{toastNotification.propertyTitle ? <p className="mt-0.5 truncate text-xs text-black/55">Listing: <span className="font-medium text-black/75">{toastNotification.propertyTitle}</span></p> : null}
 						<div className="mt-3 flex items-center gap-2">
-							<button
-								type="button"
-								onClick={() => handleOpenNotification(toastNotification)}
-								className="inline-flex items-center gap-1.5 rounded-lg bg-[#DE141C] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b51016]"
-							>
-								Review Lead Now
-								<ChevronRight className="h-3.5 w-3.5" />
+							<button type="button" onClick={() => handleOpenNotification(toastNotification)} className="inline-flex items-center gap-1.5 rounded-md bg-[#DE141C] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b51016]">
+								Review lead now<ChevronRight className="h-3.5 w-3.5" />
 							</button>
-							<button
-								type="button"
-								onClick={() => setToastNotification(null)}
-								className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 hover:bg-black/5 transition"
-							>
-								Dismiss
-							</button>
+							<button type="button" onClick={() => setToastNotification(null)} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-black/5">Dismiss</button>
 						</div>
 					</div>
 				</div>
 			) : null}
-
-			{/* Main Content Area */}
-			<div className="mx-auto max-w-7xl px-4 pt-6 sm:px-8">
-				{/* Status Alert */}
-				{statusMessage ? (
-					<div className="mb-4 rounded-xl border border-black/10 bg-white p-3 text-xs font-medium text-[#DE141C] shadow-sm">
-						{statusMessage}
-					</div>
-				) : null}
-
-				{/* Unread Assigned Leads Alert Banner */}
-				{unreadCount > 0 ? (
-					<div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#DE141C]/30 bg-gradient-to-r from-red-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-sm">
-						<div className="flex items-center gap-3.5">
-							<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#DE141C] text-white shadow-sm">
-								<Bell className="h-5 w-5" />
-							</div>
-							<div>
-								<div className="text-xs font-bold uppercase tracking-wider text-[#DE141C]">
-									Action Required
-								</div>
-								<div className="font-semibold text-sm text-[#111111]">
-									You have {unreadCount} new lead{unreadCount > 1 ? "s" : ""} assigned by Admin!
-								</div>
-								<div className="text-xs text-black/55">
-									Review client details and reach out to initiate conversations.
-								</div>
-							</div>
-						</div>
-						<button
-							type="button"
-							onClick={() => setActiveTab("inquiries")}
-							className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#111111] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-black"
-						>
-							View Assigned Leads ({unreadCount})
-							<ChevronRight className="h-3.5 w-3.5" />
-						</button>
-					</div>
-				) : null}
-
-				{/* Agent Welcome Banner */}
-				<div className="mb-6 flex flex-col justify-between gap-4 rounded-2xl border border-black/10 bg-white p-6 shadow-sm md:flex-row md:items-center">
-					<div>
-						<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#DE141C]">
-							<span>Welcome back</span>
-							<span>•</span>
-							<span>PRC: {agent?.license_number || "Verified"}</span>
-						</div>
-						<h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111111]">
-							{agent?.full_name}
-						</h1>
-						<p className="mt-1 text-sm text-black/60">
-							{agent?.specialization || "Licensed Real Estate Specialist"} · Jewellz Realty Group
-						</p>
-					</div>
-
-					<div className="flex flex-wrap items-center gap-2">
-						<button
-							onClick={() => setActiveTab("inquiries")}
-							className="rounded-xl bg-[#DE141C] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b80f15]"
-						>
-							View Inquiries ({inquiries.length})
-						</button>
-						<button
-							onClick={() => setActiveTab("profile")}
-							className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[#111111] transition hover:bg-black/5"
-						>
-							Edit Profile
-						</button>
-					</div>
-				</div>
-
-				{/* Navigation Tabs */}
-				<div className="mb-6 flex border-b border-black/10">
-					<button
-						onClick={() => setActiveTab("overview")}
-						className={`border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
-							activeTab === "overview"
-								? "border-[#DE141C] text-[#DE141C]"
-								: "border-transparent text-black/50 hover:text-black"
-						}`}
-					>
-						Overview
-					</button>
-					<button
-						onClick={() => setActiveTab("inquiries")}
-						className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
-							activeTab === "inquiries"
-								? "border-[#DE141C] text-[#DE141C]"
-								: "border-transparent text-black/50 hover:text-black"
-						}`}
-					>
-						<span>Assigned Inquiries</span>
-						<span className="rounded-full bg-black/10 px-1.5 py-0.2 text-[10px] text-black">
-							{inquiries.length}
-						</span>
-						{unreadCount > 0 ? (
-							<span className="rounded-full bg-[#DE141C] px-1.5 py-0.2 text-[10px] font-bold text-white">
-								{unreadCount} new
-							</span>
-						) : null}
-					</button>
-					<button
-						onClick={() => setActiveTab("properties")}
-						className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
-							activeTab === "properties"
-								? "border-[#DE141C] text-[#DE141C]"
-								: "border-transparent text-black/50 hover:text-black"
-						}`}
-					>
-						<span>My Listings</span>
-						<span className="rounded-full bg-black/10 px-1.5 py-0.2 text-[10px] text-black">
-							{properties.length}
-						</span>
-					</button>
-					<button
-						onClick={() => setActiveTab("profile")}
-						className={`border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
-							activeTab === "profile"
-								? "border-[#DE141C] text-[#DE141C]"
-								: "border-transparent text-black/50 hover:text-black"
-						}`}
-					>
-						Account & Profile
-					</button>
-				</div>
-
-				{/* TAB 1: OVERVIEW */}
-				{activeTab === "overview" ? (
-					<div className="space-y-6">
-						{/* KPI Stat Cards */}
-						<div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-							<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-								<div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/45">
-									Total Leads
-								</div>
-								<div className="mt-2 text-3xl font-bold tracking-tight text-[#111111]">
-									{totalLeads}
-								</div>
-								<p className="mt-1 text-xs text-black/50">Buyer inquiries assigned to you</p>
-							</div>
-
-							<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-								<div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/45">
-									Active Pipeline
-								</div>
-								<div className="mt-2 text-3xl font-bold tracking-tight text-[#DE141C]">
-									{activeDeals}
-								</div>
-								<p className="mt-1 text-xs text-black/50">Contacted, viewing or negotiating</p>
-							</div>
-
-							<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-								<div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/45">
-									Reserved / Closed
-								</div>
-								<div className="mt-2 text-3xl font-bold tracking-tight text-emerald-600">
-									{closedWon}
-								</div>
-								<p className="mt-1 text-xs text-black/50">Successful deals closed</p>
-							</div>
-
-							<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-								<div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/45">
-									Conversion Rate
-								</div>
-								<div className="mt-2 text-3xl font-bold tracking-tight text-[#DE141C]">
-									{conversionRate}%
-								</div>
-								<p className="mt-1 text-xs text-black/50">Lead to closing ratio</p>
-							</div>
-						</div>
-
-						{/* Quick Follow-ups & Recent Inquiries */}
-						<div className="grid gap-6 lg:grid-cols-3">
-							{/* Recent Inquiries List */}
-							<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm lg:col-span-2">
-								<div className="mb-4 flex items-center justify-between">
-									<div>
-										<h2 className="text-base font-semibold text-[#111111]">Recent Leads</h2>
-										<p className="text-xs text-black/50">Latest buyer inquiries needing attention</p>
-									</div>
-									<button
-										onClick={() => setActiveTab("inquiries")}
-										className="text-xs font-semibold text-[#DE141C] hover:underline"
-									>
-										View all →
-									</button>
-								</div>
-
-								{inquiries.length === 0 ? (
-									<div className="rounded-xl border border-dashed border-black/10 py-10 text-center text-xs text-black/40">
-										No inquiries assigned yet. New leads from property pages will appear here.
-									</div>
-								) : (
-									<div className="divide-y divide-black/5">
-										{inquiries.slice(0, 5).map((inq) => (
-											<div key={inq.id} className="flex items-center justify-between py-3">
-												<div>
-													<div className="font-medium text-sm text-[#111111]">
-														{inq.buyer_name || "Anonymous Buyer"}
-													</div>
-													<div className="text-xs text-black/50">
-														{inq.properties?.title ? (
-															<span>Interested in: {inq.properties.title}</span>
-														) : (
-															<span>General Inquiry</span>
-														)}
-													</div>
-												</div>
-												<div className="flex items-center gap-2">
-													<span
-														className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-															inq.status === "closed_won" || inq.status === "reserved"
-																? "bg-emerald-100 text-emerald-800"
-																: inq.status === "new"
-																	? "bg-blue-100 text-blue-800"
-																	: "bg-zinc-100 text-black/70"
-														}`}
-													>
-														{inq.status || "new"}
-													</span>
-													<button
-														onClick={() => {
-															setEditingInquiry(inq);
-															setActiveTab("inquiries");
-														}}
-														className="rounded-lg border border-black/10 px-2 py-1 text-xs font-medium text-black/70 hover:bg-black/5"
-													>
-														Update
-													</button>
-												</div>
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-
-							{/* Agent Profile Summary Card */}
-							<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-								<h2 className="text-base font-semibold text-[#111111]">Agent Card Preview</h2>
-								<p className="text-xs text-black/50">How clients see you on Jewellz Realty</p>
-
-								<div className="mt-4 flex flex-col items-center text-center">
-									{agent?.photo_url ? (
-										<div className="relative h-20 w-20 overflow-hidden rounded-full border border-black/10 shadow-sm">
-											<Image
-												src={agent.photo_url}
-												alt={agent.full_name}
-												fill
-												className="object-cover"
-											/>
-										</div>
-									) : (
-										<div className="grid h-20 w-20 place-items-center rounded-full bg-[#DE141C] text-xl font-bold text-white shadow-sm">
-											{agent?.full_name?.charAt(0) ?? "A"}
-										</div>
-									)}
-
-									<div className="mt-3 font-semibold text-base text-[#111111]">
-										{agent?.full_name}
-									</div>
-									<div className="text-xs text-[#DE141C] font-medium">
-										{agent?.specialization || "Licensed Broker / Agent"}
-									</div>
-									<div className="mt-1 text-[11px] text-black/45">
-										License: {agent?.license_number || "PRC Accredited"}
-									</div>
-
-									{agent?.bio ? (
-										<p className="mt-3 text-xs leading-5 text-black/60 line-clamp-3">
-											"{agent.bio}"
-										</p>
-									) : null}
-
-									<button
-										onClick={() => setActiveTab("profile")}
-										className="mt-4 w-full rounded-xl border border-black/10 py-2 text-xs font-semibold text-[#111111] transition hover:bg-black/5"
-									>
-										Edit Public Details
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				) : null}
-
-				{/* TAB 2: INQUIRIES & LEADS */}
-				{activeTab === "inquiries" ? (
-					<div className="space-y-4">
-						{/* Inquiries Control Toolbar */}
-						<div className="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-							<div className="relative flex-1">
-								<input
-									type="search"
-									value={inquirySearch}
-									onChange={(e) => setInquirySearch(e.target.value)}
-									placeholder="Search by buyer name, email, phone, or property..."
-									className="h-10 w-full rounded-xl border border-black/10 bg-zinc-50 pl-3 pr-4 text-xs text-[#111111] outline-none transition focus:border-black/30 focus:bg-white"
-								/>
-							</div>
-
-							<div className="flex items-center gap-2">
-								<span className="text-xs font-medium text-black/50">Status:</span>
-								<select
-									value={inquiryStatusFilter}
-									onChange={(e) => setInquiryStatusFilter(e.target.value)}
-									className="h-10 rounded-xl border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none"
-								>
-									<option value="all">All Statuses ({inquiries.length})</option>
-									<option value="new">New</option>
-									<option value="assigned">Assigned</option>
-									<option value="contacted">Contacted</option>
-									<option value="viewing_scheduled">Viewing Scheduled</option>
-									<option value="negotiating">Negotiating</option>
-									<option value="reserved">Reserved</option>
-									<option value="closed_won">Closed Won</option>
-									<option value="closed_lost">Closed Lost</option>
-								</select>
-							</div>
-						</div>
-
-						{/* Inquiry Edit Modal / Drawer */}
-						{editingInquiry ? (
-							<div className="rounded-2xl border-2 border-[#DE141C]/30 bg-white p-5 shadow-md">
-								<div className="flex items-center justify-between border-b border-black/10 pb-3">
-									<div>
-										<span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">
-											Updating Lead Status
-										</span>
-										<h3 className="text-base font-bold text-[#111111]">
-											{editingInquiry.buyer_name || "Lead Details"}
-										</h3>
-									</div>
-									<button
-										onClick={() => setEditingInquiry(null)}
-										className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium text-black/60 hover:bg-black/5"
-									>
-										Cancel
-									</button>
-								</div>
-
-								<div className="mt-4 grid gap-4 sm:grid-cols-2">
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Buyer Contact
-										</label>
-										<div className="mt-1 text-sm font-medium text-[#111111]">
-											{editingInquiry.buyer_name || "—"}
-										</div>
-										<div className="text-xs text-black/50">
-											Email:{" "}
-											{editingInquiry.buyer_email ? (
-												<a
-													href={`mailto:${editingInquiry.buyer_email}`}
-													className="text-[#DE141C] hover:underline"
-												>
-													{editingInquiry.buyer_email}
-												</a>
-											) : (
-												"—"
-											)}
-										</div>
-										<div className="text-xs text-black/50">
-											Phone:{" "}
-											{editingInquiry.buyer_phone ? (
-												<a
-													href={`tel:${editingInquiry.buyer_phone}`}
-													className="text-[#DE141C] hover:underline"
-												>
-													{editingInquiry.buyer_phone}
-												</a>
-											) : (
-												"—"
-											)}
-										</div>
-										{editingInquiry.properties?.title ? (
-											<div className="mt-2 text-xs font-medium text-black/70">
-												Property: {editingInquiry.properties.title} (
-												{editingInquiry.properties.city ?? "Batangas"})
-											</div>
-										) : null}
-
-										{/* Quick Contact & Advance Stage Actions */}
-										<div className="mt-3 flex flex-wrap items-center gap-2">
-											{editingInquiry.buyer_phone ? (
-												<a
-													href={`tel:${editingInquiry.buyer_phone}`}
-													onClick={() => {
-														if (editingInquiry.status === "new" || editingInquiry.status === "assigned") {
-															void handleQuickContact(editingInquiry, "call");
-														}
-													}}
-													className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-sm hover:border-black/30 transition"
-													title="Call client & advance status to Contacted"
-												>
-													<Phone className="h-3.5 w-3.5 text-emerald-600" />
-													Call Buyer
-												</a>
-											) : null}
-											{editingInquiry.buyer_email ? (
-												<a
-													href={`mailto:${editingInquiry.buyer_email}`}
-													onClick={() => {
-														if (editingInquiry.status === "new" || editingInquiry.status === "assigned") {
-															void handleQuickContact(editingInquiry, "email");
-														}
-													}}
-													className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-sm hover:border-black/30 transition"
-													title="Email client & advance status to Contacted"
-												>
-													<Mail className="h-3.5 w-3.5 text-blue-600" />
-													Email Buyer
-												</a>
-											) : null}
-											{editingInquiry.status !== "contacted" && !["viewing_scheduled", "negotiating", "reserved", "closed_won"].includes(editingInquiry.status || "") ? (
-												<button
-													type="button"
-													onClick={() => void handleQuickContact(editingInquiry, "manual")}
-													className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition"
-												>
-													<CheckCircle2 className="h-3.5 w-3.5" />
-													Mark Contacted
-												</button>
-											) : null}
-										</div>
-									</div>
-
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Update Pipeline Stage
-										</label>
-										<select
-											defaultValue={editingInquiry.status || "new"}
-											id="update-status-select"
-											className="mt-1 h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none"
-										>
-											<option value="new">New</option>
-											<option value="assigned">Assigned</option>
-											<option value="contacted">Contacted</option>
-											<option value="viewing_scheduled">Viewing Scheduled</option>
-											<option value="negotiating">Negotiating</option>
-											<option value="reserved">Reserved</option>
-											<option value="closed_won">Closed Won</option>
-											<option value="closed_lost">Closed Lost</option>
-										</select>
-
-										<label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Agent Follow-up Notes
-										</label>
-										<textarea
-											defaultValue={editingInquiry.notes || ""}
-											id="update-notes-textarea"
-											rows={3}
-											placeholder="Add notes (e.g., Scheduled site visit for Saturday 2PM...)"
-											className="mt-1 w-full rounded-lg border border-black/10 bg-white p-2.5 text-xs text-[#111111] outline-none"
-										/>
-
-										<button
-											disabled={updatingInquiry}
-											onClick={() => {
-												const sel = document.getElementById(
-													"update-status-select"
-												) as HTMLSelectElement;
-												const txt = document.getElementById(
-													"update-notes-textarea"
-												) as HTMLTextAreaElement;
-												void handleUpdateInquiryStatus(
-													editingInquiry.id,
-													sel.value,
-													txt.value
-												);
-											}}
-											className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-[#DE141C] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#b80f15] disabled:opacity-50"
-										>
-											{updatingInquiry ? "Saving..." : "Save Status & Notes"}
-										</button>
-									</div>
-								</div>
-							</div>
-						) : null}
-
-						{/* Inquiries Table */}
-						<div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-							<div className="overflow-x-auto">
-								<table className="min-w-full text-left text-xs">
-									<thead className="border-b border-black/10 bg-zinc-50 font-semibold uppercase tracking-[0.14em] text-black/50">
-										<tr>
-											<th className="px-4 py-3.5">Buyer</th>
-											<th className="px-4 py-3.5">Property of Interest</th>
-											<th className="px-4 py-3.5">Status</th>
-											<th className="px-4 py-3.5">Priority</th>
-											<th className="px-4 py-3.5">Date</th>
-											<th className="px-4 py-3.5 text-right">Action</th>
-										</tr>
-									</thead>
-									<tbody className="divide-y divide-black/5">
-										{filteredInquiries.length === 0 ? (
-											<tr>
-												<td colSpan={6} className="px-4 py-10 text-center text-black/45">
-													No inquiries found matching your filters.
-												</td>
-											</tr>
-										) : (
-											filteredInquiries.map((inq) => (
-												<tr key={inq.id} className="transition hover:bg-zinc-50/70">
-													<td className="px-4 py-3.5">
-														<div className="font-semibold text-sm text-[#111111]">
-															{inq.buyer_name || "—"}
-														</div>
-														<div className="text-black/50">{inq.buyer_email || inq.buyer_phone}</div>
-													</td>
-													<td className="px-4 py-3.5">
-														{inq.properties?.title ? (
-															<div>
-																<div className="font-medium text-[#111111]">
-																	{inq.properties.title}
-																</div>
-																<div className="text-black/45">
-																	{inq.properties.city ?? "Batangas"}
-																</div>
-															</div>
-														) : (
-															<span className="text-black/40">General inquiry</span>
-														)}
-													</td>
-													<td className="px-4 py-3.5">
-														<span
-															className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-																inq.status === "closed_won" || inq.status === "reserved"
-																	? "bg-emerald-100 text-emerald-800"
-																	: inq.status === "new"
-																		? "bg-blue-100 text-blue-800"
-																		: inq.status === "viewing_scheduled"
-																			? "bg-purple-100 text-purple-800"
-																			: "bg-zinc-100 text-black/70"
-															}`}
-														>
-															{inq.status?.replace("_", " ") || "new"}
-														</span>
-													</td>
-													<td className="px-4 py-3.5 uppercase tracking-wider text-[10px] font-semibold text-black/60">
-														{inq.priority || "medium"}
-													</td>
-													<td className="px-4 py-3.5 text-black/50">
-														{inq.created_at ? inq.created_at.slice(0, 10) : "—"}
-													</td>
-													<td className="px-4 py-3.5 text-right whitespace-nowrap">
-														<div className="inline-flex items-center gap-1.5 justify-end">
-															{inq.status === "new" || inq.status === "assigned" ? (
-																<button
-																	type="button"
-																	onClick={() => void handleQuickContact(inq, "manual")}
-																	className="rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
-																	title="Mark customer as contacted"
-																>
-																	Mark Contacted
-																</button>
-															) : null}
-															<button
-																onClick={() => setEditingInquiry(inq)}
-																className="rounded-lg border border-black/10 px-3 py-1 text-xs font-semibold text-[#111111] transition hover:bg-black/5"
-															>
-																Update
-															</button>
-														</div>
-													</td>
-												</tr>
-											))
-										)}
-									</tbody>
-								</table>
-							</div>
-						</div>
-					</div>
-				) : null}
-
-				{/* TAB 3: PROPERTIES / MY LISTINGS */}
-				{activeTab === "properties" ? (
-					<div className="space-y-4">
-						<div className="flex items-center justify-between">
-							<div>
-								<h2 className="text-lg font-bold text-[#111111]">My Assigned Listings</h2>
-								<p className="text-xs text-black/50">Properties assigned to your agent profile</p>
-							</div>
-							<span className="text-xs font-semibold text-black/50">
-								{properties.length} Total Properties
-							</span>
-						</div>
-
-						{properties.length === 0 ? (
-							<div className="rounded-2xl border border-dashed border-black/15 bg-white py-16 text-center shadow-sm">
-								<p className="text-sm font-semibold text-[#111111]">No properties assigned yet</p>
-								<p className="mt-1 text-xs text-black/50">
-									The brokerage admin can assign property listings to your account in the CMS.
-								</p>
-							</div>
-						) : (
-							<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-								{properties.map((prop) => (
-									<div
-										key={prop.id}
-										className="group flex flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition hover:shadow-md"
-									>
-										<div className="relative aspect-[16/10] w-full bg-zinc-100">
-											{prop.featured_image_url || prop.images?.[0] ? (
-												<Image
-													src={prop.featured_image_url || prop.images![0]}
-													alt={prop.title}
-													fill
-													className="object-cover transition duration-300 group-hover:scale-105"
-												/>
-											) : (
-												<div className="grid h-full w-full place-items-center text-xs text-black/40">
-													No photo
-												</div>
-											)}
-											<span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
-												{prop.status || "Published"}
-											</span>
-										</div>
-
-										<div className="flex flex-1 flex-col p-4">
-											<div className="text-[11px] font-semibold uppercase tracking-wider text-[#DE141C]">
-												{prop.category || "Residential"}
-											</div>
-											<h3 className="mt-1 text-base font-semibold tracking-tight text-[#111111] line-clamp-1">
-												{prop.title}
-											</h3>
-											<p className="text-xs text-black/50">
-												{prop.city ?? "Batangas"}, {prop.province ?? "Philippines"}
-											</p>
-
-											<div className="mt-3 flex items-center gap-3 border-t border-black/5 pt-2 text-xs text-black/60">
-												{prop.bedrooms ? <span>{prop.bedrooms} Beds</span> : null}
-												{prop.bathrooms ? <span>{prop.bathrooms} Baths</span> : null}
-												{prop.lot_area_sqm ? <span>{prop.lot_area_sqm} sqm</span> : null}
-											</div>
-
-											<div className="mt-auto flex items-center justify-between border-t border-black/10 pt-3">
-												<div className="font-bold text-sm text-[#DE141C]">
-													{prop.price ? `₱${prop.price.toLocaleString()}` : "Price upon request"}
-												</div>
-												<Link
-													href={`/project-list/${prop.slug}`}
-													target="_blank"
-													className="text-xs font-semibold text-black/70 hover:text-[#DE141C]"
-												>
-													View Public →
-												</Link>
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
-				) : null}
-
-				{/* TAB 4: ACCOUNT & PROFILE SETTINGS */}
-				{activeTab === "profile" ? (
-					<div className="grid gap-6 lg:grid-cols-3">
-						<div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm lg:col-span-2">
-							<div className="border-b border-black/10 pb-4">
-								<h2 className="text-lg font-bold text-[#111111]">Agent Profile Settings</h2>
-								<p className="text-xs text-black/50">
-									Manage your public credentials, biography, and contact details
-								</p>
-							</div>
-
-							{profileMessage ? (
-								<div className="mt-4 rounded-xl border border-black/10 bg-zinc-50 p-3 text-xs font-semibold text-[#DE141C]">
-									{profileMessage}
-								</div>
-							) : null}
-
-							<form onSubmit={handleSaveProfile} className="mt-5 space-y-4">
-								<div className="grid gap-4 sm:grid-cols-2">
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Full Name
-										</label>
-										<input
-											type="text"
-											required
-											value={profileForm.full_name || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, full_name: e.target.value }))
-											}
-											className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-[#DE141C]"
-										/>
-									</div>
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											PRC License Number
-										</label>
-										<input
-											type="text"
-											value={profileForm.license_number || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, license_number: e.target.value }))
-											}
-											placeholder="e.g. PRC-0012345"
-											className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-[#DE141C]"
-										/>
-									</div>
-								</div>
-
-								<div className="grid gap-4 sm:grid-cols-2">
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Specialization
-										</label>
-										<input
-											type="text"
-											value={profileForm.specialization || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, specialization: e.target.value }))
-											}
-											placeholder="e.g. Residential & Condominium"
-											className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-[#DE141C]"
-										/>
-									</div>
-									<div>
-										<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-											Photo URL
-										</label>
-										<input
-											type="url"
-											value={profileForm.photo_url || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, photo_url: e.target.value }))
-											}
-											placeholder="https://..."
-											className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-[#DE141C]"
-										/>
-									</div>
-								</div>
-
-								<div>
-									<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">
-										Agent Biography
-									</label>
-									<textarea
-										rows={4}
-										value={profileForm.bio || ""}
-										onChange={(e) =>
-											setProfileForm((prev) => ({ ...prev, bio: e.target.value }))
-										}
-										placeholder="Introduce your experience, focus areas, and commitment to clients..."
-										className="mt-1 w-full rounded-xl border border-black/10 bg-white p-3 text-sm outline-none transition focus:border-[#DE141C]"
-									/>
-								</div>
-
-								<div className="border-t border-black/10 pt-4">
-									<h3 className="text-xs font-bold uppercase tracking-wider text-black/60">
-										Social & Communication Links
-									</h3>
-									<div className="mt-3 grid gap-3 sm:grid-cols-2">
-										<input
-											type="url"
-											placeholder="Facebook Profile URL"
-											value={profileForm.facebook_url || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, facebook_url: e.target.value }))
-											}
-											className="h-9 rounded-xl border border-black/10 bg-white px-3 text-xs outline-none focus:border-[#DE141C]"
-										/>
-										<input
-											type="url"
-											placeholder="Instagram Profile URL"
-											value={profileForm.instagram_url || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, instagram_url: e.target.value }))
-											}
-											className="h-9 rounded-xl border border-black/10 bg-white px-3 text-xs outline-none focus:border-[#DE141C]"
-										/>
-										<input
-											type="url"
-											placeholder="LinkedIn Profile URL"
-											value={profileForm.linkedin_url || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, linkedin_url: e.target.value }))
-											}
-											className="h-9 rounded-xl border border-black/10 bg-white px-3 text-xs outline-none focus:border-[#DE141C]"
-										/>
-										<input
-											type="url"
-											placeholder="Twitter / X Profile URL"
-											value={profileForm.twitter_url || ""}
-											onChange={(e) =>
-												setProfileForm((prev) => ({ ...prev, twitter_url: e.target.value }))
-											}
-											className="h-9 rounded-xl border border-black/10 bg-white px-3 text-xs outline-none focus:border-[#DE141C]"
-										/>
-									</div>
-								</div>
-
-								<div className="pt-2">
-									<button
-										type="submit"
-										disabled={savingProfile}
-										className="inline-flex h-10 items-center justify-center rounded-xl bg-[#DE141C] px-6 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b80f15] disabled:opacity-50"
-									>
-										{savingProfile ? "Saving..." : "Save Profile Details"}
-									</button>
-								</div>
-							</form>
-						</div>
-
-						{/* Account & Security Card */}
-						<div className="space-y-6">
-							<div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm">
-								<h2 className="text-base font-bold text-[#111111]">Account Security</h2>
-								<p className="text-xs text-black/50">Your authentication credentials</p>
-
-								<div className="mt-4 space-y-3">
-									<div>
-										<span className="text-[11px] font-semibold uppercase tracking-wider text-black/45">
-											Sign-in Email
-										</span>
-										<div className="mt-0.5 font-medium text-xs text-[#111111]">
-											{userEmail || "—"}
-										</div>
-									</div>
-
-									<div>
-										<span className="text-[11px] font-semibold uppercase tracking-wider text-black/45">
-											Account Type
-										</span>
-										<div className="mt-0.5 text-xs text-black/60">
-											Licensed Real Estate Agent
-										</div>
-									</div>
-
-									<div className="border-t border-black/10 pt-3">
-										<button
-											type="button"
-											onClick={handleSendPasswordReset}
-											className="w-full rounded-xl border border-black/10 bg-zinc-50 py-2.5 text-xs font-semibold text-[#111111] transition hover:bg-black/5"
-										>
-											Send Password Reset Email
-										</button>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				) : null}
-			</div>
 		</main>
 	);
 }
