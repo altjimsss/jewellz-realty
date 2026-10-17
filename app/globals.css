@@ -195,3 +195,19 @@ body {
   animation: skeleton-shimmer 1.8s ease-in-out infinite;
 }
 
+@keyframes skeleton-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Only reveal the loading skeleton if loading actually takes a moment.
+   400ms delay: instant loads finish before this, so no skeleton flashes. */
+.skeleton-delayed {
+  opacity: 0;
+  animation: skeleton-fade-in 0.25s ease-out 0.4s both;
+}
+

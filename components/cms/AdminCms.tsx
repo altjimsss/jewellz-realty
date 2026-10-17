@@ -3015,7 +3015,7 @@ export default function AdminCms({
 					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
 						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
 							{loading ? (
-								<AdminContentSkeleton />
+								<AdminContentSkeleton section={currentSection} />
 							) : (
 							<>
 							<div className="flex flex-wrap items-center justify-between gap-3">
