@@ -18,9 +18,10 @@ import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 import { AgentsWorkspace } from "./AgentsWorkspace";
 import { DeveloperPartnersWorkspace } from "./DeveloperPartnersWorkspace";
+import { SettingsWorkspace } from "./SettingsWorkspace";
 import { AdminContentSkeleton } from "./AdminContentSkeleton";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
+import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
@@ -2806,14 +2807,6 @@ export default function AdminCms({
 				</aside>
 
 				<aside className={`${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-black/10 bg-[#fbfbfa] transition-[width] duration-200 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
-					<div className="border-b border-black/10 px-3 py-3">
-						<div className="rounded-md border border-black/10 bg-white p-2">
-							<div className="text-[10px] uppercase tracking-[0.14em] text-black/40">Agency</div>
-							<div className="mt-1 truncate text-xs font-semibold text-[#111111]">Jewellz Realty</div>
-							<p className="mt-0.5 truncate text-[11px] text-black/45">{profile?.full_name ?? profile?.email ?? "Signed in"}</p>
-						</div>
-					</div>
-
 					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-2 py-3">
 						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
@@ -3384,7 +3377,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (
-							<EntityEditor title="System Settings" description="Key-value configuration editor for platform behavior." rows={workspace.settings} selectedId={selection.settings} idKey="key" fields={settingFields} canEdit={canEditSettings} rowLabel={labelForRow} rowMeta={(row) => asText(row.description ?? row.value)} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={saveSetting} />
+							<SettingsWorkspace rows={workspace.settings} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={saveSetting} />
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
