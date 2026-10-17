@@ -17,10 +17,9 @@ import { PropertyDetailContent } from "@/components/properties/PropertyDetailCon
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 import { AgentRegistrationForm } from "./AgentRegistrationForm";
-import { DeveloperRegistrationForm } from "./DeveloperRegistrationForm";
-import { DeveloperPartnerManager } from "./DeveloperPartnerManager";
+import { DeveloperPartnersWorkspace } from "./DeveloperPartnersWorkspace";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { agentFields, careerApplicationFields, careerJobFields, developerFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
+import { agentFields, careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
@@ -1967,7 +1966,6 @@ export default function AdminCms({
 	const selectedCareerApplicationId = selection.careerApplications ?? optionalId(workspace.careerApplications[0]);
 	const selectedGalleryItem = workspace.galleryItems.find((row) => asText(row.id) === asText(selection.galleryItems)) ?? null;
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
-	const selectedDeveloperRow = workspace.developers.find((row) => asText(row.id) === asText(selectedDeveloperId)) ?? null;
 	const selectedPropertyImageUrls = useMemo(
 		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
 		[selectedPropertyImages],
@@ -2669,9 +2667,13 @@ export default function AdminCms({
 	}
 
 	async function saveDeveloper(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.company_name || !payload.slug) {
-			setMessage("Developer partners need company_name and slug.");
+		const companyName = asText(payload.company_name).trim();
+		if (!companyName) {
+			setMessage("Developer partners need a company name.");
 			return;
+		}
+		if (!asText(payload.slug).trim()) {
+			payload.slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 		}
 		await saveEntity("developer_partners", payload, currentRow);
 	}
@@ -3247,24 +3249,16 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "developers" && isAdmin ? (
-							<div className="space-y-3">
-								<DeveloperRegistrationForm onRegistered={reloadWorkspace} />
-								<EntityEditor
-									title="Developer Partners"
-									description="Company profile CRUD for developer partners. Accredited developer partners with an active login account are automatically showcased in the public website marquee."
-									rows={workspace.developers}
-									selectedId={selectedDeveloperId}
-									fields={developerFields}
-									canEdit={isAdmin}
-									rowLabel={labelForRow}
-									rowMeta={(row) => `${row.profile_id ? "✓ Active Account (In Marquee)" : "⚠ No Account"} • ${row.logo_url ? "Has Logo" : "No Logo"} • ${asText(row.contact_email ?? row.website_url ?? row.slug)}`}
-									onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))}
-									onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))}
-									onDelete={(row) => deleteEntity("developer_partners", row)}
-									onSubmit={saveDeveloper}
-									extra={<DeveloperPartnerManager developer={selectedDeveloperRow} onUpdated={reloadWorkspace} />}
-								/>
-							</div>
+							<DeveloperPartnersWorkspace
+								rows={workspace.developers}
+								selectedId={selectedDeveloperId}
+								canEdit={isAdmin}
+								onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))}
+								onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))}
+								onDelete={(row) => deleteEntity("developer_partners", row)}
+								onSubmit={saveDeveloper}
+								onReload={reloadWorkspace}
+							/>
 						) : null}
 
 						{currentSection === "profiles" && isAdmin ? (

@@ -145,18 +145,6 @@ export const projectFields: FieldSpec[] = [
 	{ name: "is_active", label: "Active", type: "checkbox", help: "Show this project in the portfolio." },
 ];
 
-export const developerFields: FieldSpec[] = [
-	{ name: "profile_id", label: "Profile ID", type: "text" },
-	{ name: "company_name", label: "Company Name", type: "text" },
-	{ name: "slug", label: "Slug", type: "text" },
-	{ name: "logo_url", label: "Logo URL", type: "url" },
-	{ name: "website_url", label: "Website URL", type: "url" },
-	{ name: "description", label: "Description", type: "textarea", rows: 5 },
-	{ name: "contact_email", label: "Contact Email", type: "email" },
-	{ name: "contact_phone", label: "Contact Phone", type: "text" },
-	{ name: "is_active", label: "Active", type: "checkbox" },
-];
-
 export const agentFields: FieldSpec[] = [
 	{ name: "profile_id", label: "Profile ID", type: "text", help: "The Supabase auth user this agent signs in as. Use the Register Agent form to create this automatically." },
 	{ name: "full_name", label: "Full Name", type: "text" },
