@@ -107,14 +107,6 @@ export async function POST(request: Request) {
 	const description = text(body?.description);
 	const slug = text(body?.slug) || companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-	let loginUrl: string;
-	try {
-		loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
-	} catch (e) {
-		const msg = e instanceof Error ? e.message : "No production site URL is configured.";
-		return NextResponse.json({ error: msg }, { status: 500 });
-	}
-
 	// 1. Existing developer partner being linked or invited to have an account
 	if (developerId) {
 		const { data: existingDev, error: fetchErr } = await supabaseServer
@@ -133,6 +125,14 @@ export async function POST(request: Request) {
 		}
 
 		const targetCompanyName = companyName || text(existingDev.company_name);
+
+		let loginUrl: string;
+		try {
+			loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : "No production site URL is configured.";
+			return NextResponse.json({ error: msg }, { status: 500 });
+		}
 
 		let userId = "";
 		const { data: created, error: inviteError } = await supabaseServer.auth.admin.inviteUserByEmail(targetEmail, {
@@ -196,13 +196,40 @@ export async function POST(request: Request) {
 		return NextResponse.json({ ok: true, userId, email: targetEmail, developerId });
 	}
 
-	// 2. New developer registration
-	if (!email) {
-		return NextResponse.json({ error: "A contact/login email address is required." }, { status: 400 });
-	}
-
+	// 2. New developer registration. A login account is OPTIONAL.
 	if (!companyName) {
 		return NextResponse.json({ error: "The company name is required." }, { status: 400 });
+	}
+
+	// 2a. No email ⇒ display-only partner. No auth user is created; the partner still
+	//     appears in the marquee once it has a logo, and the admin manages it from the CMS.
+	if (!email) {
+		const { error: devError } = await supabaseServer.from("developer_partners").insert({
+			profile_id: null,
+			company_name: companyName,
+			slug: slug || null,
+			contact_email: null,
+			contact_phone: contactPhone || null,
+			website_url: websiteUrl || null,
+			logo_url: logoUrl || null,
+			description: description || null,
+			is_active: true,
+		});
+
+		if (devError) {
+			return NextResponse.json({ error: devError.message }, { status: 422 });
+		}
+
+		return NextResponse.json({ ok: true, email: null });
+	}
+
+	// 2b. Email provided ⇒ create the login account and email a secure password-setup link.
+	let loginUrl: string;
+	try {
+		loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : "No production site URL is configured.";
+		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 
 	// Creates the login account and emails the developer a secure link to set their own password

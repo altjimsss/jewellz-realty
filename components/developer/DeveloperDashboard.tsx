@@ -283,8 +283,10 @@ export default function DeveloperDashboard() {
 			formData.append("file", file);
 			formData.append("folder", "developer-logos");
 
+			const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
 			const res = await fetch("/api/upload", {
 				method: "POST",
+				headers: token ? { Authorization: `Bearer ${token}` } : {},
 				body: formData,
 			});
 

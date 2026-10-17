@@ -36,8 +36,10 @@ export function DeveloperRegistrationForm({ onRegistered }: { onRegistered: () =
 			formData.append("file", file);
 			formData.append("folder", "developer-logos");
 
+			const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
 			const res = await fetch("/api/upload", {
 				method: "POST",
+				headers: token ? { Authorization: `Bearer ${token}` } : {},
 				body: formData,
 			});
 
@@ -80,7 +82,7 @@ export function DeveloperRegistrationForm({ onRegistered }: { onRegistered: () =
 				return;
 			}
 
-			setStatus(`Developer partner ${form.companyName} created! Invitation sent to ${form.email}. Their logo is now live on the website marquee.`);
+			setStatus(`Developer partner ${form.companyName} created! ${form.email.trim() ? `Invitation sent to ${form.email}.` : "No login account was requested."} Their logo is now live on the website marquee.`);
 			setForm({
 				email: "",
 				companyName: "",
@@ -109,7 +111,7 @@ export function DeveloperRegistrationForm({ onRegistered }: { onRegistered: () =
 						Register a Developer Partner
 					</div>
 					<p className="mt-1 text-sm leading-5 text-black/55">
-						Creates the company partner record, profile, and Supabase login account in one step. Their logo will automatically be shown in the homepage marquee.
+						Adds a developer partner company. Their logo is shown in the homepage marquee. A login account is optional — add an email to invite the partner to manage their own logo, or leave it blank to manage the company from the CMS.
 					</p>
 				</div>
 			</div>
@@ -127,10 +129,9 @@ export function DeveloperRegistrationForm({ onRegistered }: { onRegistered: () =
 					/>
 				</label>
 				<label className="block">
-					<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Login / Contact Email</div>
+					<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Login / Contact Email (optional)</div>
 					<input
 						type="email"
-						required
 						value={form.email}
 						onChange={(e) => update("email", e.target.value)}
 						placeholder="partner@developer.com"
@@ -228,7 +229,7 @@ export function DeveloperRegistrationForm({ onRegistered }: { onRegistered: () =
 				<div className="flex flex-wrap items-center gap-3 md:col-span-2 pt-1">
 					<button
 						type="submit"
-						disabled={saving || !form.email.trim() || !form.companyName.trim()}
+						disabled={saving || !form.companyName.trim()}
 						className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20"
 					>
 						{saving ? "Creating..." : "Register Developer Partner"}

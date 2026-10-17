@@ -3,6 +3,30 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
 	try {
+		// Require an authenticated admin or developer partner. The service-role server
+		// client has no cookie session, so auth must arrive as a bearer token.
+		const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+		if (!token) {
+			return NextResponse.json({ error: "You must be signed in to upload images." }, { status: 401 });
+		}
+
+		const { data: userData, error: userError } = await supabaseServer.auth.getUser(token);
+		const userId = userData?.user?.id ?? "";
+		if (userError || !userId) {
+			return NextResponse.json({ error: "Your session is invalid or has expired." }, { status: 401 });
+		}
+
+		const { data: profile } = await supabaseServer
+			.from("profiles")
+			.select("role, is_active")
+			.eq("id", userId)
+			.maybeSingle();
+
+		const role = profile?.role;
+		if (!profile?.is_active || (role !== "admin" && role !== "developer_partner")) {
+			return NextResponse.json({ error: "Admin or developer partner access is required." }, { status: 403 });
+		}
+
 		const formData = await request.formData();
 		const file = formData.get("file") as File | null;
 		const folder = (formData.get("folder") as string) || "developer-logos";

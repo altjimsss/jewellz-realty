@@ -80,12 +80,14 @@ export async function getPublicHomeContent() {
 		if (profile?.id && profile.email) agentEmails.set(String(profile.id), String(profile.email));
 	}
 
-	// Developer partners who have an account (profile_id is linked to an auth user)
-	const activeDevsWithAccount = (developerPartnersResult.data ?? []).filter(
-		(dp) => Boolean(dp.profile_id) && dp.is_active !== false
+	// Show every active developer partner that has a logo. A login account is OPTIONAL:
+	// display-only partners are curated by the admin, and partners with an account can
+	// self-manage their own logo via the developer dashboard. Either way they appear here.
+	const devPartnersWithLogo = (developerPartnersResult.data ?? []).filter(
+		(dp) => dp.is_active !== false && Boolean(dp.logo_url)
 	);
 
-	const devPartnerLogos: PublicPartnerLogo[] = activeDevsWithAccount.map((dp) => ({
+	const devPartnerLogos: PublicPartnerLogo[] = devPartnersWithLogo.map((dp) => ({
 		name: String(dp.company_name ?? "Developer Partner"),
 		logoUrl: dp.logo_url ? String(dp.logo_url) : undefined,
 		websiteUrl: dp.website_url ? String(dp.website_url) : undefined,
