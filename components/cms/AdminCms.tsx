@@ -16,10 +16,11 @@ import { TrafficSourceChart } from "@/components/dashboard/TrafficSourceChart";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
-import { AgentRegistrationForm } from "./AgentRegistrationForm";
+import { AgentsWorkspace } from "./AgentsWorkspace";
 import { DeveloperPartnersWorkspace } from "./DeveloperPartnersWorkspace";
+import { AdminWorkspaceSkeleton } from "./AdminWorkspaceSkeleton";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { agentFields, careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
+import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
@@ -1922,7 +1923,7 @@ export default function AdminCms({
 }: AdminCmsProps) {
 	const router = useRouter();
 	const [loading, setLoading] = useState(true);
-	const [message, setMessage] = useState("Loading workspace...");
+	const [message, setMessage] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [sessionUser, setSessionUser] = useState<User | null>(null);
 	const [profile, setProfile] = useState<CmsRow | null>(null);
@@ -2301,13 +2302,14 @@ export default function AdminCms({
 		}
 
 		setWorkspace(nextWorkspace);
-		setMessage("Workspace loaded.");
+		setTimeout(() => setMessage(""), 2000);
 	}
 
 	async function reloadWorkspace() {
 		if (!sessionUser || !profile) return;
-		setMessage("Refreshing data...");
+		setMessage("Syncing...");
 		await loadWorkspace(sessionUser, profile, agentProfile, developerProfile);
+		setTimeout(() => setMessage(""), 2000);
 	}
 
 	async function loadPropertyImages(propertyId: string | null) {
@@ -2371,8 +2373,11 @@ export default function AdminCms({
 			setProfile(profileResult);
 			setAgentProfile(currentAgent);
 			setDeveloperProfile(currentDeveloper);
-			setLoading(false);
 			await loadWorkspace(user, profileResult, currentAgent, currentDeveloper);
+			if (active) {
+				setLoading(false);
+				setMessage("");
+			}
 		})();
 
 		return () => {
@@ -2737,17 +2742,28 @@ export default function AdminCms({
 	}
 
 	if (loading) {
-		return <main className="min-h-screen bg-[linear-gradient(180deg,#f5f8fa_0%,#ffffff_100%)] px-6 py-10 text-[#111111]"><div className="mx-auto max-w-6xl rounded-[28px] border border-black/10 bg-white p-8 shadow-sm">{message}</div></main>;
+		return <AdminWorkspaceSkeleton />;
 	}
 
 	if (!sessionUser || !profile) {
 		return (
-			<main className="min-h-screen bg-[linear-gradient(180deg,#f5f8fa_0%,#ffffff_100%)] px-6 py-10 text-[#111111]">
-				<div className="mx-auto max-w-3xl rounded-[28px] border border-black/10 bg-white p-8 shadow-sm">
-					<div className="text-xs font-semibold uppercase tracking-[0.24em] text-black/60">Jewellz Realty CMS</div>
-					<h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">Sign in required</h1>
-					<p className="mt-2 text-sm leading-6 text-black/60">Use the login page to access the CMS. The dashboard honors Supabase Auth and role-based visibility from the profiles table.</p>
-					<button type="button" onClick={() => router.push("/login")} className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80">Go to login</button>
+			<main className="min-h-screen bg-[#f2f2ef] flex items-center justify-center p-6 text-[#111111]">
+				<div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-sm text-center">
+					<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-50 border border-black/10 shadow-xs mb-4">
+						<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
+					</div>
+					<div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/45">Jewellz Realty Portal</div>
+					<h1 className="mt-2 text-2xl font-bold tracking-tight text-[#111111]">Sign In Required</h1>
+					<p className="mt-2 text-xs leading-relaxed text-black/55">
+						Your session has expired or authentication is required to access the executive workspace.
+					</p>
+					<button
+						type="button"
+						onClick={() => router.push("/login?next=/admin")}
+						className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#111111] px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-black/85"
+					>
+						Go to Portal Login
+					</button>
 				</div>
 			</main>
 		);
@@ -2881,10 +2897,25 @@ export default function AdminCms({
 					</nav>
 
 					<div className="border-t border-black/10 px-3 py-3">
-						<div className="rounded-lg bg-white px-3 py-2 text-xs leading-5 text-black/55 ring-1 ring-black/5">
-							<div>{message}</div>
-							{saving ? <div className="font-medium text-[#111111]">Saving...</div> : null}
-						</div>
+						{saving || message ? (
+							<div className="rounded-lg bg-white px-3 py-2 text-xs leading-5 text-black/70 ring-1 ring-black/10 shadow-2xs">
+								{saving ? (
+									<div className="flex items-center gap-2 font-medium text-[#111111]">
+										<span className="h-2 w-2 rounded-full bg-[#DE141C] animate-ping" />
+										<span>Saving changes...</span>
+									</div>
+								) : null}
+								{message ? <div className="text-black/60 truncate">{message}</div> : null}
+							</div>
+						) : (
+							<div className="flex items-center justify-between px-1 text-[11px] text-black/40">
+								<span className="flex items-center gap-1.5 font-medium">
+									<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+									System Ready
+								</span>
+								<span className="text-[10px] font-mono text-black/30">v1.2</span>
+							</div>
+						)}
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={() => void reloadWorkspace()} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium">Refresh</button>
 							<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
@@ -3242,10 +3273,18 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "agents" && isAdmin ? (
-							<div className="space-y-3">
-								<AgentRegistrationForm onRegistered={reloadWorkspace} />
-								<EntityEditor title="Agents" description="Profile info, social links, top-agent flags, and live performance from assigned inquiry activity. Use the registration form above to create a new sign-in account for an agent." rows={workspace.agents} selectedId={selectedAgentId} fields={agentFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={agentRowMeta} saveLabel="Save agent" createLabel="Create a new agent" canCreate={false} onSelect={(row) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, agents: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("agents", row)} onSubmit={saveAgent} extra={<AgentMetricsSummary agentId={selectedAgentId} agentEmail={selectedAgentProfileEmail} agentPerformance={workspace.agentPerformance} />} />
-							</div>
+							<AgentsWorkspace
+								rows={workspace.agents}
+								selectedId={selectedAgentId}
+								canEdit={isAdmin}
+								rowMeta={agentRowMeta}
+								emailForRow={(row: CmsRow) => (row.profile_id ? profileEmailById.get(asText(row.profile_id)) ?? "" : "")}
+								metrics={<AgentMetricsSummary agentId={selectedAgentId} agentEmail={selectedAgentProfileEmail} agentPerformance={workspace.agentPerformance} />}
+								onSelect={(row: CmsRow | null) => setSelection((current) => ({ ...current, agents: row ? asText(row.id) : null }))}
+								onDelete={(row: CmsRow) => deleteEntity("agents", row)}
+								onSubmit={saveAgent}
+								onReload={reloadWorkspace}
+							/>
 						) : null}
 
 						{currentSection === "developers" && isAdmin ? (
@@ -3253,9 +3292,9 @@ export default function AdminCms({
 								rows={workspace.developers}
 								selectedId={selectedDeveloperId}
 								canEdit={isAdmin}
-								onSelect={(row) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))}
+								onSelect={(row: CmsRow | null) => setSelection((current) => ({ ...current, developers: row ? asText(row.id) : null }))}
 								onCreateNew={() => setSelection((current) => ({ ...current, developers: NEW_RECORD_ID }))}
-								onDelete={(row) => deleteEntity("developer_partners", row)}
+								onDelete={(row: CmsRow) => deleteEntity("developer_partners", row)}
 								onSubmit={saveDeveloper}
 								onReload={reloadWorkspace}
 							/>

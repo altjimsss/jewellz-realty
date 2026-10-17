@@ -145,20 +145,6 @@ export const projectFields: FieldSpec[] = [
 	{ name: "is_active", label: "Active", type: "checkbox", help: "Show this project in the portfolio." },
 ];
 
-export const agentFields: FieldSpec[] = [
-	{ name: "profile_id", label: "Profile ID", type: "text", help: "The Supabase auth user this agent signs in as. Use the Register Agent form to create this automatically." },
-	{ name: "full_name", label: "Full Name", type: "text" },
-	{ name: "license_number", label: "License Number", type: "text" },
-	{ name: "specialization", label: "Specialization", type: "text" },
-	{ name: "bio", label: "Bio", type: "textarea", rows: 5 },
-	{ name: "photo_url", label: "Photo URL", type: "url" },
-	{ name: "facebook_url", label: "Facebook URL", type: "url" },
-	{ name: "instagram_url", label: "Instagram URL", type: "url" },
-	{ name: "twitter_url", label: "Twitter URL", type: "url" },
-	{ name: "linkedin_url", label: "LinkedIn URL", type: "url" },
-	{ name: "is_top_agent", label: "Top Agent", type: "checkbox" },
-];
-
 export const galleryFields: FieldSpec[] = [
 	{ name: "section", label: "Section", type: "select", options: gallerySectionOptions },
 	{ name: "title", label: "Title", type: "text" },
