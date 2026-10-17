@@ -17,14 +17,16 @@ export function SectionShell({ title, description, children }: SectionProps) {
 }
 
 export function InfoCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+	const text = String(value);
+	const isLong = text.length > 14;
 	return (
 		<div className="group rounded-lg border border-black/10 bg-white p-3.5 transition hover:border-black/20">
 			<div className="flex items-start justify-between gap-3">
-				<div>
+				<div className="min-w-0 flex-1">
 					<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">{label}</div>
-					<div className="mt-2 break-words text-2xl font-semibold leading-tight tracking-[-0.04em] text-[#111111]">{value}</div>
+					<div className={`mt-2 break-all font-semibold leading-tight text-[#111111] ${isLong ? "text-base md:text-lg" : "text-2xl tracking-[-0.04em]"}`}>{value}</div>
 				</div>
-				<span className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-black/50">Live</span>
+				<span className="shrink-0 rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-black/50">Live</span>
 			</div>
 			<div className="mt-3 flex items-center justify-between border-t border-black/5 pt-2">
 				{hint ? <div className="truncate text-[11px] text-black/45">{hint}</div> : <span />}

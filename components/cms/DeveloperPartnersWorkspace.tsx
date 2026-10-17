@@ -511,7 +511,7 @@ function AccountPanel({ developer, defaultEmail, onReload }: { developer: CmsRow
 			{hasAccount ? (
 				<div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5 text-xs">
 					<div className="min-w-0">
-						<div className="font-medium text-emerald-900">{asText(developer.contact_email) || "Linked account"}</div>
+						<div className="break-all font-medium text-emerald-900">{asText(developer.contact_email) || "Linked account"}</div>
 						<div className="mt-0.5 truncate font-mono text-[10px] text-emerald-900/60">{profileId}</div>
 					</div>
 					<button

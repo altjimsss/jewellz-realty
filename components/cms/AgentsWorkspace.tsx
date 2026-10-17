@@ -366,15 +366,15 @@ function AgentEditor({ row, canEdit, loginEmail, metrics, onDelete, onSubmit }: 
 	return (
 		<div className="space-y-5">
 			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
-				<div className="flex items-center gap-3">
+				<div className="flex min-w-0 items-center gap-3">
 					<AgentAvatar src={form.photo_url} name={displayName} size="lg" />
-					<div>
+					<div className="min-w-0">
 						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Editing agent</div>
 						<div className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#111111]">{displayName}</div>
 						<div className="mt-1 flex flex-wrap items-center gap-1">
 							{form.is_top_agent ? <Pill tone="blue">Top agent</Pill> : null}
 							{form.is_active ? <Pill tone="emerald">Visible</Pill> : <Pill tone="amber">Hidden</Pill>}
-							{loginEmail ? <span className="text-[11px] text-black/45">{loginEmail}</span> : null}
+							{loginEmail ? <span className="break-all text-[11px] text-black/45">{loginEmail}</span> : null}
 						</div>
 					</div>
 				</div>
@@ -529,9 +529,9 @@ function AgentAccountPanel({ email }: { email: string }) {
 			</div>
 
 			<div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5 text-xs">
-				<div className="flex items-center gap-2 font-medium text-emerald-900">
-					<Mail className="h-3.5 w-3.5" />
-					{email}
+				<div className="flex min-w-0 items-center gap-2 font-medium text-emerald-900">
+					<Mail className="h-3.5 w-3.5 shrink-0" />
+					<span className="break-all">{email}</span>
 				</div>
 				<button
 					type="button"
