@@ -18,7 +18,7 @@ import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 import { AgentsWorkspace } from "./AgentsWorkspace";
 import { DeveloperPartnersWorkspace } from "./DeveloperPartnersWorkspace";
-import { AdminWorkspaceSkeleton } from "./AdminWorkspaceSkeleton";
+import { AdminContentSkeleton } from "./AdminContentSkeleton";
 import { EntityEditor, InfoCard, SectionShell } from "./blocks";
 import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, settingFields, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
@@ -2741,11 +2741,7 @@ export default function AdminCms({
 		await saveEntity("system_settings", payload, currentRow, "key");
 	}
 
-	if (loading) {
-		return <AdminWorkspaceSkeleton />;
-	}
-
-	if (!sessionUser || !profile) {
+	if (!loading && (!sessionUser || !profile)) {
 		return (
 			<main className="min-h-screen bg-[#f2f2ef] flex items-center justify-center p-6 text-[#111111]">
 				<div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-sm text-center">
@@ -2814,7 +2810,7 @@ export default function AdminCms({
 						<div className="rounded-md border border-black/10 bg-white p-2">
 							<div className="text-[10px] uppercase tracking-[0.14em] text-black/40">Agency</div>
 							<div className="mt-1 truncate text-xs font-semibold text-[#111111]">Jewellz Realty</div>
-							<p className="mt-0.5 truncate text-[11px] text-black/45">{profile.full_name}</p>
+							<p className="mt-0.5 truncate text-[11px] text-black/45">{profile?.full_name ?? profile?.email ?? "Signed in"}</p>
 						</div>
 					</div>
 
@@ -2995,7 +2991,7 @@ export default function AdminCms({
 							<button type="button" onClick={() => setShowNotifications((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title="Notifications">
 								<Bell className="h-4 w-4" />
 							</button>
-							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title={asText(profile.email ?? profile.full_name)}>
+							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title={asText(profile?.email ?? profile?.full_name)}>
 								<UserCircle className="h-5 w-5" />
 							</button>
 							{showNotifications ? (
@@ -3007,8 +3003,8 @@ export default function AdminCms({
 							) : null}
 							{showProfileMenu ? (
 								<div className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
-									<div className="font-medium text-[#111111]">{profile.full_name ?? "CMS User"}</div>
-									<div className="mt-1 text-xs text-black/45">{profile.email ?? sessionUser.email}</div>
+									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
+									<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
 									<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
 								</div>
@@ -3018,10 +3014,14 @@ export default function AdminCms({
 
 					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
 						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
+							{loading ? (
+								<AdminContentSkeleton />
+							) : (
+							<>
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h1 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
-										Welcome back, {asText(profile.full_name).split(" ")[0] || "Admin"}
+										Welcome back, {asText(profile?.full_name).split(" ")[0] || "Admin"}
 									</h1>
 								</div>
 								<div className="flex items-center gap-2">
@@ -3418,6 +3418,8 @@ export default function AdminCms({
 								</div>
 							</SectionShell>
 						) : null}
+							</>
+							)}
 					</div>
 					</div>
 					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar /> : null}
