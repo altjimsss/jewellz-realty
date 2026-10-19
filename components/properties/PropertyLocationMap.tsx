@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import { formatDistance } from "@/lib/nearby-places";
@@ -72,9 +72,31 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 	const [activeTab, setActiveTab] = useState(0);
 	const [focusedNearbyPlace, setFocusedNearbyPlace] = useState<NearbyPlaceGroup["places"][number] | null>(null);
 
-	// Live groups discovered by MapLibre queryRenderedFeatures (used when cache is empty)
+	// Live groups discovered from Stadia Places API (used when cache is empty)
 	const hasCachedPlaces = nearbyGroups.some((g) => g.places.length > 0);
 	const [liveGroups, setLiveGroups] = useState<NearbyPlaceGroup[] | null>(null);
+
+	// Automatically load nearby places if not provided by server cache
+	useEffect(() => {
+		if (hasCachedPlaces || !property.coordinates) return;
+
+		let active = true;
+		const [lat, lng] = property.coordinates;
+		fetch(
+			`/api/nearby?propertyId=${encodeURIComponent(property.id)}&lat=${lat}&lng=${lng}&type=${encodeURIComponent(property.type ?? "")}`,
+		)
+			.then((res) => res.json())
+			.then((data) => {
+				if (active && Array.isArray(data.groups) && data.groups.some((g: NearbyPlaceGroup) => g.places.length > 0)) {
+					setLiveGroups(data.groups);
+				}
+			})
+			.catch(() => {});
+
+		return () => {
+			active = false;
+		};
+	}, [hasCachedPlaces, property.coordinates, property.id, property.type]);
 
 	/** Called by PropertyMapPreview after its first idle queryRenderedFeatures run */
 	const handleNearbyPlacesFound = useCallback(
@@ -126,7 +148,6 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 						nearbyPlaces={allNearbyPlaces}
 						mapHeightClassName="h-[400px]"
 						focusedNearbyPlace={focusedNearbyPlace}
-						selectedCategory={active.label}
 						onSelectCategory={(category) => {
 							if (category === "All") return;
 							const idx = nearbyCategoryTabs.findIndex((t) => t.label === category);

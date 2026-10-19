@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 
-import { getCachedNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
+import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
+import { fetchNearbyPlacesFromStadia, geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
 import {
 	SAMPLE_PROPERTIES,
 	getPropertyBySlug,
@@ -48,14 +48,21 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 	}
 	const propertyWithCoordinates = coordinates ? { ...property, coordinates } : property;
 
-	// Read the nearby cache only — never block the page on OpenStreetMap
-	// (Overpass can take 30s+ when rate-limited). When the cache is empty the
-	// PropertyLocationMap client fetches /api/nearby and warms it.
 	const [relatedProperties, cachedNearbyGroups] = await Promise.all([
 		getSupabaseRelatedProperties(property.id, { category: property.type, limit: 3 }),
 		getCachedNearbyPlaceGroups(property.id),
 	]);
-	const nearbyGroups = cachedNearbyGroups ?? nearbyCategories.map(({ category }) => ({ category, places: [] }));
+
+	let nearbyGroups = cachedNearbyGroups;
+	if (!nearbyGroups && propertyWithCoordinates.coordinates) {
+		const [lat, lng] = propertyWithCoordinates.coordinates;
+		nearbyGroups = await fetchNearbyPlacesFromStadia(lat, lng, property.type);
+		// Asynchronously save to Supabase cache
+		saveNearbyPlaceGroups(property.id, nearbyGroups).catch(() => {});
+	}
+	if (!nearbyGroups) {
+		nearbyGroups = nearbyCategories.map(({ category }) => ({ category, places: [] }));
+	}
 
 	const fallbackRelatedProperties = relatedProperties.length
 		? relatedProperties

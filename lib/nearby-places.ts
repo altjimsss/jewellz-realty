@@ -124,3 +124,91 @@ export function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: 
 		Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
 	return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
+
+const STADIA_API_KEY =
+	process.env.NEXT_PUBLIC_STADIA_MAPS_API_KEY ||
+	process.env.STADIA_MAPS_API_KEY ||
+	"292b5eae-f656-470c-a59d-6a24c1ea49ae";
+
+const CATEGORY_SEARCH_QUERIES: Record<NearbyCategory, string[]> = {
+	Education: ["school", "college", "university"],
+	Health: ["hospital", "clinic", "pharmacy"],
+	Food: ["restaurant", "cafe", "fast food"],
+	Culture: ["church", "museum", "park"],
+};
+
+/**
+ * Automatically discovers nearby places for Education, Health, Food, and Culture
+ * around any property coordinates using Stadia Maps Places API.
+ */
+export async function fetchNearbyPlacesFromStadia(
+	latitude: number,
+	longitude: number,
+	propertyType?: string,
+): Promise<NearbyPlaceGroup[]> {
+	const radiusMeters = nearbyRadiusForPropertyType(propertyType);
+	const radiusKm = Math.max(1, Math.round(radiusMeters / 1000));
+
+	const groups: NearbyPlaceGroup[] = [];
+
+	await Promise.all(
+		nearbyCategories.map(async ({ category }) => {
+			const queries = CATEGORY_SEARCH_QUERIES[category];
+			const seen = new Set<string>();
+			const places: NearbyPlace[] = [];
+
+			await Promise.all(
+				queries.map(async (q) => {
+					try {
+						const url = `https://api.stadiamaps.com/geocoding/v1/search?api_key=${STADIA_API_KEY}&text=${encodeURIComponent(
+							q,
+						)}&focus.point.lat=${latitude}&focus.point.lon=${longitude}&boundary.circle.lat=${latitude}&boundary.circle.lon=${longitude}&boundary.circle.radius=${radiusKm}&layers=venue&size=6`;
+
+						const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 } });
+						if (!res.ok) return;
+						const data = await res.json();
+
+						for (const f of data.features ?? []) {
+							const name = String(f.properties?.name ?? "").trim();
+							const key = name.toLowerCase();
+							if (!name || seen.has(key)) continue;
+							seen.add(key);
+
+							const [fLon, fLat] = f.geometry.coordinates;
+							const distMeters = Math.round(
+								(f.properties?.distance !== undefined
+									? f.properties.distance * 1000
+									: haversineMeters(latitude, longitude, fLat, fLon)),
+							);
+							if (distMeters > radiusMeters) continue;
+
+							places.push({
+								id: `stadia-${category.toLowerCase()}-${name.replace(/\s+/g, "_")}`,
+								name,
+								category,
+								distanceMeters: distMeters,
+								latitude: fLat,
+								longitude: fLon,
+								address: f.properties?.label ?? undefined,
+							});
+						}
+					} catch (err) {
+						console.error(`Failed to fetch Stadia places for ${category}:${q}`, err);
+					}
+				}),
+			);
+
+			places.sort((a, b) => a.distanceMeters - b.distanceMeters);
+			groups.push({
+				category,
+				places: places.slice(0, 8),
+			});
+		}),
+	);
+
+	// Ensure categories appear in standard order: Education, Health, Food, Culture
+	return nearbyCategories.map(({ category }) => {
+		const match = groups.find((g) => g.category === category);
+		return match ?? { category, places: [] };
+	});
+}
