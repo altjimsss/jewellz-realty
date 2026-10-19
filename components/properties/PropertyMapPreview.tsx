@@ -270,13 +270,37 @@ export function PropertyMapPreview({
 			for (const prop of mapPoints) {
 				const [lat, lng] = prop.coordinates;
 				const el = createMarkerEl(40, "#DE141C", propertyIconSvg(prop), false, true);
-				const popup = new maplibre.Popup({ offset: [0, -22], closeButton: true })
-					.setHTML(`<strong>${prop.title}</strong><br>${prop.location ?? ""}`);
+				const popupHtml = `
+					<div style="padding:14px 16px;min-width:220px;max-width:270px;font-family:inherit;">
+						<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:rgba(222,20,28,0.1);color:#DE141C;margin-bottom:8px;">
+							<span style="width:6px;height:6px;border-radius:50%;background:#DE141C;"></span>
+							${prop.type || "Featured Property"}
+						</div>
+						<div style="font-size:14px;font-weight:700;line-height:1.3;color:#111;margin-bottom:4px;">
+							${prop.title}
+						</div>
+						${prop.price ? `<div style="font-size:13px;font-weight:700;color:#DE141C;margin-bottom:4px;">₱${Number(prop.price).toLocaleString()}</div>` : ""}
+						${prop.location ? `<div style="font-size:11px;color:#666;line-height:1.4;display:flex;align-items:center;gap:3px;">📍 ${prop.location}</div>` : ""}
+					</div>
+				`;
+				const popup = new maplibre.Popup({
+					offset: [0, -22],
+					anchor: "bottom",
+					closeButton: true,
+					closeOnClick: true,
+					maxWidth: "280px",
+				}).setHTML(popupHtml);
+
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([lng, lat])
 					.setPopup(popup)
 					.addTo(map);
+
 				marker.getElement().style.zIndex = "999";
+				el.addEventListener("click", (e) => {
+					e.stopPropagation();
+					marker.togglePopup();
+				});
 				markersRef.current.push(marker);
 			}
 
@@ -286,23 +310,44 @@ export function PropertyMapPreview({
 				const color = nearbyIconColor(place.category);
 				const el = createMarkerEl(26, color, nearbyIconSvg(place.category), isFocused, false);
 				const popupHtml = `
-					<div style="font:13px/1.4 inherit;padding:2px">
-						<strong style="display:block;font-size:14px;margin-bottom:2px">${place.name}</strong>
-						<span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;text-transform:uppercase;background:${color}20;color:${color};margin-bottom:4px">${place.category}</span>
-						<div style="color:#666;font-size:12px">📍 ${formatDistance(place.distanceMeters)} away</div>
-						${place.address ? `<div style="color:#888;font-size:11px;margin-top:2px">${place.address}</div>` : ""}
+					<div style="padding:14px 16px;min-width:210px;max-width:260px;font-family:inherit;">
+						<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+							<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:${color}15;color:${color};">
+								<span style="width:6px;height:6px;border-radius:50%;background:${color};"></span>
+								${place.category}
+							</span>
+							<span style="font-size:11px;font-weight:600;color:#555;white-space:nowrap;">
+								📍 ${formatDistance(place.distanceMeters)}
+							</span>
+						</div>
+						<div style="font-size:14px;font-weight:700;line-height:1.3;color:#111;margin-bottom:2px;word-break:break-word;">
+							${place.name}
+						</div>
+						${place.address ? `<div style="font-size:11px;line-height:1.4;color:#777;margin-top:4px;">${place.address}</div>` : ""}
 					</div>
 				`;
-				const popup = new maplibre.Popup({ offset: [0, -18], closeButton: true }).setHTML(popupHtml);
+				const popup = new maplibre.Popup({
+					offset: [0, -16],
+					anchor: "bottom",
+					closeButton: true,
+					closeOnClick: true,
+					maxWidth: "280px",
+				}).setHTML(popupHtml);
+
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([place.longitude, place.latitude])
 					.setPopup(popup)
 					.addTo(map);
+
 				marker.getElement().style.zIndex = isFocused ? "800" : "100";
 
 				if (isFocused) marker.togglePopup();
 
-				el.addEventListener("click", () => onSelectNearbyPlace?.(place));
+				el.addEventListener("click", (e) => {
+					e.stopPropagation();
+					marker.togglePopup();
+					onSelectNearbyPlace?.(place);
+				});
 				markersRef.current.push(marker);
 			}
 
