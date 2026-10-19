@@ -41,11 +41,16 @@ export async function getCachedNearbyPlaceGroups(
 
 	const rows = data as CachedNearbyRow[];
 
+	// A cache missing both Education and Health was almost certainly saved from a
+	// truncated Overpass response. Treat it as empty so the live fetch refreshes it.
+	const hasCategory = (c: NearbyCategory) => rows.some((row) => row.category === c);
+	if (!hasCategory("Education") && !hasCategory("Health")) return null;
+
 	return nearbyCategories.map(({ category }) => ({
 		category,
 		places: rows
 			.filter((row) => row.category === category)
-			.slice(0, 15)
+			.slice(0, 8)
 			.map((row) => ({
 				id: `${row.category}-${row.name}`,
 				name: row.name,

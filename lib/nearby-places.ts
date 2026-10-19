@@ -147,6 +147,9 @@ export function formatDistance(meters: number) {
  * Fetches every nearby category in a single Overpass request. Firing one
  * request per category trips Overpass rate limits (which silently return
  * nothing within a short timeout), so the categories share one query instead.
+ * Uses nwr (node/way/relation) with ["name"] to skip unnamed features and
+ * include large campuses mapped as relations. No result cap so all named
+ * places in the radius are returned and deduplicated in code.
  */
 async function fetchNearbyElements({
 	latitude,
@@ -159,14 +162,14 @@ async function fetchNearbyElements({
 }) {
 	const overpassFilters = nearbyCategories
 		.flatMap(({ filters }) => filters)
-		.map((condition) => `nw(around:${radiusMeters},${latitude},${longitude})${toOverpassFilter(condition)};`)
+		.map((condition) => `nwr(around:${radiusMeters},${latitude},${longitude})${toOverpassFilter(condition)}["name"];`)
 		.join("\n");
 	const query = `
 		[out:json][timeout:25];
 		(
 			${overpassFilters}
 		);
-		out center tags 60;
+		out center tags;
 	`;
 	let payload: { elements?: OverpassElement[] } | null = null;
 
@@ -203,85 +206,6 @@ async function fetchNearbyElements({
 	return payload?.elements ?? [];
 }
 
-async function fetchGooglePlacesCategory({
-	latitude,
-	longitude,
-	radiusMeters,
-	category,
-	apiKey,
-}: {
-	latitude: number;
-	longitude: number;
-	radiusMeters: number;
-	category: NearbyCategory;
-	apiKey: string;
-}): Promise<NearbyPlace[]> {
-	const categoryTypes: Record<NearbyCategory, string[]> = {
-		Education: ["school", "university", "secondary_school", "primary_school"],
-		Health: ["hospital", "doctor", "pharmacy"],
-		Food: ["restaurant", "cafe", "bakery"],
-		Culture: ["place_of_worship", "museum", "tourist_attraction"],
-	};
-
-	try {
-		const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"X-Goog-Api-Key": apiKey,
-				"X-Goog-FieldMask": "places.id,places.displayName,places.location,places.formattedAddress,places.googleMapsUri",
-			},
-			body: JSON.stringify({
-				includedTypes: categoryTypes[category],
-				maxResultCount: 5,
-				locationRestriction: {
-					circle: {
-						center: { latitude, longitude },
-						radius: radiusMeters,
-					},
-				},
-			}),
-		});
-
-		if (!response.ok) return [];
-
-		const data = (await response.json()) as {
-			places?: {
-				id: string;
-				displayName?: { text?: string };
-				location?: { latitude?: number; longitude?: number };
-				formattedAddress?: string;
-				googleMapsUri?: string;
-			}[];
-		};
-
-		return (data.places ?? [])
-			.map((place) => {
-				const pLat = place.location?.latitude;
-				const pLng = place.location?.longitude;
-				const name = place.displayName?.text;
-				if (pLat == null || pLng == null || !name) return null;
-
-				const nearby: NearbyPlace = {
-					id: `google-${place.id}`,
-					name,
-					category,
-					distanceMeters: distanceMeters(latitude, longitude, pLat, pLng),
-					latitude: pLat,
-					longitude: pLng,
-					address: place.formattedAddress,
-					googleMapsUri: place.googleMapsUri,
-				};
-				return nearby;
-			})
-			.filter((p): p is NearbyPlace => Boolean(p))
-			.sort((a, b) => a.distanceMeters - b.distanceMeters)
-			.slice(0, 3);
-	} catch {
-		return [];
-	}
-}
-
 export async function getNearbyPlaceGroups({
 	latitude,
 	longitude,
@@ -296,24 +220,6 @@ export async function getNearbyPlaceGroups({
 	}
 
 	const radiusMeters = nearbyRadiusForPropertyType(propertyType);
-	const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-	if (googleApiKey) {
-		try {
-			const googleGroups = await Promise.all(
-				nearbyCategories.map(async ({ category }) => ({
-					category,
-					places: await fetchGooglePlacesCategory({ latitude, longitude, radiusMeters, category, apiKey: googleApiKey }),
-				})),
-			);
-			if (googleGroups.some((g) => g.places.length > 0)) {
-				return googleGroups;
-			}
-		} catch {
-			// Fall back to OpenStreetMap Overpass
-		}
-	}
-
 	const elements = await fetchNearbyElements({ latitude, longitude, radiusMeters });
 
 	const placesByCategory = new Map<NearbyCategory, NearbyPlace[]>(
@@ -354,10 +260,19 @@ export async function getNearbyPlaceGroups({
 		}
 	}
 
-	return nearbyCategories.map(({ category }) => ({
-		category,
-		places: (placesByCategory.get(category) ?? [])
-			.sort((first, second) => first.distanceMeters - second.distanceMeters)
-			.slice(0, 3),
-	}));
+	return nearbyCategories.map(({ category }) => {
+		const sorted = (placesByCategory.get(category) ?? []).sort(
+			(first, second) => first.distanceMeters - second.distanceMeters,
+		);
+		// The cache table has UNIQUE (property_id, category, name): duplicate names
+		// (e.g. two "Jollibee" branches) would make the whole insert fail.
+		const seen = new Set<string>();
+		const unique = sorted.filter((place) => {
+			const key = place.name.trim().toLowerCase();
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+		return { category, places: unique.slice(0, 8) };
+	});
 }
