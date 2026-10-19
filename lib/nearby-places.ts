@@ -63,6 +63,7 @@ type OverpassElement = {
 
 const overpassEndpoints = [
 	"https://overpass-api.de/api/interpreter",
+	"https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 	"https://overpass.kumi.systems/api/interpreter",
 	"https://z.overpass-api.de/api/interpreter",
 ];
@@ -100,8 +101,8 @@ function nearbyRadiusForPropertyType(propertyType?: string) {
 
 	if (normalizedType.includes("farm")) return 10000;
 	if (normalizedType.includes("lot")) return 5000;
-	if (normalizedType.includes("memorial")) return 3000;
-	return 1500;
+	if (normalizedType.includes("memorial")) return 5000;
+	return 3000;
 }
 
 export async function geocodeLocation(query: string): Promise<[number, number] | null> {
@@ -155,7 +156,7 @@ async function fetchNearbyElements({
 }) {
 	const overpassFilters = nearbyCategories
 		.flatMap(({ filters }) => filters)
-		.map((condition) => `nwr(around:${radiusMeters},${latitude},${longitude})${toOverpassFilter(condition)};`)
+		.map((condition) => `nw(around:${radiusMeters},${latitude},${longitude})${toOverpassFilter(condition)};`)
 		.join("\n");
 	const query = `
 		[out:json][timeout:25];
