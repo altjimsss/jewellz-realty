@@ -114,6 +114,7 @@ export function PropertyMapPreview({
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const markersMapRef = useRef<Map<string, { marker: any; coords: [number, number] }>>(new Map());
 	const [mapReady, setMapReady] = useState(false);
+	const isOpeningPopupRef = useRef(false);
 
 	const onSelectNearbyPlaceRef = useRef(onSelectNearbyPlace);
 	useEffect(() => { onSelectNearbyPlaceRef.current = onSelectNearbyPlace; }, [onSelectNearbyPlace]);
@@ -158,6 +159,13 @@ export function PropertyMapPreview({
 		import("leaflet").then((L) => {
 			if (destroyed || !mapElRef.current || mapRef.current) return;
 
+			// Clear previous Leaflet container state if hot-reloaded
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			if ((mapElRef.current as any)._leaflet_id) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(mapElRef.current as any)._leaflet_id = null;
+			}
+
 			const map = L.map(mapElRef.current, {
 				zoomControl: true,
 				scrollWheelZoom: false,
@@ -170,8 +178,23 @@ export function PropertyMapPreview({
 					'&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 			}).addTo(map);
 
+			// Listen to popupclose to reset zoom only when explicitly closed by the user
+			map.on("popupclose", () => {
+				if (isOpeningPopupRef.current) return;
+				setTimeout(() => {
+					if (!isOpeningPopupRef.current) {
+						onSelectNearbyPlaceRef.current?.(null);
+						zoomToDefault();
+					}
+				}, 60);
+			});
+
 			mapRef.current = map;
 			setMapReady(true);
+
+			setTimeout(() => {
+				map.invalidateSize();
+			}, 150);
 		});
 
 		return () => {
@@ -234,18 +257,18 @@ export function PropertyMapPreview({
 				marker.bindPopup(popupHtml, {
 					offset: [0, -8],
 					closeButton: true,
-					autoPan: true,
+					autoPan: false,
 					maxWidth: 300,
 					minWidth: 240,
 					className: "jewellz-modern-popup",
 				});
 
-				marker.on("popupclose", () => {
-					zoomToDefault();
-				});
-
 				marker.on("click", () => {
-					map.flyTo([lat, lng], 16, { animate: true, duration: 0.8 });
+					isOpeningPopupRef.current = true;
+					map.setView([lat, lng], 16, { animate: true });
+					setTimeout(() => {
+						isOpeningPopupRef.current = false;
+					}, 350);
 				});
 
 				markersRef.current.push(marker);
@@ -289,20 +312,19 @@ export function PropertyMapPreview({
 				marker.bindPopup(popupHtml, {
 					offset: [0, -6],
 					closeButton: true,
-					autoPan: true,
+					autoPan: false,
 					maxWidth: 300,
 					minWidth: 240,
 					className: "jewellz-modern-popup",
 				});
 
-				marker.on("popupclose", () => {
-					onSelectNearbyPlaceRef.current?.(null);
-					zoomToDefault();
-				});
-
 				marker.on("click", () => {
-					map.flyTo([place.latitude, place.longitude], 16, { animate: true, duration: 0.8 });
+					isOpeningPopupRef.current = true;
+					map.setView([place.latitude, place.longitude], 16, { animate: true });
 					onSelectNearbyPlaceRef.current?.(place);
+					setTimeout(() => {
+						isOpeningPopupRef.current = false;
+					}, 350);
 				});
 
 				markersRef.current.push(marker);
@@ -313,8 +335,12 @@ export function PropertyMapPreview({
 			if (focusedNearbyPlaceRef.current) {
 				const entry = markersMapRef.current.get(focusedNearbyPlaceRef.current.id);
 				if (entry) {
+					isOpeningPopupRef.current = true;
 					entry.marker.openPopup();
-					map.flyTo(entry.coords, 16, { animate: true, duration: 0.8 });
+					map.setView(entry.coords, 16, { animate: true });
+					setTimeout(() => {
+						isOpeningPopupRef.current = false;
+					}, 350);
 				}
 			} else {
 				zoomToDefault();
@@ -338,8 +364,12 @@ export function PropertyMapPreview({
 
 		const entry = markersMapRef.current.get(focusedNearbyPlace.id);
 		if (entry) {
+			isOpeningPopupRef.current = true;
 			entry.marker.openPopup();
-			map.flyTo(entry.coords, 16, { animate: true, duration: 0.8 });
+			map.setView(entry.coords, 16, { animate: true });
+			setTimeout(() => {
+				isOpeningPopupRef.current = false;
+			}, 350);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [focusedNearbyPlace, mapReady]);
