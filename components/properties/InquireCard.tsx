@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { getOrCreateSessionId } from "@/lib/session";
@@ -18,6 +18,26 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
     setCaptchaToken("");
     setCaptchaResetKey((current) => current + 1);
   }
+
+  // Allow map popups or external buttons to open and scroll directly to this inquiry form
+  useEffect(() => {
+    const handleOpen = () => {
+      setOpen(true);
+      setTimeout(() => {
+        const el = document.getElementById("inquire-us-container");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          const firstInput = el.querySelector("input") as HTMLInputElement | null;
+          if (firstInput) firstInput.focus();
+        }
+      }, 150);
+    };
+    window.addEventListener("open-inquire-card", handleOpen);
+    if (window.location.hash === "#inquire-us-container") {
+      handleOpen();
+    }
+    return () => window.removeEventListener("open-inquire-card", handleOpen);
+  }, []);
 
   async function submitInquiry() {
     if (previewMode) return;
@@ -53,7 +73,7 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
   }
 
   return (
-    <div className="rounded-[12px] border border-black/10 bg-white p-4 shadow-sm">
+    <div id="inquire-us-container" className="scroll-mt-6 rounded-[12px] border border-black/10 bg-white p-4 shadow-sm">
       <button type="button"
         onClick={() => {
           if (!previewMode) {

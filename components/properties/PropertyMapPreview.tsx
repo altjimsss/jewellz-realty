@@ -243,9 +243,9 @@ export function PropertyMapPreview({
 						</div>
 						${prop.price ? `<div style="font-size:14px;font-weight:700;color:#DE141C;margin-bottom:4px;">₱${Number(prop.price).toLocaleString()}</div>` : ""}
 						${prop.location ? `<div style="font-size:11px;color:#737373;line-height:1.4;margin-bottom:12px;">📍 ${prop.location}</div>` : `<div style="height:6px;"></div>`}
-						<a href="#inquiry-form" style="display:flex;align-items:center;justify-content:center;width:100%;padding:8px 14px;border-radius:10px;background:#DE141C;color:#ffffff;font-size:11px;font-weight:600;text-decoration:none;">
+						<button type="button" onclick="window.dispatchEvent(new CustomEvent('open-inquire-card')); const el = document.getElementById('inquire-us-container'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); const inp = el.querySelector('input'); if (inp) inp.focus(); }" style="display:flex;align-items:center;justify-content:center;width:100%;padding:8px 14px;border-radius:10px;background:#DE141C;color:#ffffff;font-size:11px;font-weight:600;border:none;cursor:pointer;transition:background 0.15s ease;">
 							Inquire About Property
-						</a>
+						</button>
 					</div>
 				`;
 
