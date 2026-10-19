@@ -30,12 +30,12 @@ function nearbyIconColor(category: NearbyCategory): string {
 
 function nearbyIconSvg(category: NearbyCategory): string {
 	if (category === "Education")
-		return `<path d="M12 5 4 9l8 4 8-4-8-4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 11v3.2c0 1.8 2.7 3.3 6 3.3s6-1.5 6-3.3V11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`;
+		return `<path d="M12 3L2 8l10 5 10-5-10-5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M2 8v6M22 8v6M6 10.5v5a6 6 0 0012 0v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
 	if (category === "Health")
-		return `<rect x="5" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 8.5v7M8.5 12h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`;
+		return `<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>`;
 	if (category === "Food")
-		return `<path d="M7 4v7M10 4v7M7 8h3M15 4v16M18 4v16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 20h13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`;
-	return `<path d="M4 20h16M5 10h14M7 10v10M12 10v10M17 10v10M6 7l6-3 6 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
+		return `<path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 2v6M10 2v6M14 2v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>`;
+	return `<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M16 10v11M12 10v11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
 }
 
 function propertyIconSvg(property: Property): string {
@@ -52,17 +52,21 @@ function propertyIconSvg(property: Property): string {
 }
 
 /** Creates a round HTML marker element for MapLibre */
-function createMarkerEl(size: number, color: string, svgContent: string, focused = false): HTMLElement {
+function createMarkerEl(size: number, color: string, svgContent: string, focused = false, isProperty = false): HTMLElement {
 	const el = document.createElement("div");
+	const iconPadding = isProperty ? 14 : 9;
+	const iconSize = Math.max(12, size - iconPadding);
 	el.style.cssText = `
 		display:flex;align-items:center;justify-content:center;
 		width:${size}px;height:${size}px;border-radius:9999px;
 		background:${color};color:#fff;
-		box-shadow:0 8px 20px rgba(0,0,0,.28);border:3px solid #fff;
-		cursor:pointer;transition:transform .15s;
-		${focused ? "transform:scale(1.25);" : ""}
+		box-shadow:${isProperty ? "0 6px 18px rgba(0,0,0,.35)" : "0 2px 8px rgba(0,0,0,.22)"};
+		border:${isProperty ? "3.5px solid #fff" : "2px solid #fff"};
+		cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;
+		${isProperty ? "z-index:999;" : "z-index:100;"}
+		${focused ? "transform:scale(1.28);box-shadow:0 0 0 4px rgba(222,20,28,0.4);z-index:800;" : ""}
 	`;
-	el.innerHTML = `<svg viewBox="0 0 24 24" style="width:${size - 14}px;height:${size - 14}px;display:block;" aria-hidden="true">${svgContent}</svg>`;
+	el.innerHTML = `<svg viewBox="0 0 24 24" style="width:${iconSize}px;height:${iconSize}px;display:block;" aria-hidden="true">${svgContent}</svg>`;
 	return el;
 }
 
@@ -262,24 +266,25 @@ export function PropertyMapPreview({
 			markersRef.current.forEach((m) => m.remove());
 			markersRef.current = [];
 
-			// Property pin (red)
+			// Property pin (red, prominent, always on top)
 			for (const prop of mapPoints) {
 				const [lat, lng] = prop.coordinates;
-				const el = createMarkerEl(36, "#DE141C", propertyIconSvg(prop));
+				const el = createMarkerEl(40, "#DE141C", propertyIconSvg(prop), false, true);
 				const popup = new maplibre.Popup({ offset: [0, -22], closeButton: true })
 					.setHTML(`<strong>${prop.title}</strong><br>${prop.location ?? ""}`);
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([lng, lat])
 					.setPopup(popup)
 					.addTo(map);
+				marker.getElement().style.zIndex = "999";
 				markersRef.current.push(marker);
 			}
 
-			// Nearby pins (coloured by category)
+			// Nearby pins (smaller, coloured by category, beneath property pin)
 			for (const place of displayedNearbyPlaces) {
 				const isFocused = focusedNearbyPlace?.id === place.id;
 				const color = nearbyIconColor(place.category);
-				const el = createMarkerEl(34, color, nearbyIconSvg(place.category), isFocused);
+				const el = createMarkerEl(26, color, nearbyIconSvg(place.category), isFocused, false);
 				const popupHtml = `
 					<div style="font:13px/1.4 inherit;padding:2px">
 						<strong style="display:block;font-size:14px;margin-bottom:2px">${place.name}</strong>
@@ -288,11 +293,12 @@ export function PropertyMapPreview({
 						${place.address ? `<div style="color:#888;font-size:11px;margin-top:2px">${place.address}</div>` : ""}
 					</div>
 				`;
-				const popup = new maplibre.Popup({ offset: [0, -20], closeButton: true }).setHTML(popupHtml);
+				const popup = new maplibre.Popup({ offset: [0, -18], closeButton: true }).setHTML(popupHtml);
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([place.longitude, place.latitude])
 					.setPopup(popup)
 					.addTo(map);
+				marker.getElement().style.zIndex = isFocused ? "800" : "100";
 
 				if (isFocused) marker.togglePopup();
 
@@ -322,18 +328,7 @@ export function PropertyMapPreview({
 		return () => { mounted = false; };
 	}, [mapReady, mapPoints, displayedNearbyPlaces, focusedNearbyPlace, focusedLngLat, onSelectNearbyPlace]);
 
-	// ── Status labels for the footer ─────────────────────────────────────────
-	const locationLabels = useMemo(() => {
-		const unique = new Set(mapPoints.map((p) => (p.location ?? "").split(",")[0]?.trim() || "Unknown area"));
-		return Array.from(unique).slice(0, 3);
-	}, [mapPoints]);
-
-	const hiddenLocationCount = Math.max(
-		0,
-		new Set(mapPoints.map((p) => (p.location ?? "").split(",")[0]?.trim() || "Unknown area")).size -
-			locationLabels.length,
-	);
-
+	// ── Status message for the footer ─────────────────────────────────────────
 	const hasPins = mapPoints.length > 0;
 	const statusTitle = hasPins
 		? nearbyPlaces.length > 0
@@ -350,44 +345,6 @@ export function PropertyMapPreview({
 		<div className="flex h-full min-h-[520px] flex-col overflow-hidden">
 			<div className={`relative ${mapHeightClassName} shrink-0 bg-[#f0f0f0]`}>
 				<div ref={mapElRef} className="absolute inset-0" />
-
-				{/* Category filter pills (shown once we have nearby data) */}
-				{nearbyPlaces.length > 0 && (
-					<div className="absolute top-3 left-3 right-3 z-[400] flex flex-wrap items-center gap-1.5 rounded-xl border border-black/10 bg-white/95 p-1.5 shadow-md backdrop-blur-md">
-						<button
-							type="button"
-							onClick={() => { setInternalCategory("All"); onSelectCategory?.("All"); }}
-							className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${activeCategory === "All" ? "bg-[#DE141C] text-white shadow-sm" : "bg-transparent text-black/70 hover:bg-black/5"}`}
-						>
-							<span>All</span>
-							<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${activeCategory === "All" ? "bg-white/25" : "bg-black/10 text-black/60"}`}>
-								{nearbyPlaces.length}
-							</span>
-						</button>
-						{(["Education", "Health", "Food", "Culture"] as const).map((cat) => {
-							const count = nearbyPlaces.filter((p) => p.category === cat).length;
-							if (count === 0) return null;
-							const isActive = activeCategory === cat;
-							return (
-								<button
-									key={cat}
-									type="button"
-									onClick={() => { setInternalCategory(cat); onSelectCategory?.(cat); }}
-									className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${isActive ? "bg-[#DE141C] text-white shadow-sm" : "bg-transparent text-black/70 hover:bg-black/5"}`}
-								>
-									<span
-										className="h-2 w-2 rounded-full"
-										style={{ backgroundColor: isActive ? "#fff" : nearbyIconColor(cat) }}
-									/>
-									<span>{cat}</span>
-									<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? "bg-white/25" : "bg-black/10 text-black/60"}`}>
-										{count}
-									</span>
-								</button>
-							);
-						})}
-					</div>
-				)}
 			</div>
 
 			{/* Map footer */}
@@ -399,20 +356,6 @@ export function PropertyMapPreview({
 						<p className="mt-1 text-sm text-black/55">{statusMessage}</p>
 					</div>
 				</div>
-				{locationLabels.length > 0 && (
-					<div className="mt-4 flex flex-wrap gap-2">
-						{locationLabels.map((label) => (
-							<span key={label} className="rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] font-medium text-black/70 shadow-sm">
-								{label}
-							</span>
-						))}
-						{hiddenLocationCount > 0 && (
-							<span className="rounded-full border border-black/10 bg-black/5 px-3 py-1 text-[11px] font-medium text-black/60">
-								+{hiddenLocationCount}
-							</span>
-						)}
-					</div>
-				)}
 			</div>
 		</div>
 	);

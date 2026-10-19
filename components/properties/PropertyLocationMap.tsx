@@ -70,6 +70,7 @@ type PropertyLocationMapProps = {
 export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: PropertyLocationMapProps) {
 	const [isMapOpen, setIsMapOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState(0);
+	const [showAllPlaces, setShowAllPlaces] = useState(false);
 	const [focusedNearbyPlace, setFocusedNearbyPlace] = useState<NearbyPlaceGroup["places"][number] | null>(null);
 
 	// Live groups discovered from Stadia Places API (used when cache is empty)
@@ -177,7 +178,10 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 							<button
 								key={tab.label}
 								type="button"
-								onClick={() => setActiveTab(index)}
+								onClick={() => {
+									setActiveTab(index);
+									setShowAllPlaces(false);
+								}}
 								className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
 									isActive
 										? "border-[#DE141C] bg-[#DE141C] text-white"
@@ -196,11 +200,11 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 					{activePlaces.length === 0 ? (
 						<div className="px-4 py-3 text-sm text-black/50">
 							{isMapOpen
-								? `Loading nearby ${active.label.toLowerCase()} places from map…`
-								: `Open the map to discover nearby ${active.label.toLowerCase()} places.`}
+								? `Finding nearby ${active.label.toLowerCase()} places…`
+								: `Open the map to view nearby ${active.label.toLowerCase()} places.`}
 						</div>
 					) : null}
-					{activePlaces.map((item) => (
+					{(showAllPlaces ? activePlaces : activePlaces.slice(0, 3)).map((item) => (
 						<button
 							key={item.id}
 							type="button"
@@ -226,6 +230,29 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 							</div>
 						</button>
 					))}
+
+					{/* Show All dropdown toggle */}
+					{activePlaces.length > 3 && (
+						<button
+							type="button"
+							onClick={() => setShowAllPlaces((prev) => !prev)}
+							className="flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/5"
+						>
+							<span>{showAllPlaces ? "Show less" : `Show all ${activePlaces.length} places`}</span>
+							<svg
+								viewBox="0 0 24 24"
+								className={`h-3.5 w-3.5 transition-transform duration-200 ${showAllPlaces ? "rotate-180" : ""}`}
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					)}
 				</div>
 			</div>
 		</>
