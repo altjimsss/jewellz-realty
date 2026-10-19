@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import type { Metadata } from "next";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 
-import { getCachedNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { nearbyCategories } from "@/lib/nearby-places";
+import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
+import { geocodeLocation, getNearbyPlaceGroups, nearbyCategories } from "@/lib/nearby-places";
 import {
 	SAMPLE_PROPERTIES,
 	getPropertyBySlug,
@@ -40,12 +41,39 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 		notFound();
 	}
 
-	const [relatedProperties, nearbyGroups] = await Promise.all([
+	// Resolve coordinates automatically: use stored lat/lng, or geocode the
+	// location text so nearby pins work even when coordinates were never entered.
+	let coordinates = property.coordinates;
+	if (!coordinates && property.location) {
+		coordinates = (await geocodeLocation(`${property.location}, Philippines`)) ?? undefined;
+	}
+	const propertyWithCoordinates = coordinates ? { ...property, coordinates } : property;
+
+	const [relatedProperties, cachedNearbyGroups] = await Promise.all([
 		getSupabaseRelatedProperties(property.id, { category: property.type, limit: 3 }),
-		getCachedNearbyPlaceGroups(property.id).then(
-			(cached) => cached ?? nearbyCategories.map(({ category }) => ({ category, places: [] })),
-		),
+		getCachedNearbyPlaceGroups(property.id),
 	]);
+
+	// No cache yet — fetch nearby places live from OpenStreetMap and persist
+	// the result in the background so the next visit skips the fetch.
+	let nearbyGroups = cachedNearbyGroups;
+	if (!nearbyGroups) {
+		nearbyGroups = coordinates
+			? await getNearbyPlaceGroups({
+					latitude: coordinates[0],
+					longitude: coordinates[1],
+					propertyType: property.type,
+				})
+			: nearbyCategories.map(({ category }) => ({ category, places: [] }));
+
+		if (nearbyGroups.some((group) => group.places.length > 0)) {
+			const groupsToCache = nearbyGroups;
+			after(async () => {
+				await saveNearbyPlaceGroups(property.id, groupsToCache);
+			});
+		}
+	}
+
 	const fallbackRelatedProperties = relatedProperties.length
 		? relatedProperties
 		: getSampleRelatedProperties(property.slug, 3);
@@ -58,7 +86,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
 	return (
 		<PropertyDetailContent
-			property={property}
+			property={propertyWithCoordinates}
 			galleryImages={galleryImages}
 			nearbyGroups={nearbyGroups}
 			relatedProperties={fallbackRelatedProperties}

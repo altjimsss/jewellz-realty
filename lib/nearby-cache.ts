@@ -2,6 +2,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import {
 	nearbyCategories,
 	type NearbyCategory,
+	type NearbyPlace,
 	type NearbyPlaceGroup,
 } from "@/lib/nearby-places";
 
@@ -56,4 +57,53 @@ export async function getCachedNearbyPlaceGroups(
 				googleMapsUri: row.map_uri ?? undefined,
 			})),
 	}));
+}
+
+/**
+ * Persists freshly fetched nearby places so later page loads skip the live
+ * Overpass fetch. Replaces any previous rows for the property.
+ */
+export async function saveNearbyPlaceGroups(propertyId: string, groups: NearbyPlaceGroup[]) {
+	const places: {
+		property_id: string;
+		category: NearbyCategory;
+		name: string;
+		distance_meters: number;
+		latitude: number;
+		longitude: number;
+		address: string | null;
+		map_uri: string | null;
+		source: string;
+		fetched_at: string;
+	}[] = groups.flatMap((group) =>
+		group.places.map((place: NearbyPlace) => ({
+			property_id: propertyId,
+			category: group.category,
+			name: place.name,
+			distance_meters: place.distanceMeters,
+			latitude: place.latitude,
+			longitude: place.longitude,
+			address: place.address ?? null,
+			map_uri: place.googleMapsUri ?? null,
+			source: "openstreetmap",
+			fetched_at: new Date().toISOString(),
+		})),
+	);
+
+	const { error: deleteError } = await supabaseServer
+		.from("property_nearby_places")
+		.delete()
+		.eq("property_id", propertyId);
+
+	if (deleteError) {
+		console.error("Failed to clear nearby cache", deleteError.message);
+		return;
+	}
+
+	if (places.length === 0) return;
+
+	const { error: insertError } = await supabaseServer.from("property_nearby_places").insert(places);
+	if (insertError) {
+		console.error("Failed to save nearby cache", insertError.message);
+	}
 }

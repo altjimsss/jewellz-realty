@@ -64,6 +64,36 @@ function nearbyRadiusForPropertyType(propertyType?: string) {
 	return 1500;
 }
 
+export async function geocodeLocation(query: string): Promise<[number, number] | null> {
+	const trimmedQuery = query.trim();
+	if (!trimmedQuery) return null;
+
+	try {
+		const response = await fetch(
+			`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(trimmedQuery)}`,
+			{
+				headers: {
+					Accept: "application/json",
+					"User-Agent": "JewellzRealty/1.0",
+				},
+				next: { revalidate: 60 * 60 * 24 },
+			},
+		);
+
+		if (!response.ok) return null;
+
+		const results = (await response.json()) as { lat?: string; lon?: string }[];
+		const first = results[0];
+		const latitude = Number(first?.lat);
+		const longitude = Number(first?.lon);
+
+		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+		return [latitude, longitude];
+	} catch {
+		return null;
+	}
+}
+
 export function formatDistance(meters: number) {
 	if (meters < 1000) return `${meters} m`;
 	return `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0)} km`;
