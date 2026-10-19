@@ -337,6 +337,11 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 		() => (filteredProperties.length === 0 ? getFallbackRecommendedProperties(properties, activeCategory, appliedFilters) : []),
 		[activeCategory, appliedFilters, filteredProperties.length, properties],
 	);
+	// AI-enhanced result cards: keyed by property.id → { reason, confidence }
+	const [aiEnhancedMap, setAiEnhancedMap] = useState<Map<string, { reason: string; confidence?: number }>>(new Map());
+	// AI "You might also like" extras (properties not in current results)
+	const [aiSuggestions, setAiSuggestions] = useState<AiRecommendedProperty[]>([]);
+	// AI fallback when 0 results
 	const [aiRecommendedProperties, setAiRecommendedProperties] = useState<AiRecommendedProperty[]>([]);
 	const [aiRecommendationStatus, setAiRecommendationStatus] = useState<"idle" | "loading" | "ready" | "fallback">("idle");
 	const recommendedProperties = hasSearched ? (aiRecommendedProperties.length > 0 ? aiRecommendedProperties : fallbackRecommendedProperties) : [];
@@ -347,18 +352,24 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 	const leadProperties = showMapPreview ? filteredProperties.slice(0, 4) : filteredProperties;
 	const remainingProperties = showMapPreview ? filteredProperties.slice(4) : [];
 
+	// Fire AI for every search — re-rank results (enhance) or find alternatives (0 results)
 	useEffect(() => {
-		if (!hasSearched || filteredProperties.length > 0 || properties.length === 0) {
-			return;
-		}
+		if (!hasSearched || properties.length === 0) return;
 
 		const controller = new AbortController();
 		const propertyById = new Map(properties.map((property) => [property.id, property]));
+		const filteredIds = new Set(filteredProperties.map((p) => p.id));
+		const hasResults = filteredProperties.length > 0;
+
+		// Reset previous AI state
+		setAiEnhancedMap(new Map());
+		setAiSuggestions([]);
+		if (!hasResults) {
+			setAiRecommendedProperties([]);
+			setAiRecommendationStatus("loading");
+		}
 
 		async function loadAiRecommendations() {
-			setAiRecommendationStatus("loading");
-			setAiRecommendedProperties([]);
-
 			try {
 				const response = await fetch("/api/recommendations", {
 					method: "POST",
@@ -366,7 +377,9 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 					body: JSON.stringify({
 						category: activeCategory,
 						filters: appliedFilters,
-						properties,
+						// For enhance mode send filtered results first, then add remaining for suggestions
+						properties: hasResults ? filteredProperties : properties,
+						mode: hasResults ? "enhance" : "alternatives",
 						sessionId: getOrCreateSessionId(),
 					}),
 					signal: controller.signal,
@@ -381,36 +394,69 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				const recommendations = Array.isArray((data as { recommendations?: unknown }).recommendations)
 					? (data as { recommendations: Array<{ id?: unknown; reason?: unknown; confidence?: unknown; recommendationId?: unknown }> }).recommendations
 					: [];
-				const mappedRecommendations = recommendations
-					.flatMap((item): AiRecommendedProperty[] => {
+
+				if (hasResults) {
+					// Build reason map for existing result cards
+					const newMap = new Map<string, { reason: string; confidence?: number }>();
+					const extras: AiRecommendedProperty[] = [];
+
+					recommendations.forEach((item) => {
 						const id = typeof item.id === "string" ? item.id : "";
 						const property = propertyById.get(id);
-						if (!property) return [];
+						if (!property) return;
+						const reason = typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : getRecommendationReason(property, activeCategory, appliedFilters);
+						const confidence = typeof item.confidence === "number" ? item.confidence : undefined;
 
-						return [{
-							property,
-							reason: typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : getRecommendationReason(property, activeCategory, appliedFilters),
-							confidence: typeof item.confidence === "number" ? item.confidence : undefined,
-							recommendationId: typeof item.recommendationId === "string" ? item.recommendationId : undefined,
-							source: apiSource === "ai" ? "ai" as const : "fallback" as const,
-						}];
-					})
-					.slice(0, 6);
+						if (filteredIds.has(id)) {
+							// Annotate existing result card
+							newMap.set(id, { reason, confidence });
+						} else {
+							// Extra property not in current results → "You might also like"
+							extras.push({
+								property,
+								reason,
+								confidence,
+								recommendationId: typeof item.recommendationId === "string" ? item.recommendationId : undefined,
+								source: apiSource === "ai" ? "ai" as const : "fallback" as const,
+							});
+						}
+					});
 
-				setAiRecommendedProperties(mappedRecommendations);
-				// All sources (ai, semantic-vector, semantic-local) count as ready
-				setAiRecommendationStatus(mappedRecommendations.length > 0 ? "ready" : "fallback");
+					setAiEnhancedMap(newMap);
+					setAiSuggestions(extras.slice(0, 3));
+				} else {
+					// 0 results — show alternatives
+					const mapped = recommendations
+						.flatMap((item): AiRecommendedProperty[] => {
+							const id = typeof item.id === "string" ? item.id : "";
+							const property = propertyById.get(id);
+							if (!property) return [];
+							return [{
+								property,
+								reason: typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : getRecommendationReason(property, activeCategory, appliedFilters),
+								confidence: typeof item.confidence === "number" ? item.confidence : undefined,
+								recommendationId: typeof item.recommendationId === "string" ? item.recommendationId : undefined,
+								source: apiSource === "ai" ? "ai" as const : "fallback" as const,
+							}];
+						})
+						.slice(0, 6);
+
+					setAiRecommendedProperties(mapped);
+					setAiRecommendationStatus(mapped.length > 0 ? "ready" : "fallback");
+				}
 			} catch (error) {
 				if (error instanceof DOMException && error.name === "AbortError") return;
-				setAiRecommendedProperties([]);
-				setAiRecommendationStatus("fallback");
+				if (!hasResults) {
+					setAiRecommendedProperties([]);
+					setAiRecommendationStatus("fallback");
+				}
 			}
 		}
 
 		void loadAiRecommendations();
 
 		return () => controller.abort();
-	}, [activeCategory, appliedFilters, filteredProperties.length, hasSearched, properties]);
+	}, [activeCategory, appliedFilters, filteredProperties, hasSearched, properties]);
 
 	return (
 		<main className={`${poppins.className} bg-white text-[#181A20]`}>
@@ -474,20 +520,55 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 									<PropertyMapPreview properties={filteredProperties} mapHeightClassName="h-[320px]" />
 								</aside>
 
-								{leadProperties.map((property) => (
-									<PropertyCard key={property.id} property={property} href={`/project-list/${property.slug}`} />
-								))}
+								{leadProperties.map((property) => {
+									const ai = aiEnhancedMap.get(property.id);
+									return (
+										<PropertyCard
+											key={property.id}
+											property={property}
+											href={`/project-list/${property.slug}`}
+											aiReason={ai?.reason}
+											aiConfidence={ai?.confidence}
+										/>
+									);
+								})}
 							</div>
 
 							{remainingProperties.length > 0 ? (
 								<div className="mt-5">
-									<PropertyGrid properties={remainingProperties} />
+									<div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+										{remainingProperties.map((property) => {
+											const ai = aiEnhancedMap.get(property.id);
+											return (
+												<PropertyCard
+													key={property.id}
+													property={property}
+													href={`/project-list/${property.slug}`}
+													aiReason={ai?.reason}
+													aiConfidence={ai?.confidence}
+												/>
+											);
+										})}
+									</div>
 								</div>
 							) : null}
 						</div>
 					) : (
 						<div className="mt-7">
-							<PropertyGrid properties={filteredProperties} />
+							<div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+								{filteredProperties.map((property) => {
+									const ai = aiEnhancedMap.get(property.id);
+									return (
+										<PropertyCard
+											key={property.id}
+											property={property}
+											href={`/project-list/${property.slug}`}
+											aiReason={ai?.reason}
+											aiConfidence={ai?.confidence}
+										/>
+									);
+								})}
+							</div>
 						</div>
 					)
 				) : (
@@ -495,10 +576,15 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 						<p className="text-center text-sm text-black/55">No properties matched your search. Try a different keyword, location, or category.</p>
 
 						{recommendedProperties.length > 0 ? (
-							<RecommendationPanel recommendations={recommendedProperties} status={aiRecommendationStatus} />
+							<RecommendationPanel recommendations={recommendedProperties} status={aiRecommendationStatus} variant="alternatives" />
 						) : null}
 					</div>
 				)}
+
+				{/* "You might also like" — shown after results when AI finds extra matches */}
+				{filteredProperties.length > 0 && aiSuggestions.length > 0 ? (
+					<RecommendationPanel recommendations={aiSuggestions} status="ready" variant="suggestions" />
+				) : null}
 			</section>
 
 			<Footer />

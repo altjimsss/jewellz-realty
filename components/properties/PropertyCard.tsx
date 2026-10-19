@@ -11,9 +11,11 @@ type PropertyCardProps = {
 	property: Property;
 	priceLabel?: string;
 	href?: string;
+	aiReason?: string;
+	aiConfidence?: number;
 };
 
-export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) {
+export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidence }: PropertyCardProps) {
 	const [showPendingDetail, setShowPendingDetail] = useState(false);
 	const defaultSpecs = [
 		{ label: "Beds", value: String(property.beds ?? 0) },
@@ -113,6 +115,15 @@ export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) 
 						FEATURED
 					</span>
 				)}
+				{/* AI confidence badge */}
+				{typeof aiConfidence === "number" && (
+					<span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-sm bg-black/80 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+						<svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-[#DE141C]" fill="currentColor" aria-hidden="true">
+							<polygon points="6,1 7.5,4.5 11,5 8.5,7.5 9,11 6,9.5 3,11 3.5,7.5 1,5 4.5,4.5" />
+						</svg>
+						{aiConfidence}% match
+					</span>
+				)}
 			</div>
 
 			<div className="flex flex-col bg-[#F4F4F4] p-3.5">
@@ -122,22 +133,32 @@ export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) 
 				<p className="mt-1 text-[12px] text-gray-500">{property.location ?? ""}</p>
 
 				<div className="mt-3 flex items-center justify-between gap-2 border-t border-black/8 pt-3">
-  <div className="flex items-center gap-3">
-    {specs.map((spec) => (
-      <span
-        key={`${spec.label}-${spec.value}`}
-        className="inline-flex items-center gap-1 whitespace-nowrap"
-        title={spec.label}
-      >
-        {renderSpecIcon(spec.label)}
-        <span className="text-[11px] font-semibold text-[#1F2328]">{spec.value}</span>
-      </span>
-    ))}
-  </div>
-  <p className="shrink-0 inline-flex h-8 items-center bg-[#11141C] px-3 text-[11px] font-semibold text-white">
-    {displayPrice}
-  </p>
-</div>
+					<div className="flex items-center gap-3">
+						{specs.map((spec) => (
+							<span
+								key={`${spec.label}-${spec.value}`}
+								className="inline-flex items-center gap-1 whitespace-nowrap"
+								title={spec.label}
+							>
+								{renderSpecIcon(spec.label)}
+								<span className="text-[11px] font-semibold text-[#1F2328]">{spec.value}</span>
+							</span>
+						))}
+					</div>
+					<p className="shrink-0 inline-flex h-8 items-center bg-[#11141C] px-3 text-[11px] font-semibold text-white">
+						{displayPrice}
+					</p>
+				</div>
+
+				{/* AI reason tag */}
+				{aiReason && (
+					<p className="mt-2.5 flex items-start gap-1.5 rounded-md bg-red-50 px-2.5 py-1.5 text-[10px] leading-4 text-[#DE141C]">
+						<svg viewBox="0 0 12 12" className="mt-px h-2.5 w-2.5 shrink-0" fill="currentColor" aria-hidden="true">
+							<polygon points="6,1 7.5,4.5 11,5 8.5,7.5 9,11 6,9.5 3,11 3.5,7.5 1,5 4.5,4.5" />
+						</svg>
+						<span className="font-medium">{aiReason}</span>
+					</p>
+				)}
 			</div>
 		</article>
 	);

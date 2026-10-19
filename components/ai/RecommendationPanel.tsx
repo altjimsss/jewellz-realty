@@ -13,35 +13,51 @@ export type AiRecommendedProperty = {
 type RecommendationPanelProps = {
 	recommendations: AiRecommendedProperty[];
 	status: "idle" | "loading" | "ready" | "fallback";
+	/** alternatives: 0-result fallback | suggestions: "You might also like" after results */
+	variant?: "alternatives" | "suggestions";
 };
 
-export function RecommendationPanel({ recommendations, status }: RecommendationPanelProps) {
+export function RecommendationPanel({ recommendations, status, variant = "alternatives" }: RecommendationPanelProps) {
 	const { track } = useAnalytics();
 
 	if (recommendations.length === 0) return null;
 
 	const hasAiSource = recommendations.some((r) => r.source === "ai");
-	const subtitleText =
-		status === "loading"
-			? "AI is analyzing similar properties..."
-			: status === "ready" && hasAiSource
-				? "Ranked by AI from your search intent, category, location, budget, and property details."
-				: status === "ready"
-					? "Smart suggestions based on your search filters, category, location, and property details."
-					: "Showing best matches while AI recommendations are loading.";
+
+	const label =
+		variant === "suggestions"
+			? "You Might Also Like"
+			: hasAiSource
+				? "AI Recommendations"
+				: "Smart Recommendations";
+
+	const subtitle =
+		variant === "suggestions"
+			? hasAiSource
+				? "AI found these related properties you might find interesting."
+				: "Based on your search, here are some related properties."
+			: status === "loading"
+				? "AI is analyzing similar properties..."
+				: status === "ready" && hasAiSource
+					? "Ranked by AI from your search intent, category, location, budget, and property details."
+					: status === "ready"
+						? "Smart suggestions based on your search filters, category, location, and property details."
+						: "Showing best matches while AI recommendations load.";
 
 	return (
-		<div className="mt-8">
+		<div className="mt-10">
 			<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 				<div>
 					<p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#DE141C]">
-						{hasAiSource ? "AI Recommendations" : "Smart Recommendations"}
+						{label}
 					</p>
-					<h3 className="mt-1 text-xl font-semibold text-black">Similar properties you might like</h3>
-					<p className="mt-1 text-sm text-black/55">{subtitleText}</p>
+					<h3 className="mt-1 text-xl font-semibold text-black">
+						{variant === "suggestions" ? "Similar properties you might like" : "Closest matches for your search"}
+					</h3>
+					<p className="mt-1 text-sm text-black/55">{subtitle}</p>
 				</div>
 				<div className="inline-flex w-fit rounded-full bg-red-50 px-4 py-2 text-xs font-semibold text-[#DE141C]">
-					Found {recommendations.length} similar {recommendations.length === 1 ? "property" : "properties"} for you
+					{recommendations.length} {recommendations.length === 1 ? "property" : "properties"} found
 				</div>
 			</div>
 
@@ -59,11 +75,12 @@ export function RecommendationPanel({ recommendations, status }: RecommendationP
 							}
 						}}
 					>
-						<PropertyCard property={property} href={`/project-list/${property.slug}`} />
-						<p className="rounded-full bg-zinc-50 px-3 py-2 text-xs font-medium text-black/55">
-							{source === "ai" ? "✦ AI reason" : "✓ Matched"}: {reason}
-							{typeof confidence === "number" ? ` • ${Math.round(confidence)}% match` : ""}
-						</p>
+						<PropertyCard
+							property={property}
+							href={`/project-list/${property.slug}`}
+							aiReason={reason}
+							aiConfidence={confidence}
+						/>
 					</div>
 				))}
 			</div>
