@@ -89,7 +89,7 @@ type PropertyMapPreviewProps = {
 	mapHeightClassName?: string;
 	focusedNearbyPlace?: NearbyPlace | null;
 	selectedCategory?: string;
-	onSelectNearbyPlace?: (place: NearbyPlace) => void;
+	onSelectNearbyPlace?: (place: NearbyPlace | null) => void;
 	onSelectCategory?: (category: string) => void;
 	/** Called once when MapLibre finds POIs from the loaded tile data */
 	onNearbyPlacesFound?: (groups: NearbyPlaceGroup[]) => void;
@@ -266,6 +266,26 @@ export function PropertyMapPreview({
 			markersRef.current.forEach((m) => m.remove());
 			markersRef.current = [];
 
+			// All visible coordinates for bounding box calculation
+			const allCoords: [number, number][] = [
+				...mapPoints.map((p) => [p.coordinates[1], p.coordinates[0]] as [number, number]),
+				...displayedNearbyPlaces.map((p) => [p.longitude, p.latitude] as [number, number]),
+			];
+
+			const zoomToDefault = () => {
+				if (!mapRef.current) return;
+				const currentMap = mapRef.current;
+				if (allCoords.length > 1) {
+					const bounds = allCoords.reduce(
+						(b, c) => b.extend(c as [number, number]),
+						new maplibre.LngLatBounds(allCoords[0], allCoords[0]),
+					);
+					currentMap.fitBounds(bounds, { padding: 60, maxZoom: 15, speed: 1.2 });
+				} else if (mapPoints.length === 1) {
+					currentMap.flyTo({ center: [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]], zoom: 14, speed: 1.2 });
+				}
+			};
+
 			// Property pin (red, prominent, always on top)
 			for (const prop of mapPoints) {
 				const [lat, lng] = prop.coordinates;
@@ -290,6 +310,10 @@ export function PropertyMapPreview({
 					closeOnClick: true,
 					maxWidth: "280px",
 				}).setHTML(popupHtml);
+
+				popup.on("close", () => {
+					zoomToDefault();
+				});
 
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([lng, lat])
@@ -334,6 +358,11 @@ export function PropertyMapPreview({
 					maxWidth: "280px",
 				}).setHTML(popupHtml);
 
+				popup.on("close", () => {
+					onSelectNearbyPlace?.(null);
+					zoomToDefault();
+				});
+
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([place.longitude, place.latitude])
 					.setPopup(popup)
@@ -351,22 +380,10 @@ export function PropertyMapPreview({
 				markersRef.current.push(marker);
 			}
 
-			// Fit view to all visible points
-			const allCoords: [number, number][] = [
-				...mapPoints.map((p) => [p.coordinates[1], p.coordinates[0]] as [number, number]),
-				...displayedNearbyPlaces.map((p) => [p.longitude, p.latitude] as [number, number]),
-			];
-
 			if (focusedLngLat) {
 				map.flyTo({ center: focusedLngLat, zoom: 16, speed: 1.4 });
-			} else if (allCoords.length > 1) {
-				const bounds = allCoords.reduce(
-					(b, c) => b.extend(c as [number, number]),
-					new maplibre.LngLatBounds(allCoords[0], allCoords[0]),
-				);
-				map.fitBounds(bounds, { padding: 60, maxZoom: 15, animate: true });
-			} else if (mapPoints.length === 1) {
-				map.flyTo({ center: [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]], zoom: 14 });
+			} else {
+				zoomToDefault();
 			}
 		});
 

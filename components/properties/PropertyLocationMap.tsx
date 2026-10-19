@@ -162,6 +162,10 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 							if (idx !== -1) setActiveTab(idx);
 						}}
 						onSelectNearbyPlace={(place) => {
+							if (!place) {
+								setFocusedNearbyPlace(null);
+								return;
+							}
 							setFocusedNearbyPlace((current) => (current?.id === place.id ? null : place));
 							const idx = nearbyCategoryTabs.findIndex((t) => t.label === place.category);
 							if (idx !== -1) setActiveTab(idx);
