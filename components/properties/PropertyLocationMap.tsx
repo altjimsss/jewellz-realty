@@ -1,10 +1,22 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
+import dynamic from "next/dynamic";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import { formatDistance } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
+
+const PropertyMapPreview = dynamic(
+	() => import("@/components/properties/PropertyMapPreview").then((mod) => mod.PropertyMapPreview),
+	{
+		ssr: false,
+		loading: () => (
+			<div className="flex h-[400px] w-full items-center justify-center bg-stone-100 text-sm text-stone-500">
+				Loading map…
+			</div>
+		),
+	},
+);
 
 type NearbyTabDef = {
 	label: string;

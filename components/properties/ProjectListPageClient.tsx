@@ -11,7 +11,19 @@ import { extractBasicSearchIntent } from "@/lib/ai/search-intent";
 import { getOrCreateSessionId } from "@/lib/session";
 import { PropertyFilters, type PropertyFiltersState } from "@/components/properties/PropertyFilters";
 import { PropertyGrid } from "@/components/properties/PropertyGrid";
-import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
+import dynamic from "next/dynamic";
+
+const PropertyMapPreview = dynamic(
+	() => import("@/components/properties/PropertyMapPreview").then((mod) => mod.PropertyMapPreview),
+	{
+		ssr: false,
+		loading: () => (
+			<div className="flex h-[320px] w-full items-center justify-center bg-stone-100 text-sm text-stone-500">
+				Loading map…
+			</div>
+		),
+	},
+);
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { mergeNaturalLanguageFilters } from "@/lib/property-search";
 import type { Property } from "@/types/property";

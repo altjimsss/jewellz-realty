@@ -144,6 +144,10 @@ export function PropertyMapPreview({
 		import("maplibre-gl").then((maplibre) => {
 			if (destroyed || !mapElRef.current || mapRef.current) return;
 
+			if (typeof window !== "undefined") {
+				maplibre.setWorkerUrl("/maplibre-gl-worker.mjs");
+			}
+
 			const map = new maplibre.Map({
 				container: mapElRef.current!,
 				style: MAP_STYLE,

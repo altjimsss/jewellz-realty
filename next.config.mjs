@@ -6,7 +6,7 @@ const nextConfig = {
   turbopack: {
     root: fileURLToPath(new URL(".", import.meta.url)),
   },
-  serverExternalPackages: ["@xenova/transformers", "onnxruntime-node", "sharp"],
+  serverExternalPackages: ["@xenova/transformers", "onnxruntime-node", "sharp", "maplibre-gl"],
   experimental: {
     optimizePackageImports: [
       "lucide-react",
