@@ -2,24 +2,22 @@
 
 import { useEffect, useRef, useMemo, useState } from "react";
 import type { NearbyPlace, NearbyPlaceGroup, NearbyCategory } from "@/lib/nearby-places";
-import {
-	formatDistance,
-	nearbyCategories,
-	nearbyRadiusForPropertyType,
-	haversineMeters,
-	poiClassToCategory,
-} from "@/lib/nearby-places";
+import { formatDistance } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 
-// Stadia Maps style — vector tiles with full OSM POI data, no result cap
-const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_API_KEY ?? "";
-const MAP_STYLE = `https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=${STADIA_KEY}`;
+// Stadia Maps raster tile URL with Retina support — 100% compatible with all browsers (no WebGL required)
+const STADIA_KEY =
+	process.env.NEXT_PUBLIC_STADIA_MAPS_API_KEY ||
+	process.env.STADIA_MAPS_API_KEY ||
+	"292b5eae-f656-470c-a59d-6a24c1ea49ae";
 
-const FALLBACK_CENTER: [number, number] = [121.0583, 13.7563]; // [lng, lat] for MapLibre
+const STADIA_TILE_URL = `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=${STADIA_KEY}`;
+
+const FALLBACK_CENTER: [number, number] = [13.7563, 121.0583]; // Leaflet uses [lat, lng]
 
 type PropertyWithCoordinates = Property & { coordinates: [number, number] };
 
-// ─── Icon helpers (same palette as the old Leaflet implementation) ─────────
+// ─── Color & SVG Helpers ──────────────────────────────────────────────────
 
 function nearbyIconColor(category: NearbyCategory): string {
 	if (category === "Education") return "#2563EB";
@@ -51,37 +49,40 @@ function propertyIconSvg(property: Property): string {
 	return `<path d="M12 21s6-4.5 6-10a6 6 0 1 0-12 0c0 5.5 6 10 6 10Z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="11" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
 }
 
-/** Creates a round HTML marker element for MapLibre */
-function createMarkerEl(size: number, color: string, svgContent: string, focused = false, isProperty = false): HTMLElement {
-	const el = document.createElement("div");
-	const iconPadding = isProperty ? 14 : 9;
-	const iconSize = Math.max(12, size - iconPadding);
-	el.style.cssText = `
-		display:flex;align-items:center;justify-content:center;
-		width:${size}px;height:${size}px;border-radius:9999px;
-		background:${color};color:#fff;
-		box-shadow:${isProperty ? "0 6px 18px rgba(0,0,0,.35)" : "0 2px 8px rgba(0,0,0,.22)"};
-		border:${isProperty ? "3.5px solid #fff" : "2px solid #fff"};
-		cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;
-		${isProperty ? "z-index:999;" : "z-index:100;"}
-		${focused ? "transform:scale(1.28);box-shadow:0 0 0 4px rgba(222,20,28,0.4);z-index:800;" : ""}
-	`;
-	el.innerHTML = `<svg viewBox="0 0 24 24" style="width:${iconSize}px;height:${iconSize}px;display:block;" aria-hidden="true">${svgContent}</svg>`;
-	return el;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createPropertyIcon(L: any, prop: Property) {
+	const svg = propertyIconSvg(prop);
+	return L.divIcon({
+		className: "jewellz-marker-wrapper",
+		html: `
+			<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:9999px;background:#DE141C;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.35);border:3.5px solid #fff;cursor:pointer;">
+				<svg viewBox="0 0 24 24" style="width:26px;height:26px;display:block;" aria-hidden="true">${svg}</svg>
+			</div>
+		`,
+		iconSize: [40, 40],
+		iconAnchor: [20, 20],
+		popupAnchor: [0, -22],
+	});
 }
 
-// ─── Classify a MapLibre POI feature into one of our four categories ───────
-
-function classifyFeature(props: Record<string, unknown>): NearbyCategory | null {
-	// OpenMapTiles schema uses `class` and `subclass`; fall back to raw OSM tags
-	for (const key of ["class", "subclass", "amenity", "shop", "tourism", "historic"]) {
-		const val = String(props[key] ?? "").toLowerCase();
-		if (val && poiClassToCategory[val]) return poiClassToCategory[val];
-	}
-	return null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createNearbyIcon(L: any, category: NearbyCategory) {
+	const color = nearbyIconColor(category);
+	const svg = nearbyIconSvg(category);
+	return L.divIcon({
+		className: "jewellz-marker-wrapper",
+		html: `
+			<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:9999px;background:${color};color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.22);border:2px solid #fff;cursor:pointer;">
+				<svg viewBox="0 0 24 24" style="width:17px;height:17px;display:block;" aria-hidden="true">${svg}</svg>
+			</div>
+		`,
+		iconSize: [26, 26],
+		iconAnchor: [13, 13],
+		popupAnchor: [0, -15],
+	});
 }
 
-// ─── Component types ────────────────────────────────────────────────────────
+// ─── Component Props ────────────────────────────────────────────────────────
 
 type PropertyMapPreviewProps = {
 	properties: Property[];
@@ -91,7 +92,6 @@ type PropertyMapPreviewProps = {
 	selectedCategory?: string;
 	onSelectNearbyPlace?: (place: NearbyPlace | null) => void;
 	onSelectCategory?: (category: string) => void;
-	/** Called once when MapLibre finds POIs from the loaded tile data */
 	onNearbyPlacesFound?: (groups: NearbyPlaceGroup[]) => void;
 };
 
@@ -102,10 +102,8 @@ export function PropertyMapPreview({
 	focusedNearbyPlace = null,
 	selectedCategory,
 	onSelectNearbyPlace,
-	onSelectCategory,
-	onNearbyPlacesFound,
 }: PropertyMapPreviewProps) {
-	const [internalCategory, setInternalCategory] = useState<string>("All");
+	const [internalCategory] = useState<string>("All");
 	const activeCategory = selectedCategory ?? internalCategory;
 
 	const mapElRef = useRef<HTMLDivElement | null>(null);
@@ -114,13 +112,8 @@ export function PropertyMapPreview({
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const markersRef = useRef<any[]>([]);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const markersMapRef = useRef<Map<string, { marker: any; popup: any; el: HTMLElement; coords: [number, number] }>>(new Map());
+	const markersMapRef = useRef<Map<string, { marker: any; coords: [number, number] }>>(new Map());
 	const [mapReady, setMapReady] = useState(false);
-	const queryDoneRef = useRef(false);
-
-	// Keep refs to props and state so event handlers always see latest without re-triggering marker rebuilds
-	const nearbyPlacesRef = useRef(nearbyPlaces);
-	useEffect(() => { nearbyPlacesRef.current = nearbyPlaces; }, [nearbyPlaces]);
 
 	const onSelectNearbyPlaceRef = useRef(onSelectNearbyPlace);
 	useEffect(() => { onSelectNearbyPlaceRef.current = onSelectNearbyPlace; }, [onSelectNearbyPlace]);
@@ -139,146 +132,46 @@ export function PropertyMapPreview({
 	}, [nearbyPlaces, activeCategory]);
 
 	const propCenter: [number, number] = mapPoints[0]?.coordinates
-		? [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]]
+		? [mapPoints[0].coordinates[0], mapPoints[0].coordinates[1]]
 		: FALLBACK_CENTER;
 
-	// All visible coordinates for bounding box calculation
 	const allCoords = useMemo<[number, number][]>(() => [
-		...mapPoints.map((p) => [p.coordinates[1], p.coordinates[0]] as [number, number]),
-		...displayedNearbyPlaces.map((p) => [p.longitude, p.latitude] as [number, number]),
+		...mapPoints.map((p) => p.coordinates),
+		...displayedNearbyPlaces.map((p) => [p.latitude, p.longitude] as [number, number]),
 	], [mapPoints, displayedNearbyPlaces]);
 
 	const zoomToDefault = () => {
 		if (!mapRef.current) return;
-		const currentMap = mapRef.current;
-		if (allCoords.length > 1) {
-			import("maplibre-gl").then((maplibre) => {
-				const bounds = allCoords.reduce(
-					(b, c) => b.extend(c as [number, number]),
-					new maplibre.LngLatBounds(allCoords[0], allCoords[0]),
-				);
-				currentMap.fitBounds(bounds, { padding: 60, maxZoom: 15, speed: 1.2 });
-			});
-		} else if (mapPoints.length === 1) {
-			currentMap.flyTo({ center: [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]], zoom: 14, speed: 1.2 });
-		}
-	};
-
-	const showPopupForId = (id: string) => {
-		const entry = markersMapRef.current.get(id);
-		if (!entry || !mapRef.current) return;
 		const map = mapRef.current;
-
-		// Close any other open popups first
-		markersMapRef.current.forEach((val, k) => {
-			if (k !== id && val.popup.isOpen()) {
-				val.popup.remove();
-			}
-		});
-
-		// Attach popup directly to map above pin
-		if (!entry.popup.isOpen()) {
-			entry.popup.setLngLat(entry.coords).addTo(map);
+		if (allCoords.length > 1) {
+			map.fitBounds(allCoords, { padding: [60, 60], maxZoom: 15 });
+		} else if (mapPoints.length === 1) {
+			map.flyTo(mapPoints[0].coordinates, 14);
 		}
-		map.flyTo({ center: entry.coords, zoom: 16, speed: 1.4 });
 	};
 
-	// ── EFFECT 1: Initialize map once ────────────────────────────────────────
+	// ── EFFECT 1: Initialize Leaflet Map once ────────────────────────────────
 	useEffect(() => {
 		if (!mapElRef.current) return;
 		let destroyed = false;
 
-		import("maplibre-gl").then((maplibre) => {
+		import("leaflet").then((L) => {
 			if (destroyed || !mapElRef.current || mapRef.current) return;
 
-			if (typeof window !== "undefined") {
-				maplibre.setWorkerUrl("/maplibre-gl-worker.mjs");
-			}
+			const map = L.map(mapElRef.current, {
+				zoomControl: true,
+				scrollWheelZoom: false,
+				attributionControl: true,
+			}).setView(propCenter, 14);
 
-			const map = new maplibre.Map({
-				container: mapElRef.current!,
-				style: MAP_STYLE,
-				center: propCenter,
-				zoom: 14,
-				scrollZoom: false,
-			});
+			L.tileLayer(STADIA_TILE_URL, {
+				maxZoom: 20,
+				attribution:
+					'&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+			}).addTo(map);
+
 			mapRef.current = map;
-
-			map.once("load", () => {
-				if (destroyed) return;
-				map.resize();
-				setMapReady(true);
-
-				// Query POIs from loaded tiles — fires once, only if no cached data
-				map.once("idle", () => {
-					if (destroyed || queryDoneRef.current) return;
-					if (nearbyPlacesRef.current.length > 0) return; // cached data already present
-
-					const prop = mapPoints[0];
-					if (!prop || !onNearbyPlacesFound) return;
-
-					const [propLat, propLng] = prop.coordinates; // our [lat, lng]
-					const radiusMeters = nearbyRadiusForPropertyType(prop.type ?? "");
-
-					const style = map.getStyle();
-					const poiLayerIds = (style?.layers ?? [])
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						.filter((l: any) => l["source-layer"] === "poi")
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						.map((l: any) => l.id as string);
-
-					if (poiLayerIds.length === 0) return;
-
-					const features = map.queryRenderedFeatures(undefined, {
-						layers: poiLayerIds,
-						filter: ["has", "name"],
-					});
-
-					const byCategory = new Map<NearbyCategory, NearbyPlace[]>(
-						nearbyCategories.map(({ category }) => [category, []]),
-					);
-					const seen = new Set<string>();
-
-					for (const feature of features) {
-						if (feature.geometry.type !== "Point") continue;
-						const props = (feature.properties ?? {}) as Record<string, unknown>;
-						const name = String(props.name ?? "").trim();
-						if (!name) continue;
-
-						const category = classifyFeature(props);
-						if (!category) continue;
-
-						const [lng, lat] = feature.geometry.coordinates as [number, number];
-						const dist = haversineMeters(propLat, propLng, lat, lng);
-						if (dist > radiusMeters) continue;
-
-						const key = `${category}|${name.toLowerCase()}`;
-						if (seen.has(key)) continue;
-						seen.add(key);
-
-						byCategory.get(category)!.push({
-							id: `ml-${feature.id ?? name}-${category}`,
-							name,
-							category,
-							distanceMeters: dist,
-							latitude: lat,
-							longitude: lng,
-						});
-					}
-
-					const groups: NearbyPlaceGroup[] = nearbyCategories.map(({ category }) => ({
-						category,
-						places: (byCategory.get(category) ?? [])
-							.sort((a, b) => a.distanceMeters - b.distanceMeters)
-							.slice(0, 8),
-					}));
-
-					if (groups.some((g) => g.places.length > 0)) {
-						queryDoneRef.current = true;
-						onNearbyPlacesFound(groups);
-					}
-				});
-			});
+			setMapReady(true);
 		});
 
 		return () => {
@@ -291,18 +184,16 @@ export function PropertyMapPreview({
 				mapRef.current = null;
 			}
 			setMapReady(false);
-			queryDoneRef.current = false;
 		};
-		// Intentionally empty — map init runs once per mount
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// ── EFFECT 2: Initialize markers (strictly decoupled from callbacks) ──────
+	// ── EFFECT 2: Render Markers ─────────────────────────────────────────────
 	useEffect(() => {
 		if (!mapReady || !mapRef.current) return;
 		let mounted = true;
 
-		import("maplibre-gl").then((maplibre) => {
+		import("leaflet").then((L) => {
 			if (!mounted || !mapRef.current) return;
 			const map = mapRef.current;
 
@@ -314,7 +205,6 @@ export function PropertyMapPreview({
 			// 1. Property pin (red, prominent, always on top)
 			for (const prop of mapPoints) {
 				const [lat, lng] = prop.coordinates;
-				const el = createMarkerEl(40, "#DE141C", propertyIconSvg(prop), false, true);
 				const propId = `prop-${prop.id}`;
 
 				const popupHtml = `
@@ -336,42 +226,35 @@ export function PropertyMapPreview({
 					</div>
 				`;
 
-				const popup = new maplibre.Popup({
-					offset: [0, -26],
-					anchor: "bottom",
-					closeButton: true,
-					closeOnClick: false,
-					maxWidth: "300px",
-				}).setHTML(popupHtml);
+				const marker = L.marker([lat, lng], {
+					icon: createPropertyIcon(L, prop),
+					zIndexOffset: 1000,
+				}).addTo(map);
 
-				popup.on("close", () => {
+				marker.bindPopup(popupHtml, {
+					offset: [0, -8],
+					closeButton: true,
+					autoPan: true,
+					maxWidth: 300,
+					minWidth: 240,
+					className: "jewellz-modern-popup",
+				});
+
+				marker.on("popupclose", () => {
 					zoomToDefault();
 				});
 
-				const marker = new maplibre.Marker({ element: el })
-					.setLngLat([lng, lat])
-					.addTo(map);
-
-				marker.getElement().style.zIndex = "999";
-
-				el.onclick = (e) => {
-					e.stopPropagation();
-					if (popup.isOpen()) {
-						popup.remove();
-						zoomToDefault();
-					} else {
-						showPopupForId(propId);
-					}
-				};
+				marker.on("click", () => {
+					map.flyTo([lat, lng], 16, { animate: true, duration: 0.8 });
+				});
 
 				markersRef.current.push(marker);
-				markersMapRef.current.set(propId, { marker, popup, el, coords: [lng, lat] });
+				markersMapRef.current.set(propId, { marker, coords: [lat, lng] });
 			}
 
 			// 2. Nearby pins (smaller, coloured by category, beneath property pin)
 			for (const place of displayedNearbyPlaces) {
 				const color = nearbyIconColor(place.category);
-				const el = createMarkerEl(26, color, nearbyIconSvg(place.category), false, false);
 
 				const popupHtml = `
 					<div style="padding:16px 18px;min-width:240px;max-width:280px;font-family:inherit;background:#ffffff;">
@@ -398,70 +281,66 @@ export function PropertyMapPreview({
 					</div>
 				`;
 
-				const popup = new maplibre.Popup({
-					offset: [0, -18],
-					anchor: "bottom",
-					closeButton: true,
-					closeOnClick: false,
-					maxWidth: "300px",
-				}).setHTML(popupHtml);
+				const marker = L.marker([place.latitude, place.longitude], {
+					icon: createNearbyIcon(L, place.category),
+					zIndexOffset: 500,
+				}).addTo(map);
 
-				popup.on("close", () => {
+				marker.bindPopup(popupHtml, {
+					offset: [0, -6],
+					closeButton: true,
+					autoPan: true,
+					maxWidth: 300,
+					minWidth: 240,
+					className: "jewellz-modern-popup",
+				});
+
+				marker.on("popupclose", () => {
 					onSelectNearbyPlaceRef.current?.(null);
 					zoomToDefault();
 				});
 
-				const marker = new maplibre.Marker({ element: el })
-					.setLngLat([place.longitude, place.latitude])
-					.addTo(map);
-
-				marker.getElement().style.zIndex = "100";
-
-				el.onclick = (e) => {
-					e.stopPropagation();
-					if (popup.isOpen()) {
-						popup.remove();
-						onSelectNearbyPlaceRef.current?.(null);
-						zoomToDefault();
-					} else {
-						showPopupForId(place.id);
-						onSelectNearbyPlaceRef.current?.(place);
-					}
-				};
+				marker.on("click", () => {
+					map.flyTo([place.latitude, place.longitude], 16, { animate: true, duration: 0.8 });
+					onSelectNearbyPlaceRef.current?.(place);
+				});
 
 				markersRef.current.push(marker);
-				markersMapRef.current.set(place.id, { marker, popup, el, coords: [place.longitude, place.latitude] });
+				markersMapRef.current.set(place.id, { marker, coords: [place.latitude, place.longitude] });
 			}
 
-			// If a place was already selected when markers were created (e.g. from What's nearby list), open its popup now!
+			// If a place was already selected when markers were created, open its popup now!
 			if (focusedNearbyPlaceRef.current) {
-				showPopupForId(focusedNearbyPlaceRef.current.id);
+				const entry = markersMapRef.current.get(focusedNearbyPlaceRef.current.id);
+				if (entry) {
+					entry.marker.openPopup();
+					map.flyTo(entry.coords, 16, { animate: true, duration: 0.8 });
+				}
 			} else {
 				zoomToDefault();
 			}
 		});
 
 		return () => { mounted = false; };
-		// Only re-run if map is ready, points change, or displayed places change. NO callbacks in deps!
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [mapReady, mapPoints, displayedNearbyPlaces]);
 
-	// ── EFFECT 3: React to focusedNearbyPlace changes (e.g. clicked in What's nearby) ──
+	// ── EFFECT 3: React to focusedNearbyPlace changes ────────────────────────
 	useEffect(() => {
 		if (!mapRef.current || !mapReady) return;
+		const map = mapRef.current;
 
 		if (!focusedNearbyPlace) {
-			// If deselecting, close any open nearby popup and zoom out
-			markersMapRef.current.forEach((val, k) => {
-				if (!k.startsWith("prop-") && val.popup.isOpen()) {
-					val.popup.remove();
-				}
-			});
+			map.closePopup();
 			zoomToDefault();
 			return;
 		}
 
-		showPopupForId(focusedNearbyPlace.id);
+		const entry = markersMapRef.current.get(focusedNearbyPlace.id);
+		if (entry) {
+			entry.marker.openPopup();
+			map.flyTo(entry.coords, 16, { animate: true, duration: 0.8 });
+		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [focusedNearbyPlace, mapReady]);
 
