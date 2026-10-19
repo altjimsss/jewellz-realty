@@ -113,6 +113,8 @@ export function PropertyMapPreview({
 	const mapRef = useRef<any>(null);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const markersRef = useRef<any[]>([]);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const markersMapRef = useRef<Map<string, { marker: any; popup: any; el: HTMLElement; coords: [number, number] }>>(new Map());
 	const [mapReady, setMapReady] = useState(false);
 	const queryDoneRef = useRef(false);
 
@@ -253,7 +255,7 @@ export function PropertyMapPreview({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// ── EFFECT 2: Update markers whenever data/focus changes ─────────────────
+	// ── EFFECT 2: Initialize markers and store in markersMapRef ──────────────
 	useEffect(() => {
 		if (!mapReady || !mapRef.current) return;
 		let mounted = true;
@@ -265,6 +267,7 @@ export function PropertyMapPreview({
 			// Clear old markers
 			markersRef.current.forEach((m) => m.remove());
 			markersRef.current = [];
+			markersMapRef.current.clear();
 
 			// All visible coordinates for bounding box calculation
 			const allCoords: [number, number][] = [
@@ -301,6 +304,11 @@ export function PropertyMapPreview({
 						</div>
 						${prop.price ? `<div style="font-size:13px;font-weight:700;color:#DE141C;margin-bottom:4px;">₱${Number(prop.price).toLocaleString()}</div>` : ""}
 						${prop.location ? `<div style="font-size:11px;color:#666;line-height:1.4;display:flex;align-items:center;gap:3px;">📍 ${prop.location}</div>` : ""}
+						<div style="display:flex;gap:6px;margin-top:10px;">
+							<a href="#inquiry-form" style="display:inline-flex;align-items:center;justify-content:center;width:100%;padding:7px 12px;border-radius:10px;background:#DE141C;color:#fff;font-size:11px;font-weight:600;text-decoration:none;">
+								Inquire About Property
+							</a>
+						</div>
 					</div>
 				`;
 				const popup = new maplibre.Popup({
@@ -323,16 +331,21 @@ export function PropertyMapPreview({
 				marker.getElement().style.zIndex = "999";
 				el.addEventListener("click", (e) => {
 					e.stopPropagation();
+					markersRef.current.forEach((m) => {
+						if (m !== marker && m.getPopup()?.isOpen()) m.getPopup().remove();
+					});
 					marker.togglePopup();
+					map.flyTo({ center: [lng, lat], zoom: 16, speed: 1.4 });
 				});
+
 				markersRef.current.push(marker);
+				markersMapRef.current.set(`prop-${prop.id}`, { marker, popup, el, coords: [lng, lat] });
 			}
 
 			// Nearby pins (smaller, coloured by category, beneath property pin)
 			for (const place of displayedNearbyPlaces) {
-				const isFocused = focusedNearbyPlace?.id === place.id;
 				const color = nearbyIconColor(place.category);
-				const el = createMarkerEl(26, color, nearbyIconSvg(place.category), isFocused, false);
+				const el = createMarkerEl(26, color, nearbyIconSvg(place.category), false, false);
 				const popupHtml = `
 					<div style="padding:14px 16px;min-width:210px;max-width:260px;font-family:inherit;">
 						<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
@@ -348,6 +361,13 @@ export function PropertyMapPreview({
 							${place.name}
 						</div>
 						${place.address ? `<div style="font-size:11px;line-height:1.4;color:#777;margin-top:4px;">${place.address}</div>` : ""}
+						<a href="https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:7px 12px;border-radius:10px;background:#111;color:#fff;font-size:11px;font-weight:600;text-decoration:none;transition:background 0.15s ease;">
+							<span>Get Directions</span>
+							<svg viewBox="0 0 24 24" style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<line x1="5" y1="12" x2="19" y2="12"></line>
+								<polyline points="12 5 19 12 12 19"></polyline>
+							</svg>
+						</a>
 					</div>
 				`;
 				const popup = new maplibre.Popup({
@@ -368,27 +388,50 @@ export function PropertyMapPreview({
 					.setPopup(popup)
 					.addTo(map);
 
-				marker.getElement().style.zIndex = isFocused ? "800" : "100";
-
-				if (isFocused) marker.togglePopup();
+				marker.getElement().style.zIndex = "100";
 
 				el.addEventListener("click", (e) => {
 					e.stopPropagation();
-					marker.togglePopup();
+					markersRef.current.forEach((m) => {
+						if (m !== marker && m.getPopup()?.isOpen()) m.getPopup().remove();
+					});
+					if (!popup.isOpen()) {
+						marker.togglePopup();
+					}
+					map.flyTo({ center: [place.longitude, place.latitude], zoom: 16, speed: 1.4 });
 					onSelectNearbyPlace?.(place);
 				});
+
 				markersRef.current.push(marker);
+				markersMapRef.current.set(place.id, { marker, popup, el, coords: [place.longitude, place.latitude] });
 			}
 
-			if (focusedLngLat) {
-				map.flyTo({ center: focusedLngLat, zoom: 16, speed: 1.4 });
-			} else {
-				zoomToDefault();
-			}
+			zoomToDefault();
 		});
 
 		return () => { mounted = false; };
-	}, [mapReady, mapPoints, displayedNearbyPlaces, focusedNearbyPlace, focusedLngLat, onSelectNearbyPlace]);
+	}, [mapReady, mapPoints, displayedNearbyPlaces, onSelectNearbyPlace]);
+
+	// ── EFFECT 3: React to focusedNearbyPlace changes (e.g. clicked in What's nearby) ──
+	useEffect(() => {
+		if (!mapRef.current || !mapReady) return;
+		const map = mapRef.current;
+
+		if (!focusedNearbyPlace) {
+			return;
+		}
+
+		const entry = markersMapRef.current.get(focusedNearbyPlace.id);
+		if (entry) {
+			markersRef.current.forEach((m) => {
+				if (m !== entry.marker && m.getPopup()?.isOpen()) m.getPopup().remove();
+			});
+			if (!entry.popup.isOpen()) {
+				entry.marker.togglePopup();
+			}
+			map.flyTo({ center: entry.coords, zoom: 16, speed: 1.4 });
+		}
+	}, [focusedNearbyPlace, mapReady]);
 
 	// ── Status message for the footer ─────────────────────────────────────────
 	const hasPins = mapPoints.length > 0;
