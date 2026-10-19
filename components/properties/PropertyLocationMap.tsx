@@ -61,6 +61,13 @@ const nearbyCategoryTabs: NearbyTabDef[] = [
 	},
 ];
 
+function nearbyDotColor(category?: string): string {
+	if (category === "Education") return "#2563EB";
+	if (category === "Health") return "#16A34A";
+	if (category === "Food") return "#F97316";
+	return "#7C3AED";
+}
+
 type PropertyLocationMapProps = {
 	property: Property;
 	nearbyGroups: NearbyPlaceGroup[];
@@ -223,7 +230,11 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 						>
 							<span className="min-w-0 truncate text-sm text-black/80">{item.name}</span>
 							<div className="flex items-center gap-1.5">
-								<span className="h-2 w-2 rounded-full bg-[#DE141C]" aria-hidden="true" />
+								<span
+									className="h-2 w-2 rounded-full"
+									style={{ backgroundColor: nearbyDotColor(item.category ?? active.label) }}
+									aria-hidden="true"
+								/>
 								<span className="shrink-0 text-xs font-medium text-black/50">
 									{formatDistance(item.distanceMeters)}
 								</span>
