@@ -16,95 +16,65 @@ export type NearbyPlaceGroup = {
 	places: NearbyPlace[];
 };
 
-type TagCondition = {
-	key: string;
-	value?: string;
-	regex?: string;
-	exists?: boolean;
-};
-
-export const nearbyCategories: { category: NearbyCategory; filters: TagCondition[] }[] = [
-	{
-		category: "Education",
-		filters: [{ key: "amenity", regex: "^(school|college|university|kindergarten|childcare|language_school)$" }],
-	},
-	{
-		category: "Health",
-		filters: [
-			{ key: "amenity", regex: "^(hospital|clinic|doctors|pharmacy|dentist)$" },
-			{ key: "healthcare", exists: true },
-		],
-	},
-	{
-		category: "Food",
-		filters: [
-			{ key: "amenity", regex: "^(restaurant|cafe|fast_food|food_court|bar|marketplace)$" },
-			{ key: "shop", regex: "^(bakery|supermarket|convenience|mall|department_store|grocery)$" },
-		],
-	},
-	{
-		category: "Culture",
-		filters: [
-			{ key: "tourism", regex: "^(museum|attraction|viewpoint|gallery|theme_park)$" },
-			{ key: "amenity", regex: "^(arts_centre|community_centre|place_of_worship|theatre|townhall|bank|atm)$" },
-			{ key: "historic", exists: true },
-		],
-	},
+export const nearbyCategories: { category: NearbyCategory }[] = [
+	{ category: "Education" },
+	{ category: "Health" },
+	{ category: "Food" },
+	{ category: "Culture" },
 ];
 
-type OverpassElement = {
-	type: string;
-	id: number;
-	lat?: number;
-	lon?: number;
-	center?: {
-		lat?: number;
-		lon?: number;
-	};
-	tags?: Record<string, string | undefined>;
+/**
+ * Maps OpenMapTiles POI `class` / `subclass` values (used in Stadia Maps vector
+ * tiles) to our four display categories. These are the values returned by
+ * map.queryRenderedFeatures() from the `poi` source layer.
+ */
+export const poiClassToCategory: Record<string, NearbyCategory> = {
+	// Education
+	school: "Education",
+	college: "Education",
+	university: "Education",
+	kindergarten: "Education",
+	childcare: "Education",
+	// Health
+	hospital: "Health",
+	pharmacy: "Health",
+	doctor: "Health",
+	dentist: "Health",
+	clinic: "Health",
+	healthcare: "Health",
+	// Food
+	restaurant: "Food",
+	cafe: "Food",
+	fast_food: "Food",
+	food_court: "Food",
+	bar: "Food",
+	pub: "Food",
+	bakery: "Food",
+	supermarket: "Food",
+	convenience: "Food",
+	marketplace: "Food",
+	grocery: "Food",
+	// Culture
+	place_of_worship: "Culture",
+	museum: "Culture",
+	attraction: "Culture",
+	bank: "Culture",
+	atm: "Culture",
+	theatre: "Culture",
+	arts_centre: "Culture",
+	community_centre: "Culture",
+	townhall: "Culture",
+	viewpoint: "Culture",
+	gallery: "Culture",
+	historic: "Culture",
+	monument: "Culture",
 };
 
-const overpassEndpoints = [
-	"https://overpass-api.de/api/interpreter",
-	"https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-	"https://overpass.kumi.systems/api/interpreter",
-	"https://z.overpass-api.de/api/interpreter",
-];
-
-function toOverpassFilter(condition: TagCondition) {
-	if (condition.regex) return `["${condition.key}"~"${condition.regex}"]`;
-	if (condition.value != null) return `["${condition.key}"="${condition.value}"]`;
-	return `["${condition.key}"]`;
-}
-
-function matchesCondition(tags: Record<string, string | undefined>, condition: TagCondition) {
-	const tagValue = tags[condition.key];
-	if (tagValue == null || tagValue === "") return false;
-	if (condition.regex) return new RegExp(condition.regex).test(tagValue);
-	if (condition.value != null) return tagValue === condition.value;
-	return true;
-}
-
-function distanceMeters(originLatitude: number, originLongitude: number, placeLatitude: number, placeLongitude: number) {
-	const earthRadiusMeters = 6371000;
-	const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-	const latitudeDelta = toRadians(placeLatitude - originLatitude);
-	const longitudeDelta = toRadians(placeLongitude - originLongitude);
-	const originLatRad = toRadians(originLatitude);
-	const placeLatRad = toRadians(placeLatitude);
-	const haversine =
-		Math.sin(latitudeDelta / 2) ** 2 +
-		Math.cos(originLatRad) * Math.cos(placeLatRad) * Math.sin(longitudeDelta / 2) ** 2;
-
-	return Math.round(earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine)));
-}
-
-function nearbyRadiusForPropertyType(propertyType?: string) {
-	const normalizedType = propertyType?.toLowerCase() ?? "";
-
-	if (normalizedType.includes("farm")) return 10000;
-	if (normalizedType.includes("lot")) return 5000;
-	if (normalizedType.includes("memorial")) return 5000;
+export function nearbyRadiusForPropertyType(propertyType?: string) {
+	const t = propertyType?.toLowerCase() ?? "";
+	if (t.includes("farm")) return 10000;
+	if (t.includes("lot")) return 5000;
+	if (t.includes("memorial")) return 5000;
 	return 3000;
 }
 
@@ -143,136 +113,14 @@ export function formatDistance(meters: number) {
 	return `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0)} km`;
 }
 
-/**
- * Fetches every nearby category in a single Overpass request. Firing one
- * request per category trips Overpass rate limits (which silently return
- * nothing within a short timeout), so the categories share one query instead.
- * Uses nwr (node/way/relation) with ["name"] to skip unnamed features and
- * include large campuses mapped as relations. No result cap so all named
- * places in the radius are returned and deduplicated in code.
- */
-async function fetchNearbyElements({
-	latitude,
-	longitude,
-	radiusMeters,
-}: {
-	latitude: number;
-	longitude: number;
-	radiusMeters: number;
-}) {
-	const overpassFilters = nearbyCategories
-		.flatMap(({ filters }) => filters)
-		.map((condition) => `nwr(around:${radiusMeters},${latitude},${longitude})${toOverpassFilter(condition)}["name"];`)
-		.join("\n");
-	const query = `
-		[out:json][timeout:25];
-		(
-			${overpassFilters}
-		);
-		out center tags;
-	`;
-	let payload: { elements?: OverpassElement[] } | null = null;
-
-	for (const endpoint of overpassEndpoints) {
-		const controller = new AbortController();
-		// Overpass commonly needs well over 5s on rate-limited connections.
-		const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-		try {
-			const response = await fetch(endpoint, {
-				method: "POST",
-				headers: {
-					Accept: "application/json",
-					"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-					"User-Agent": "JewellzRealty/1.0",
-				},
-				body: `data=${encodeURIComponent(query)}`,
-				signal: controller.signal,
-			});
-
-			if (!response.ok) {
-				continue;
-			}
-
-			payload = (await response.json()) as { elements?: OverpassElement[] };
-			break;
-		} catch {
-			continue;
-		} finally {
-			clearTimeout(timeoutId);
-		}
-	}
-
-	return payload?.elements ?? [];
-}
-
-export async function getNearbyPlaceGroups({
-	latitude,
-	longitude,
-	propertyType,
-}: {
-	latitude?: number;
-	longitude?: number;
-	propertyType?: string;
-}): Promise<NearbyPlaceGroup[]> {
-	if (latitude == null || longitude == null) {
-		return nearbyCategories.map(({ category }) => ({ category, places: [] }));
-	}
-
-	const radiusMeters = nearbyRadiusForPropertyType(propertyType);
-	const elements = await fetchNearbyElements({ latitude, longitude, radiusMeters });
-
-	const placesByCategory = new Map<NearbyCategory, NearbyPlace[]>(
-		nearbyCategories.map(({ category }) => [category, []]),
-	);
-
-	for (const element of elements) {
-		const placeLatitude = element.lat ?? element.center?.lat;
-		const placeLongitude = element.lon ?? element.center?.lon;
-		const tags = element.tags ?? {};
-		const name = tags.name;
-
-		if (placeLatitude == null || placeLongitude == null || !name) {
-			continue;
-		}
-
-		const matchedCategories = nearbyCategories.filter(({ filters }) =>
-			filters.some((condition) => matchesCondition(tags, condition)),
-		);
-
-		for (const { category } of matchedCategories) {
-			const place: NearbyPlace = {
-				id: `${element.type}-${element.id}`,
-				name,
-				category,
-				distanceMeters: distanceMeters(latitude, longitude, placeLatitude, placeLongitude),
-				latitude: placeLatitude,
-				longitude: placeLongitude,
-				googleMapsUri: `https://www.openstreetmap.org/${element.type}/${element.id}`,
-			};
-
-			const address = [tags["addr:street"], tags["addr:city"]].filter(Boolean).join(", ");
-			if (address) {
-				place.address = address;
-			}
-
-			placesByCategory.get(category)?.push(place);
-		}
-	}
-
-	return nearbyCategories.map(({ category }) => {
-		const sorted = (placesByCategory.get(category) ?? []).sort(
-			(first, second) => first.distanceMeters - second.distanceMeters,
-		);
-		// The cache table has UNIQUE (property_id, category, name): duplicate names
-		// (e.g. two "Jollibee" branches) would make the whole insert fail.
-		const seen = new Set<string>();
-		const unique = sorted.filter((place) => {
-			const key = place.name.trim().toLowerCase();
-			if (seen.has(key)) return false;
-			seen.add(key);
-			return true;
-		});
-		return { category, places: unique.slice(0, 8) };
-	});
+/** Haversine distance in metres between two WGS-84 points. */
+export function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+	const R = 6371000;
+	const toRad = (d: number) => (d * Math.PI) / 180;
+	const dLat = toRad(lat2 - lat1);
+	const dLng = toRad(lng2 - lng1);
+	const a =
+		Math.sin(dLat / 2) ** 2 +
+		Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+	return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }

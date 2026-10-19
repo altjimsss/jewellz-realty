@@ -1,27 +1,33 @@
 import { NextResponse } from "next/server";
 import { saveNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { getNearbyPlaceGroups } from "@/lib/nearby-places";
+import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
-export async function GET(request: Request) {
-	const { searchParams } = new URL(request.url);
-	const latitude = Number(searchParams.get("lat"));
-	const longitude = Number(searchParams.get("lng"));
-	const propertyType = searchParams.get("type") ?? undefined;
-	const propertyId = searchParams.get("propertyId") ?? undefined;
+/**
+ * POST /api/nearby
+ * Saves nearby places discovered client-side (via MapLibre queryRenderedFeatures)
+ * to the Supabase cache so future page loads are instant.
+ */
+export async function POST(request: Request) {
+	try {
+		const body = (await request.json()) as {
+			propertyId?: string;
+			groups?: NearbyPlaceGroup[];
+		};
 
-	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-		return NextResponse.json({ error: "lat and lng query parameters are required." }, { status: 400 });
+		const { propertyId, groups } = body;
+
+		if (!propertyId || !Array.isArray(groups)) {
+			return NextResponse.json({ error: "propertyId and groups are required." }, { status: 400 });
+		}
+
+		if (groups.some((g) => g.places.length > 0)) {
+			await saveNearbyPlaceGroups(propertyId, groups);
+		}
+
+		return NextResponse.json({ ok: true });
+	} catch {
+		return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
 	}
-
-	const groups = await getNearbyPlaceGroups({ latitude, longitude, propertyType });
-
-	// Persist to the property cache so the detail page loads instantly next time.
-	if (propertyId && groups.some((group) => group.places.length > 0)) {
-		await saveNearbyPlaceGroups(propertyId, groups);
-	}
-
-	return NextResponse.json({ groups });
 }

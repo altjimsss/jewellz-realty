@@ -1,10 +1,5 @@
 import { supabaseServer } from "@/lib/supabase/server";
-import {
-	nearbyCategories,
-	type NearbyCategory,
-	type NearbyPlace,
-	type NearbyPlaceGroup,
-} from "@/lib/nearby-places";
+import { nearbyCategories, type NearbyCategory, type NearbyPlace, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
 type CachedNearbyRow = {
 	category: NearbyCategory;
@@ -18,8 +13,8 @@ type CachedNearbyRow = {
 
 /**
  * Reads nearby places for a property from the cached `property_nearby_places`
- * table (populated by /api/admin/property-nearby-cache). Returns null when no
- * cache exists yet so callers can fall back to a live Overpass fetch.
+ * table. Returns null when no cache exists so callers can fall back to a
+ * client-side MapLibre queryRenderedFeatures lookup.
  */
 export async function getCachedNearbyPlaceGroups(
 	propertyId: string,
@@ -35,38 +30,36 @@ export async function getCachedNearbyPlaceGroups(
 		return null;
 	}
 
-	if (!data || data.length === 0) {
-		return null; // no cache yet — caller should fall back to a live fetch
-	}
+	if (!data || data.length === 0) return null;
 
 	const rows = data as CachedNearbyRow[];
 
-	// A cache missing both Education and Health was almost certainly saved from a
-	// truncated Overpass response. Treat it as empty so the live fetch refreshes it.
-	const hasCategory = (c: NearbyCategory) => rows.some((row) => row.category === c);
+	// A cache missing both Education and Health was saved from an incomplete
+	// query. Treat it as stale so the client-side lookup rebuilds it.
+	const hasCategory = (c: NearbyCategory) => rows.some((r) => r.category === c);
 	if (!hasCategory("Education") && !hasCategory("Health")) return null;
 
 	return nearbyCategories.map(({ category }) => ({
 		category,
 		places: rows
-			.filter((row) => row.category === category)
+			.filter((r) => r.category === category)
 			.slice(0, 8)
-			.map((row) => ({
-				id: `${row.category}-${row.name}`,
-				name: row.name,
-				category: row.category,
-				distanceMeters: row.distance_meters,
-				latitude: Number(row.latitude ?? 0),
-				longitude: Number(row.longitude ?? 0),
-				address: row.address ?? undefined,
-				googleMapsUri: row.map_uri ?? undefined,
+			.map((r) => ({
+				id: `${r.category}-${r.name}`,
+				name: r.name,
+				category: r.category,
+				distanceMeters: r.distance_meters,
+				latitude: Number(r.latitude ?? 0),
+				longitude: Number(r.longitude ?? 0),
+				address: r.address ?? undefined,
+				googleMapsUri: r.map_uri ?? undefined,
 			})),
 	}));
 }
 
 /**
- * Persists freshly fetched nearby places so later page loads skip the live
- * Overpass fetch. Replaces any previous rows for the property.
+ * Persists nearby places found by the client-side MapLibre lookup so later
+ * page loads serve cached data from the server (instant, no map query needed).
  */
 export async function saveNearbyPlaceGroups(propertyId: string, groups: NearbyPlaceGroup[]) {
 	const places: {
@@ -90,7 +83,7 @@ export async function saveNearbyPlaceGroups(propertyId: string, groups: NearbyPl
 			longitude: place.longitude,
 			address: place.address ?? null,
 			map_uri: place.googleMapsUri ?? null,
-			source: "openstreetmap",
+			source: "maplibre",
 			fetched_at: new Date().toISOString(),
 		})),
 	);
