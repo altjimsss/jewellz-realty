@@ -45,7 +45,7 @@ export async function getCachedNearbyPlaceGroups(
 		category,
 		places: rows
 			.filter((row) => row.category === category)
-			.slice(0, 3)
+			.slice(0, 15)
 			.map((row) => ({
 				id: `${row.category}-${row.name}`,
 				name: row.name,

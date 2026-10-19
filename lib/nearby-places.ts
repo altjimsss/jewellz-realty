@@ -26,24 +26,27 @@ type TagCondition = {
 export const nearbyCategories: { category: NearbyCategory; filters: TagCondition[] }[] = [
 	{
 		category: "Education",
-		filters: [{ key: "amenity", regex: "^(school|college|university|kindergarten)$" }],
+		filters: [{ key: "amenity", regex: "^(school|college|university|kindergarten|childcare|language_school)$" }],
 	},
 	{
 		category: "Health",
-		filters: [{ key: "amenity", regex: "^(hospital|clinic|doctors|pharmacy|dentist)$" }],
+		filters: [
+			{ key: "amenity", regex: "^(hospital|clinic|doctors|pharmacy|dentist)$" },
+			{ key: "healthcare", exists: true },
+		],
 	},
 	{
 		category: "Food",
 		filters: [
-			{ key: "amenity", regex: "^(restaurant|cafe|fast_food|food_court|bar)$" },
-			{ key: "shop", value: "bakery" },
+			{ key: "amenity", regex: "^(restaurant|cafe|fast_food|food_court|bar|marketplace)$" },
+			{ key: "shop", regex: "^(bakery|supermarket|convenience|mall|department_store|grocery)$" },
 		],
 	},
 	{
 		category: "Culture",
 		filters: [
-			{ key: "tourism", regex: "^(museum|attraction)$" },
-			{ key: "amenity", regex: "^(arts_centre|community_centre|place_of_worship|theatre)$" },
+			{ key: "tourism", regex: "^(museum|attraction|viewpoint|gallery|theme_park)$" },
+			{ key: "amenity", regex: "^(arts_centre|community_centre|place_of_worship|theatre|townhall|bank|atm)$" },
 			{ key: "historic", exists: true },
 		],
 	},
