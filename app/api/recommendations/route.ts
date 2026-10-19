@@ -713,16 +713,23 @@ export async function POST(request: Request) {
 				messages: [
 					{
 						role: "system",
-						content: "You are a strict JSON recommendation API. Output valid JSON only.",
+						content: "You are a strict JSON recommendation API. Output valid JSON only. No explanations, no markdown.",
 					},
 					{ role: "user", content: buildPrompt(category, filters, numberedCandidates) },
 				],
-				maxTokens: 400,
-				temperature: 0.2,
+				maxTokens: 600,
+				temperature: 0.15,
 				timeoutMs: 30_000,
 			});
 
-			const recommendations = aiResult?.content ? parseAiRecommendations(aiResult.content, numberedCandidates) : [];
+			let recommendations: AiRecommendation[] = [];
+			if (aiResult?.content) {
+				try {
+					recommendations = parseAiRecommendations(aiResult.content, numberedCandidates);
+				} catch (parseError) {
+					console.warn("AI recommendation response could not be parsed, falling through.", parseError);
+				}
+			}
 
 			if (recommendations.length > 0 && aiResult) {
 				return NextResponse.json({

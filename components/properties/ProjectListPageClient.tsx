@@ -375,6 +375,9 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				if (!response.ok) throw new Error("AI recommendation request failed.");
 
 				const data: unknown = await response.json();
+				const apiSource = typeof (data as { source?: unknown }).source === "string"
+					? (data as { source: string }).source
+					: "fallback";
 				const recommendations = Array.isArray((data as { recommendations?: unknown }).recommendations)
 					? (data as { recommendations: Array<{ id?: unknown; reason?: unknown; confidence?: unknown; recommendationId?: unknown }> }).recommendations
 					: [];
@@ -389,12 +392,13 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 							reason: typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : getRecommendationReason(property, activeCategory, appliedFilters),
 							confidence: typeof item.confidence === "number" ? item.confidence : undefined,
 							recommendationId: typeof item.recommendationId === "string" ? item.recommendationId : undefined,
-							source: "ai" as const,
+							source: apiSource === "ai" ? "ai" as const : "fallback" as const,
 						}];
 					})
 					.slice(0, 6);
 
 				setAiRecommendedProperties(mappedRecommendations);
+				// All sources (ai, semantic-vector, semantic-local) count as ready
 				setAiRecommendationStatus(mappedRecommendations.length > 0 ? "ready" : "fallback");
 			} catch (error) {
 				if (error instanceof DOMException && error.name === "AbortError") return;

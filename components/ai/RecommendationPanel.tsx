@@ -20,22 +20,28 @@ export function RecommendationPanel({ recommendations, status }: RecommendationP
 
 	if (recommendations.length === 0) return null;
 
+	const hasAiSource = recommendations.some((r) => r.source === "ai");
+	const subtitleText =
+		status === "loading"
+			? "AI is analyzing similar properties..."
+			: status === "ready" && hasAiSource
+				? "Ranked by AI from your search intent, category, location, budget, and property details."
+				: status === "ready"
+					? "Smart suggestions based on your search filters, category, location, and property details."
+					: "Showing best matches while AI recommendations are loading.";
+
 	return (
 		<div className="mt-8">
 			<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 				<div>
-					<p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#DE141C]">AI Recommendations</p>
-					<h3 className="mt-1 text-xl font-semibold text-black">Similar properties you might like</h3>
-					<p className="mt-1 text-sm text-black/55">
-						{status === "loading"
-							? "AI is analyzing similar properties..."
-							: status === "ready"
-								? "Ranked by AI from your search intent, category, location, budget, and property details."
-								: "Showing smart fallback matches while AI recommendations are unavailable."}
+					<p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#DE141C]">
+						{hasAiSource ? "AI Recommendations" : "Smart Recommendations"}
 					</p>
+					<h3 className="mt-1 text-xl font-semibold text-black">Similar properties you might like</h3>
+					<p className="mt-1 text-sm text-black/55">{subtitleText}</p>
 				</div>
 				<div className="inline-flex w-fit rounded-full bg-red-50 px-4 py-2 text-xs font-semibold text-[#DE141C]">
-					AI found {recommendations.length} similar {recommendations.length === 1 ? "property" : "properties"} instead
+					Found {recommendations.length} similar {recommendations.length === 1 ? "property" : "properties"} for you
 				</div>
 			</div>
 
@@ -55,7 +61,7 @@ export function RecommendationPanel({ recommendations, status }: RecommendationP
 					>
 						<PropertyCard property={property} href={`/project-list/${property.slug}`} />
 						<p className="rounded-full bg-zinc-50 px-3 py-2 text-xs font-medium text-black/55">
-							{source === "ai" ? "AI reason" : "Recommended"}: {reason}
+							{source === "ai" ? "✦ AI reason" : "✓ Matched"}: {reason}
 							{typeof confidence === "number" ? ` • ${Math.round(confidence)}% match` : ""}
 						</p>
 					</div>

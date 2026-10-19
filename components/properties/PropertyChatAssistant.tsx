@@ -16,9 +16,11 @@ type PropertyChatAssistantProps = {
 };
 
 const quickPrompts = [
-  "Is this property still available?",
+  "What schools are nearby?",
+  "Is there a hospital close by?",
   "Compare this with similar properties",
   "Is this good for a small family?",
+  "Is this property still available?",
   "What should I ask before booking?",
 ];
 

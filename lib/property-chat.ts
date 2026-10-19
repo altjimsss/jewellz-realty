@@ -1,6 +1,8 @@
 import type { Property } from "@/types/property";
 import { getPropertyBySlug } from "@/lib/sample-properties";
 import { getPublishedProperties, getPublishedPropertyBySlug } from "@/lib/supabase/properties";
+import { getCachedNearbyPlaceGroups } from "@/lib/nearby-cache";
+import { formatDistance } from "@/lib/nearby-places";
 
 export type PropertyChatRole = "user" | "assistant";
 
@@ -25,6 +27,7 @@ export type PropertyChatContext = {
 	property: Property;
 	summary: string;
 	comparisonSummary: string;
+	nearbyContext: string;
 };
 
 function normalizeText(value: unknown) {
@@ -59,6 +62,7 @@ function propertyToSummary(property: Property) {
 	const specs = property.specs?.map((spec) => `${spec.label}: ${spec.value}`).join("; ") || "No extra specs provided.";
 	const images = property.images?.length ? `${property.images.length} gallery image(s) available.` : "No gallery images available.";
 	const description = property.description ?? "No long-form description was provided for this listing.";
+	const coords = property.coordinates ? `Coordinates: ${property.coordinates[0]}, ${property.coordinates[1]}` : "No map coordinates available.";
 
 	return [
 		`Title: ${property.title}`,
@@ -71,6 +75,7 @@ function propertyToSummary(property: Property) {
 		`Area: ${property.areaSqm ? `${property.areaSqm} sqm` : "N/A"}`,
 		`Specs: ${specs}`,
 		`Gallery: ${images}`,
+		`${coords}`,
 		`Description: ${description}`,
 	].join("\n");
 }
@@ -111,6 +116,35 @@ function buildComparisonSummary(property: Property, properties: Property[]) {
 	return comparableProperties.length ? comparableProperties.join("\n") : "No comparable published listings are available.";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyPlaceRow = Record<string, any>;
+
+async function buildNearbyContext(property: Property): Promise<string> {
+	if (!property.id) return "Nearby places data not available.";
+
+	try {
+		const groups = await getCachedNearbyPlaceGroups(property.id);
+		if (!groups || groups.length === 0) return "No nearby places data cached yet for this property.";
+
+		const lines = groups
+			.filter((group) => group.places.length > 0)
+			.map((group) => {
+				const placeList = group.places
+					.slice(0, 5)
+					.map((place: AnyPlaceRow) => {
+						const distMeters = place.distanceMeters ?? 0;
+						return `${place.name} (${formatDistance(distMeters)})`;
+					})
+					.join(", ");
+				return `${group.category}: ${placeList}`;
+			});
+
+		return lines.length > 0 ? lines.join("\n") : "No nearby places found for this property.";
+	} catch {
+		return "Nearby places data unavailable.";
+	}
+}
+
 export async function buildPropertyChatContext(slug: string): Promise<PropertyChatContext | null> {
 	const property = await getPublishedPropertyBySlug(slug) ?? getPropertyBySlug(slug);
 
@@ -118,12 +152,16 @@ export async function buildPropertyChatContext(slug: string): Promise<PropertyCh
 		return null;
 	}
 
-	const publishedProperties = await getPublishedProperties();
+	const [publishedProperties, nearbyContext] = await Promise.all([
+		getPublishedProperties(),
+		buildNearbyContext(property),
+	]);
 
 	return {
 		property,
 		summary: propertyToSummary(property),
 		comparisonSummary: buildComparisonSummary(property, publishedProperties),
+		nearbyContext,
 	};
 }
 
@@ -136,15 +174,20 @@ export function buildPropertyChatConversation(history: PropertyChatMessage[]) {
 export function buildPropertyChatPrompt(context: PropertyChatContext, message: string, conversation: string) {
 	return [
 		"You are the Jewellz Realty property assistant for buyers browsing a listing.",
-		"Your job is to answer FAQs, explain listing details, help users decide fit, and compare the current property with similar published listings.",
-		"Use only the provided listing and comparison context. Do not invent fees, availability dates, financing terms, or legal details.",
+		"Your job is to answer FAQs, explain listing details, help users decide fit, compare properties, and answer map or location-related questions.",
+		"Use only the provided listing, nearby places, and comparison context. Do not invent fees, availability dates, financing terms, or legal details.",
 		"If a detail is missing, say it is not listed and suggest booking an appointment or contacting Jewellz Realty.",
 		"For viewings, contact requests, reservation, or exact availability, point the user to the Book an Appointment button or inquiry form.",
+		"When asked about nearby places (schools, hospitals, restaurants, churches, malls, etc.), use the NEARBY PLACES section to give accurate answers with distances.",
+		"When asked about the map or location, use the coordinates and nearby places to give helpful answers about the area.",
 		"When comparing properties, mention price, type, location, bedrooms/bathrooms, area, and best-fit buyer.",
 		"Keep answers helpful, concise, and practical.",
 		"",
 		"CURRENT LISTING CONTEXT",
 		context.summary,
+		"",
+		"NEARBY PLACES (sourced from OpenStreetMap / Stadia Maps)",
+		context.nearbyContext,
 		"",
 		"COMPARABLE PUBLISHED LISTINGS",
 		context.comparisonSummary,
