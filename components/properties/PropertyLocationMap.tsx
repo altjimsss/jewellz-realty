@@ -127,6 +127,16 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 	const activePlaces = groups.find((g) => g.category === active.label)?.places ?? [];
 	const allNearbyPlaces = useMemo(() => groups.flatMap((g) => g.places), [groups]);
 
+	const handleSelectNearbyPlace = useCallback((place: NearbyPlaceGroup["places"][number] | null) => {
+		if (!place) {
+			setFocusedNearbyPlace(null);
+			return;
+		}
+		setFocusedNearbyPlace((current) => (current?.id === place.id ? null : place));
+		const idx = nearbyCategoryTabs.findIndex((t) => t.label === place.category);
+		if (idx !== -1) setActiveTab(idx);
+	}, []);
+
 	return (
 		<>
 			<button
@@ -161,15 +171,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 							const idx = nearbyCategoryTabs.findIndex((t) => t.label === category);
 							if (idx !== -1) setActiveTab(idx);
 						}}
-						onSelectNearbyPlace={(place) => {
-							if (!place) {
-								setFocusedNearbyPlace(null);
-								return;
-							}
-							setFocusedNearbyPlace((current) => (current?.id === place.id ? null : place));
-							const idx = nearbyCategoryTabs.findIndex((t) => t.label === place.category);
-							if (idx !== -1) setActiveTab(idx);
-						}}
+						onSelectNearbyPlace={handleSelectNearbyPlace}
 						onNearbyPlacesFound={handleNearbyPlacesFound}
 					/>
 				</div>

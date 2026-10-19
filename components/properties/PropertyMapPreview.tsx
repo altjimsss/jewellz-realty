@@ -118,9 +118,15 @@ export function PropertyMapPreview({
 	const [mapReady, setMapReady] = useState(false);
 	const queryDoneRef = useRef(false);
 
-	// Keep a ref to nearbyPlaces so the async idle callback sees the latest value
+	// Keep refs to props and state so event handlers always see latest without re-triggering marker rebuilds
 	const nearbyPlacesRef = useRef(nearbyPlaces);
 	useEffect(() => { nearbyPlacesRef.current = nearbyPlaces; }, [nearbyPlaces]);
+
+	const onSelectNearbyPlaceRef = useRef(onSelectNearbyPlace);
+	useEffect(() => { onSelectNearbyPlaceRef.current = onSelectNearbyPlace; }, [onSelectNearbyPlace]);
+
+	const focusedNearbyPlaceRef = useRef(focusedNearbyPlace);
+	useEffect(() => { focusedNearbyPlaceRef.current = focusedNearbyPlace; }, [focusedNearbyPlace]);
 
 	const mapPoints = useMemo(
 		() => properties.filter((p): p is PropertyWithCoordinates => Boolean(p.coordinates)),
@@ -132,15 +138,50 @@ export function PropertyMapPreview({
 		return nearbyPlaces.filter((p) => p.category === activeCategory);
 	}, [nearbyPlaces, activeCategory]);
 
-	// MapLibre uses [lng, lat]; our Property.coordinates are [lat, lng]
-	const focusedLngLat = useMemo<[number, number] | null>(
-		() => (focusedNearbyPlace ? [focusedNearbyPlace.longitude, focusedNearbyPlace.latitude] : null),
-		[focusedNearbyPlace],
-	);
-
 	const propCenter: [number, number] = mapPoints[0]?.coordinates
 		? [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]]
 		: FALLBACK_CENTER;
+
+	// All visible coordinates for bounding box calculation
+	const allCoords = useMemo<[number, number][]>(() => [
+		...mapPoints.map((p) => [p.coordinates[1], p.coordinates[0]] as [number, number]),
+		...displayedNearbyPlaces.map((p) => [p.longitude, p.latitude] as [number, number]),
+	], [mapPoints, displayedNearbyPlaces]);
+
+	const zoomToDefault = () => {
+		if (!mapRef.current) return;
+		const currentMap = mapRef.current;
+		if (allCoords.length > 1) {
+			import("maplibre-gl").then((maplibre) => {
+				const bounds = allCoords.reduce(
+					(b, c) => b.extend(c as [number, number]),
+					new maplibre.LngLatBounds(allCoords[0], allCoords[0]),
+				);
+				currentMap.fitBounds(bounds, { padding: 60, maxZoom: 15, speed: 1.2 });
+			});
+		} else if (mapPoints.length === 1) {
+			currentMap.flyTo({ center: [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]], zoom: 14, speed: 1.2 });
+		}
+	};
+
+	const showPopupForId = (id: string) => {
+		const entry = markersMapRef.current.get(id);
+		if (!entry || !mapRef.current) return;
+		const map = mapRef.current;
+
+		// Close any other open popups first
+		markersMapRef.current.forEach((val, k) => {
+			if (k !== id && val.popup.isOpen()) {
+				val.popup.remove();
+			}
+		});
+
+		// Attach popup directly to map above pin
+		if (!entry.popup.isOpen()) {
+			entry.popup.setLngLat(entry.coords).addTo(map);
+		}
+		map.flyTo({ center: entry.coords, zoom: 16, speed: 1.4 });
+	};
 
 	// ── EFFECT 1: Initialize map once ────────────────────────────────────────
 	useEffect(() => {
@@ -165,6 +206,7 @@ export function PropertyMapPreview({
 
 			map.once("load", () => {
 				if (destroyed) return;
+				map.resize();
 				setMapReady(true);
 
 				// Query POIs from loaded tiles — fires once, only if no cached data
@@ -178,7 +220,6 @@ export function PropertyMapPreview({
 					const [propLat, propLng] = prop.coordinates; // our [lat, lng]
 					const radiusMeters = nearbyRadiusForPropertyType(prop.type ?? "");
 
-					// Dynamically find all layers backed by the `poi` source layer
 					const style = map.getStyle();
 					const poiLayerIds = (style?.layers ?? [])
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -244,6 +285,7 @@ export function PropertyMapPreview({
 			destroyed = true;
 			markersRef.current.forEach((m) => m.remove());
 			markersRef.current = [];
+			markersMapRef.current.clear();
 			if (mapRef.current) {
 				mapRef.current.remove();
 				mapRef.current = null;
@@ -255,7 +297,7 @@ export function PropertyMapPreview({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// ── EFFECT 2: Initialize markers and store in markersMapRef ──────────────
+	// ── EFFECT 2: Initialize markers (strictly decoupled from callbacks) ──────
 	useEffect(() => {
 		if (!mapReady || !mapRef.current) return;
 		let mounted = true;
@@ -269,54 +311,37 @@ export function PropertyMapPreview({
 			markersRef.current = [];
 			markersMapRef.current.clear();
 
-			// All visible coordinates for bounding box calculation
-			const allCoords: [number, number][] = [
-				...mapPoints.map((p) => [p.coordinates[1], p.coordinates[0]] as [number, number]),
-				...displayedNearbyPlaces.map((p) => [p.longitude, p.latitude] as [number, number]),
-			];
-
-			const zoomToDefault = () => {
-				if (!mapRef.current) return;
-				const currentMap = mapRef.current;
-				if (allCoords.length > 1) {
-					const bounds = allCoords.reduce(
-						(b, c) => b.extend(c as [number, number]),
-						new maplibre.LngLatBounds(allCoords[0], allCoords[0]),
-					);
-					currentMap.fitBounds(bounds, { padding: 60, maxZoom: 15, speed: 1.2 });
-				} else if (mapPoints.length === 1) {
-					currentMap.flyTo({ center: [mapPoints[0].coordinates[1], mapPoints[0].coordinates[0]], zoom: 14, speed: 1.2 });
-				}
-			};
-
-			// Property pin (red, prominent, always on top)
+			// 1. Property pin (red, prominent, always on top)
 			for (const prop of mapPoints) {
 				const [lat, lng] = prop.coordinates;
 				const el = createMarkerEl(40, "#DE141C", propertyIconSvg(prop), false, true);
+				const propId = `prop-${prop.id}`;
+
 				const popupHtml = `
-					<div style="padding:14px 16px;min-width:220px;max-width:270px;font-family:inherit;">
-						<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:rgba(222,20,28,0.1);color:#DE141C;margin-bottom:8px;">
-							<span style="width:6px;height:6px;border-radius:50%;background:#DE141C;"></span>
-							${prop.type || "Featured Property"}
+					<div style="padding:16px 18px;min-width:240px;max-width:280px;font-family:inherit;background:#ffffff;">
+						<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-right:18px;">
+							<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:rgba(222,20,28,0.1);color:#DE141C;">
+								<span style="width:6px;height:6px;border-radius:50%;background:#DE141C;"></span>
+								${prop.type || "Featured Property"}
+							</span>
 						</div>
-						<div style="font-size:14px;font-weight:700;line-height:1.3;color:#111;margin-bottom:4px;">
+						<div style="font-size:14px;font-weight:700;line-height:1.35;color:#111;margin-bottom:4px;">
 							${prop.title}
 						</div>
-						${prop.price ? `<div style="font-size:13px;font-weight:700;color:#DE141C;margin-bottom:4px;">₱${Number(prop.price).toLocaleString()}</div>` : ""}
-						${prop.location ? `<div style="font-size:11px;color:#666;line-height:1.4;display:flex;align-items:center;gap:3px;">📍 ${prop.location}</div>` : ""}
-						<div style="display:flex;gap:6px;margin-top:10px;">
-							<a href="#inquiry-form" style="display:inline-flex;align-items:center;justify-content:center;width:100%;padding:7px 12px;border-radius:10px;background:#DE141C;color:#fff;font-size:11px;font-weight:600;text-decoration:none;">
-								Inquire About Property
-							</a>
-						</div>
+						${prop.price ? `<div style="font-size:14px;font-weight:700;color:#DE141C;margin-bottom:4px;">₱${Number(prop.price).toLocaleString()}</div>` : ""}
+						${prop.location ? `<div style="font-size:11px;color:#737373;line-height:1.4;margin-bottom:12px;">📍 ${prop.location}</div>` : `<div style="height:6px;"></div>`}
+						<a href="#inquiry-form" style="display:flex;align-items:center;justify-content:center;width:100%;padding:8px 14px;border-radius:10px;background:#DE141C;color:#ffffff;font-size:11px;font-weight:600;text-decoration:none;">
+							Inquire About Property
+						</a>
 					</div>
 				`;
+
 				const popup = new maplibre.Popup({
-					offset: [0, -22],
+					offset: [0, -26],
 					anchor: "bottom",
 					closeButton: true,
-					closeOnClick: true,
-					maxWidth: "280px",
+					closeOnClick: false,
+					maxWidth: "300px",
 				}).setHTML(popupHtml);
 
 				popup.on("close", () => {
@@ -325,112 +350,119 @@ export function PropertyMapPreview({
 
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([lng, lat])
-					.setPopup(popup)
 					.addTo(map);
 
 				marker.getElement().style.zIndex = "999";
-				el.addEventListener("click", (e) => {
+
+				el.onclick = (e) => {
 					e.stopPropagation();
-					markersRef.current.forEach((m) => {
-						if (m !== marker && m.getPopup()?.isOpen()) m.getPopup().remove();
-					});
-					marker.togglePopup();
-					map.flyTo({ center: [lng, lat], zoom: 16, speed: 1.4 });
-				});
+					if (popup.isOpen()) {
+						popup.remove();
+						zoomToDefault();
+					} else {
+						showPopupForId(propId);
+					}
+				};
 
 				markersRef.current.push(marker);
-				markersMapRef.current.set(`prop-${prop.id}`, { marker, popup, el, coords: [lng, lat] });
+				markersMapRef.current.set(propId, { marker, popup, el, coords: [lng, lat] });
 			}
 
-			// Nearby pins (smaller, coloured by category, beneath property pin)
+			// 2. Nearby pins (smaller, coloured by category, beneath property pin)
 			for (const place of displayedNearbyPlaces) {
 				const color = nearbyIconColor(place.category);
 				const el = createMarkerEl(26, color, nearbyIconSvg(place.category), false, false);
+
 				const popupHtml = `
-					<div style="padding:14px 16px;min-width:210px;max-width:260px;font-family:inherit;">
-						<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-							<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:${color}15;color:${color};">
+					<div style="padding:16px 18px;min-width:240px;max-width:280px;font-family:inherit;background:#ffffff;">
+						<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding-right:18px;">
+							<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:${color}18;color:${color};">
 								<span style="width:6px;height:6px;border-radius:50%;background:${color};"></span>
 								${place.category}
 							</span>
-							<span style="font-size:11px;font-weight:600;color:#555;white-space:nowrap;">
+							<span style="font-size:11px;font-weight:600;color:#666;white-space:nowrap;">
 								📍 ${formatDistance(place.distanceMeters)}
 							</span>
 						</div>
-						<div style="font-size:14px;font-weight:700;line-height:1.3;color:#111;margin-bottom:2px;word-break:break-word;">
+						<div style="font-size:14px;font-weight:700;line-height:1.35;color:#111;margin-bottom:4px;word-break:break-word;">
 							${place.name}
 						</div>
-						${place.address ? `<div style="font-size:11px;line-height:1.4;color:#777;margin-top:4px;">${place.address}</div>` : ""}
-						<a href="https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:7px 12px;border-radius:10px;background:#111;color:#fff;font-size:11px;font-weight:600;text-decoration:none;transition:background 0.15s ease;">
+						${place.address ? `<div style="font-size:11px;line-height:1.4;color:#737373;margin-bottom:12px;">${place.address}</div>` : `<div style="height:6px;"></div>`}
+						<a href="https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px 14px;border-radius:10px;background:#111111;color:#ffffff;font-size:11px;font-weight:600;text-decoration:none;">
 							<span>Get Directions</span>
-							<svg viewBox="0 0 24 24" style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<svg viewBox="0 0 24 24" style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<line x1="5" y1="12" x2="19" y2="12"></line>
 								<polyline points="12 5 19 12 12 19"></polyline>
 							</svg>
 						</a>
 					</div>
 				`;
+
 				const popup = new maplibre.Popup({
-					offset: [0, -16],
+					offset: [0, -18],
 					anchor: "bottom",
 					closeButton: true,
-					closeOnClick: true,
-					maxWidth: "280px",
+					closeOnClick: false,
+					maxWidth: "300px",
 				}).setHTML(popupHtml);
 
 				popup.on("close", () => {
-					onSelectNearbyPlace?.(null);
+					onSelectNearbyPlaceRef.current?.(null);
 					zoomToDefault();
 				});
 
 				const marker = new maplibre.Marker({ element: el })
 					.setLngLat([place.longitude, place.latitude])
-					.setPopup(popup)
 					.addTo(map);
 
 				marker.getElement().style.zIndex = "100";
 
-				el.addEventListener("click", (e) => {
+				el.onclick = (e) => {
 					e.stopPropagation();
-					markersRef.current.forEach((m) => {
-						if (m !== marker && m.getPopup()?.isOpen()) m.getPopup().remove();
-					});
-					if (!popup.isOpen()) {
-						marker.togglePopup();
+					if (popup.isOpen()) {
+						popup.remove();
+						onSelectNearbyPlaceRef.current?.(null);
+						zoomToDefault();
+					} else {
+						showPopupForId(place.id);
+						onSelectNearbyPlaceRef.current?.(place);
 					}
-					map.flyTo({ center: [place.longitude, place.latitude], zoom: 16, speed: 1.4 });
-					onSelectNearbyPlace?.(place);
-				});
+				};
 
 				markersRef.current.push(marker);
 				markersMapRef.current.set(place.id, { marker, popup, el, coords: [place.longitude, place.latitude] });
 			}
 
-			zoomToDefault();
+			// If a place was already selected when markers were created (e.g. from What's nearby list), open its popup now!
+			if (focusedNearbyPlaceRef.current) {
+				showPopupForId(focusedNearbyPlaceRef.current.id);
+			} else {
+				zoomToDefault();
+			}
 		});
 
 		return () => { mounted = false; };
-	}, [mapReady, mapPoints, displayedNearbyPlaces, onSelectNearbyPlace]);
+		// Only re-run if map is ready, points change, or displayed places change. NO callbacks in deps!
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [mapReady, mapPoints, displayedNearbyPlaces]);
 
 	// ── EFFECT 3: React to focusedNearbyPlace changes (e.g. clicked in What's nearby) ──
 	useEffect(() => {
 		if (!mapRef.current || !mapReady) return;
-		const map = mapRef.current;
 
 		if (!focusedNearbyPlace) {
+			// If deselecting, close any open nearby popup and zoom out
+			markersMapRef.current.forEach((val, k) => {
+				if (!k.startsWith("prop-") && val.popup.isOpen()) {
+					val.popup.remove();
+				}
+			});
+			zoomToDefault();
 			return;
 		}
 
-		const entry = markersMapRef.current.get(focusedNearbyPlace.id);
-		if (entry) {
-			markersRef.current.forEach((m) => {
-				if (m !== entry.marker && m.getPopup()?.isOpen()) m.getPopup().remove();
-			});
-			if (!entry.popup.isOpen()) {
-				entry.marker.togglePopup();
-			}
-			map.flyTo({ center: entry.coords, zoom: 16, speed: 1.4 });
-		}
+		showPopupForId(focusedNearbyPlace.id);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [focusedNearbyPlace, mapReady]);
 
 	// ── Status message for the footer ─────────────────────────────────────────
