@@ -1,8 +1,8 @@
 import type { Property } from "@/types/property";
 import { getPropertyBySlug } from "@/lib/sample-properties";
 import { getPublishedProperties, getPublishedPropertyBySlug } from "@/lib/supabase/properties";
-import { getCachedNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { formatDistance } from "@/lib/nearby-places";
+import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
+import { formatDistance, fetchNearbyPlacesFromStadia, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
 export type PropertyChatRole = "user" | "assistant";
 
@@ -116,32 +116,50 @@ function buildComparisonSummary(property: Property, properties: Property[]) {
 	return comparableProperties.length ? comparableProperties.join("\n") : "No comparable published listings are available.";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyPlaceRow = Record<string, any>;
+function formatNearbyGroups(groups: NearbyPlaceGroup[]): string {
+	const lines = groups
+		.filter((group) => group.places.length > 0)
+		.map((group) => {
+			const placeList = group.places
+				.slice(0, 5)
+				.map((place) => `${place.name} (${formatDistance(place.distanceMeters)})`)
+				.join(", ");
+			return `${group.category}: ${placeList}`;
+		});
+
+	return lines.length > 0 ? lines.join("\n") : "";
+}
 
 async function buildNearbyContext(property: Property): Promise<string> {
-	if (!property.id) return "Nearby places data not available.";
+	if (!property.id) return "Nearby places data not available for this property.";
 
 	try {
-		const groups = await getCachedNearbyPlaceGroups(property.id);
-		if (!groups || groups.length === 0) return "No nearby places data cached yet for this property.";
+		// Tier 1: Try the Supabase cache first (fast, no external call needed)
+		const cached = await getCachedNearbyPlaceGroups(property.id);
+		if (cached && cached.length > 0) {
+			const formatted = formatNearbyGroups(cached);
+			if (formatted) return formatted;
+		}
 
-		const lines = groups
-			.filter((group) => group.places.length > 0)
-			.map((group) => {
-				const placeList = group.places
-					.slice(0, 5)
-					.map((place: AnyPlaceRow) => {
-						const distMeters = place.distanceMeters ?? 0;
-						return `${place.name} (${formatDistance(distMeters)})`;
-					})
-					.join(", ");
-				return `${group.category}: ${placeList}`;
-			});
+		// Tier 2: Live lookup via Stadia Maps when coordinates are available
+		const coords = property.coordinates;
+		if (Array.isArray(coords) && coords.length === 2) {
+			const [lat, lng] = coords;
+			if (typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng)) {
+				const liveGroups = await fetchNearbyPlacesFromStadia(lat, lng, property.type ?? undefined);
+				const formatted = formatNearbyGroups(liveGroups);
+				if (formatted) {
+					// Save to cache in the background so next requests are instant
+					saveNearbyPlaceGroups(property.id, liveGroups).catch(() => {});
+					return formatted;
+				}
+			}
+		}
 
-		return lines.length > 0 ? lines.join("\n") : "No nearby places found for this property.";
+		// Tier 3: No coordinates and no cache
+		return "No nearby places data available. The property may not have map coordinates set yet.";
 	} catch {
-		return "Nearby places data unavailable.";
+		return "Nearby places data could not be loaded at this time.";
 	}
 }
 
