@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import { formatDistance } from "@/lib/nearby-places";
@@ -60,8 +60,41 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
   const [activeTab, setActiveTab] = useState(0);
   const [focusedNearbyPlace, setFocusedNearbyPlace] = useState<NearbyPlaceGroup["places"][number] | null>(null);
 
+  // Live fallback: when the server had no cached nearby data, fetch it here.
+  // The API warms the cache, so the next page load is instant.
+  const hasCachedPlaces = nearbyGroups.some((group) => group.places.length > 0);
+  const [liveGroups, setLiveGroups] = useState<NearbyPlaceGroup[] | null>(null);
+  const [isFetchingNearby, setIsFetchingNearby] = useState(false);
+  const hasStartedFetchRef = useRef(false);
+
+  useEffect(() => {
+    if (hasCachedPlaces || hasStartedFetchRef.current) return;
+
+    const [latitude, longitude] = property.coordinates ?? [];
+    if (latitude == null || longitude == null) return;
+
+    hasStartedFetchRef.current = true;
+    setIsFetchingNearby(true);
+
+    const params = new URLSearchParams({
+      lat: String(latitude),
+      lng: String(longitude),
+      propertyId: property.id,
+    });
+    if (property.type) params.set("type", property.type);
+
+    fetch(`/api/nearby?${params.toString()}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setLiveGroups(Array.isArray(data?.groups) ? data.groups : []))
+      .catch(() => setLiveGroups([]))
+      .finally(() => setIsFetchingNearby(false));
+  }, [hasCachedPlaces, property.coordinates, property.id, property.type]);
+
+  const groups = hasCachedPlaces ? nearbyGroups : (liveGroups ?? nearbyGroups);
   const active = nearbyCategoryTabs[activeTab];
-  const activePlaces = nearbyGroups.find((group) => group.category === active.label)?.places ?? [];
+  const activePlaces = groups.find((group) => group.category === active.label)?.places ?? [];
+  const showLoadingRows = isFetchingNearby && !hasCachedPlaces && !liveGroups;
+  const allNearbyPlaces = useMemo(() => groups.flatMap((group) => group.places), [groups]);
 
   return (
     <>
@@ -87,7 +120,23 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 
       {isMapOpen && (
         <div id="property-location-map" className="mt-3 w-full overflow-hidden rounded-[10px] border border-black/10">
-          <PropertyMapPreview properties={[property]} mapHeightClassName="h-[400px]" focusedNearbyPlace={focusedNearbyPlace} />
+          <PropertyMapPreview
+            properties={[property]}
+            nearbyPlaces={allNearbyPlaces}
+            mapHeightClassName="h-[400px]"
+            focusedNearbyPlace={focusedNearbyPlace}
+            selectedCategory={active.label}
+            onSelectCategory={(category) => {
+              if (category === "All") return;
+              const tabIndex = nearbyCategoryTabs.findIndex((tab) => tab.label === category);
+              if (tabIndex !== -1) setActiveTab(tabIndex);
+            }}
+            onSelectNearbyPlace={(place) => {
+              setFocusedNearbyPlace((current) => (current?.id === place.id ? null : place));
+              const tabIndex = nearbyCategoryTabs.findIndex((tab) => tab.label === place.category);
+              if (tabIndex !== -1) setActiveTab(tabIndex);
+            }}
+          />
         </div>
       )}
 
@@ -122,12 +171,20 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 
   {/* Items list */}
   <div className="mt-3 divide-y divide-black/8 rounded-[12px] border border-black/10">
-    {activePlaces.length === 0 ? (
+    {showLoadingRows ? (
+      Array.from({ length: 3 }).map((_, index) => (
+        <div key={`nearby-loading-${index}`} className="flex items-center justify-between gap-4 px-4 py-3">
+          <div className="skeleton-shimmer h-3.5 w-40 rounded" />
+          <div className="skeleton-shimmer h-3 w-10 rounded" />
+        </div>
+      ))
+    ) : null}
+    {!showLoadingRows && activePlaces.length === 0 ? (
       <div className="px-4 py-3 text-sm text-black/50">
         No nearby {active.label.toLowerCase()} places found from OpenStreetMap.
       </div>
     ) : null}
-    {activePlaces.map((item) => (
+    {!showLoadingRows && activePlaces.map((item) => (
       <button
         key={item.id}
         type="button"

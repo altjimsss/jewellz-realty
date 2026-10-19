@@ -16,11 +16,37 @@ export type NearbyPlaceGroup = {
 	places: NearbyPlace[];
 };
 
-export const nearbyCategories: { category: NearbyCategory; filters: string[] }[] = [
-	{ category: "Education", filters: ['["amenity"~"^(school|college|university|kindergarten)$"]'] },
-	{ category: "Health", filters: ['["amenity"~"^(hospital|clinic|doctors|pharmacy|dentist)$"]'] },
-	{ category: "Food", filters: ['["amenity"~"^(restaurant|cafe|fast_food|food_court|bar)$"]', '["shop"="bakery"]'] },
-	{ category: "Culture", filters: ['["tourism"~"^(museum|attraction)$"]', '["amenity"~"^(arts_centre|community_centre|place_of_worship|theatre)$"]', '["historic"]'] },
+type TagCondition = {
+	key: string;
+	value?: string;
+	regex?: string;
+	exists?: boolean;
+};
+
+export const nearbyCategories: { category: NearbyCategory; filters: TagCondition[] }[] = [
+	{
+		category: "Education",
+		filters: [{ key: "amenity", regex: "^(school|college|university|kindergarten)$" }],
+	},
+	{
+		category: "Health",
+		filters: [{ key: "amenity", regex: "^(hospital|clinic|doctors|pharmacy|dentist)$" }],
+	},
+	{
+		category: "Food",
+		filters: [
+			{ key: "amenity", regex: "^(restaurant|cafe|fast_food|food_court|bar)$" },
+			{ key: "shop", value: "bakery" },
+		],
+	},
+	{
+		category: "Culture",
+		filters: [
+			{ key: "tourism", regex: "^(museum|attraction)$" },
+			{ key: "amenity", regex: "^(arts_centre|community_centre|place_of_worship|theatre)$" },
+			{ key: "historic", exists: true },
+		],
+	},
 ];
 
 type OverpassElement = {
@@ -40,6 +66,20 @@ const overpassEndpoints = [
 	"https://overpass.kumi.systems/api/interpreter",
 	"https://z.overpass-api.de/api/interpreter",
 ];
+
+function toOverpassFilter(condition: TagCondition) {
+	if (condition.regex) return `["${condition.key}"~"${condition.regex}"]`;
+	if (condition.value != null) return `["${condition.key}"="${condition.value}"]`;
+	return `["${condition.key}"]`;
+}
+
+function matchesCondition(tags: Record<string, string | undefined>, condition: TagCondition) {
+	const tagValue = tags[condition.key];
+	if (tagValue == null || tagValue === "") return false;
+	if (condition.regex) return new RegExp(condition.regex).test(tagValue);
+	if (condition.value != null) return tagValue === condition.value;
+	return true;
+}
 
 function distanceMeters(originLatitude: number, originLongitude: number, placeLatitude: number, placeLongitude: number) {
 	const earthRadiusMeters = 6371000;
@@ -99,34 +139,37 @@ export function formatDistance(meters: number) {
 	return `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0)} km`;
 }
 
-async function fetchCategoryPlaces({
+/**
+ * Fetches every nearby category in a single Overpass request. Firing one
+ * request per category trips Overpass rate limits (which silently return
+ * nothing within a short timeout), so the categories share one query instead.
+ */
+async function fetchNearbyElements({
 	latitude,
 	longitude,
 	radiusMeters,
-	category,
-	filters,
 }: {
 	latitude: number;
 	longitude: number;
 	radiusMeters: number;
-	category: NearbyCategory;
-	filters: string[];
 }) {
-	const overpassFilters = filters
-		.map((filter) => `nwr(around:${radiusMeters},${latitude},${longitude})${filter};`)
+	const overpassFilters = nearbyCategories
+		.flatMap(({ filters }) => filters)
+		.map((condition) => `nwr(around:${radiusMeters},${latitude},${longitude})${toOverpassFilter(condition)};`)
 		.join("\n");
 	const query = `
-		[out:json][timeout:12];
+		[out:json][timeout:25];
 		(
 			${overpassFilters}
 		);
-		out center tags 20;
+		out center tags 60;
 	`;
 	let payload: { elements?: OverpassElement[] } | null = null;
 
 	for (const endpoint of overpassEndpoints) {
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 5000);
+		// Overpass commonly needs well over 5s on rate-limited connections.
+		const timeoutId = setTimeout(() => controller.abort(), 25000);
 
 		try {
 			const response = await fetch(endpoint, {
@@ -137,7 +180,6 @@ async function fetchCategoryPlaces({
 					"User-Agent": "JewellzRealty/1.0",
 				},
 				body: `data=${encodeURIComponent(query)}`,
-				next: { revalidate: 60 * 60 * 24 },
 				signal: controller.signal,
 			});
 
@@ -154,40 +196,86 @@ async function fetchCategoryPlaces({
 		}
 	}
 
-	if (!payload) {
+	return payload?.elements ?? [];
+}
+
+async function fetchGooglePlacesCategory({
+	latitude,
+	longitude,
+	radiusMeters,
+	category,
+	apiKey,
+}: {
+	latitude: number;
+	longitude: number;
+	radiusMeters: number;
+	category: NearbyCategory;
+	apiKey: string;
+}): Promise<NearbyPlace[]> {
+	const categoryTypes: Record<NearbyCategory, string[]> = {
+		Education: ["school", "university", "secondary_school", "primary_school"],
+		Health: ["hospital", "doctor", "pharmacy"],
+		Food: ["restaurant", "cafe", "bakery"],
+		Culture: ["place_of_worship", "museum", "tourist_attraction"],
+	};
+
+	try {
+		const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Goog-Api-Key": apiKey,
+				"X-Goog-FieldMask": "places.id,places.displayName,places.location,places.formattedAddress,places.googleMapsUri",
+			},
+			body: JSON.stringify({
+				includedTypes: categoryTypes[category],
+				maxResultCount: 5,
+				locationRestriction: {
+					circle: {
+						center: { latitude, longitude },
+						radius: radiusMeters,
+					},
+				},
+			}),
+		});
+
+		if (!response.ok) return [];
+
+		const data = (await response.json()) as {
+			places?: {
+				id: string;
+				displayName?: { text?: string };
+				location?: { latitude?: number; longitude?: number };
+				formattedAddress?: string;
+				googleMapsUri?: string;
+			}[];
+		};
+
+		return (data.places ?? [])
+			.map((place) => {
+				const pLat = place.location?.latitude;
+				const pLng = place.location?.longitude;
+				const name = place.displayName?.text;
+				if (pLat == null || pLng == null || !name) return null;
+
+				const nearby: NearbyPlace = {
+					id: `google-${place.id}`,
+					name,
+					category,
+					distanceMeters: distanceMeters(latitude, longitude, pLat, pLng),
+					latitude: pLat,
+					longitude: pLng,
+					address: place.formattedAddress,
+					googleMapsUri: place.googleMapsUri,
+				};
+				return nearby;
+			})
+			.filter((p): p is NearbyPlace => Boolean(p))
+			.sort((a, b) => a.distanceMeters - b.distanceMeters)
+			.slice(0, 3);
+	} catch {
 		return [];
 	}
-
-	return (payload.elements ?? [])
-		.map((element) => {
-			const placeLatitude = element.lat ?? element.center?.lat;
-			const placeLongitude = element.lon ?? element.center?.lon;
-			const name = element.tags?.name;
-
-			if (placeLatitude == null || placeLongitude == null || !name) {
-				return null;
-			}
-
-			const nearbyPlace: NearbyPlace = {
-				id: `${element.type}-${element.id}`,
-				name,
-				category,
-				distanceMeters: distanceMeters(latitude, longitude, placeLatitude, placeLongitude),
-				latitude: placeLatitude,
-				longitude: placeLongitude,
-				googleMapsUri: `https://www.openstreetmap.org/${element.type}/${element.id}`,
-			};
-
-			const address = [element.tags?.["addr:street"], element.tags?.["addr:city"]].filter(Boolean).join(", ");
-			if (address) {
-				nearbyPlace.address = address;
-			}
-
-			return nearbyPlace;
-		})
-		.filter((place): place is NearbyPlace => Boolean(place))
-		.sort((first, second) => first.distanceMeters - second.distanceMeters)
-		.slice(0, 3);
 }
 
 export async function getNearbyPlaceGroups({
@@ -204,18 +292,68 @@ export async function getNearbyPlaceGroups({
 	}
 
 	const radiusMeters = nearbyRadiusForPropertyType(propertyType);
-	const groups = await Promise.all(
-		nearbyCategories.map(async ({ category, filters }) => ({
-			category,
-			places: await fetchCategoryPlaces({
-				latitude,
-				longitude,
-				radiusMeters,
-				category,
-				filters,
-			}),
-		})),
+	const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+	if (googleApiKey) {
+		try {
+			const googleGroups = await Promise.all(
+				nearbyCategories.map(async ({ category }) => ({
+					category,
+					places: await fetchGooglePlacesCategory({ latitude, longitude, radiusMeters, category, apiKey: googleApiKey }),
+				})),
+			);
+			if (googleGroups.some((g) => g.places.length > 0)) {
+				return googleGroups;
+			}
+		} catch {
+			// Fall back to OpenStreetMap Overpass
+		}
+	}
+
+	const elements = await fetchNearbyElements({ latitude, longitude, radiusMeters });
+
+	const placesByCategory = new Map<NearbyCategory, NearbyPlace[]>(
+		nearbyCategories.map(({ category }) => [category, []]),
 	);
 
-	return groups;
+	for (const element of elements) {
+		const placeLatitude = element.lat ?? element.center?.lat;
+		const placeLongitude = element.lon ?? element.center?.lon;
+		const tags = element.tags ?? {};
+		const name = tags.name;
+
+		if (placeLatitude == null || placeLongitude == null || !name) {
+			continue;
+		}
+
+		const matchedCategories = nearbyCategories.filter(({ filters }) =>
+			filters.some((condition) => matchesCondition(tags, condition)),
+		);
+
+		for (const { category } of matchedCategories) {
+			const place: NearbyPlace = {
+				id: `${element.type}-${element.id}`,
+				name,
+				category,
+				distanceMeters: distanceMeters(latitude, longitude, placeLatitude, placeLongitude),
+				latitude: placeLatitude,
+				longitude: placeLongitude,
+				googleMapsUri: `https://www.openstreetmap.org/${element.type}/${element.id}`,
+			};
+
+			const address = [tags["addr:street"], tags["addr:city"]].filter(Boolean).join(", ");
+			if (address) {
+				place.address = address;
+			}
+
+			placesByCategory.get(category)?.push(place);
+		}
+	}
+
+	return nearbyCategories.map(({ category }) => ({
+		category,
+		places: (placesByCategory.get(category) ?? [])
+			.sort((first, second) => first.distanceMeters - second.distanceMeters)
+			.slice(0, 3),
+	}));
 }

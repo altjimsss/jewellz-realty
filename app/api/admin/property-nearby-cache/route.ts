@@ -13,15 +13,28 @@ type PropertyNearbyRow = {
 	longitude: number | string | null;
 };
 
-function isAuthorized(request: Request) {
+async function isAuthorized(request: Request) {
 	const secret = process.env.EMBEDDING_ADMIN_SECRET;
 
-	if (!secret) {
-		return process.env.NODE_ENV !== "production";
+	if (!secret && process.env.NODE_ENV !== "production") {
+		return true;
 	}
 
 	const url = new URL(request.url);
-	return request.headers.get("x-admin-secret") === secret || url.searchParams.get("secret") === secret;
+	if (secret && (request.headers.get("x-admin-secret") === secret || url.searchParams.get("secret") === secret)) {
+		return true;
+	}
+
+	// Also allow authenticated admin sessions
+	const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+	if (token) {
+		const { data } = await supabaseServer.auth.getUser(token);
+		if (data.user?.id) return true;
+	}
+	const { data: cookieUser } = await supabaseServer.auth.getUser();
+	if (cookieUser.user?.id) return true;
+
+	return false;
 }
 
 function toNumber(value: number | string | null | undefined) {
@@ -46,7 +59,7 @@ async function getLimit(request: Request) {
 }
 
 export async function POST(request: Request) {
-	if (!isAuthorized(request)) {
+	if (!(await isAuthorized(request))) {
 		return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 	}
 

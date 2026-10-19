@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import { after } from "next/server";
 import type { Metadata } from "next";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 
-import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { geocodeLocation, getNearbyPlaceGroups, nearbyCategories } from "@/lib/nearby-places";
+import { getCachedNearbyPlaceGroups } from "@/lib/nearby-cache";
+import { geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
 import {
 	SAMPLE_PROPERTIES,
 	getPropertyBySlug,
@@ -49,30 +48,14 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 	}
 	const propertyWithCoordinates = coordinates ? { ...property, coordinates } : property;
 
+	// Read the nearby cache only — never block the page on OpenStreetMap
+	// (Overpass can take 30s+ when rate-limited). When the cache is empty the
+	// PropertyLocationMap client fetches /api/nearby and warms it.
 	const [relatedProperties, cachedNearbyGroups] = await Promise.all([
 		getSupabaseRelatedProperties(property.id, { category: property.type, limit: 3 }),
 		getCachedNearbyPlaceGroups(property.id),
 	]);
-
-	// No cache yet — fetch nearby places live from OpenStreetMap and persist
-	// the result in the background so the next visit skips the fetch.
-	let nearbyGroups = cachedNearbyGroups;
-	if (!nearbyGroups) {
-		nearbyGroups = coordinates
-			? await getNearbyPlaceGroups({
-					latitude: coordinates[0],
-					longitude: coordinates[1],
-					propertyType: property.type,
-				})
-			: nearbyCategories.map(({ category }) => ({ category, places: [] }));
-
-		if (nearbyGroups.some((group) => group.places.length > 0)) {
-			const groupsToCache = nearbyGroups;
-			after(async () => {
-				await saveNearbyPlaceGroups(property.id, groupsToCache);
-			});
-		}
-	}
+	const nearbyGroups = cachedNearbyGroups ?? nearbyCategories.map(({ category }) => ({ category, places: [] }));
 
 	const fallbackRelatedProperties = relatedProperties.length
 		? relatedProperties

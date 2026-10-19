@@ -275,6 +275,59 @@ export function PropertyWizard({
 	const [payload, setPayload] = useState<CmsPayload>(() =>
 		buildEmptyPayload(fields, defaultValues, selectedRow),
 	);
+	const [isGeocoding, setIsGeocoding] = useState(false);
+	const [geocodeFeedback, setGeocodeFeedback] = useState<string | null>(null);
+	const [isWarmingAllCache, setIsWarmingAllCache] = useState(false);
+
+	async function handleAutoGeocode() {
+		const address = asText(payload.address);
+		const city = asText(payload.city);
+		const province = asText(payload.province);
+		if (!city && !province && !address) {
+			setGeocodeFeedback("Please enter City or Province first.");
+			return;
+		}
+		setIsGeocoding(true);
+		setGeocodeFeedback(null);
+		try {
+			const query = [address, city, province, "Philippines"].filter(Boolean).join(", ");
+			const res = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query), {
+				headers: { "User-Agent": "JewellzRealty/1.0" },
+			});
+			if (res.ok) {
+				const data = (await res.json()) as { lat?: string; lon?: string }[];
+				if (data[0]?.lat && data[0]?.lon) {
+					const lat = Number(Number(data[0].lat).toFixed(6));
+					const lng = Number(Number(data[0].lon).toFixed(6));
+					setPayload((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+					setGeocodeFeedback("Coordinates detected: " + lat + ", " + lng);
+				} else {
+					setGeocodeFeedback("Could not locate exact coordinates. Please check city and province.");
+				}
+			}
+		} catch {
+			setGeocodeFeedback("Geocoding failed. Please check network connection.");
+		} finally {
+			setIsGeocoding(false);
+		}
+	}
+
+	async function handleWarmNearbyCache() {
+		setIsWarmingAllCache(true);
+		try {
+			const res = await fetch("/api/admin/property-nearby-cache?limit=30", { method: "POST" });
+			const data = (await res.json()) as { updated?: number; skipped?: number; error?: string };
+			if (res.ok) {
+				alert("Nearby places cache updated! " + (data.updated ?? 0) + " properties cached, " + (data.skipped ?? 0) + " skipped.");
+			} else {
+				alert(data.error ?? "Failed to warm nearby cache.");
+			}
+		} catch {
+			alert("Could not trigger nearby cache warming.");
+		} finally {
+			setIsWarmingAllCache(false);
+		}
+	}
 
 	useEffect(() => {
 		setPayload(buildEmptyPayload(fields, defaultValues, selectedRow));
@@ -587,6 +640,32 @@ export function PropertyWizard({
 								onSubmit={(e) => e.preventDefault()}
 							>
 								<div className="grid gap-5 sm:grid-cols-2">
+									{step.id === "location" && (
+										<div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5">
+											<div>
+												<div className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+													<MapPin className="h-3.5 w-3.5 text-blue-600" />
+													<span>Automatic Map Coordinates</span>
+												</div>
+												<p className="mt-0.5 text-[11px] text-blue-800/80">
+													Detect Latitude & Longitude from City, Province & Address automatically.
+												</p>
+											</div>
+											<button
+												type="button"
+												onClick={handleAutoGeocode}
+												disabled={isGeocoding}
+												className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+											>
+												{isGeocoding ? "Detecting coordinates…" : "Auto-detect coordinates"}
+											</button>
+										</div>
+									)}
+									{geocodeFeedback && step.id === "location" && (
+										<div className="sm:col-span-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-800">
+											{geocodeFeedback}
+										</div>
+									)}
 									{stepFieldList.map((field) => {
 										const val = selectedRow
 											? selectedRow[field.name]

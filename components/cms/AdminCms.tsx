@@ -2652,6 +2652,33 @@ export default function AdminCms({
 			return;
 		}
 
+		// Auto-resolve coordinates from address if not manually set
+		let lat = Number(payload.latitude);
+		let lng = Number(payload.longitude);
+		let finalLat = Number.isFinite(lat) && lat !== 0 ? lat : null;
+		let finalLng = Number.isFinite(lng) && lng !== 0 ? lng : null;
+
+		if (finalLat == null || finalLng == null) {
+			setMessage("Resolving map coordinates from address...");
+			try {
+				const query = [payload.address, payload.city, payload.province, "Philippines"].filter(Boolean).join(", ");
+				const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
+					headers: { "User-Agent": "JewellzRealty/1.0" },
+				});
+				if (res.ok) {
+					const data = (await res.json()) as { lat?: string; lon?: string }[];
+					if (data[0]?.lat && data[0]?.lon) {
+						finalLat = Number(Number(data[0].lat).toFixed(6));
+						finalLng = Number(Number(data[0].lon).toFixed(6));
+						payload.latitude = finalLat;
+						payload.longitude = finalLng;
+					}
+				}
+			} catch (err) {
+				console.warn("Auto-geocoding property failed:", err);
+			}
+		}
+
 		if (payload.status === "published" && !payload.published_at) {
 			payload.published_at = new Date().toISOString();
 		}
@@ -2661,7 +2688,17 @@ export default function AdminCms({
 			if (!currentRow) payload.created_by = sessionUser.id;
 		}
 
-		await saveEntity("properties", payload, currentRow);
+		const success = await saveEntity("properties", payload, currentRow);
+
+		if (success && finalLat != null && finalLng != null) {
+			const savedId = currentRow ? String(currentRow.id) : workspace.properties.find((p) => p.slug === payload.slug)?.id;
+			if (savedId) {
+				setMessage("Property saved! Pre-warming nearby places in cache...");
+				fetch(`/api/nearby?lat=${finalLat}&lng=${finalLng}&propertyId=${encodeURIComponent(String(savedId))}&type=${encodeURIComponent(String(payload.category ?? ""))}`)
+					.then(() => setMessage("Property saved and nearby cache ready!"))
+					.catch(() => {});
+			}
+		}
 	}
 
 	async function saveProject(payload: CmsPayload, currentRow: CmsRow | null) {

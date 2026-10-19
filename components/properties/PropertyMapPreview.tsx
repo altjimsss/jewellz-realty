@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import type { NearbyPlace } from "@/lib/nearby-places";
+import { formatDistance } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 
-type PropertyMapPreviewProps = {
-	properties: Property[];
-	mapHeightClassName?: string;
-	focusedNearbyPlace?: NearbyPlace | null;
-};
 
 const fallbackCenter: [number, number] = [13.7563, 121.0583];
 
@@ -115,7 +111,28 @@ function createNearbyPinIcon(leaflet: typeof import("leaflet"), category: Nearby
 	});
 }
 
-	export function PropertyMapPreview({ properties, mapHeightClassName = "h-[520px]", focusedNearbyPlace = null }: PropertyMapPreviewProps) {
+type PropertyMapPreviewProps = {
+	properties: Property[];
+	nearbyPlaces?: NearbyPlace[];
+	mapHeightClassName?: string;
+	focusedNearbyPlace?: NearbyPlace | null;
+	selectedCategory?: string;
+	onSelectNearbyPlace?: (place: NearbyPlace) => void;
+	onSelectCategory?: (category: string) => void;
+};
+
+export function PropertyMapPreview({
+	properties,
+	nearbyPlaces = [],
+	mapHeightClassName = "h-[520px]",
+	focusedNearbyPlace = null,
+	selectedCategory,
+	onSelectNearbyPlace,
+	onSelectCategory,
+}: PropertyMapPreviewProps) {
+	const [internalCategory, setInternalCategory] = useState<string>("All");
+	const activeCategory = selectedCategory ?? internalCategory;
+
 	const mapElementRef = useRef<HTMLDivElement | null>(null);
 	const mapRef = useRef<LeafletMap | null>(null);
 	const markerRefs = useRef<Marker[]>([]);
@@ -123,6 +140,11 @@ function createNearbyPinIcon(leaflet: typeof import("leaflet"), category: Nearby
 		() => properties.filter((property): property is PropertyWithCoordinates => Boolean(property.coordinates)),
 		[properties],
 	);
+
+	const displayedNearbyPlaces = useMemo(() => {
+		if (!activeCategory || activeCategory === "All") return nearbyPlaces;
+		return nearbyPlaces.filter((place) => place.category === activeCategory);
+	}, [nearbyPlaces, activeCategory]);
 	const locationLabels = useMemo(() => {
 		const uniqueLocations = new Set<string>();
 
@@ -139,9 +161,15 @@ function createNearbyPinIcon(leaflet: typeof import("leaflet"), category: Nearby
 	);
 	const center = focusedCoordinates ?? mapPoints[0]?.coordinates ?? fallbackCenter;
 	const hasPins = mapPoints.length > 0;
-	const statusTitle = hasPins ? `${mapPoints.length} pinned result${mapPoints.length === 1 ? "" : "s"}` : "No pinned results";
+	const statusTitle = hasPins
+		? nearbyPlaces.length > 0
+			? `${mapPoints.length} property · ${nearbyPlaces.length} nearby pinned`
+			: `${mapPoints.length} pinned result${mapPoints.length === 1 ? "" : "s"}`
+		: "No pinned results";
 	const statusMessage = hasPins
-		? "All matched locations stay pinned on the map. Zoom to compare nearby properties or open a marker for the full listing card."
+		? nearbyPlaces.length > 0
+			? "Property and all nearby essentials (schools, health, food, and culture) are pinned. Click any marker for details."
+			: "All matched locations stay pinned on the map. Zoom to compare nearby properties or open a marker for the full listing card."
 		: "No properties with coordinates were found for this search.";
 
 	useEffect(() => {
@@ -172,36 +200,80 @@ function createNearbyPinIcon(leaflet: typeof import("leaflet"), category: Nearby
 				mapRef.current.setView(center, 13, { animate: true });
 			}
 
-				const mapInstance = mapRef.current;
-				if (!mapInstance) return;
+			const mapInstance = mapRef.current;
+			if (!mapInstance) return;
 
 			markerRefs.current.forEach((marker) => marker.remove());
 			markerRefs.current = [];
 
+			// 1. Property pins (Red icons)
 			pins.forEach((property) => {
 				const marker = leaflet.marker(property.coordinates, {
 					icon: createPinIcon(leaflet, property),
-					}).addTo(mapInstance);
+					zIndexOffset: 500,
+				}).addTo(mapInstance);
 
 				marker.bindPopup(`<strong>${property.title}</strong><br />${property.location ?? "Location unavailable"}`);
 				markerRefs.current.push(marker);
 			});
 
-			if (focusedNearbyPlace && focusedCoordinates) {
-				const marker = leaflet.marker(focusedCoordinates, {
-					icon: createNearbyPinIcon(leaflet, focusedNearbyPlace.category),
+			// 2. Nearby places pins (Category icons: Blue, Green, Orange, Purple)
+			displayedNearbyPlaces.forEach((place) => {
+				const isFocused = focusedNearbyPlace?.id === place.id;
+				const marker = leaflet.marker([place.latitude, place.longitude], {
+					icon: createNearbyPinIcon(leaflet, place.category),
+					zIndexOffset: isFocused ? 1000 : 200,
 				}).addTo(mapInstance);
 
-				marker.bindPopup(`<strong>${focusedNearbyPlace.name}</strong><br />${focusedNearbyPlace.category} • ${focusedNearbyPlace.distanceMeters} m`).openPopup();
+				const popupContent = `
+					<div style="font-family: inherit; font-size: 13px; line-height: 1.4; padding: 2px;">
+						<strong style="display:block; font-size: 14px; margin-bottom: 2px;">${place.name}</strong>
+						<span style="display:inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: ${nearbyIconColor(place.category)}18; color: ${nearbyIconColor(place.category)}; margin-bottom: 4px;">
+							${place.category}
+						</span>
+						<div style="color: #666; font-size: 12px;">📍 ${formatDistance(place.distanceMeters)} away</div>
+						${place.address ? `<div style="color: #888; font-size: 11px; margin-top: 2px;">${place.address}</div>` : ""}
+					</div>
+				`;
+				marker.bindPopup(popupContent);
+
+				if (isFocused) {
+					marker.openPopup();
+				}
+
+				if (onSelectNearbyPlace) {
+					marker.on("click", () => {
+						onSelectNearbyPlace(place);
+					});
+				}
+
+				markerRefs.current.push(marker);
+			});
+
+			// 3. Fallback if focused place was not in displayedNearbyPlaces list
+			if (focusedNearbyPlace && focusedCoordinates && !displayedNearbyPlaces.some((p) => p.id === focusedNearbyPlace.id)) {
+				const marker = leaflet.marker(focusedCoordinates, {
+					icon: createNearbyPinIcon(leaflet, focusedNearbyPlace.category),
+					zIndexOffset: 1000,
+				}).addTo(mapInstance);
+
+				marker.bindPopup(`<strong>${focusedNearbyPlace.name}</strong><br />${focusedNearbyPlace.category} • ${formatDistance(focusedNearbyPlace.distanceMeters)} away`).openPopup();
 				markerRefs.current.push(marker);
 			}
 
-			if (focusedNearbyPlace && focusedCoordinates && pins.length > 0) {
-				const bounds = leaflet.latLngBounds([...pins.map((property) => property.coordinates), focusedCoordinates]);
-				mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-			} else if (pins.length > 1) {
-				const bounds = leaflet.latLngBounds(pins.map((property) => property.coordinates));
-				mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+			// 4. View / Bounds fitting
+			const allCoordinates: [number, number][] = [
+				...pins.map((property) => property.coordinates),
+				...displayedNearbyPlaces.map((place) => [place.latitude, place.longitude] as [number, number]),
+			];
+
+			if (focusedCoordinates) {
+				mapInstance.setView(focusedCoordinates, 15, { animate: true });
+			} else if (allCoordinates.length > 1) {
+				const bounds = leaflet.latLngBounds(allCoordinates);
+				mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+			} else if (pins.length === 1) {
+				mapInstance.setView(pins[0].coordinates, 14, { animate: true });
 			}
 		}
 
@@ -211,7 +283,7 @@ function createNearbyPinIcon(leaflet: typeof import("leaflet"), category: Nearby
 			cancelled = true;
 			mapRef.current?.invalidateSize();
 		};
-	}, [center, focusedCoordinates, focusedNearbyPlace, mapPoints]);
+	}, [center, focusedCoordinates, focusedNearbyPlace, mapPoints, displayedNearbyPlaces, onSelectNearbyPlace]);
 
 	useEffect(() => {
 		return () => {
@@ -226,6 +298,58 @@ function createNearbyPinIcon(leaflet: typeof import("leaflet"), category: Nearby
 		<div className="flex h-full min-h-[520px] flex-col overflow-hidden">
 			<div className={`relative ${mapHeightClassName} shrink-0 bg-[#f3f3f3]`}>
 				<div ref={mapElementRef} className="absolute inset-0" />
+
+				{/* Floating category filter pills */}
+				{nearbyPlaces.length > 0 && (
+					<div className="absolute top-3 left-3 right-3 z-[400] flex flex-wrap items-center gap-1.5 rounded-xl border border-black/10 bg-white/95 p-1.5 shadow-md backdrop-blur-md">
+						<button
+							type="button"
+							onClick={() => {
+								setInternalCategory("All");
+								onSelectCategory?.("All");
+							}}
+							className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+								activeCategory === "All"
+									? "bg-[#DE141C] text-white shadow-sm"
+									: "bg-transparent text-black/70 hover:bg-black/5"
+							}`}
+						>
+							<span>All</span>
+							<span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeCategory === "All" ? "bg-white/25" : "bg-black/10 text-black/60"}`}>
+								{nearbyPlaces.length}
+							</span>
+						</button>
+						{(["Education", "Health", "Food", "Culture"] as const).map((cat) => {
+							const count = nearbyPlaces.filter((p) => p.category === cat).length;
+							if (count === 0) return null;
+							const isCatActive = activeCategory === cat;
+							return (
+								<button
+									key={cat}
+									type="button"
+									onClick={() => {
+										setInternalCategory(cat);
+										onSelectCategory?.(cat);
+									}}
+									className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+										isCatActive
+											? "bg-[#DE141C] text-white shadow-sm"
+											: "bg-transparent text-black/70 hover:bg-black/5"
+									}`}
+								>
+									<span
+										className="h-2 w-2 rounded-full"
+										style={{ backgroundColor: isCatActive ? "#fff" : nearbyIconColor(cat) }}
+									/>
+									<span>{cat}</span>
+									<span className={`rounded-full px-1.5 py-0.2 text-[10px] ${isCatActive ? "bg-white/25" : "bg-black/10 text-black/60"}`}>
+										{count}
+									</span>
+								</button>
+							);
+						})}
+					</div>
+				)}
 			</div>
 			<div className="border-t border-black/10 bg-white p-4">
 				<div className="flex items-start justify-between gap-4">

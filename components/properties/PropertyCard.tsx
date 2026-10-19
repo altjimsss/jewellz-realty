@@ -158,12 +158,6 @@ export function PropertyCard({ property, priceLabel, href }: PropertyCardProps) 
 				{card}
 				{showPendingDetail ? (
 					<div className="skeleton-delayed fixed inset-0 z-[9999] overflow-y-auto bg-white" aria-live="polite" aria-busy="true">
-						<div className="border-b border-black/10 bg-white px-4 py-3">
-							<div className="mx-auto flex max-w-[1200px] items-center gap-3">
-								<div className="h-2 w-2 animate-pulse rounded-full bg-[#DE141C]" />
-								<p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/55">Opening property details</p>
-							</div>
-						</div>
 						<PropertyDetailSkeleton />
 					</div>
 				) : null}
