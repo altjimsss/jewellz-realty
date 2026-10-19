@@ -88,13 +88,27 @@ export function getPrimaryAiProvider(): "groq" | "openrouter" | null {
 	return null;
 }
 
+/**
+ * Strips chain-of-thought <think>…</think> blocks emitted by reasoning models
+ * (e.g. qwen/qwen3.8-27b, openai/gpt-oss-120b on Groq) so callers always
+ * receive only the final answer text.
+ */
+function stripThinkingTokens(content: string): string {
+	return content
+		.replace(/<think>[\s\S]*?<\/think>/gi, "")
+		.replace(/<\|thinking\|>[\s\S]*?<\|\/thinking\|>/gi, "")
+		.trim();
+}
+
 function extractContentFromPayload(data: unknown): string | null {
 	if (!data || typeof data !== "object") return null;
 	const candidate = data as {
 		choices?: Array<{ message?: { content?: unknown } }>;
 	};
 	const content = candidate.choices?.[0]?.message?.content;
-	return typeof content === "string" ? content.trim() : null;
+	if (typeof content !== "string") return null;
+	const cleaned = stripThinkingTokens(content);
+	return cleaned || null;
 }
 
 async function callGroq(
@@ -113,6 +127,12 @@ async function callGroq(
 
 	if (options.responseFormat === "json_object") {
 		bodyPayload.response_format = { type: "json_object" };
+	}
+
+	// For structured-output callers (recommendations), disable reasoning entirely
+	// so the model returns JSON directly without <think>…</think> overhead.
+	if (options.caller === "recommendations") {
+		bodyPayload.reasoning_effort = "none";
 	}
 
 	const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
