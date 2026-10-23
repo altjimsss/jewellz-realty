@@ -2221,6 +2221,7 @@ export default function AdminCms({
 }: AdminCmsProps) {
 	const router = useRouter();
 	const [loading, setLoading] = useState(true);
+	const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
 	const [message, setMessage] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [sessionUser, setSessionUser] = useState<User | null>(null);
@@ -2253,14 +2254,20 @@ export default function AdminCms({
 	const [analyticsChatIsThinking, setAnalyticsChatIsThinking] = useState(false);
 
 	useEffect(() => {
-		const stored = loadAnalyticsChatMessages(sessionUser?.id ?? null);
-		const nextMessages = stored && stored.length > 0 ? stored : [createAnalyticsChatWelcomeMessage()];
-		setAnalyticsChatMessages((current) => {
-			if (JSON.stringify(current) === JSON.stringify(nextMessages)) return current;
-			return nextMessages;
-		});
-		setAnalyticsChatIsThinking(false);
-		 
+		let cancelled = false;
+		void (async () => {
+			const stored = loadAnalyticsChatMessages(sessionUser?.id ?? null);
+			const nextMessages = stored && stored.length > 0 ? stored : [createAnalyticsChatWelcomeMessage()];
+			if (cancelled) return;
+			setAnalyticsChatMessages((current) => {
+				if (JSON.stringify(current) === JSON.stringify(nextMessages)) return current;
+				return nextMessages;
+			});
+			setAnalyticsChatIsThinking(false);
+		})();
+		return () => {
+			cancelled = true;
+		};
 	}, [sessionUser?.id]);
 
 	useEffect(() => {
@@ -2656,9 +2663,14 @@ export default function AdminCms({
 
 	async function reloadWorkspace() {
 		if (!sessionUser || !profile) return;
+		setIsRefreshingWorkspace(true);
 		setMessage("Syncing...");
-		await loadWorkspace(sessionUser, profile, agentProfile, developerProfile);
-		setTimeout(() => setMessage(""), 2000);
+		try {
+			await loadWorkspace(sessionUser, profile, agentProfile, developerProfile);
+		} finally {
+			setIsRefreshingWorkspace(false);
+			setTimeout(() => setMessage(""), 2000);
+		}
 	}
 
 	async function loadPropertyImages(propertyId: string | null) {
@@ -3260,8 +3272,8 @@ export default function AdminCms({
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<button type="button" onClick={() => void reloadWorkspace()} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Refresh">
-							<RefreshCw className="h-4 w-4" />
+						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111] disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
+							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
 						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
 							<LogOut className="h-4 w-4" />
@@ -3369,7 +3381,7 @@ export default function AdminCms({
 							</div>
 						)}
 						<div className="mt-3 flex gap-2 lg:hidden">
-							<button type="button" onClick={() => void reloadWorkspace()} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium">Refresh</button>
+							<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">Refresh</button>
 							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
 						</div>
 					</div>
@@ -3484,8 +3496,8 @@ export default function AdminCms({
 									<button type="button" className="inline-flex h-8 items-center gap-1 rounded-md border border-black/10 bg-white px-3 text-xs text-black/60">
 										Daily
 									</button>
-									<button type="button" onClick={() => void reloadWorkspace()} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
-										<RefreshCw className="h-3.5 w-3.5" />
+									<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">
+										<RefreshCw className={`h-3.5 w-3.5 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 										Refresh
 									</button>
 								</div>
