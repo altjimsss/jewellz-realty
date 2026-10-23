@@ -739,12 +739,60 @@ function renderAnalyticsChatText(text: string) {
 	});
 }
 
-function AnalyticsChatSidebar({ onAction }: { onAction?: (actionId: string) => void }) {
-	const [messages, setMessages] = useState<Array<{ id: string; role: "assistant" | "user"; text: string; isLoading?: boolean; actions?: AnalyticsChatAction[] }>>([
-		{ id: "welcome", role: "assistant", text: "Ask me about traffic, listings, demand, funnel drop-offs, or which properties need attention." },
-	]);
+const ANALYTICS_CHAT_STORAGE_KEY = "jewellz-admin-analytics-chat";
+const ANALYTICS_CHAT_WELCOME = "Ask me about traffic, listings, demand, funnel drop-offs, or which properties need attention.";
+
+type AnalyticsChatMessage = { id: string; role: "assistant" | "user"; text: string; isLoading?: boolean; actions?: AnalyticsChatAction[] };
+
+function getAnalyticsChatStorageKey(userId?: string | null) {
+	return userId ? `${ANALYTICS_CHAT_STORAGE_KEY}:${userId}` : ANALYTICS_CHAT_STORAGE_KEY;
+}
+
+function loadAnalyticsChatMessages(userId?: string | null): AnalyticsChatMessage[] | null {
+	if (typeof window === "undefined") return null;
+	try {
+		const raw = window.sessionStorage.getItem(getAnalyticsChatStorageKey(userId));
+		if (!raw) return null;
+		const parsed = JSON.parse(raw) as AnalyticsChatMessage[];
+		if (!Array.isArray(parsed)) return null;
+		const filtered = parsed.filter((message) => message && typeof message.id === "string" && (message.role === "assistant" || message.role === "user") && typeof message.text === "string");
+		return filtered.length > 0 ? filtered : null;
+	} catch {
+		return null;
+	}
+}
+
+function saveAnalyticsChatMessages(messages: AnalyticsChatMessage[], userId?: string | null) {
+	if (typeof window === "undefined") return;
+	try {
+		window.sessionStorage.setItem(getAnalyticsChatStorageKey(userId), JSON.stringify(messages));
+	} catch {
+		// Ignore storage failures (private mode, quota, etc.)
+	}
+}
+
+function clearAnalyticsChatMessages(userId?: string | null) {
+	if (typeof window === "undefined") return;
+	try {
+		window.sessionStorage.removeItem(getAnalyticsChatStorageKey(userId));
+	} catch {
+		// Ignore storage failures
+	}
+}
+
+function createAnalyticsChatWelcomeMessage(): AnalyticsChatMessage {
+	return { id: "welcome", role: "assistant", text: ANALYTICS_CHAT_WELCOME };
+}
+
+function AnalyticsChatSidebar(props: {
+	onAction?: (actionId: string) => void;
+	messages: AnalyticsChatMessage[];
+	onMessagesChange: (messages: AnalyticsChatMessage[]) => void;
+	isThinking: boolean;
+	setIsThinking: (value: boolean) => void;
+}) {
+	const { onAction, messages, onMessagesChange, isThinking, setIsThinking } = props;
 	const [question, setQuestion] = useState("");
-	const [isThinking, setIsThinking] = useState(false);
 
 	function createMessageId(prefix: string) {
 		return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -755,15 +803,16 @@ function AnalyticsChatSidebar({ onAction }: { onAction?: (actionId: string) => v
 		if (!trimmed || isThinking) return;
 		const assistantId = createMessageId("assistant");
 		const userMessage = { id: createMessageId("user"), role: "user" as const, text: trimmed };
-		const history = messages
+		const nextMessages: AnalyticsChatMessage[] = [
+			...messages,
+			userMessage,
+			{ id: assistantId, role: "assistant", text: "Analyzing", isLoading: true },
+		];
+		const history = nextMessages
 			.filter((message) => !message.isLoading)
 			.slice(-8)
 			.map((message) => ({ role: message.role, content: message.text }));
-		setMessages((current) => [
-			...current,
-			userMessage,
-			{ id: assistantId, role: "assistant", text: "Analyzing", isLoading: true },
-		]);
+		onMessagesChange(nextMessages);
 		setQuestion("");
 		setIsThinking(true);
 
@@ -789,9 +838,15 @@ function AnalyticsChatSidebar({ onAction }: { onAction?: (actionId: string) => v
 					? payload.error.trim()
 					: "I could not read the analytics response. Try again in a moment.";
 			const { text: reply, actions } = parseAnalyticsChatActions(rawReply);
-			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: reply, actions, isLoading: false } : message));
+			onMessagesChange([
+				...nextMessages,
+				{ id: assistantId, role: "assistant" as const, text: reply, actions, isLoading: false },
+			]);
 		} catch {
-			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: "The analytics assistant could not connect to the AI service right now.", isLoading: false } : message));
+		onMessagesChange([
+			...nextMessages,
+			{ id: assistantId, role: "assistant" as const, text: "The analytics assistant could not connect to the AI service right now.", isLoading: false },
+		]);
 		} finally {
 			setIsThinking(false);
 		}
@@ -2190,6 +2245,27 @@ export default function AdminCms({
 	const [selectedPortfolioDeveloperId, setSelectedPortfolioDeveloperId] = useState<string | null>(null);
 	const [selectedPortfolioPropertyId, setSelectedPortfolioPropertyId] = useState<string | null>(null);
 	const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
+	const [analyticsChatMessages, setAnalyticsChatMessages] = useState<AnalyticsChatMessage[]>(() => {
+		if (typeof window === "undefined") return [createAnalyticsChatWelcomeMessage()];
+		const stored = loadAnalyticsChatMessages(null);
+		return stored && stored.length > 0 ? stored : [createAnalyticsChatWelcomeMessage()];
+	});
+	const [analyticsChatIsThinking, setAnalyticsChatIsThinking] = useState(false);
+
+	useEffect(() => {
+		const stored = loadAnalyticsChatMessages(sessionUser?.id ?? null);
+		const nextMessages = stored && stored.length > 0 ? stored : [createAnalyticsChatWelcomeMessage()];
+		setAnalyticsChatMessages((current) => {
+			if (JSON.stringify(current) === JSON.stringify(nextMessages)) return current;
+			return nextMessages;
+		});
+		setAnalyticsChatIsThinking(false);
+		 
+	}, [sessionUser?.id]);
+
+	useEffect(() => {
+		saveAnalyticsChatMessages(analyticsChatMessages, sessionUser?.id ?? null);
+	}, [analyticsChatMessages, sessionUser?.id]);
 
 	const role = asRole(profile?.role);
 	const isAdmin = role === "admin";
@@ -3187,7 +3263,7 @@ export default function AdminCms({
 						<button type="button" onClick={() => void reloadWorkspace()} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Refresh">
 							<RefreshCw className="h-4 w-4" />
 						</button>
-						<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -3294,7 +3370,7 @@ export default function AdminCms({
 						)}
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={() => void reloadWorkspace()} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium">Refresh</button>
-							<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
+							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
 						</div>
 					</div>
 				</aside>
@@ -3386,7 +3462,7 @@ export default function AdminCms({
 									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 									<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-									<button type="button" onClick={async () => { await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
 								</div>
 							) : null}
 						</div>
@@ -3802,7 +3878,7 @@ export default function AdminCms({
 							)}
 					</div>
 					</div>
-					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar onAction={handleAnalyticsChatAction} /> : null}
+					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar onAction={handleAnalyticsChatAction} messages={analyticsChatMessages} onMessagesChange={setAnalyticsChatMessages} isThinking={analyticsChatIsThinking} setIsThinking={setAnalyticsChatIsThinking} /> : null}
 				</section>
 			</div>
 			{destructiveAction ? (
