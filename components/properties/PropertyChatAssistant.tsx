@@ -120,12 +120,12 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
     {
       id: createId(),
       role: "assistant",
-      content: `Hey there! 👋 I'm Jade, your Jewellz Realty guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`,
+      content: `Hey there! 👋 I'm Jewel, your Jewellz Realty guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`,
     },
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [status, setStatus] = useState<string>("Jade is ready to help.");
+  const [status, setStatus] = useState<string>("Jewel is ready to help.");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const history = messages.slice(-8);
@@ -140,7 +140,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
 
     setInput("");
     setIsSending(true);
-    setStatus("Jade is thinking…");
+    setStatus("Jewel is thinking…");
 
     const userMessage: ChatMessage = {
       id: createId(),
@@ -158,7 +158,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
 
     try {
       const payload = await fetchPropertyPrompt(property, trimmedMessage, [...history, userMessage]);
-      setStatus("Jade is ready.");
+      setStatus("Jewel is ready.");
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
@@ -176,7 +176,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
             : message
         )
       );
-      setStatus("Jade encountered an issue.");
+      setStatus("Jewel encountered an issue.");
     } finally {
       setIsSending(false);
     }
@@ -240,7 +240,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-semibold text-black">Jade</p>
+                <p className="text-sm font-semibold text-black">Jewel</p>
                 <span className="rounded-full bg-emerald-50 px-1.5 py-px text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-600">
                   AI Guide
                 </span>
@@ -264,7 +264,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                 {message.role === "assistant" && (
                   <Image
                     src="/assets/chatbot.svg"
-                    alt="Jade"
+                    alt="Jewel"
                     width={26}
                     height={26}
                     className="mb-0.5 h-[26px] w-[26px] shrink-0 rounded-full object-cover"
@@ -368,8 +368,8 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
               value={input}
               onChange={(event) => setInput(event.target.value)}
               className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/30 focus:border-[#DE141C]/35 focus:ring-2 focus:ring-[#DE141C]/10"
-              aria-label="Message Jade"
-              placeholder="Ask Jade anything about this property…"
+              aria-label="Message Jewel"
+              placeholder="Ask Jewel anything about this property…"
               disabled={isSending || previewMode}
             />
             <button
