@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bell, Bot, BriefcaseBusiness, Building2, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -694,8 +694,53 @@ function AnalyticsVisualSuite({
 	);
 }
 
-function AnalyticsChatSidebar() {
-	const [messages, setMessages] = useState<Array<{ id: string; role: "assistant" | "user"; text: string; isLoading?: boolean }>>([
+type AnalyticsChatAction = { id: string; label: string };
+
+const analyticsChatActionLabels: Record<string, string> = {
+	navigate_inquiries: "View Inquiries",
+	navigate_high_priority: "View High-Priority Leads",
+	navigate_listings: "View Listings",
+	navigate_developers: "View Developer Partners",
+	navigate_analytics: "Open Analytics",
+	export_inquiries: "Download Inquiries CSV",
+	export_listings: "Download Listings CSV",
+	export_agents: "Download Agents CSV",
+	refresh_data: "Refresh Data",
+};
+
+function parseAnalyticsChatActions(raw: string): { text: string; actions: AnalyticsChatAction[] } {
+	const actions: AnalyticsChatAction[] = [];
+	const text = raw
+		.replace(/\[ACTION:([a-zA-Z0-9_]+)(?:\s*[|:]\s*([^\]]+))?\]/g, (_match, rawId: string, rawLabel?: string) => {
+			const id = rawId.trim();
+			const label = analyticsChatActionLabels[id];
+			if (label && !actions.some((action) => action.id === id)) {
+				actions.push({ id, label: rawLabel?.trim() || label });
+			}
+			return "";
+		})
+		.replace(/[ \t]+\n/g, "\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+
+	return { text, actions };
+}
+
+function renderAnalyticsChatText(text: string) {
+	return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+		if (part.startsWith("**") && part.endsWith("**")) {
+			return (
+				<strong key={index} className="font-semibold text-black/85">
+					{part.slice(2, -2)}
+				</strong>
+			);
+		}
+		return part;
+	});
+}
+
+function AnalyticsChatSidebar({ onAction }: { onAction?: (actionId: string) => void }) {
+	const [messages, setMessages] = useState<Array<{ id: string; role: "assistant" | "user"; text: string; isLoading?: boolean; actions?: AnalyticsChatAction[] }>>([
 		{ id: "welcome", role: "assistant", text: "Ask me about traffic, listings, demand, funnel drop-offs, or which properties need attention." },
 	]);
 	const [question, setQuestion] = useState("");
@@ -738,12 +783,13 @@ function AnalyticsChatSidebar() {
 				}),
 			});
 			const payload = await response.json().catch(() => null) as { content?: unknown; error?: unknown } | null;
-			const reply = response.ok && typeof payload?.content === "string" && payload.content.trim()
+			const rawReply = response.ok && typeof payload?.content === "string" && payload.content.trim()
 				? payload.content.trim()
 				: typeof payload?.error === "string" && payload.error.trim()
 					? payload.error.trim()
 					: "I could not read the analytics response. Try again in a moment.";
-			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: reply, isLoading: false } : message));
+			const { text: reply, actions } = parseAnalyticsChatActions(rawReply);
+			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: reply, actions, isLoading: false } : message));
 		} catch {
 			setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: "The analytics assistant could not connect to the AI service right now.", isLoading: false } : message));
 		} finally {
@@ -782,7 +828,26 @@ function AnalyticsChatSidebar() {
 										<span>Analyzing</span>
 										<Image src="/assets/thinking.svg" alt="Analyzing" width={18} height={18} className="h-[18px] w-[18px] shrink-0" style={{ animation: "thinking-pulse 0.95s ease-in-out infinite", transformOrigin: "center" }} />
 									</div>
-								) : message.text}
+								) : (
+									<div className="whitespace-pre-line">
+										{renderAnalyticsChatText(message.text)}
+										{message.actions && message.actions.length > 0 ? (
+											<div className="mt-2 flex flex-wrap gap-1.5">
+												{message.actions.map((action) => (
+													<button
+														key={action.id}
+														type="button"
+														onClick={() => onAction?.(action.id)}
+														className="flex items-center gap-1 rounded-md border border-black/15 bg-white px-2 py-1 text-[10px] font-semibold text-[#111111] transition hover:border-black/30 hover:bg-zinc-50"
+													>
+														<ArrowRight className="h-2.5 w-2.5" />
+														{action.label}
+													</button>
+												))}
+											</div>
+										) : null}
+									</div>
+								)}
 							</div>
 							{message.role === "user" ? (
 								<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#111111] text-white">
@@ -2374,6 +2439,36 @@ export default function AdminCms({
 		router.push("/admin/listings");
 	}
 
+	function handleAnalyticsChatAction(actionId: string) {
+		switch (actionId) {
+			case "navigate_high_priority":
+			case "navigate_inquiries":
+				openSection("inquiries");
+				break;
+			case "navigate_listings":
+				openSection("properties");
+				break;
+			case "navigate_developers":
+				openSection("developers");
+				break;
+			case "navigate_analytics":
+				openSection("analytics");
+				break;
+			case "export_inquiries":
+				downloadCsv("jewellz-inquiries.csv", workspace.inquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"]);
+				break;
+			case "export_listings":
+				downloadCsv("jewellz-listing-performance.csv", workspace.listingPerformance, ["property_id", "title", "total_views", "detail_opens", "total_interactions", "avg_dwell_seconds", "total_inquiries", "inquiry_rate_pct"]);
+				break;
+			case "export_agents":
+				downloadCsv("jewellz-agent-performance.csv", workspace.agentPerformance, ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"]);
+				break;
+			case "refresh_data":
+				void reloadWorkspace();
+				break;
+		}
+	}
+
 	async function loadWorkspace(currentUser: User, currentProfile: CmsRow, currentAgent: CmsRow | null, currentDeveloper: CmsRow | null) {
 		const agentId = currentAgent?.id ?? null;
 		const developerId = currentDeveloper?.id ?? null;
@@ -3707,7 +3802,7 @@ export default function AdminCms({
 							)}
 					</div>
 					</div>
-					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar /> : null}
+					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar onAction={handleAnalyticsChatAction} /> : null}
 				</section>
 			</div>
 			{destructiveAction ? (
