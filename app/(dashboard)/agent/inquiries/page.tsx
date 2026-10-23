@@ -6,6 +6,14 @@ export const metadata: Metadata = {
 	description: "Buyer inquiries and lead pipeline for licensed agents.",
 };
 
-export default function AgentInquiriesPage() {
-	return <AgentDashboard />;
+type PageProps = {
+	searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AgentInquiriesPage({ searchParams }: PageProps) {
+	const params = await searchParams;
+	const rawSection = params?.section;
+	const section = Array.isArray(rawSection) ? rawSection[0] : rawSection;
+
+	return <AgentDashboard initialSection={section} />;
 }

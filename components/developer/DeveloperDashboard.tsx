@@ -29,6 +29,20 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 
 type SectionId = "overview" | "properties" | "projects" | "performance" | "inquiries" | "profile" | "security";
 
+const DEVELOPER_SECTIONS: SectionId[] = ["overview", "properties", "projects", "performance", "inquiries", "profile", "security"];
+
+function isDeveloperSection(value: string | undefined): value is SectionId {
+	return DEVELOPER_SECTIONS.includes(value as SectionId);
+}
+
+/* Keep the active tab in the URL so a refresh or bookmark restores it. */
+function syncSectionUrl(section: SectionId) {
+	if (typeof window === "undefined") return;
+	const url = new URL(window.location.href);
+	url.searchParams.set("section", section);
+	window.history.replaceState(null, "", url);
+}
+
 type DeveloperCompany = {
 	id: string;
 	profile_id: string;
@@ -212,9 +226,9 @@ function StatusPill({ status, tone }: { status?: string | null; tone: "stage" | 
 	);
 }
 
-export default function DeveloperDashboard() {
+export default function DeveloperDashboard({ initialSection }: { initialSection?: string }) {
 	const router = useRouter();
-	const [activeSection, setActiveSection] = useState<SectionId>("overview");
+	const [activeSection, setActiveSection] = useState<SectionId>(() => (isDeveloperSection(initialSection) ? initialSection : "overview"));
 	const [showSidebar, setShowSidebar] = useState(true);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [refreshing, setRefreshing] = useState(false);
@@ -368,6 +382,7 @@ export default function DeveloperDashboard() {
 	function openSection(section: SectionId) {
 		setActiveSection(section);
 		setShowAccountMenu(false);
+		syncSectionUrl(section);
 	}
 
 	const navGroups = [

@@ -27,6 +27,7 @@ import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
 import { PropertyWizard } from "./PropertyWizard";
 import { InquiryWorkflowManager } from "./InquiryWorkflowManager";
+import { categoryFromParam, primaryForSection, sectionFromParam } from "./routing";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -1219,7 +1220,7 @@ function routeForPrimary(primary: CmsPrimary) {
 		inquiries: "/admin/inquiries",
 		analytics: "/admin?section=analytics",
 		people: "/admin/agents",
-		content: "/admin?section=hero",
+		content: "/admin?section=gallery",
 		settings: "/admin/settings",
 	};
 
@@ -1255,6 +1256,67 @@ function routeForSection(section: CmsSection) {
 	};
 
 	return routes[section] ?? "/admin";
+}
+
+/*
+ * Every admin route renders this same client component, so switching sections
+ * only needs a URL update. Using router.push here remounts AdminCms for the new
+ * route, which refetches the whole workspace and makes the loading skeleton
+ * appear *after* the section has already rendered. The native History API keeps
+ * the address bar (and Next's usePathname/useSearchParams) in sync without a
+ * route transition, so no remount and no pointless skeleton. Entries are pushed
+ * so browser back/forward can step through the sections (see the popstate sync
+ * in the component below).
+ */
+function syncAdminUrl(href: string) {
+	if (typeof window === "undefined") return;
+	window.history.pushState(null, "", href);
+}
+
+/*
+ * The CMS is mounted at several routes, so browser back/forward or any route
+ * re-mount can re-create the component. Keeping the last loaded workspace in
+ * memory for this tab lets a re-mount paint the data immediately instead of
+ * feeding a loading skeleton after content has already been visible.
+ */
+type AdminWorkspaceSnapshot = {
+	userId: string;
+	sessionUser: User;
+	profile: CmsRow;
+	agentProfile: CmsRow | null;
+	developerProfile: CmsRow | null;
+	workspace: Workspace;
+};
+
+let adminWorkspaceSnapshot: AdminWorkspaceSnapshot | null = null;
+
+/* Resolve a section/primary pair from an admin URL, mirroring the route files. */
+function adminSectionFromLocation(): { primary: CmsPrimary; section: CmsSection; category: string } | null {
+	const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+	const params = new URLSearchParams(window.location.search);
+	const paramSection = params.get("section") ?? undefined;
+
+	if (pathname === "/admin") {
+		const section = sectionFromParam(paramSection, "overview");
+		return { primary: primaryForSection(section), section, category: "all" };
+	}
+	if (pathname === "/admin/inquiries") {
+		const section = sectionFromParam(paramSection, "inquiries");
+		return { primary: "inquiries", section: section === "pipeline" || section === "timeline" ? section : "inquiries", category: "all" };
+	}
+	if (pathname === "/admin/listings") {
+		const section = sectionFromParam(paramSection, "properties") === "projects" ? "projects" : "properties";
+		return { primary: "listings", section, category: categoryFromParam(params.get("category") ?? undefined) };
+	}
+	if (pathname === "/admin/agents") {
+		const section = sectionFromParam(paramSection, "agents");
+		return { primary: "people", section: section === "developers" || section === "profiles" ? section : "agents", category: "all" };
+	}
+	if (pathname === "/admin/settings") {
+		const section = sectionFromParam(paramSection, "settings") === "activityLogs" ? "activityLogs" : "settings";
+		return { primary: "settings", section, category: "all" };
+	}
+	return null;
 }
 
 const PROPERTY_IMAGE_BUCKET = "property-images";
@@ -2224,15 +2286,17 @@ export default function AdminCms({
 	initialPropertyId = null,
 }: AdminCmsProps) {
 	const router = useRouter();
-	const [loading, setLoading] = useState(true);
+	// Never reuse in-memory data during server rendering; it is per browser tab.
+	const cachedSnapshot = typeof window === "undefined" ? null : adminWorkspaceSnapshot;
+	const [loading, setLoading] = useState(!cachedSnapshot);
 	const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
 	const [message, setMessage] = useState("");
 	const [saving, setSaving] = useState(false);
-	const [sessionUser, setSessionUser] = useState<User | null>(null);
-	const [profile, setProfile] = useState<CmsRow | null>(null);
-	const [agentProfile, setAgentProfile] = useState<CmsRow | null>(null);
-	const [developerProfile, setDeveloperProfile] = useState<CmsRow | null>(null);
-	const [workspace, setWorkspace] = useState<Workspace>(emptyWorkspace);
+	const [sessionUser, setSessionUser] = useState<User | null>(cachedSnapshot?.sessionUser ?? null);
+	const [profile, setProfile] = useState<CmsRow | null>(cachedSnapshot?.profile ?? null);
+	const [agentProfile, setAgentProfile] = useState<CmsRow | null>(cachedSnapshot?.agentProfile ?? null);
+	const [developerProfile, setDeveloperProfile] = useState<CmsRow | null>(cachedSnapshot?.developerProfile ?? null);
+	const [workspace, setWorkspace] = useState<Workspace>(cachedSnapshot?.workspace ?? emptyWorkspace);
 	const [selectedPropertyImages, setSelectedPropertyImages] = useState<CmsRow[]>([]);
 	const [destructiveAction, setDestructiveAction] = useState<DestructiveAction | null>(null);
 	const [destructivePassword, setDestructivePassword] = useState("");
@@ -2305,11 +2369,11 @@ export default function AdminCms({
 		const query = dashboardSearch.trim().toLowerCase();
 		if (!query) return [];
 		return [
-			...workspace.properties.map((row) => ({ label: asText(row.title), meta: "Property", open: () => { setActivePrimary("listings"); setActiveSection("properties"); setPropertyCategoryFilter("all"); setSelection((current) => ({ ...current, properties: asText(row.id) })); router.push("/admin/listings"); } })),
-			...workspace.projects.map((row) => ({ label: asText(row.project_name ?? row.slug), meta: "Project", open: () => { setActivePrimary("listings"); setActiveSection("projects"); setSelection((current) => ({ ...current, projects: asText(row.id) })); router.push("/admin/listings?section=projects"); } })),
-			...workspace.inquiries.map((row) => ({ label: asText(row.buyer_name ?? row.buyer_email), meta: "Inquiry", open: () => { setActivePrimary("inquiries"); setActiveSection("inquiries"); setSelection((current) => ({ ...current, inquiries: asText(row.id) })); router.push("/admin/inquiries"); } })),
+			...workspace.properties.map((row) => ({ label: asText(row.title), meta: "Property", open: () => { setActivePrimary("listings"); setActiveSection("properties"); setPropertyCategoryFilter("all"); setSelection((current) => ({ ...current, properties: asText(row.id) })); syncAdminUrl("/admin/listings"); } })),
+			...workspace.projects.map((row) => ({ label: asText(row.project_name ?? row.slug), meta: "Project", open: () => { setActivePrimary("listings"); setActiveSection("projects"); setSelection((current) => ({ ...current, projects: asText(row.id) })); syncAdminUrl("/admin/listings?section=projects"); } })),
+			...workspace.inquiries.map((row) => ({ label: asText(row.buyer_name ?? row.buyer_email), meta: "Inquiry", open: () => { setActivePrimary("inquiries"); setActiveSection("inquiries"); setSelection((current) => ({ ...current, inquiries: asText(row.id) })); syncAdminUrl("/admin/inquiries"); } })),
 		].filter((item) => `${item.label} ${item.meta}`.toLowerCase().includes(query)).slice(0, 6);
-	}, [dashboardSearch, router, workspace.inquiries, workspace.projects, workspace.properties]);
+	}, [dashboardSearch, workspace.inquiries, workspace.projects, workspace.properties]);
 
 	function requestDestructiveAction(action: DestructiveAction) {
 		setDestructiveAction(action);
@@ -2502,12 +2566,12 @@ export default function AdminCms({
 	function openPrimary(group: CmsNavGroup) {
 		setActivePrimary(group.id);
 		setActiveSection(group.items[0].id);
-		router.push(routeForPrimary(group.id));
+		syncAdminUrl(routeForPrimary(group.id));
 	}
 
 	function openSection(section: CmsSection) {
 		setActiveSection(section);
-		router.push(routeForSection(section));
+		syncAdminUrl(routeForSection(section));
 	}
 
 	function openPropertyCategory(category: string) {
@@ -2515,7 +2579,7 @@ export default function AdminCms({
 		setActiveSection("properties");
 		setPropertyCategoryFilter(category);
 		setSelection((current) => ({ ...current, properties: null }));
-		router.push(category === "all" ? "/admin/listings" : `/admin/listings?category=${category}`);
+		syncAdminUrl(category === "all" ? "/admin/listings" : `/admin/listings?category=${category}`);
 	}
 
 	function openPropertyForEditing(propertyId: string) {
@@ -2523,7 +2587,7 @@ export default function AdminCms({
 		setActiveSection("properties");
 		setPropertyCategoryFilter("all");
 		setSelection((current) => ({ ...current, properties: propertyId }));
-		router.push("/admin/listings");
+		syncAdminUrl("/admin/listings");
 	}
 
 	function handleAnalyticsChatAction(actionId: string) {
@@ -2662,6 +2726,14 @@ export default function AdminCms({
 		}
 
 		setWorkspace(nextWorkspace);
+		adminWorkspaceSnapshot = {
+			userId: currentUser.id,
+			sessionUser: currentUser,
+			profile: currentProfile,
+			agentProfile: currentAgent,
+			developerProfile: currentDeveloper,
+			workspace: nextWorkspace,
+		};
 		setTimeout(() => setMessage(""), 2000);
 	}
 
@@ -2703,6 +2775,7 @@ export default function AdminCms({
 
 			if (!user) {
 				if (active) {
+					adminWorkspaceSnapshot = null;
 					setSessionUser(null);
 					setProfile(null);
 					setLoading(false);
@@ -2714,6 +2787,7 @@ export default function AdminCms({
 			const { data: profileResult } = await supabaseBrowser.from("profiles").select("*").eq("id", user.id).maybeSingle();
 			if (!profileResult) {
 				if (active) {
+					adminWorkspaceSnapshot = null;
 					setSessionUser(user);
 					setProfile(null);
 					setLoading(false);
@@ -2734,6 +2808,11 @@ export default function AdminCms({
 			}
 
 			if (!active) return;
+			if (adminWorkspaceSnapshot && adminWorkspaceSnapshot.userId !== user.id) {
+				adminWorkspaceSnapshot = null;
+				setWorkspace(emptyWorkspace);
+				setLoading(true);
+			}
 			setSessionUser(user);
 			setProfile(profileResult);
 			setAgentProfile(currentAgent);
@@ -2748,6 +2827,21 @@ export default function AdminCms({
 		return () => {
 			active = false;
 		};
+	}, []);
+
+	// Browser back/forward walks through the section history entries without
+	// remounting the CMS, so apply the URL's section to the local state.
+	useEffect(() => {
+		function handlePopState() {
+			const target = adminSectionFromLocation();
+			if (!target) return;
+			setActivePrimary(target.primary);
+			setActiveSection(target.section);
+			setPropertyCategoryFilter(target.category);
+		}
+
+		window.addEventListener("popstate", handlePopState);
+		return () => window.removeEventListener("popstate", handlePopState);
 	}, []);
 
 	// Real-time synchronization for Admin Inquiry Pipeline
@@ -2946,7 +3040,7 @@ export default function AdminCms({
 		setActivePrimary("inquiries");
 		setActiveSection("inquiries");
 		setSelection((current) => ({ ...current, inquiries: inquiryId }));
-		router.push("/admin/inquiries");
+		syncAdminUrl("/admin/inquiries");
 	}
 
 	async function saveEntity(table: string, payload: CmsPayload, currentRow: CmsRow | null, idKey = "id") {
@@ -3279,7 +3373,7 @@ export default function AdminCms({
 						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111] disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -3386,7 +3480,7 @@ export default function AdminCms({
 						)}
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">Refresh</button>
-							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
+							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
 						</div>
 					</div>
 				</aside>
@@ -3478,7 +3572,7 @@ export default function AdminCms({
 									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 									<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
 								</div>
 							) : null}
 						</div>
@@ -3530,22 +3624,22 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); router.push("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
 											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Needs attention</div>
 											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{urgentLeads.length}</div>
 											<p className="mt-2 text-xs text-black/50">High-intent or overdue leads.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); router.push("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
 											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Unassigned leads</div>
 											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{unassignedLeads.length}</div>
 											<p className="mt-2 text-xs text-black/50">Assign these before follow-up slips.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); router.push("/admin/listings"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
+										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
 											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Draft listings</div>
 											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{draftListings.length}</div>
 											<p className="mt-2 text-xs text-black/50">Listings not yet public.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); router.push("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
+										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
 											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Low inquiry listings</div>
 											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{lowPerformingListings.length}</div>
 											<p className="mt-2 text-xs text-black/50">Viewed listings below target rate.</p>
@@ -3558,7 +3652,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Inquiry Trend</div>
 												<p className="mt-1 text-xs text-black/45">Latest daily lead volume from the analytics view.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); router.push("/admin?section=analytics"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">View report</button>
+											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">View report</button>
 										</div>
 										<div className="mt-3">
 											<OverviewBars rows={overviewInquiryTrend} />
@@ -3573,7 +3667,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Priority Leads</div>
 												<p className="mt-1 text-xs text-black/45">Sorted by lead score and follow-up urgency.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); router.push("/admin/inquiries"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Open queue</button>
+											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Open queue</button>
 										</div>
 										<div className="mt-4 space-y-2">
 											{urgentLeads.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-4 text-sm text-black/50">No urgent leads right now.</p> : null}
@@ -3615,7 +3709,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Recent Inquiries</div>
 												<p className="mt-1 text-xs text-black/45">Newest lead submissions entering the pipeline.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); router.push("/admin/inquiries"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">See all</button>
+											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">See all</button>
 										</div>
 										<div className="overflow-x-auto">
 											<table className="min-w-full text-left text-sm">
@@ -3651,7 +3745,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Listing Performance</div>
 												<p className="mt-1 text-xs text-black/45">Quick view of views and inquiry rate.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); router.push("/admin?section=analytics"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Full chart</button>
+											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Full chart</button>
 										</div>
 										<div className="mt-4">
 											<OverviewListingChart rows={listingPreviewRows} />
@@ -3830,7 +3924,7 @@ export default function AdminCms({
 								onViewChange={(view) => {
 									setActivePrimary("inquiries");
 									setActiveSection(view);
-									router.push(`/admin/inquiries${view === "inquiries" ? "" : `?section=${view}`}`);
+									syncAdminUrl(`/admin/inquiries${view === "inquiries" ? "" : `?section=${view}`}`);
 								}}
 							/>
 						) : null}

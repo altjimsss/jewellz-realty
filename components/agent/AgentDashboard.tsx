@@ -51,6 +51,20 @@ type SectionId =
 	| "profile"
 	| "security";
 
+const AGENT_SECTIONS: SectionId[] = ["overview", "inquiries", "pipeline", "activity", "listings", "listingInsights", "performance", "trends", "profile", "security"];
+
+function isAgentSection(value: string | undefined): value is SectionId {
+	return AGENT_SECTIONS.includes(value as SectionId);
+}
+
+/* Keep the active tab in the URL so a refresh or bookmark restores it. */
+function syncSectionUrl(section: SectionId) {
+	if (typeof window === "undefined") return;
+	const url = new URL(window.location.href);
+	url.searchParams.set("section", section);
+	window.history.replaceState(null, "", url);
+}
+
 type InquiryRow = {
 	id: string;
 	buyer_name?: string | null;
@@ -249,7 +263,7 @@ function StatCard({ label, value, hint, accent = false, icon: Icon }: { label: s
 	);
 }
 
-export default function AgentDashboard() {
+export default function AgentDashboard({ initialSection }: { initialSection?: string }) {
 	const router = useRouter();
 	const [loading, setLoading] = useState(true);
 	const [userEmail, setUserEmail] = useState("");
@@ -259,7 +273,7 @@ export default function AgentDashboard() {
 	const [timeline, setTimeline] = useState<TimelineRow[]>([]);
 	const [statusMessage, setStatusMessage] = useState("");
 
-	const [activeSection, setActiveSection] = useState<SectionId>("overview");
+	const [activeSection, setActiveSection] = useState<SectionId>(() => (isAgentSection(initialSection) ? initialSection : "overview"));
 	const [showSidebar, setShowSidebar] = useState(true);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [headerSearch, setHeaderSearch] = useState("");
@@ -504,6 +518,7 @@ export default function AgentDashboard() {
 		setEditStatus(inquiry.status || "new");
 		setEditNotes(inquiry.buyer_message || "");
 		setActiveSection("inquiries");
+		syncSectionUrl("inquiries");
 	}
 
 	function handleOpenNotification(notif: AgentNotification) {
@@ -513,7 +528,10 @@ export default function AgentDashboard() {
 		markInquiriesRead([notif.inquiryId]);
 		const target = inquiries.find((item) => item.id === notif.inquiryId);
 		if (target) openInquiryEditor(target);
-		else setActiveSection("inquiries");
+		else {
+			setActiveSection("inquiries");
+			syncSectionUrl("inquiries");
+		}
 	}
 
 	function handleMarkAllAsRead() {
@@ -814,6 +832,7 @@ export default function AgentDashboard() {
 		setShowSidebar(true);
 		setShowNotifications(false);
 		setShowProfileMenu(false);
+		syncSectionUrl(section);
 	}, []);
 
 	if (loading) {
