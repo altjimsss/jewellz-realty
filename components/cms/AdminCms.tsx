@@ -802,17 +802,19 @@ function AnalyticsChatSidebar(props: {
 		const trimmed = question.trim();
 		if (!trimmed || isThinking) return;
 		const assistantId = createMessageId("assistant");
-		const userMessage = { id: createMessageId("user"), role: "user" as const, text: trimmed };
-		const nextMessages: AnalyticsChatMessage[] = [
+		const userMessage: AnalyticsChatMessage = { id: createMessageId("user"), role: "user", text: trimmed };
+		onMessagesChange([
 			...messages,
 			userMessage,
 			{ id: assistantId, role: "assistant", text: "Analyzing", isLoading: true },
-		];
-		const history = nextMessages
-			.filter((message) => !message.isLoading)
+		]);
+		const history = [
+			...messages,
+			userMessage,
+		]
+			.filter((message) => !("isLoading" in message) || !message.isLoading)
 			.slice(-8)
 			.map((message) => ({ role: message.role, content: message.text }));
-		onMessagesChange(nextMessages);
 		setQuestion("");
 		setIsThinking(true);
 
@@ -838,13 +840,15 @@ function AnalyticsChatSidebar(props: {
 					? payload.error.trim()
 					: "I could not read the analytics response. Try again in a moment.";
 			const { text: reply, actions } = parseAnalyticsChatActions(rawReply);
-			onMessagesChange([
-				...nextMessages,
-				{ id: assistantId, role: "assistant" as const, text: reply, actions, isLoading: false },
-			]);
+		onMessagesChange([
+			...messages,
+			userMessage,
+			{ id: assistantId, role: "assistant" as const, text: reply, actions, isLoading: false },
+		]);
 		} catch {
 		onMessagesChange([
-			...nextMessages,
+			...messages,
+			userMessage,
 			{ id: assistantId, role: "assistant" as const, text: "The analytics assistant could not connect to the AI service right now.", isLoading: false },
 		]);
 		} finally {
