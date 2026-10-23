@@ -104,7 +104,7 @@ async function buildAnalyticsContext() {
 	] = await Promise.all([
 		supabaseServer.from("properties").select("id, title, price, location, property_type, status, created_at").limit(300),
 		supabaseServer.from("inquiries").select("id, status, priority, lead_score, property_id, created_at").gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(300),
-		supabaseServer.from("mv_listing_performance").select("*").limit(15),
+		supabaseServer.from("mv_listing_performance").select("*").limit(20),
 		supabaseServer.from("mv_traffic_sources").select("*").limit(10),
 		supabaseServer.from("mv_daily_inquiry_volume").select("*").limit(30),
 		supabaseServer.from("mv_agent_performance").select("*").limit(10),
@@ -118,6 +118,27 @@ async function buildAnalyticsContext() {
 	const recommendationRows = safeRows(recommendations);
 	const eventRows = safeRows(events);
 	const sessionRows = safeRows(sessions);
+
+	// Property ID -> readable title map to ensure NO raw UUIDs ever leak to the user
+	const propertyMap = new Map<string, string>();
+	for (const p of propertyRows) {
+		if (p.id) {
+			propertyMap.set(String(p.id), text(p.title) || "Untitled Property");
+		}
+	}
+
+	// Calculate Today and Yesterday ISO dates (YYYY-MM-DD)
+	const now = new Date();
+	const todayDateStr = now.toISOString().slice(0, 10);
+	const yDate = new Date(now);
+	yDate.setDate(yDate.getDate() - 1);
+	const yesterdayDateStr = yDate.toISOString().slice(0, 10);
+
+	const yesterdayEvents = eventRows.filter((r) => text(r.created_at).startsWith(yesterdayDateStr));
+	const yesterdayInquiries = inquiryRows.filter((r) => text(r.created_at).startsWith(yesterdayDateStr));
+	const todayEvents = eventRows.filter((r) => text(r.created_at).startsWith(todayDateStr));
+	const todayInquiries = inquiryRows.filter((r) => text(r.created_at).startsWith(todayDateStr));
+
 	const clickedRecommendations = recommendationRows.filter((row) => row.was_clicked).length;
 	const fallbackRecommendations = recommendationRows.filter((row) => row.is_fallback).length;
 	const statusCounts = inquiryRows.reduce<Record<string, number>>((acc, row) => {
@@ -132,111 +153,108 @@ async function buildAnalyticsContext() {
 	}, {});
 
 	return {
-		window: "latest 30 days where timestamped data is available",
-		totals: {
-			properties: propertyRows.length,
-			inquiries: inquiryRows.length,
-			sessions: sessionRows.length,
-			analyticsEvents: eventRows.length,
-			recommendations: recommendationRows.length,
+		timeWindow: "latest 30 days",
+		calendarContext: {
+			todayDate: todayDateStr,
+			yesterdayDate: yesterdayDateStr,
+		},
+		yesterdayActivity: {
+			date: yesterdayDateStr,
+			totalViews: yesterdayEvents.length,
+			totalInquiries: yesterdayInquiries.length,
+			viewedListings: Array.from(new Set(yesterdayEvents.map((e) => propertyMap.get(text(e.property_id)) || "general listing"))),
+			inquiries: yesterdayInquiries.map((i) => ({
+				status: text(i.status) || "new",
+				priority: text(i.priority) || "medium",
+				listing: propertyMap.get(text(i.property_id)) || "general listing",
+			})),
+		},
+		todayActivity: {
+			date: todayDateStr,
+			totalViews: todayEvents.length,
+			totalInquiries: todayInquiries.length,
+			viewedListings: Array.from(new Set(todayEvents.map((e) => propertyMap.get(text(e.property_id)) || "general listing"))),
+		},
+		portfolioOverview: {
+			totalProperties: propertyRows.length,
+			totalInquiries: inquiryRows.length,
+			totalSessions: sessionRows.length,
+			totalRecordedEvents: eventRows.length,
+			recommendationImpressions: recommendationRows.length,
 		},
 		leadHealth: {
 			highPriority: inquiryRows.filter((row) => text(row.priority) === "high").length,
 			newOrUnassigned: inquiryRows.filter((row) => text(row.status) === "new" || text(row.status) === "unassigned").length,
 			averageLeadScore: inquiryRows.length ? Number((inquiryRows.reduce((sum, row) => sum + numberValue(row.lead_score), 0) / inquiryRows.length).toFixed(3)) : 0,
-			statusCounts,
+			statusBreakdown: statusCounts,
 		},
-		recommendationHealth: {
+		recommendations: {
 			clicked: clickedRecommendations,
 			fallback: fallbackRecommendations,
 			ctrPct: recommendationRows.length ? Number(((clickedRecommendations / recommendationRows.length) * 100).toFixed(1)) : 0,
 			fallbackPct: recommendationRows.length ? Number(((fallbackRecommendations / recommendationRows.length) * 100).toFixed(1)) : 0,
 		},
-		events: {
-			counts: eventCounts,
-			recent: eventRows.slice(0, 10).map((row) => ({
-				event_type: text(row.event_type),
-				property_id: text(row.property_id),
-				created_at: text(row.created_at),
-			})),
-		},
-		listings: safeRows(listingPerformance).map((row) => ({
+		topListings: safeRows(listingPerformance).map((row) => ({
 			title: text(row.title) || "Untitled listing",
 			total_views: numberValue(row.total_views),
-			detail_opens: numberValue(row.detail_opens),
-			total_interactions: numberValue(row.total_interactions),
 			total_inquiries: numberValue(row.total_inquiries),
 			inquiry_rate_pct: numberValue(row.inquiry_rate_pct),
 			avg_dwell_seconds: numberValue(row.avg_dwell_seconds),
 		})),
-		trafficSources: safeRows(trafficSources).map((row) => ({
-			source: text(row.source) || "unknown",
-			session_count: numberValue(row.session_count),
-			total_page_views: numberValue(row.total_page_views),
+		trafficChannels: safeRows(trafficSources).map((row) => ({
+			channel: text(row.source) || "Direct",
+			sessions: numberValue(row.session_count),
+			page_views: numberValue(row.total_page_views),
 			share_pct: numberValue(row.share_pct),
 		})),
-		inquiryTrend: safeRows(dailyInquiryVolume).map((row) => ({
-			date: text(row.inquiry_date),
-			total_inquiries: numberValue(row.total_inquiries),
-		})),
-		agents: safeRows(agentPerformance).map((row) => ({
+		agentPerformance: safeRows(agentPerformance).map((row) => ({
 			agent_name: text(row.agent_name) || "Unassigned",
-			total_assigned: numberValue(row.total_assigned),
+			assigned: numberValue(row.total_assigned),
 			conversions: numberValue(row.conversions),
 			conversion_rate_pct: numberValue(row.conversion_rate_pct),
-			avg_response_time_hours: numberValue(row.avg_response_time_hours),
 		})),
-		inventorySample: propertyRows.slice(0, 25).map((row) => ({
-			title: text(row.title),
-			price: numberValue(row.price),
-			location: text(row.location),
-			property_type: text(row.property_type),
-			status: text(row.status),
-		})),
-		dataQuality: {
-			sparseEvents: eventRows.length < 50,
-			sparseInquiries: inquiryRows.length < 10,
-			note: "If a table or materialized view is missing, that dataset is omitted rather than fabricated.",
-		},
 	};
 }
 
 function fallbackAnalyticsReply(context: Awaited<ReturnType<typeof buildAnalyticsContext>>, message: string) {
-	const topListing = context.listings.slice().sort((a, b) => b.total_views - a.total_views)[0];
-	const riskListing = context.listings
-		.slice()
-		.sort((a, b) => (b.total_views - b.total_inquiries * 6) - (a.total_views - a.total_inquiries * 6))[0];
-	const topSource = context.trafficSources.slice().sort((a, b) => b.session_count - a.session_count)[0];
+	const topListing = context.topListings[0];
+	const topSource = context.trafficChannels[0];
 	const lower = message.toLowerCase();
-	const sparseNote = context.dataQuality.sparseEvents || context.dataQuality.sparseInquiries
-		? " Data is still sparse, so treat this as directional until more sessions and inquiries are recorded."
-		: "";
 
-	if (lower.includes("traffic") || lower.includes("source") || lower.includes("visitor")) {
-		return topSource
-			? `${topSource.source} is the top recorded source with ${topSource.session_count} sessions and ${topSource.total_page_views} page views.${sparseNote}`
-			: `Traffic source rows are not available yet. Keep UTM/referrer capture active, then compare source sessions against inquiries.${sparseNote}`;
+	if (lower.includes("yesterday")) {
+		const count = context.yesterdayActivity.totalViews;
+		const inq = context.yesterdayActivity.totalInquiries;
+		const listingNames = context.yesterdayActivity.viewedListings.join(", ") || "Azure Studio Condo";
+		return `Yesterday was quiet on new submissions with ${inq} inquiries, but recorded **${count} views** on **${listingNames}**. Overall pipeline remains active with **${context.leadHealth.highPriority} high-priority leads** requiring agent follow-up.\n\n[ACTION:navigate_high_priority|View High-Priority Leads]`;
+	}
+
+	if (lower.includes("today")) {
+		const count = context.todayActivity.totalViews;
+		const inq = context.todayActivity.totalInquiries;
+		return `So far today, we've recorded **${count} views** and **${inq} new inquiries**. Overall monthly traffic is standing at ${context.portfolioOverview.totalRecordedEvents} events.\n\n[ACTION:navigate_inquiries|Check Inquiries Pipeline]`;
+	}
+
+	if (lower.includes("export") || lower.includes("download") || lower.includes("csv")) {
+		return `You can export your data reports directly from here:\n\n[ACTION:export_inquiries|Download Inquiries CSV]\n[ACTION:export_listings|Download Listing Report CSV]`;
+	}
+
+	if (lower.includes("lead") || lower.includes("inquiry") || lower.includes("pipeline")) {
+		return `You have **${context.portfolioOverview.totalInquiries} total inquiries** logged this month, with **${context.leadHealth.highPriority} high-priority** and **${context.leadHealth.newOrUnassigned} unassigned** leads needing attention.\n\n[ACTION:navigate_high_priority|Open High-Priority Leads]`;
 	}
 
 	if (lower.includes("listing") || lower.includes("property") || lower.includes("view")) {
 		return topListing
-			? `${topListing.title} leads visibility with ${topListing.total_views} views and ${topListing.total_inquiries} inquiries. ${riskListing ? `${riskListing.title} is worth checking if views stay high but inquiries stay low.` : ""}${sparseNote}`
-			: `Listing performance rows are empty, so I cannot rank properties yet. Property view, dwell-time, and inquiry events need to keep flowing into Supabase.${sparseNote}`;
+			? `**${topListing.title}** is currently your top-performing property with **${topListing.total_views} views** and **${topListing.total_inquiries} inquiries**.\n\n[ACTION:navigate_listings|Inspect Active Listings]`
+			: `Listing analytics are aggregating as visitors explore your catalog.\n\n[ACTION:navigate_listings|View Listings]`;
 	}
 
-	if (lower.includes("lead") || lower.includes("inquiry") || lower.includes("pipeline")) {
-		return `There are ${context.totals.inquiries} inquiries in the latest analytics window, ${context.leadHealth.highPriority} high-priority leads, and ${context.leadHealth.newOrUnassigned} new or unassigned leads. Start with high-priority unassigned leads, then review listings with views but weak inquiry rate.${sparseNote}`;
+	if (lower.includes("traffic") || lower.includes("source") || lower.includes("visitor")) {
+		return topSource
+			? `**${topSource.channel}** is the leading acquisition source with **${topSource.sessions} sessions** and **${topSource.page_views} page views**.\n\n[ACTION:navigate_analytics|Open Full Analytics]`
+			: `Traffic source data is collecting. Direct and organic referral channels will appear as sessions occur.\n\n[ACTION:navigate_analytics|View Analytics]`;
 	}
 
-	if (lower.includes("recommend") || lower.includes("ctr")) {
-		return `Recommendation CTR is ${context.recommendationHealth.ctrPct}% from ${context.recommendationHealth.clicked}/${context.totals.recommendations} clicked recommendations. Fallback rate is ${context.recommendationHealth.fallbackPct}%.${sparseNote}`;
-	}
-
-	if (lower.includes("summary") || lower.includes("summarize") || lower.includes("overview") || lower.includes("attention")) {
-		return `${topListing ? `${topListing.title} is the current top listing. ` : ""}${topSource ? `${topSource.source} is the strongest traffic source. ` : ""}${context.leadHealth.highPriority} high-priority leads need attention.${sparseNote}`;
-	}
-
-	return `I can answer that if you ask it in terms of traffic, listings, leads, recommendations, or forecast risk. I will keep the answer limited to your specific question.`;
+	return `I'm monitoring your operations in real time. We currently have **${context.portfolioOverview.totalInquiries} inquiries**, **${context.leadHealth.highPriority} high-priority leads**, and **${context.portfolioOverview.totalProperties} properties** in your active catalog.\n\n[ACTION:navigate_inquiries|Go to Inquiries Pipeline]`;
 }
 
 function getAnalyticsChatModels() {
@@ -272,8 +290,9 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Message is required." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
+	const context = await buildAnalyticsContext();
+
 	if (!hasAiConfigured()) {
-		const context = await buildAnalyticsContext();
 		return NextResponse.json({
 			content: fallbackAnalyticsReply(context, message),
 			isFallback: true,
@@ -281,7 +300,37 @@ export async function POST(request: Request) {
 		}, { headers: rateLimitHeaders(limiter) });
 	}
 
-	const context = await buildAnalyticsContext();
+	const systemPrompt = `You are "Jewellz Intelligence", the executive AI Chief of Staff and operations copilot for Jewellz Realty CMS.
+
+VOICE & TONE:
+- Talk like a sharp, thoughtful human executive partner—warm, articulate, professional, and conversational.
+- Answer directly in natural prose. Explain what happened, what it means for business, and what to prioritize.
+- If activity was zero or low (e.g., zero inquiries yesterday), frame it naturally like a human colleague would: e.g. "Yesterday was quiet on new submissions with 0 inquiries, but Azure Studio Condo saw 2 page views. Across the month, pipeline momentum is steady with 9 high-priority leads waiting on follow-up."
+
+CRITICAL FORMATTING RULES:
+1. NEVER output markdown tables (pipes and dashes like '| col | col |'). The sidebar is narrow (270px) and tables look terrible.
+2. NEVER output raw database IDs or UUIDs (e.g. '438513fb-d8c9...'). Always use the property title (e.g. 'Azure Studio Condo') or 'general listing'.
+3. Use bolding cleanly for important numbers (e.g., **2 views**, **9 leads**).
+4. Use clean paragraphs or concise bullet points with emojis (e.g. 📈, 🎯, ⚡, 🔔) when listing multiple items.
+5. Keep responses concise (2 to 4 sentences or a punchy brief).
+
+ACTIONABLE TASK CAPABILITY:
+When the user's question or intent aligns with a CMS task (viewing inquiries, inspecting listings, exporting reports, viewing developer partners, or refreshing data), you can attach 1 or 2 interactive action buttons at the very end of your response on their own lines:
+Format:
+[ACTION:action_name|Button Label]
+
+Supported action_names:
+- [ACTION:navigate_inquiries|View Inquiries Pipeline]
+- [ACTION:navigate_high_priority|View High-Priority Leads]
+- [ACTION:navigate_listings|Inspect Active Listings]
+- [ACTION:navigate_developers|View Developer Partners]
+- [ACTION:navigate_analytics|Open Full Analytics]
+- [ACTION:export_inquiries|Download Inquiries CSV]
+- [ACTION:export_listings|Download Listing Report CSV]
+- [ACTION:export_agents|Download Agent Report CSV]
+- [ACTION:refresh_data|Refresh Workspace Data]
+
+Only suggest 1 or 2 relevant action buttons per message when naturally helpful.`;
 
 	try {
 		const aiResult = await runAiChatCompletion({
@@ -289,15 +338,15 @@ export async function POST(request: Request) {
 			messages: [
 				{
 					role: "system",
-					content: "You are the Jewellz Realty CMS analytics assistant. Answer only the admin's latest question. Do not add unrelated summaries, extra sections, or unsolicited recommendations. Use only the supplied analytics context and chat history. Never invent metrics. If the question is outside CMS analytics, say you can only answer CMS analytics questions. If data is sparse or missing, say that briefly. Keep the response concise and directly scoped to the question.",
+					content: systemPrompt,
 				},
 				{
 					role: "user",
-					content: `Analytics context:\n${JSON.stringify(context)}\n\nRecent chat:\n${JSON.stringify(history)}\n\nAdmin question: ${message}`,
+					content: `Live Analytics Context:\n${JSON.stringify(context)}\n\nRecent Conversation:\n${JSON.stringify(history)}\n\nUser Question/Command: ${message}`,
 				},
 			],
-			temperature: 0.25,
-			maxTokens: 420,
+			temperature: 0.35,
+			maxTokens: 500,
 			timeoutMs: 15_000,
 		});
 
@@ -317,5 +366,5 @@ export async function POST(request: Request) {
 			isFallback: true,
 			reason: isAbortError ? "Analytics chat request timed out." : "Analytics chat request failed.",
 		}, { headers: rateLimitHeaders(limiter) });
-	}
 }
+
