@@ -80,11 +80,10 @@ export async function getPublicHomeContent() {
 		if (profile?.id && profile.email) agentEmails.set(String(profile.id), String(profile.email));
 	}
 
-	// Show every active developer partner that has a logo. A login account is OPTIONAL:
-	// display-only partners are curated by the admin, and partners with an account can
-	// self-manage their own logo via the developer dashboard. Either way they appear here.
+	// Show every active developer partner — logo is preferred but not required.
+	// If no logo_url is set, the marquee renders the company name as a styled text badge.
 	const devPartnersWithLogo = (developerPartnersResult.data ?? []).filter(
-		(dp) => dp.is_active !== false && Boolean(dp.logo_url)
+		(dp) => dp.is_active !== false
 	);
 
 	const devPartnerLogos: PublicPartnerLogo[] = devPartnersWithLogo.map((dp) => ({
