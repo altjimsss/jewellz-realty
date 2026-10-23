@@ -98,14 +98,17 @@ export async function POST(request: Request) {
 	}
 
 	const body = await request.json().catch(() => null);
-	const developerId = text(body?.developerId);
+	const developerId = text(body?.developerId || body?.id);
 	const email = text(body?.email).toLowerCase();
-	const companyName = text(body?.companyName);
-	const contactPhone = text(body?.contactPhone);
-	const websiteUrl = text(body?.websiteUrl);
-	const logoUrl = text(body?.logoUrl);
+	const contactEmail = text(body?.contactEmail || body?.contact_email).toLowerCase() || email;
+	const companyName = text(body?.companyName || body?.company_name);
+	const contactPhone = text(body?.contactPhone || body?.contact_phone);
+	const websiteUrl = text(body?.websiteUrl || body?.website_url);
+	const logoUrl = text(body?.logoUrl || body?.logo_url);
 	const description = text(body?.description);
 	const slug = text(body?.slug) || companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+	const sendInvite = booleanValue(body?.sendInvite) || booleanValue(body?.createAccount) || booleanValue(body?.invite);
+	const isActive = body?.isActive !== undefined ? booleanValue(body.isActive) : body?.is_active !== undefined ? booleanValue(body.is_active) : true;
 
 	// 1. Existing developer partner being linked or invited to have an account
 	if (developerId) {
@@ -119,7 +122,7 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: "Developer partner not found." }, { status: 404 });
 		}
 
-		const targetEmail = email || text(existingDev.contact_email).toLowerCase();
+		const targetEmail = email || contactEmail || text(existingDev.contact_email).toLowerCase();
 		if (!targetEmail) {
 			return NextResponse.json({ error: "An email address is required to create a login account." }, { status: 400 });
 		}
@@ -196,34 +199,38 @@ export async function POST(request: Request) {
 		return NextResponse.json({ ok: true, userId, email: targetEmail, developerId });
 	}
 
-	// 2. New developer registration. A login account is OPTIONAL.
+	// 2. New developer registration.
 	if (!companyName) {
 		return NextResponse.json({ error: "The company name is required." }, { status: 400 });
 	}
 
-	// 2a. No email ⇒ display-only partner. No auth user is created; the partner still
-	//     appears in the marquee once it has a logo, and the admin manages it from the CMS.
-	if (!email) {
-		const { error: devError } = await supabaseServer.from("developer_partners").insert({
+	// 2a. Display-only / standard partner creation (no immediate login account invite requested).
+	if (!sendInvite) {
+		const { data: inserted, error: devError } = await supabaseServer.from("developer_partners").insert({
 			profile_id: null,
 			company_name: companyName,
 			slug: slug || null,
-			contact_email: null,
+			contact_email: contactEmail || null,
 			contact_phone: contactPhone || null,
 			website_url: websiteUrl || null,
 			logo_url: logoUrl || null,
 			description: description || null,
-			is_active: true,
-		});
+			is_active: isActive,
+		}).select().maybeSingle();
 
 		if (devError) {
 			return NextResponse.json({ error: devError.message }, { status: 422 });
 		}
 
-		return NextResponse.json({ ok: true, email: null });
+		return NextResponse.json({ ok: true, developer: inserted });
 	}
 
-	// 2b. Email provided ⇒ create the login account and email a secure password-setup link.
+	// 2b. Email invite explicitly requested ⇒ create the login account and email a secure password-setup link.
+	const inviteEmail = email || contactEmail;
+	if (!inviteEmail) {
+		return NextResponse.json({ error: "An email address is required to invite a login account." }, { status: 400 });
+	}
+
 	let loginUrl: string;
 	try {
 		loginUrl = `${inviteBaseUrl(request)}/reset-password?next=${encodeURIComponent("/developer")}`;
@@ -233,7 +240,7 @@ export async function POST(request: Request) {
 	}
 
 	// Creates the login account and emails the developer a secure link to set their own password
-	const { data: created, error: inviteError } = await supabaseServer.auth.admin.inviteUserByEmail(email, {
+	const { data: created, error: inviteError } = await supabaseServer.auth.admin.inviteUserByEmail(inviteEmail, {
 		data: { name: companyName, role: "developer_partner" },
 		redirectTo: loginUrl,
 	});
@@ -249,7 +256,7 @@ export async function POST(request: Request) {
 
 	const profilePayload: Record<string, unknown> = {
 		id: userId,
-		email,
+		email: inviteEmail,
 		full_name: companyName,
 		role: "developer_partner",
 		is_active: true,
@@ -260,24 +267,25 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: profileError.message }, { status: 422 });
 	}
 
-	const { error: devError } = await supabaseServer.from("developer_partners").insert({
+	const { data: insertedWithProfile, error: devError } = await supabaseServer.from("developer_partners").insert({
 		profile_id: userId,
 		company_name: companyName,
 		slug: slug || null,
-		contact_email: email,
+		contact_email: inviteEmail,
 		contact_phone: contactPhone || null,
 		website_url: websiteUrl || null,
 		logo_url: logoUrl || null,
 		description: description || null,
-		is_active: true,
-	});
+		is_active: isActive,
+	}).select().maybeSingle();
 
 	if (devError) {
 		return NextResponse.json({ error: devError.message }, { status: 422 });
 	}
 
-	return NextResponse.json({ ok: true, userId, email });
+	return NextResponse.json({ ok: true, userId, email: inviteEmail, developer: insertedWithProfile });
 }
+
 
 export async function PATCH(request: Request) {
 	const auth = await requireAdmin(request);
@@ -293,14 +301,14 @@ export async function PATCH(request: Request) {
 	}
 
 	const updatePayload: Record<string, unknown> = {};
-	if (body?.companyName !== undefined) updatePayload.company_name = text(body.companyName);
+	if (body?.companyName !== undefined || body?.company_name !== undefined) updatePayload.company_name = text(body.companyName || body.company_name);
 	if (body?.slug !== undefined) updatePayload.slug = text(body.slug);
-	if (body?.logoUrl !== undefined) updatePayload.logo_url = text(body.logoUrl) || null;
-	if (body?.websiteUrl !== undefined) updatePayload.website_url = text(body.websiteUrl) || null;
-	if (body?.contactEmail !== undefined) updatePayload.contact_email = text(body.contactEmail).toLowerCase() || null;
-	if (body?.contactPhone !== undefined) updatePayload.contact_phone = text(body.contactPhone) || null;
+	if (body?.logoUrl !== undefined || body?.logo_url !== undefined) updatePayload.logo_url = text(body.logoUrl || body.logo_url) || null;
+	if (body?.websiteUrl !== undefined || body?.website_url !== undefined) updatePayload.website_url = text(body.websiteUrl || body.website_url) || null;
+	if (body?.contactEmail !== undefined || body?.contact_email !== undefined) updatePayload.contact_email = text(body.contactEmail || body.contact_email).toLowerCase() || null;
+	if (body?.contactPhone !== undefined || body?.contact_phone !== undefined) updatePayload.contact_phone = text(body.contactPhone || body.contact_phone) || null;
 	if (body?.description !== undefined) updatePayload.description = text(body.description) || null;
-	if (body?.isActive !== undefined) updatePayload.is_active = booleanValue(body.isActive);
+	if (body?.isActive !== undefined || body?.is_active !== undefined) updatePayload.is_active = booleanValue(body.isActive ?? body.is_active);
 
 	const { error } = await supabaseServer
 		.from("developer_partners")

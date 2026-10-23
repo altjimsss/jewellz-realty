@@ -1639,43 +1639,136 @@ function AnalyticsPanel({
 	return (
 		<div>
 		<SectionShell title={reportTitle} description={reportDescription}>
-			<div className="mb-4 flex flex-wrap justify-end gap-2">
-				{showOverviewReport ? <button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", inquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])} className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-zinc-50">Export inquiries CSV</button> : null}
-				{showOverviewReport || showTrafficReport || showDeveloperReport ? <button type="button" onClick={() => downloadCsv("jewellz-listing-performance.csv", listingPerformance, ["property_id", "title", "total_views", "detail_opens", "total_interactions", "avg_dwell_seconds", "total_inquiries", "inquiry_rate_pct"])} className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-zinc-50">Export listing report CSV</button> : null}
-				{showOverviewReport || showAgentReport ? <button type="button" onClick={() => downloadCsv("jewellz-agent-performance.csv", agentPerformance, ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"])} className="rounded-md border border-black/10 px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-zinc-50">Export agent report CSV</button> : null}
+			<div className="mb-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between border-b border-black/5 pb-4">
+				<div className="flex items-center gap-2.5">
+					<span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-black/70">
+						<span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+						Live Materialized Engine
+					</span>
+					<span className="hidden sm:inline text-xs text-black/40">Real-time sync with inquiry tables</span>
+				</div>
+				<div className="flex flex-wrap items-center gap-2">
+					{showOverviewReport ? (
+						<button
+							type="button"
+							onClick={() => downloadCsv("jewellz-inquiries.csv", inquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])}
+							className="group inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-xs transition hover:border-black/25 hover:bg-zinc-50 active:scale-[0.98]"
+						>
+							<svg className="h-3.5 w-3.5 text-black/40 group-hover:text-black/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+							</svg>
+							<span>Export Inquiries</span>
+						</button>
+					) : null}
+					{showOverviewReport || showTrafficReport || showDeveloperReport ? (
+						<button
+							type="button"
+							onClick={() => downloadCsv("jewellz-listing-performance.csv", listingPerformance, ["property_id", "title", "total_views", "detail_opens", "total_interactions", "avg_dwell_seconds", "total_inquiries", "inquiry_rate_pct"])}
+							className="group inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-xs transition hover:border-black/25 hover:bg-zinc-50 active:scale-[0.98]"
+						>
+							<svg className="h-3.5 w-3.5 text-black/40 group-hover:text-black/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+							</svg>
+							<span>Listings Report</span>
+						</button>
+					) : null}
+					{showOverviewReport || showAgentReport ? (
+						<button
+							type="button"
+							onClick={() => downloadCsv("jewellz-agent-performance.csv", agentPerformance, ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"])}
+							className="group inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-xs transition hover:border-black/25 hover:bg-zinc-50 active:scale-[0.98]"
+						>
+							<svg className="h-3.5 w-3.5 text-black/40 group-hover:text-black/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+							</svg>
+							<span>Agent Report</span>
+						</button>
+					) : null}
+				</div>
 			</div>
+
 			{showOverviewReport ? (
-				<div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-					<div className="rounded-lg border border-black/10 bg-white p-4">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Traffic snapshot</div>
-						<div className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{weeklyVisitors}</div>
-						<p className="mt-2 text-xs leading-5 text-black/50">Visitors recorded this week from analytics events.</p>
+				<div className="mb-6 grid gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
+					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+						<div>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Traffic Snapshot</span>
+								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">7D</span>
+							</div>
+							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{weeklyVisitors.toLocaleString()}</div>
+						</div>
+						<p className="mt-3 text-xs leading-relaxed text-black/50">Weekly unique visitor traffic from recorded analytics events.</p>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Top property</div>
-						<div className="mt-3 truncate text-base font-semibold text-[#111111]">{topListing?.title || "No listing yet"}</div>
-						<p className="mt-2 text-xs leading-5 text-black/50">{topListing ? `${topListing.total_views} views, ${topListing.total_inquiries} inquiries.` : "Listing views will appear after tracking starts."}</p>
+
+					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+						<div>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Top Property</span>
+								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Most Viewed</span>
+							</div>
+							<div className="mt-3 truncate text-base font-semibold text-[#111111]" title={topListing?.title || "No listing yet"}>
+								{topListing?.title || "No listing yet"}
+							</div>
+						</div>
+						<div className="mt-3 flex items-center gap-2">
+							<span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-black/75">
+								{topListing?.total_views ?? 0} views
+							</span>
+							<span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-black/75">
+								{topListing?.total_inquiries ?? 0} inquiries
+							</span>
+						</div>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Predictive highlight</div>
-						<div className="mt-3 truncate text-base font-semibold text-[#111111]">{appreciationArea?.location || "Needs data"}</div>
-						<p className="mt-2 text-xs leading-5 text-black/50">{appreciationArea ? `Highest current appreciation proxy across ${appreciationArea.count} listings.` : "Add listing prices to build forecasts."}</p>
+
+					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+						<div>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Predictive Growth</span>
+								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Area Hub</span>
+							</div>
+							<div className="mt-3 truncate text-base font-semibold text-[#111111]" title={appreciationArea?.location || "Needs data"}>
+								{appreciationArea?.location || "Needs data"}
+							</div>
+						</div>
+						<p className="mt-3 text-xs leading-relaxed text-black/50">
+							{appreciationArea ? `Leading price appreciation proxy across ${appreciationArea.count} active listing${appreciationArea.count > 1 ? "s" : ""}.` : "Listing prices needed to generate area forecasts."}
+						</p>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Engagement summary</div>
-						<div className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{funnelCompletionRate.toFixed(1)}%</div>
-						<p className="mt-2 text-xs leading-5 text-black/50">View-to-inquiry funnel completion rate.</p>
+
+					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+						<div>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Conversion Funnel</span>
+								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Rate</span>
+							</div>
+							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{funnelCompletionRate.toFixed(1)}%</div>
+						</div>
+						<div className="mt-3">
+							<div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+								<div className="h-full rounded-full bg-[#111111] transition-all duration-500" style={{ width: `${Math.min(Math.max(funnelCompletionRate * 5, 4), 100)}%` }} />
+							</div>
+							<p className="mt-1.5 text-[11px] text-black/45">View-to-inquiry funnel completion</p>
+						</div>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Quick stats</div>
-						<div className="mt-3 text-sm font-semibold text-[#111111]">{inquiries.length} inquiries</div>
-						<p className="mt-1 text-xs leading-5 text-black/50">{activeListings} active listings. Avg price PHP {Math.round(avgPropertyPrice).toLocaleString()}.</p>
+
+					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+						<div>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Portfolio Velocity</span>
+								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Inventory</span>
+							</div>
+							<div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#111111]">{inquiries.length} Inquiries</div>
+						</div>
+						<div className="mt-3 border-t border-black/5 pt-2 text-xs text-black/55 flex items-center justify-between">
+							<span>{activeListings} Active listings</span>
+							<span className="font-semibold text-black/75">₱{(avgPropertyPrice / 1000000).toFixed(2)}M avg</span>
+						</div>
 					</div>
 				</div>
 			) : null}
 
 			{isAdmin && activeAnalyticsCategory ? (
-				<div>
+				<div className="mb-6">
 					<AnalyticsVisualSuite
 						category={activeAnalyticsCategory}
 						properties={properties}
@@ -1689,75 +1782,159 @@ function AnalyticsPanel({
 			) : null}
 
 			{isAdmin && showOverviewReport ? (
-				<div className="mt-5 grid gap-4 md:grid-cols-3">
-					<div className="rounded-2xl border border-black/10 bg-zinc-50 p-4">
-						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Traffic preview</div>
-						<p className="mt-2 text-sm text-black/65">{trafficSources[0] ? `${trafficSources[0].source} is the top source with ${trafficSources[0].session_count ?? 0} sessions.` : "No session sources recorded yet."}</p>
+				<div className="mb-6 grid gap-3.5 sm:grid-cols-3">
+					<div className="group rounded-xl border border-black/10 bg-zinc-50/70 p-4 transition duration-200 hover:bg-white hover:border-black/20 hover:shadow-xs">
+						<div className="flex items-center justify-between">
+							<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Traffic Acquisition</span>
+							<span className="rounded-md bg-white border border-black/10 px-2 py-0.5 text-[10px] font-medium text-black/70">Top Channel</span>
+						</div>
+						<div className="mt-2.5 flex items-baseline gap-2">
+							<span className="text-base font-semibold capitalize text-[#111111] truncate">{trafficSources[0]?.source || "Direct"}</span>
+							<span className="text-xs font-semibold text-black/45">({trafficSources[0]?.session_count ?? 0} sessions)</span>
+						</div>
+						<p className="mt-1 text-xs text-black/50">Primary visitor entry point across analytics channels.</p>
 					</div>
-					<div className="rounded-2xl border border-black/10 bg-zinc-50 p-4">
-						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Agent preview</div>
-						<p className="mt-2 text-sm text-black/65">{agentPerformance[0] ? `${agentPerformance[0].agent_name} has ${agentPerformance[0].conversions ?? 0} conversions.` : "Agent conversion data appears after assignments."}</p>
+
+					<div className="group rounded-xl border border-black/10 bg-zinc-50/70 p-4 transition duration-200 hover:bg-white hover:border-black/20 hover:shadow-xs">
+						<div className="flex items-center justify-between">
+							<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Agent Performance</span>
+							<span className="rounded-md bg-white border border-black/10 px-2 py-0.5 text-[10px] font-medium text-black/70">Lead Response</span>
+						</div>
+						<div className="mt-2.5 flex items-baseline gap-2">
+							<span className="text-base font-semibold text-[#111111] truncate">{agentPerformance[0]?.agent_name || "Unassigned"}</span>
+							<span className="text-xs font-semibold text-black/45">({agentPerformance[0]?.conversions ?? 0} won)</span>
+						</div>
+						<p className="mt-1 text-xs text-black/50">Top converting representative with assigned buyer requests.</p>
 					</div>
-					<div className="rounded-2xl border border-black/10 bg-zinc-50 p-4">
-						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Developer preview</div>
-						<p className="mt-2 text-sm text-black/65">{developerPortfolio[0] ? `${developerPortfolio[0].company_name} has ${developerPortfolio[0].total_listings ?? 0} listings in view.` : "Developer portfolio data appears after listings are linked."}</p>
+
+					<div className="group rounded-xl border border-black/10 bg-zinc-50/70 p-4 transition duration-200 hover:bg-white hover:border-black/20 hover:shadow-xs">
+						<div className="flex items-center justify-between">
+							<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Developer Partner</span>
+							<span className="rounded-md bg-white border border-black/10 px-2 py-0.5 text-[10px] font-medium text-black/70">Portfolio</span>
+						</div>
+						<div className="mt-2.5 flex items-baseline gap-2">
+							<span className="text-base font-semibold text-[#111111] truncate">{developerPortfolio[0]?.company_name || "Partner Network"}</span>
+							<span className="text-xs font-semibold text-black/45">({developerPortfolio[0]?.total_listings ?? 0} units)</span>
+						</div>
+						<p className="mt-1 text-xs text-black/50">Active developer catalog footprint in market catalog.</p>
 					</div>
 				</div>
 			) : null}
 
-			{showOverviewReport ? <div className="mt-5 grid gap-5 xl:grid-cols-2">
-				<div className="rounded-2xl border border-black/10 p-4">
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Lead Pipeline</div>
-					<div className="mt-3 h-56">
-						{pipelineChartRows.length ? (
-							<ResponsiveContainer width="100%" height="100%">
-								<BarChart data={pipelineChartRows} layout="vertical" margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
-									<CartesianGrid horizontal={false} stroke="#ececec" />
-									<XAxis type="number" hide allowDecimals={false} />
-									<YAxis dataKey="label" type="category" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 11, fill: "#71717a" }} width={112} />
-									<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-									<Bar dataKey="value" name="Leads" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={16} />
-								</BarChart>
-							</ResponsiveContainer>
-						) : <p className="text-sm text-black/45">No inquiry activity yet.</p>}
-					</div>
-					<div className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Priority Split</div>
-					<div className="mt-3 flex flex-wrap gap-2">
-						{Object.entries(priorityCounts).map(([priority, count]) => (
-							<span key={priority} className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-black/65">{priority}: {count}</span>
-						))}
-					</div>
-				</div>
+			{showOverviewReport ? (
+				<div className="mb-6 grid gap-5 xl:grid-cols-12">
+					{/* Lead Pipeline & Priority Distribution - 7 cols */}
+					<div className="xl:col-span-7 flex flex-col justify-between rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+						<div>
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Pipeline Distribution</div>
+									<h3 className="mt-1 text-sm font-semibold text-[#111111]">Lead Conversion Pipeline</h3>
+								</div>
+								<span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-black/70">
+									{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)} Total Leads
+								</span>
+							</div>
 
-				<div className="rounded-2xl border border-black/10 p-4">
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Daily Inquiry Volume</div>
-					<div className="mt-3">
-						<InquiryVolumeChart rows={inquiryVolumeRows} />
-					</div>
-				</div>
+							<div className="mt-4 h-56">
+								{pipelineChartRows.length ? (
+									<ResponsiveContainer width="100%" height="100%">
+										<BarChart data={pipelineChartRows} layout="vertical" margin={{ top: 8, right: 14, left: -4, bottom: 0 }}>
+											<CartesianGrid horizontal={false} stroke="#f4f4f5" />
+											<XAxis type="number" hide allowDecimals={false} />
+											<YAxis dataKey="label" type="category" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 11, fill: "#71717a" }} width={100} />
+											<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
+											<Bar dataKey="value" name="Leads" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={16} />
+										</BarChart>
+									</ResponsiveContainer>
+								) : <p className="text-sm text-black/45 py-12 text-center">No inquiry activity recorded yet.</p>}
+							</div>
+						</div>
 
-				<div className="rounded-2xl border border-black/10 p-4">
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Recommendation Analytics</div>
-					<div className="mt-3 space-y-3 text-sm text-black/65">
-						<p>Total recommendations: <span className="font-medium text-[#111111]">{recommendationStats.total}</span></p>
-						<p>Clicked recommendations: <span className="font-medium text-[#111111]">{recommendationStats.clicked}</span></p>
-						<p>Fallback recommendations: <span className="font-medium text-[#111111]">{recommendationStats.fallback}</span></p>
-						<p>Click-through rate: <span className="font-medium text-[#111111]">{clickThrough.toFixed(1)}%</span></p>
-						<p>Fallback rate: <span className="font-medium text-[#111111]">{fallbackRate.toFixed(1)}%</span></p>
+						{/* Priority Split */}
+						<div className="mt-5 border-t border-black/5 pt-4">
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Priority Distribution</span>
+								<span className="text-[11px] text-black/40">Inquiry Urgency</span>
+							</div>
+							<div className="mt-2.5 flex flex-wrap gap-2">
+								{Object.entries(priorityCounts).length ? (
+									Object.entries(priorityCounts).map(([priority, count]) => {
+										const isHigh = priority.toLowerCase() === "high";
+										const isMedium = priority.toLowerCase() === "medium";
+										return (
+											<span
+												key={priority}
+												className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold capitalize transition ${
+													isHigh
+														? "bg-black text-white"
+														: isMedium
+															? "bg-zinc-200 text-zinc-900"
+															: "bg-zinc-100 text-zinc-700"
+												}`}
+											>
+												<span className={`h-1.5 w-1.5 rounded-full ${isHigh ? "bg-red-400" : isMedium ? "bg-amber-400" : "bg-zinc-400"}`} />
+												{priority}: {count}
+											</span>
+										);
+									})
+								) : (
+									<span className="text-xs text-black/45">No priority tags recorded</span>
+								)}
+							</div>
+						</div>
+					</div>
+
+					{/* Volume & Recommendation Analytics - 5 cols */}
+					<div className="xl:col-span-5 flex flex-col gap-5">
+						<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+							<div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Inquiry Volume</div>
+							<div className="mt-3">
+								<InquiryVolumeChart rows={inquiryVolumeRows} />
+							</div>
+						</div>
+
+						<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Recommendation Engine</span>
+								<span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-black/60">Vector Match</span>
+							</div>
+
+							<div className="mt-4 grid grid-cols-2 gap-3">
+								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
+									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">Total Shown</div>
+									<div className="mt-1 text-xl font-semibold text-[#111111]">{recommendationStats.total}</div>
+								</div>
+								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
+									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">Clicked</div>
+									<div className="mt-1 text-xl font-semibold text-[#111111]">{recommendationStats.clicked}</div>
+								</div>
+								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
+									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">CTR %</div>
+									<div className="mt-1 text-xl font-semibold text-[#111111]">{clickThrough.toFixed(1)}%</div>
+								</div>
+								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
+									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">Fallback Rate</div>
+									<div className="mt-1 text-xl font-semibold text-[#111111]">{fallbackRate.toFixed(1)}%</div>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
-			</div> : null}
+			) : null}
 
 			{isAdmin && showOverviewReport ? (
-				<div className="mt-5 grid gap-5">
-					<div className="rounded-2xl border border-black/10 p-4">
-						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Listing Performance</div>
+				<div className="grid gap-5">
+					<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Listing Performance Matrix</div>
 						<div className="mt-3">
 							<ListingPerformanceChart rows={listingChartRows} />
 						</div>
 					</div>
 
-					<PeakEngagementChart events={engagementEvents} />
+					<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+						<PeakEngagementChart events={engagementEvents} />
+					</div>
 				</div>
 			) : null}
 
@@ -2628,6 +2805,27 @@ export default function AdminCms({
 						setSaving(false);
 						return;
 					}
+				} else if (table === "developer_partners") {
+					const { data } = await supabaseBrowser.auth.getSession();
+					const token = data.session?.access_token;
+					const response = await fetch("/api/admin/developers", {
+						method: "DELETE",
+						headers: {
+							"Content-Type": "application/json",
+							...(token ? { Authorization: `Bearer ${token}` } : {}),
+						},
+						credentials: "same-origin",
+						body: JSON.stringify({ id: currentRow.id }),
+					});
+					const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+					if (!response.ok || !payload?.ok) {
+						const result = await supabaseBrowser.from(table).delete().eq(idKey, currentRow[idKey]);
+						if (result.error) {
+							setMessage(result.error.message);
+							setSaving(false);
+							return;
+						}
+					}
 				} else {
 					const result = await supabaseBrowser.from(table).delete().eq(idKey, currentRow[idKey]);
 					if (result.error) {
@@ -2718,7 +2916,64 @@ export default function AdminCms({
 		if (!asText(payload.slug).trim()) {
 			payload.slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 		}
-		await saveEntity("developer_partners", payload, currentRow);
+
+		setMessage("Saving developer partner...");
+		setSaving(true);
+
+		// First try direct saveEntity via client
+		const directSuccess = await saveEntity("developer_partners", payload, currentRow);
+		if (directSuccess) return;
+
+		// Fallback to server API which uses service-role supabaseServer to bypass client RLS issues
+		try {
+			const { data } = await supabaseBrowser.auth.getSession();
+			const token = data.session?.access_token;
+			const response = await fetch("/api/admin/developers", {
+				method: currentRow ? "PATCH" : "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+				credentials: "same-origin",
+				body: JSON.stringify(
+					currentRow
+						? {
+								id: currentRow.id,
+								company_name: payload.company_name,
+								slug: payload.slug,
+								logo_url: payload.logo_url,
+								website_url: payload.website_url,
+								contact_email: payload.contact_email,
+								contact_phone: payload.contact_phone,
+								description: payload.description,
+								is_active: payload.is_active,
+						  }
+						: {
+								company_name: payload.company_name,
+								slug: payload.slug,
+								logo_url: payload.logo_url,
+								website_url: payload.website_url,
+								contact_email: payload.contact_email,
+								contact_phone: payload.contact_phone,
+								description: payload.description,
+								is_active: payload.is_active,
+						  }
+				),
+			});
+
+			const resJson = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+			if (response.ok && resJson?.ok) {
+				setMessage("Developer partner saved successfully.");
+				setSaving(false);
+				await reloadWorkspace();
+				return;
+			} else if (resJson?.error) {
+				setMessage(resJson.error);
+			}
+		} catch (err) {
+			console.error("Developer fallback failed", err);
+		}
+		setSaving(false);
 	}
 
 	async function saveAgent(payload: CmsPayload, currentRow: CmsRow | null) {
