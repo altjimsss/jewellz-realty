@@ -5,9 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import type { Property } from "@/types/property";
 import type { PropertyChatMessage, PropertyChatResponse } from "@/lib/property-chat";
 
+type ChatAction =
+  | { type: "book-appointment" }
+  | { type: "view-property"; slug: string; title: string }
+  | { type: "share-listing" };
+
 type ChatMessage = PropertyChatMessage & {
   id: string;
   isLoading?: boolean;
+  actions?: ChatAction[];
 };
 
 type PropertyChatAssistantProps = {
@@ -30,6 +36,127 @@ function createId() {
   } catch {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
+}
+
+/**
+ * Parse [ACTION:...] tokens from Jewel's AI response text.
+ * Strips tokens from the displayed text and returns them as structured actions.
+ *
+ * Supported tokens:
+ *   [ACTION:book-appointment]
+ *   [ACTION:view-property:slug:Title text]
+ *   [ACTION:share-listing]
+ */
+function parseActions(raw: string): { text: string; actions: ChatAction[] } {
+  const actions: ChatAction[] = [];
+  const pushUnique = (action: ChatAction) => {
+    const key =
+      action.type === "view-property" ? `view-property:${action.slug}` : action.type;
+    const exists = actions.some((item) =>
+      (item.type === "view-property" ? `view-property:${item.slug}` : item.type) === key,
+    );
+    if (!exists) actions.push(action);
+  };
+
+  const cleaned = raw
+    .replace(/\[ACTION:([\w-]+)(?::([^:\]]+))?(?::([^\]]+))?\]/g, (_match, type, arg1, arg2) => {
+      if (type === "book-appointment") {
+        pushUnique({ type: "book-appointment" });
+      } else if (type === "view-property" && arg1 && arg2) {
+        pushUnique({ type: "view-property", slug: arg1.trim(), title: arg2.trim() });
+      } else if (type === "share-listing") {
+        pushUnique({ type: "share-listing" });
+      }
+      return "";
+    })
+    .trim();
+  return { text: cleaned, actions };
+}
+
+/** Inline action buttons rendered inside the assistant's chat bubble */
+function ChatActions({
+  actions,
+  property,
+  previewMode,
+  onSend,
+}: {
+  actions: ChatAction[];
+  property: Property;
+  previewMode: boolean;
+  onSend: (msg: string) => void;
+}) {
+  if (actions.length === 0) return null;
+
+  function handleBook() {
+    if (previewMode) return;
+    window.location.href = `/appointment?from=${encodeURIComponent(`/project-list/${property.slug}`)}&property=${encodeURIComponent(property.title)}`;
+  }
+
+  function handleShare() {
+    if (previewMode) return;
+    const url = `${window.location.origin}/project-list/${property.slug}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      onSend("I just shared this property link with a friend. What should I tell them about it?");
+    });
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {actions.map((action, i) => {
+        if (action.type === "book-appointment") {
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={previewMode}
+              onClick={handleBook}
+              className="flex items-center gap-1.5 rounded-lg border border-[#DE141C] bg-[#DE141C] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#c51018] disabled:opacity-50"
+            >
+              <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" aria-hidden="true">
+                <rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M1.5 6h13M5.5 1v3M10.5 1v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              Book an appointment
+            </button>
+          );
+        }
+        if (action.type === "view-property") {
+          return (
+            <a
+              key={i}
+              href={`/project-list/${action.slug}`}
+              className="flex items-center gap-1.5 rounded-lg border border-black/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-black/70 transition hover:border-black/25 hover:bg-zinc-50"
+            >
+              <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" aria-hidden="true">
+                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              View {action.title}
+            </a>
+          );
+        }
+        if (action.type === "share-listing") {
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={previewMode}
+              onClick={handleShare}
+              className="flex items-center gap-1.5 rounded-lg border border-black/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-black/70 transition hover:border-black/25 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" aria-hidden="true">
+                <circle cx="12" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <circle cx="4" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <circle cx="12" cy="13" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M5.5 7.1l5-2.7M5.5 9l5 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              Share this listing
+            </button>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
 }
 
 async function fetchPropertyPrompt(property: Property, message: string, history: ChatMessage[]) {
@@ -121,6 +248,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
       id: createId(),
       role: "assistant",
       content: `Hey there! 👋 I'm Jewel, your Jewellz Realty guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`,
+      actions: [],
     },
   ]);
   const [input, setInput] = useState("");
@@ -158,11 +286,13 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
 
     try {
       const payload = await fetchPropertyPrompt(property, trimmedMessage, [...history, userMessage]);
+      const rawContent = payload.content || payload.fallbackReply;
+      const { text, actions } = parseActions(rawContent);
       setStatus("Jewel is ready.");
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
-            ? { ...message, content: payload.content || payload.fallbackReply, isLoading: false }
+            ? { ...message, content: text, actions, isLoading: false }
             : message
         )
       );
@@ -172,7 +302,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
-            ? { ...message, content: fallbackMessage, isLoading: false }
+            ? { ...message, content: fallbackMessage, actions: [], isLoading: false }
             : message
         )
       );
@@ -182,47 +312,8 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
     }
   }
 
-  /** Quick action tasks */
-  function handleBookAppointment() {
-    if (previewMode) return;
-    window.location.href = `/appointment?from=${encodeURIComponent(`/project-list/${property.slug}`)}&property=${encodeURIComponent(property.title)}`;
-  }
-
-  function handleShareProperty() {
-    if (previewMode) return;
-    const url = `${window.location.origin}/project-list/${property.slug}`;
-    void navigator.clipboard.writeText(url).then(() => {
-      void handleSend("I just shared this property link with someone interested. What should I tell them about it?");
-    });
-  }
-
   return (
     <>
-      {/* ── Book an Appointment Button ── */}
-      <button
-        type="button"
-        disabled={previewMode}
-        title={previewMode ? "Disabled in CMS preview" : undefined}
-        className={`group flex w-full items-center justify-between gap-3 rounded-2xl border border-[#DE141C] bg-[#DE141C] px-4 py-3 text-left text-white shadow-sm transition-colors ${previewMode ? "cursor-not-allowed opacity-80" : "hover:bg-[#c51018]"}`}
-        onClick={handleBookAppointment}
-      >
-        <div className="flex items-center gap-2.5">
-          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-white/80" fill="none" aria-hidden="true">
-            <rect x="2" y="3" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M2 8h16M7 1v4M13 1v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em]">Book an Appointment</span>
-        </div>
-        <svg
-          viewBox="0 0 16 16"
-          className="h-3.5 w-3.5 shrink-0 text-white/70 transition-transform group-hover:translate-x-0.5"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
       {/* ── Chat Widget ── */}
       <div className="flex h-[540px] max-h-[72vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white">
         {/* Header */}
@@ -289,7 +380,17 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                       ))}
                     </div>
                   ) : message.role === "assistant" ? (
-                    <ChatBubbleText text={message.content} />
+                    <>
+                      <ChatBubbleText text={message.content} />
+                      {message.actions && message.actions.length > 0 && (
+                        <ChatActions
+                          actions={message.actions}
+                          property={property}
+                          previewMode={previewMode}
+                          onSend={handleSend}
+                        />
+                      )}
+                    </>
                   ) : (
                     <p className="text-[12px] leading-[1.55]">{message.content}</p>
                   )}
@@ -324,36 +425,6 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                 {prompt}
               </button>
             ))}
-          </div>
-
-          {/* Action chips */}
-          <div className="mb-2 flex gap-1.5">
-            <button
-              type="button"
-              disabled={previewMode}
-              onClick={handleBookAppointment}
-              className="flex items-center gap-1 rounded-full border border-[#DE141C]/20 bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-[#DE141C] transition hover:bg-red-100 disabled:opacity-50"
-            >
-              <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none">
-                <rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M1.5 6h13M5.5 1v3M10.5 1v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-              Book a viewing
-            </button>
-            <button
-              type="button"
-              disabled={previewMode}
-              onClick={handleShareProperty}
-              className="flex items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[10px] font-semibold text-black/55 transition hover:bg-zinc-50 disabled:opacity-50"
-            >
-              <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none">
-                <circle cx="12" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3" />
-                <circle cx="4" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.3" />
-                <circle cx="12" cy="13" r="1.5" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M5.5 7.1l5-2.7M5.5 9l5 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              </svg>
-              Share listing
-            </button>
           </div>
 
           {/* Input */}

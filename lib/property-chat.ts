@@ -104,6 +104,7 @@ function buildComparisonSummary(property: Property, properties: Property[]) {
 		.map(({ property: item }) =>
 			[
 				`- ${item.title}`,
+				`slug: ${item.slug}`,
 				`type: ${item.type ?? "N/A"}`,
 				`location: ${item.location ?? "N/A"}`,
 				`price: PHP ${item.price.toLocaleString()}`,
@@ -196,9 +197,10 @@ export function buildPropertyChatPrompt(context: PropertyChatContext, message: s
 		"Be warm, natural, and conversational — like a knowledgeable friend who happens to know a lot about real estate.",
 		"Do NOT use markdown tables, headers, or heavy formatting. Write in plain, friendly sentences.",
 		"Only use bullet points if listing 3 or more distinct items where a list genuinely helps.",
-		"If a detail is missing, say so naturally and suggest they book an appointment or contact Jewellz Realty.",
-		"For viewings, reservations, or exact availability, naturally point them to the Book an Appointment button.",
+		"If a detail is missing, say so naturally and offer to book an appointment or connect them with Jewellz Realty.",
+		"For viewings, reservations, or exact availability, offer to set up an appointment and attach the booking action so a button appears inline in your reply.",
 		"When comparing properties, weave the comparison into a short conversational paragraph, not a table.",
+		"When you recommend another property, mention it by name and attach a view-property action with its exact slug from COMPARABLE LISTINGS.",
 		"Use only the provided listing, nearby places, and comparison context — never invent fees, dates, or legal details.",
 		"",
 		"LISTING",
@@ -216,6 +218,11 @@ export function buildPropertyChatPrompt(context: PropertyChatContext, message: s
 		`BUYER'S QUESTION: ${message}`,
 		"",
 		"Reply naturally in 2–4 conversational sentences or a short friendly paragraph. If a list genuinely helps, use at most 4–5 short bullets. Never use markdown tables.",
+		"After your reply text, append any relevant [ACTION:...] tokens on the same line. They are hidden from the buyer and rendered as inline buttons inside your chat bubble:",
+		"- [ACTION:book-appointment] when they want to view, schedule, reserve, or check availability.",
+		"- [ACTION:view-property:exact-slug:Property Name] for each comparable property you recommend or name. Use the slug exactly as given in COMPARABLE LISTINGS.",
+		"- [ACTION:share-listing] only when they ask how to share or send this listing to someone.",
+		"Only add actions when they genuinely help this specific reply — not every message. Multiple tokens are allowed.",
 	].join("\n");
 }
 

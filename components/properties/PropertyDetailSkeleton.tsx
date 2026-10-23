@@ -132,9 +132,6 @@ export function PropertyDetailSkeleton() {
 							</div>
 						</div>
 
-						{/* Book an Appointment button */}
-						<ShimmerBlock className="h-11 w-full rounded-2xl" />
-
 						{/* Chat assistant widget */}
 						<div className="h-[520px] max-h-[70vh] overflow-hidden rounded-2xl border border-black/10 bg-white">
 							<div className="border-b border-black/10 bg-[#f4f4f4] px-3 py-2.5">
