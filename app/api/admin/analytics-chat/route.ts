@@ -366,5 +366,7 @@ Only suggest 1 or 2 relevant action buttons per message when naturally helpful.`
 			isFallback: true,
 			reason: isAbortError ? "Analytics chat request timed out." : "Analytics chat request failed.",
 		}, { headers: rateLimitHeaders(limiter) });
+	}
 }
+
 
