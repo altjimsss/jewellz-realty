@@ -28,11 +28,14 @@ CRON_SECRET=use-a-long-random-secret
 
 ## Supabase SQL
 
-Run:
+Run these in order:
 
 ```text
+supabase/cms-compatibility-views.sql
 supabase/performance-hardening.sql
 ```
+
+Do not run `supabase/analytics-materialized-views.sql`; it is deprecated because its old column names no longer match the CMS queries.
 
 This creates/updates `ai_analytics_reports` with:
 
@@ -62,10 +65,10 @@ On Vercel, cron requests are accepted through the Vercel cron header. `CRON_SECR
 From the CMS:
 
 ```text
-Analytics -> AI Analytics
+Analytics -> Predictive Analytics -> AI Analytics Report
 ```
 
-The CMS automatically loads the latest stored report for the selected period. If no report exists yet, it creates one in the background and then displays the charts and report sections.
+The report is generated from tracked sessions/page views, inquiries, listings, recommendations, and agent activity. The CMS loads the latest stored weekly report; if none exists it creates one and displays it. If no AI key is configured, the report is clearly labelled as a deterministic fallback instead of being presented as AI output.
 
 ## Manual API Testing
 

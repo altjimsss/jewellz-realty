@@ -102,22 +102,24 @@ async function buildAnalyticsContext() {
 		events,
 		sessions,
 	] = await Promise.all([
-		supabaseServer.from("properties").select("id, title, price, location, property_type, status, created_at").limit(300),
-		supabaseServer.from("inquiries").select("id, status, priority, lead_score, property_id, created_at").gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(300),
+		supabaseServer.from("properties").select("id, title, price, location, property_type, status, created_at", { count: "exact" }).limit(300),
+		supabaseServer.from("inquiries").select("id, status, priority, lead_score, property_id, created_at", { count: "exact" }).gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(300),
 		supabaseServer.from("mv_listing_performance").select("*").limit(20),
 		supabaseServer.from("mv_traffic_sources").select("*").limit(10),
 		supabaseServer.from("mv_daily_inquiry_volume").select("*").limit(30),
 		supabaseServer.from("mv_agent_performance").select("*").limit(10),
-		supabaseServer.from("recommendations").select("was_clicked, is_fallback, generated_at").gte("generated_at", since.toISOString()).limit(300),
-		supabaseServer.from("analytics_events").select("event_type, property_id, created_at").gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(500),
-		supabaseServer.from("sessions").select("id").limit(300),
+		supabaseServer.from("recommendations").select("was_clicked, is_fallback, generated_at", { count: "exact" }).gte("generated_at", since.toISOString()).limit(300),
+		supabaseServer.from("analytics_events").select("event_type, property_id, created_at", { count: "exact" }).gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(500),
+		supabaseServer.from("sessions").select("id", { count: "exact", head: true }),
 	]);
 
 	const propertyRows = safeRows(properties);
 	const inquiryRows = safeRows(inquiries);
 	const recommendationRows = safeRows(recommendations);
 	const eventRows = safeRows(events);
-	const sessionRows = safeRows(sessions);
+	const viewEventTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
+	const viewRows = eventRows.filter((row) => viewEventTypes.has(text(row.event_type)));
+	const totalSessions = sessions.count ?? 0;
 
 	// Property ID -> readable title map to ensure NO raw UUIDs ever leak to the user
 	const propertyMap = new Map<string, string>();
@@ -134,9 +136,9 @@ async function buildAnalyticsContext() {
 	yDate.setDate(yDate.getDate() - 1);
 	const yesterdayDateStr = yDate.toISOString().slice(0, 10);
 
-	const yesterdayEvents = eventRows.filter((r) => text(r.created_at).startsWith(yesterdayDateStr));
+	const yesterdayEvents = viewRows.filter((r) => text(r.created_at).startsWith(yesterdayDateStr));
 	const yesterdayInquiries = inquiryRows.filter((r) => text(r.created_at).startsWith(yesterdayDateStr));
-	const todayEvents = eventRows.filter((r) => text(r.created_at).startsWith(todayDateStr));
+	const todayEvents = viewRows.filter((r) => text(r.created_at).startsWith(todayDateStr));
 	const todayInquiries = inquiryRows.filter((r) => text(r.created_at).startsWith(todayDateStr));
 
 	const clickedRecommendations = recommendationRows.filter((row) => row.was_clicked).length;
@@ -176,11 +178,11 @@ async function buildAnalyticsContext() {
 			viewedListings: Array.from(new Set(todayEvents.map((e) => propertyMap.get(text(e.property_id)) || "general listing"))),
 		},
 		portfolioOverview: {
-			totalProperties: propertyRows.length,
-			totalInquiries: inquiryRows.length,
-			totalSessions: sessionRows.length,
-			totalRecordedEvents: eventRows.length,
-			recommendationImpressions: recommendationRows.length,
+			totalProperties: properties.count ?? propertyRows.length,
+			totalInquiries: inquiries.count ?? inquiryRows.length,
+			totalSessions,
+			totalRecordedEvents: events.count ?? eventRows.length,
+			recommendationImpressions: recommendations.count ?? recommendationRows.length,
 		},
 		leadHealth: {
 			highPriority: inquiryRows.filter((row) => text(row.priority) === "high").length,
@@ -224,8 +226,11 @@ function fallbackAnalyticsReply(context: Awaited<ReturnType<typeof buildAnalytic
 	if (lower.includes("yesterday")) {
 		const count = context.yesterdayActivity.totalViews;
 		const inq = context.yesterdayActivity.totalInquiries;
-		const listingNames = context.yesterdayActivity.viewedListings.join(", ") || "Azure Studio Condo";
-		return `Yesterday was quiet on new submissions with ${inq} inquiries, but recorded **${count} views** on **${listingNames}**. Overall pipeline remains active with **${context.leadHealth.highPriority} high-priority leads** requiring agent follow-up.\n\n[ACTION:navigate_high_priority|View High-Priority Leads]`;
+		const listingNames = context.yesterdayActivity.viewedListings.join(", ");
+		if (count === 0 && inq === 0) {
+			return `No tracked property views or inquiries were recorded yesterday. The pipeline still has **${context.leadHealth.highPriority} high-priority leads** requiring follow-up.\n\n[ACTION:navigate_high_priority|View High-Priority Leads]`;
+		}
+		return `Yesterday recorded **${inq} inquiries** and **${count} property views**${listingNames ? ` on **${listingNames}**` : ""}. The pipeline has **${context.leadHealth.highPriority} high-priority leads** requiring agent follow-up.\n\n[ACTION:navigate_high_priority|View High-Priority Leads]`;
 	}
 
 	if (lower.includes("today")) {

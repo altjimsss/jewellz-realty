@@ -70,6 +70,7 @@ export type Workspace = {
 	developerPortfolio: CmsRow[];
 	recommendations: CmsRow[];
 	engagementEvents: CmsRow[];
+	sessions: CmsRow[];
 	profiles: CmsRow[];
 	activityLogs: CmsRow[];
 };

@@ -15,6 +15,7 @@ type AiAnalyticsReport = {
 	recommendedActions: string[];
 	riskFlags: string[];
 	confidence: "low" | "medium" | "high";
+	narrativeSource: "ai" | "deterministic";
 };
 
 type RegressionOutput = {
@@ -23,6 +24,7 @@ type RegressionOutput = {
 	slope: number;
 	intercept: number;
 	r2: number;
+	observations: number;
 	observedTotal: number;
 	forecastNextPeriod: number;
 	trend: "up" | "flat" | "down";
@@ -32,7 +34,7 @@ type ClassificationOutput = {
 	entityType: "listing" | "traffic_source" | "pipeline";
 	entityName: string;
 	label: "high_opportunity" | "conversion_risk" | "stable" | "needs_data";
-	probability: number;
+	score: number;
 	features: Record<string, number>;
 	reason: string;
 };
@@ -76,6 +78,33 @@ function toPeriod(value: string | null): ReportPeriod {
 	return "weekly";
 }
 
+function historyDays(period: ReportPeriod) {
+	if (period === "daily") return 30;
+	if (period === "monthly") return 180;
+	return 60;
+}
+
+function utcDayKey(offsetDays = 0) {
+	const date = new Date();
+	date.setUTCHours(0, 0, 0, 0);
+	date.setUTCDate(date.getUTCDate() + offsetDays);
+	return date.toISOString().slice(0, 10);
+}
+
+function buildDailyInquirySeries(rows: Array<{ inquiry_date?: unknown; total_inquiries?: unknown }>, days: number) {
+	const counts = new Map<string, number>();
+	for (const row of rows) {
+		const key = text(row.inquiry_date).slice(0, 10);
+		if (!key) continue;
+		counts.set(key, (counts.get(key) ?? 0) + numberValue(row.total_inquiries));
+	}
+
+	return Array.from({ length: days }, (_, index) => {
+		const date = utcDayKey(-(days - 1 - index));
+		return { date, total: counts.get(date) ?? 0 };
+	});
+}
+
 function linearRegression(points: number[]): RegressionOutput {
 	const n = points.length;
 	if (n < 2) {
@@ -85,6 +114,7 @@ function linearRegression(points: number[]): RegressionOutput {
 			slope: 0,
 			intercept: points[0] ?? 0,
 			r2: 0,
+			observations: n,
 			observedTotal: points.reduce((sum, value) => sum + value, 0),
 			forecastNextPeriod: points[0] ?? 0,
 			trend: "flat",
@@ -110,6 +140,7 @@ function linearRegression(points: number[]): RegressionOutput {
 		slope: Number(slope.toFixed(3)),
 		intercept: Number(intercept.toFixed(3)),
 		r2: Number(r2.toFixed(3)),
+		observations: n,
 		observedTotal: points.reduce((sum, value) => sum + value, 0),
 		forecastNextPeriod: Number(forecastNextPeriod.toFixed(2)),
 		trend: Math.abs(slope) < 0.1 ? "flat" : slope > 0 ? "up" : "down",
@@ -129,7 +160,7 @@ function classifyListing(row: {
 			entityType: "listing",
 			entityName: row.title,
 			label: "needs_data",
-			probability: 0.55,
+			score: 0.55,
 			features: {
 				views: row.total_views,
 				interactions: row.total_interactions,
@@ -154,7 +185,7 @@ function classifyListing(row: {
 		entityType: "listing",
 		entityName: row.title,
 		label,
-		probability: Number((label === "conversion_risk" ? riskScore : label === "high_opportunity" ? opportunityScore : Math.max(0.5, 1 - riskScore)).toFixed(3)),
+		score: Number((label === "conversion_risk" ? riskScore : label === "high_opportunity" ? opportunityScore : Math.max(0.5, 1 - riskScore)).toFixed(3)),
 		features: {
 			views: row.total_views,
 			interactions: row.total_interactions,
@@ -175,7 +206,7 @@ function classifyPipeline(highPriority: number, unassignedOrNew: number, inquiri
 		entityType: "pipeline",
 		entityName: "Lead pipeline",
 		label: overdueRisk >= 0.62 ? "conversion_risk" : "stable",
-		probability: Number(overdueRisk.toFixed(3)),
+		score: Number(overdueRisk.toFixed(3)),
 		features: { highPriority, unassignedOrNew, inquiries },
 		reason: overdueRisk >= 0.62 ? "High-priority or new leads may wait too long without assignment." : "Pipeline load is not showing a severe queue risk.",
 	};
@@ -188,16 +219,16 @@ function fallbackReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary
 
 	return {
 		title: `${summary.periodLabel} AI Analytics Report`,
-		executiveSummary: `${summary.periodLabel} analytics tracked ${summary.totals.inquiries} inquiries, ${summary.totals.properties} listings, and ${summary.totals.events} recent events. The inquiry forecast is ${summary.modelOutputs.regressions[0].forecastNextPeriod} for the next comparable period.`,
+		executiveSummary: `${summary.periodLabel} analytics tracked ${summary.totals.inquiries} inquiries, ${summary.totals.properties} listings, and ${summary.totals.events} recent events. The next-day inquiry forecast is ${summary.modelOutputs.regressions[0].forecastNextPeriod} based on ${summary.modelOutputs.regressions[0].observations} days of inquiry history.`,
 		descriptiveFindings: [
 			topListing ? `${topListing.title} leads listing activity with ${topListing.total_views} views, ${topListing.total_interactions} interactions, and ${topListing.total_inquiries} inquiries.` : "No listing has enough activity to identify a clear leader yet.",
 			topSource ? `${topSource.source} is the leading traffic source with ${topSource.session_count} sessions.` : "Traffic source data is not yet populated.",
 			`Recommendation CTR is ${summary.recommendations.ctrPct}% and fallback rate is ${summary.recommendations.fallbackPct}%.`,
 		],
 		predictiveInsights: [
-			`Linear regression forecasts ${summary.modelOutputs.regressions[0].forecastNextPeriod} inquiries for the next comparable ${summary.period}.`,
-			`Inquiry trend is classified as ${summary.modelOutputs.regressions[0].trend} with R2 ${summary.modelOutputs.regressions[0].r2}.`,
-			conversionRisks[0] ? `${conversionRisks[0].entityName} is classified as ${conversionRisks[0].label} with probability ${conversionRisks[0].probability}.` : "No severe conversion-risk classification was detected.",
+			`Linear regression forecasts ${summary.modelOutputs.regressions[0].forecastNextPeriod} inquiries for the next day.`,
+			`Inquiry trend is classified as ${summary.modelOutputs.regressions[0].trend} with R2 ${summary.modelOutputs.regressions[0].r2} across ${summary.modelOutputs.regressions[0].observations} observed days.`,
+			conversionRisks[0] ? `${conversionRisks[0].entityName} is classified as ${conversionRisks[0].label} with risk score ${conversionRisks[0].score}.` : "No severe conversion-risk classification was detected.",
 		],
 		recommendedActions: [
 			"Review listings classified as conversion risk before increasing promotion spend.",
@@ -209,7 +240,8 @@ function fallbackReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary
 			summary.recommendations.fallbackPct > 60 ? "Recommendation fallback rate is high, which can weaken personalization." : "",
 			...conversionRisks.slice(0, 2).map((item) => `${item.entityName}: ${item.reason}`),
 		].filter(Boolean),
-		confidence: summary.dataQuality.hasSparseData ? "low" : summary.modelOutputs.regressions[0].r2 >= 0.45 ? "high" : "medium",
+		confidence: summary.dataQuality.hasSparseData ? "low" : summary.modelOutputs.regressions[0].observations >= 14 && summary.modelOutputs.regressions[0].r2 >= 0.45 ? "high" : "medium",
+		narrativeSource: "deterministic",
 	};
 }
 
@@ -229,6 +261,7 @@ function parseAiReport(content: string, summary: Awaited<ReturnType<typeof build
 			recommendedActions: recommendedActions.length ? recommendedActions : fallback.recommendedActions,
 			riskFlags: safeArray(parsed.riskFlags),
 			confidence: parsed.confidence === "high" || parsed.confidence === "medium" || parsed.confidence === "low" ? parsed.confidence : fallback.confidence,
+			narrativeSource: "ai",
 		};
 	} catch {
 		return fallbackReport(summary);
@@ -319,7 +352,7 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 		supabaseServer.from("inquiries").select("id, status, priority, lead_score, created_at").gte("created_at", start.toISOString()).lte("created_at", end.toISOString()).order("created_at", { ascending: false }).limit(1000),
 		supabaseServer.from("sessions").select("id", { count: "exact", head: true }).gte("last_seen_at", start.toISOString()).lte("last_seen_at", end.toISOString()),
 		supabaseServer.from("mv_listing_performance").select("*").limit(30),
-		supabaseServer.from("mv_daily_inquiry_volume").select("*").limit(period === "monthly" ? 60 : 30),
+		supabaseServer.from("mv_daily_inquiry_volume").select("*").limit(400),
 		supabaseServer.from("mv_traffic_sources").select("*").limit(12),
 		supabaseServer.from("mv_agent_performance").select("*").limit(12),
 		supabaseServer.from("recommendations").select("was_clicked, is_fallback, generated_at").gte("generated_at", start.toISOString()).lte("generated_at", end.toISOString()).limit(1500),
@@ -330,11 +363,12 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 	const recommendationRows = recommendations.data ?? [];
 	const clickedRecommendations = recommendationRows.filter((row) => row.was_clicked).length;
 	const fallbackRecommendations = recommendationRows.filter((row) => row.is_fallback).length;
-	const dailyRows = (dailyInquiryVolume.data ?? []).map((row) => ({
-		date: text(row.inquiry_date),
-		total: numberValue(row.total_inquiries),
+	const inquiryHistory = buildDailyInquirySeries(dailyInquiryVolume.data ?? [], historyDays(period));
+	const dailyRows = inquiryHistory.map((row) => ({
+		date: row.date,
+		total: row.total,
 	}));
-	const dailyPoints = dailyRows.map((row) => row.total).reverse();
+	const dailyPoints = inquiryHistory.map((row) => row.total);
 	const regression = linearRegression(dailyPoints);
 	const listingRows = (listingPerformance.data ?? [])
 		.map((row) => ({
@@ -406,11 +440,12 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 			classifications,
 		},
 		dataQuality: {
-			hasSparseData: inquiryRows.length < 10 || (events.data?.length ?? 0) < 50,
+			hasSparseData: inquiryRows.length < 10 || (events.data?.length ?? 0) < 50 || dailyPoints.filter((value) => value > 0).length < 7,
 			sampleSize: {
 				inquiries: inquiryRows.length,
 				events: events.data?.length ?? 0,
 				dailyPoints: dailyPoints.length,
+				observedInquiryDays: dailyPoints.filter((value) => value > 0).length,
 			},
 		},
 	};
@@ -519,7 +554,18 @@ export async function GET(request: Request) {
 
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
-	return NextResponse.json({ report: data?.report ?? null, storedReport: data ?? null });
+	if (!data) {
+		const generated = await createReport(period, admin.userId).catch((reportError) => {
+			const message = reportError instanceof Error ? reportError.message : "Unable to build AI analytics report.";
+			return { error: message };
+		});
+		if ("error" in generated) {
+			return NextResponse.json({ error: generated.error }, { status: 500 });
+		}
+		return NextResponse.json({ ...generated, storedReport: null });
+	}
+
+	return NextResponse.json({ report: data.report, storedReport: data });
 }
 
 export async function POST(request: Request) {

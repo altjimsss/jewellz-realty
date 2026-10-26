@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { AuthRecoveryListener } from "@/components/auth/AuthRecoveryListener";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body>
         <AuthRecoveryListener />
+        <PageViewTracker />
         {children}
       </body>
     </html>

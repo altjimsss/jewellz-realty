@@ -168,21 +168,91 @@ function groupByLabel<T>(rows: T[], getLabel: (row: T) => string) {
 	}, {});
 }
 
-function dailyEventRows(events: CmsRow[], days = 14, referenceDate?: string | null) {
-	const base = referenceDate ? new Date(`${referenceDate}T12:00:00`) : new Date();
-	const labels = Array.from({ length: days }, (_, index) => {
-		const date = new Date(base);
-		date.setDate(date.getDate() - (days - 1 - index));
-		return date.toISOString().slice(0, 10);
-	});
-	const counts = Object.fromEntries(labels.map((label) => [label, 0]));
+function utcDayKey(offsetDays = 0) {
+	const date = new Date();
+	date.setUTCHours(0, 0, 0, 0);
+	date.setUTCDate(date.getUTCDate() + offsetDays);
+	return date.toISOString().slice(0, 10);
+}
 
-	for (const event of events) {
-		const label = asText(event.created_at).slice(0, 10);
-		if (label in counts) counts[label] += 1;
+function dailyEngagementRows(events: CmsRow[], days = 14) {
+	const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
+	const buckets = new Map<string, { visitors: Set<string>; sessionViews: Map<string, number> }>();
+	for (let offset = -(days - 1); offset <= 0; offset += 1) {
+		buckets.set(utcDayKey(offset), { visitors: new Set<string>(), sessionViews: new Map<string, number>() });
 	}
 
-	return labels.map((label) => ({ date: label.slice(5), visitors: counts[label] }));
+	for (const event of events) {
+		if (!viewTypes.has(asText(event.event_type))) continue;
+		const key = asText(event.created_at).slice(0, 10);
+		const bucket = buckets.get(key);
+		if (!bucket) continue;
+		const visitor = asText(event.session_id);
+		if (!visitor) continue;
+		bucket.visitors.add(visitor);
+		bucket.sessionViews.set(visitor, (bucket.sessionViews.get(visitor) ?? 0) + 1);
+	}
+
+	return Array.from(buckets.entries()).map(([date, bucket]) => {
+		const sessions = bucket.sessionViews.size;
+		const singleViewSessions = Array.from(bucket.sessionViews.values()).filter((count) => count <= 1).length;
+		return {
+			date: date.slice(5),
+			sessions,
+			visitors: bucket.visitors.size,
+			bounceRate: sessions ? Number(((singleViewSessions / sessions) * 100).toFixed(1)) : 0,
+		};
+	});
+}
+
+function dailyInquirySeries(rows: CmsRow[], days = 21) {
+	const counts = new Map<string, number>();
+	for (const row of rows) {
+		const key = asText(row.inquiry_date).slice(0, 10);
+		if (!key) continue;
+		counts.set(key, (counts.get(key) ?? 0) + (toNullableNumber(row.total_inquiries) ?? 0));
+	}
+
+	return Array.from({ length: days }, (_, index) => {
+		const key = utcDayKey(-(days - 1 - index));
+		return { date: key.slice(5), value: counts.get(key) ?? 0 };
+	});
+}
+
+function buildDemandForecast(rows: CmsRow[], historyDays = 21, forecastDays = 7) {
+	const series = dailyInquirySeries(rows, historyDays);
+	const regression = localRegression(series.map((row) => row.value));
+	const forecast = Array.from({ length: forecastDays }, (_, index) => ({
+		date: utcDayKey(index + 1).slice(5),
+		value: Number(Math.max(0, regression.intercept + regression.slope * (historyDays + index + 1)).toFixed(2)),
+	}));
+
+	return { series, forecast, regression };
+}
+
+function monthlyPriceSeries(properties: CmsRow[]) {
+	const months = new Map<string, number[]>();
+	for (const property of properties) {
+		const price = propertyPrice(property);
+		const month = asText(property.created_at).slice(0, 7);
+		if (price <= 0 || !/^\d{4}-\d{2}$/.test(month)) continue;
+		months.set(month, [...(months.get(month) ?? []), price]);
+	}
+
+	return Array.from(months.entries())
+		.sort(([first], [second]) => first.localeCompare(second))
+		.map(([month, prices]) => ({
+			month,
+			label: new Date(`${month}-01T00:00:00Z`).toLocaleString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }),
+			average: Math.round(numberAverage(prices)),
+			count: prices.length,
+		}));
+}
+
+function nextMonthLabel(month: string) {
+	const [year, monthNumber] = month.split("-").map(Number);
+	const date = new Date(Date.UTC(year, monthNumber, 1));
+	return date.toLocaleString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
 }
 
 function histogram(values: number[], bucketCount = 8) {
@@ -236,7 +306,7 @@ function ChartEmptyState({ message }: { message: string }) {
 function AiCategoryInsight({ title, insight, actions }: { title: string; insight: string; actions: string[] }) {
 	return (
 		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
-			<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">AI Insight</div>
+			<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
 			<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
 			<p className="mt-2 text-sm leading-6 text-white/70">{insight}</p>
 			<div className="mt-4 grid gap-2 md:grid-cols-3">
@@ -244,6 +314,88 @@ function AiCategoryInsight({ title, insight, actions }: { title: string; insight
 					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
 				))}
 			</div>
+		</div>
+	);
+}
+
+type AiAnalyticsReport = {
+	title: string;
+	executiveSummary: string;
+	descriptiveFindings: string[];
+	predictiveInsights: string[];
+	recommendedActions: string[];
+	riskFlags: string[];
+	confidence: "low" | "medium" | "high";
+	narrativeSource?: "ai" | "deterministic";
+};
+
+function AiAnalyticsNarrative() {
+	const [state, setState] = useState<{ loading: boolean; error?: string; report?: AiAnalyticsReport; generatedAt?: string }>({ loading: true });
+
+	useEffect(() => {
+		let active = true;
+		void (async () => {
+			try {
+				const response = await fetch("/api/admin/ai-analytics-report?period=weekly", { cache: "no-store" });
+				const data = await response.json().catch(() => null) as { report?: AiAnalyticsReport | null; storedReport?: { created_at?: string } | null; error?: string } | null;
+				if (!response.ok) throw new Error(data?.error || "Unable to load the AI analytics report.");
+				if (!active) return;
+				setState({ loading: false, report: data?.report ?? undefined, generatedAt: data?.storedReport?.created_at });
+			} catch (error) {
+				if (!active) return;
+				setState({ loading: false, error: error instanceof Error ? error.message : "Unable to load the AI analytics report." });
+			}
+		})();
+		return () => {
+			active = false;
+		};
+	}, []);
+
+	const report = state.report;
+	const sourceLabel = report?.narrativeSource === "ai" ? "AI narrative" : report?.narrativeSource === "deterministic" ? "Deterministic fallback" : "Stored report";
+
+	return (
+		<div className="rounded-2xl border border-black/10 bg-white p-4">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">AI Analytics Report</div>
+					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#111111]">{report?.title || "Weekly report"}</h4>
+				</div>
+				<div className="flex flex-wrap items-center gap-2">
+					{report ? <span className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${report.narrativeSource === "ai" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{sourceLabel}</span> : null}
+					{report ? <span className="rounded-md bg-zinc-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">{report.confidence} confidence</span> : null}
+				</div>
+			</div>
+
+			{state.loading ? <p className="mt-3 text-sm text-black/55">Building the report from tracked sessions, inquiries, listings, and recommendation data...</p> : null}
+			{state.error ? <p className="mt-3 text-sm text-red-600">{state.error}</p> : null}
+			{report ? (
+				<div className="mt-3 space-y-4">
+					<p className="text-sm leading-6 text-black/65">{report.executiveSummary}</p>
+					{report.predictiveInsights.length ? (
+						<div>
+							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">Predictive insights</p>
+							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-black/70">
+								{report.predictiveInsights.map((insight) => <li key={insight}>• {insight}</li>)}
+							</ul>
+						</div>
+					) : null}
+					{report.recommendedActions.length ? (
+						<div>
+							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">Recommended actions</p>
+							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-black/70">
+								{report.recommendedActions.slice(0, 3).map((action) => <li key={action}>• {action}</li>)}
+							</ul>
+						</div>
+					) : null}
+					{report.riskFlags.length ? (
+						<div className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+							{report.riskFlags.map((risk) => <p key={risk}>{risk}</p>)}
+						</div>
+					) : null}
+				</div>
+			) : null}
+			{state.generatedAt ? <p className="mt-3 text-[11px] text-black/40">Stored {new Date(state.generatedAt).toLocaleString()}</p> : null}
 		</div>
 	);
 }
@@ -318,6 +470,7 @@ function AnalyticsVisualSuite({
 	listingRows,
 	inquiryVolumeRows,
 	trafficRows,
+	sessions,
 	events,
 }: {
 	category: AnalyticsCategory;
@@ -326,16 +479,18 @@ function AnalyticsVisualSuite({
 	listingRows: Array<{ title: string; total_views: number; detail_opens: number; total_interactions: number; total_inquiries: number; inquiry_rate_pct: number; avg_dwell_seconds: number }>;
 	inquiryVolumeRows: Array<{ inquiry_date: string; total_inquiries: number }>;
 	trafficRows: Array<{ source: string; session_count: number; total_page_views: number; share_pct: number }>;
+	sessions: CmsRow[];
 	events: CmsRow[];
 }) {
-	const visitorsOverTime = dailyEventRows(events);
-	const visitorsAreLive = hasMeaningfulChartValue(visitorsOverTime, ["visitors"]);
+	const visitorsOverTime = dailyEngagementRows(events);
+	const visitorsAreLive = hasMeaningfulChartValue(visitorsOverTime, ["sessions", "visitors"]);
 	const trafficPieIsLive = hasMeaningfulChartValue(trafficRows, ["session_count"]);
 	const trafficPie = trafficRows.map((row) => ({ name: row.source || "Unknown", value: row.session_count }));
 	const mostViewedRaw = listingRows.slice().sort((a, b) => b.total_views - a.total_views).slice(0, 8);
 	const mostViewedIsLive = hasMeaningfulChartValue(mostViewedRaw, ["total_views"]);
 	const mostViewed = mostViewedRaw;
-	const bounceRows = visitorsOverTime.map((row, index) => ({ ...row, bounceRate: Math.max(18, Math.min(78, 62 - row.visitors * 2 + index % 3 * 4)) }));
+	const bounceRows = visitorsOverTime;
+	const bounceIsLive = visitorsOverTime.some((row) => row.sessions > 0);
 	const priceByLocationRaw = Object.entries(groupByLabel(properties, locationLabel))
 		.map(([location, rows]) => ({ location, price: Math.round(numberAverage(rows.map(propertyPrice))) }))
 		.filter((row) => row.price > 0)
@@ -346,81 +501,28 @@ function AnalyticsVisualSuite({
 	const viewsVsInquiriesRaw = listingRows.slice().sort((a, b) => b.total_views - a.total_views).slice(0, 8);
 	const viewsVsInquiriesIsLive = hasMeaningfulChartValue(viewsVsInquiriesRaw, ["total_views", "total_inquiries"]);
 	const viewsVsInquiries = viewsVsInquiriesRaw;
-	const pricePointsRaw = properties
-		.map((row, index) => ({ index: index + 1, price: propertyPrice(row) }))
-		.filter((row) => row.price > 0)
-		.sort((a, b) => a.index - b.index);
-	const pricePointsAreLive = hasMeaningfulChartValue(pricePointsRaw, ["price"]);
-	const pricePoints = pricePointsRaw;
-	const priceRegression = localRegression(pricePoints.map((row) => row.price));
-	const priceForecastRows = pricePoints.slice(-8).map((row, index) => ({
-		step: `P${index + 1}`,
-		price: row.price,
-		forecast: Math.max(0, priceRegression.intercept + priceRegression.slope * (pricePoints.length - Math.min(7, pricePoints.length - 1) + index)),
-		low: Math.max(0, row.price * 0.92),
-		high: row.price * 1.08,
-	}));
-	const priceConfidenceOption = {
-		grid: { top: 18, right: 18, bottom: 28, left: 54 },
-		tooltip: { trigger: "axis" },
-		xAxis: {
-			type: "category",
-			data: priceForecastRows.map((row) => row.step),
-			axisLabel: { color: "#71717a", fontSize: 11 },
-			axisTick: { show: false },
-			axisLine: { lineStyle: { color: "#e5e7eb" } },
-		},
-		yAxis: {
-			type: "value",
-			axisLabel: { color: "#71717a", fontSize: 11, formatter: (value: number) => `${Math.round(value / 1000000)}m` },
-			splitLine: { lineStyle: { color: "#eeeeee" } },
-		},
-		series: [
-			{
-				name: "Low estimate",
-				type: "line",
-				data: priceForecastRows.map((row) => row.low),
-				lineStyle: { opacity: 0 },
-				stack: "confidence-band",
-				symbol: "none",
-			},
-			{
-				name: "Confidence band",
-				type: "line",
-				data: priceForecastRows.map((row) => Math.max(0, row.high - row.low)),
-				lineStyle: { opacity: 0 },
-				areaStyle: { color: "rgba(37,99,235,0.14)" },
-				stack: "confidence-band",
-				symbol: "none",
-			},
-			{
-				name: "Actual price",
-				type: "line",
-				data: priceForecastRows.map((row) => row.price),
-				smooth: true,
-				symbolSize: 6,
-				lineStyle: { color: "#111111", width: 3 },
-				itemStyle: { color: "#111111" },
-			},
-			{
-				name: "Forecast",
-				type: "line",
-				data: priceForecastRows.map((row) => row.forecast),
-				smooth: true,
-				symbolSize: 6,
-				lineStyle: { color: "#2563eb", width: 3, type: "dashed" },
-				itemStyle: { color: "#2563eb" },
-			},
-		],
-	};
-	const demandRegression = localRegression(inquiryVolumeRows.map((row) => row.total_inquiries).reverse());
-	const demandRowsRaw = inquiryVolumeRows.slice(-10).map((row, index) => ({
-		date: asText(row.inquiry_date).slice(5),
-		demand: row.total_inquiries,
-		forecast: Math.max(0, demandRegression.intercept + demandRegression.slope * (index + 1)),
-	}));
-	const demandRowsAreLive = hasMeaningfulChartValue(demandRowsRaw, ["demand"]);
-	const demandRows = demandRowsRaw;
+	const monthlyPrices = monthlyPriceSeries(properties);
+	const priceTrendIsLive = monthlyPrices.length > 0;
+	const priceRegression = localRegression(monthlyPrices.map((row) => row.average));
+	const priceForecastIsLive = monthlyPrices.length >= 2 && monthlyPrices.some((row) => row.average > 0);
+	const priceForecastMonth = monthlyPrices.length ? nextMonthLabel(monthlyPrices[monthlyPrices.length - 1].month) : "";
+	const priceForecastValue = priceForecastIsLive ? Math.max(0, priceRegression.intercept + priceRegression.slope * (monthlyPrices.length + 1)) : 0;
+	const priceTrendRows = [
+		...monthlyPrices.map((row, index) => ({
+			label: row.label,
+			average: row.average,
+			forecast: index === monthlyPrices.length - 1 && priceForecastIsLive ? row.average : null,
+			listings: row.count,
+		})),
+		...(priceForecastIsLive ? [{ label: priceForecastMonth, average: null, forecast: Math.round(priceForecastValue), listings: 0 }] : []),
+	];
+	const demand = buildDemandForecast(inquiryVolumeRows, 21, 7);
+	const demandRegression = demand.regression;
+	const demandRows = [
+		...demand.series.map((row, index) => ({ date: row.date, demand: row.value, forecast: index === demand.series.length - 1 ? row.value : null })),
+		...demand.forecast.map((row) => ({ date: row.date, demand: null, forecast: row.value })),
+	];
+	const demandRowsAreLive = demand.series.some((row) => row.value > 0);
 	const priceHistogramRaw = histogram(properties.map(propertyPrice));
 	const priceHistogramIsLive = hasMeaningfulChartValue(priceHistogramRaw, ["count"]);
 	const priceHistogram = priceHistogramRaw;
@@ -504,11 +606,17 @@ function AnalyticsVisualSuite({
 	const durationRowsRaw = histogram(listingRows.map((row) => row.avg_dwell_seconds), 7);
 	const durationRowsAreLive = hasMeaningfulChartValue(durationRowsRaw, ["count"]);
 	const durationRows = durationRowsRaw;
-	const sessions = trafficRows.reduce((sum, row) => sum + row.session_count, 0);
-	const pageViews = trafficRows.reduce((sum, row) => sum + row.total_page_views, 0);
-	const returningUsers = Math.max(0, Math.min(sessions, pageViews - sessions));
-	const newUsers = Math.max(0, sessions - returningUsers);
-	const userTypeRows = sessions ? [{ name: "New", value: newUsers }, { name: "Returning", value: returningUsers }] : [];
+	let returningUsers = 0;
+	let newUsers = 0;
+	for (const session of sessions) {
+		const startedAt = asText(session.started_at).slice(0, 10);
+		const lastSeenAt = asText(session.last_seen_at).slice(0, 10);
+		if (!startedAt || !lastSeenAt) continue;
+		if (lastSeenAt > startedAt) returningUsers += 1;
+		else newUsers += 1;
+	}
+	const totalVisitors = newUsers + returningUsers;
+	const userTypeRows = totalVisitors ? [{ name: "New", value: newUsers }, { name: "Returning", value: returningUsers }] : [];
 	const trafficInsight = {
 		title: "Traffic & behavior readout",
 		insight: trafficRows[0]
@@ -525,29 +633,30 @@ function AnalyticsVisualSuite({
 	};
 	const predictiveInsight = {
 		title: "Predictive readout",
-		insight: `Demand trend is ${demandRegression.trend}; the next-period forecast is ${demandRegression.forecastNextPeriod}. Price trend confidence is R2 ${priceRegression.r2}. Treat low-R2 forecasts as directional only.`,
+		insight: `The inquiry trend over the last ${demand.series.length} days is ${demandRegression.trend}; the next-day forecast is ${demandRegression.forecastNextPeriod} inquiries, with R2 ${demandRegression.r2}. The ${priceTrendIsLive ? "monthly asking-price trend" : "asking-price forecast"} ${priceTrendIsLive ? `has R2 ${priceRegression.r2}` : "is waiting for listings recorded across at least two months"}. Treat low-R2 forecasts as directional only.`,
 		actions: ["Use forecasts as early warning, not certainty.", "Validate predicted demand against next report.", "Flag large price outliers for review."],
 	};
 	const engagementInsight = {
 		title: "Engagement readout",
-		insight: `The funnel currently shows ${totalViews} views, ${totalDetailOpens} engagement actions, and ${totalInquiries} inquiries. Focus on the step with the sharpest drop.`,
-		actions: ["Improve CTAs where views do not become inquiries.", "Track saved properties if you add wishlist behavior.", "Use dwell-time outliers to find strong listings."],
+		insight: `The funnel currently shows ${totalViews} views, ${totalDetailOpens} detail/gallery/map interactions, and ${totalInquiries} inquiries. Focus on the step with the sharpest drop.`,
+		actions: ["Improve CTAs where views do not become inquiries.", "Use gallery and map interactions to find listing intent.", "Use dwell-time outliers to find strong listings."],
 	};
 
 	return (
 		<div className="mt-5 space-y-5">
 			{category === "trafficBehavior" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Visitors over time" description="Recent analytics events by day." isLive={visitorsAreLive}>
+					<AnalyticsChartCard title="Sessions & visitors over time" description="Distinct sessions and visitors per day from tracked page views." isLive={visitorsAreLive}>
 						{visitorsAreLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={visitorsOverTime} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="visitors" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="visitors" name="Unique visitors" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="sessions" name="Sessions" stroke="#71717a" strokeWidth={2} strokeDasharray="5 4" dot={false} />
 							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="No analytics_events rows have been recorded for the recent visitor window yet." />}
+						</ResponsiveContainer> : <ChartEmptyState message="No sessions have been recorded for the recent visitor window yet." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Traffic sources" description="Organic, direct, social, referral, and UTM/session sources." isLive={trafficPieIsLive}>
 						{trafficPieIsLive ? <ResponsiveContainer width="100%" height="100%">
@@ -570,8 +679,8 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No listing view counts yet. Property page tracking must write property_view events first." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Bounce rate over time" description="Estimated from low-engagement traffic patterns." isLive={visitorsAreLive}>
-						{visitorsAreLive ? <ResponsiveContainer width="100%" height="100%">
+					<AnalyticsChartCard title="Bounce rate over time" description="Share of sessions with one or fewer page views." isLive={bounceIsLive}>
+						{bounceIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={bounceRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
@@ -579,7 +688,7 @@ function AnalyticsVisualSuite({
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="bounceRate" name="Bounce rate" stroke="#71717a" strokeWidth={2.5} dot={false} />
 							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="Bounce rate needs real session/page-view behavior before it can be calculated." />}
+						</ResponsiveContainer> : <ChartEmptyState message="Bounce rate needs tracked sessions with page-view counts before it can be calculated." />}
 					</AnalyticsChartCard>
 				</div>
 				<div className="mt-4"><AiCategoryInsight {...trafficInsight} /></div>
@@ -587,16 +696,17 @@ function AnalyticsVisualSuite({
 
 			{category === "propertyPerformance" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Price trends over time" description="Line chart from real listing prices." isLive={pricePointsAreLive}>
-						{pricePointsAreLive ? <ResponsiveContainer width="100%" height="100%">
-							<LineChart data={priceForecastRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+					<AnalyticsChartCard title="Average asking price by listing month" description="Monthly average of recorded listing prices, not synthetic price points." isLive={priceTrendIsLive}>
+						{priceTrendIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={priceTrendRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
-								<XAxis dataKey="step" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="price" name="Price" stroke="#111111" strokeWidth={2.5} dot={false} />
+								<Line type="monotone" dataKey="average" name="Average price" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="forecast" name="Next month forecast" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
 							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="No property price values are available yet." />}
+						</ResponsiveContainer> : <ChartEmptyState message="Monthly price trends need listings with a numeric price and created_at date." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Price comparison across locations" description="Bar chart of average listing price by city or area." isLive={priceByLocationIsLive}>
 						{priceByLocationIsLive ? <ResponsiveContainer width="100%" height="100%">
@@ -630,10 +740,19 @@ function AnalyticsVisualSuite({
 
 			{category === "predictiveAnalytics" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Forecasted price trend" description="Line chart with confidence band from real property prices." isLive={pricePointsAreLive}>
-						{pricePointsAreLive ? <EChart option={priceConfidenceOption} /> : <ChartEmptyState message="Forecasting needs real listing prices. Add property prices to calculate the trend and confidence band." />}
+					<AnalyticsChartCard title="Asking-price forecast" description="Monthly average asking price plus a next-month linear-regression forecast." isLive={priceForecastIsLive}>
+						{priceForecastIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={priceTrendRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
+								<Tooltip content={<CmsChartTooltip />} />
+								<Line type="monotone" dataKey="average" name="Average price" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="forecast" name="Forecast" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
+							</LineChart>
+						</ResponsiveContainer> : <ChartEmptyState message="The asking-price forecast needs listings with prices recorded across at least two months." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Demand forecast" description="Area chart from real inquiry volume." isLive={demandRowsAreLive}>
+					<AnalyticsChartCard title="Demand forecast" description="Daily inquiries for the last 21 days plus a 7-day linear-regression forecast." isLive={demandRowsAreLive}>
 						{demandRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
 							<AreaChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -643,7 +762,7 @@ function AnalyticsVisualSuite({
 								<Area type="monotone" dataKey="demand" name="Demand" stroke="#111111" fill="#111111" fillOpacity={0.12} strokeWidth={2.5} />
 								<Line type="monotone" dataKey="forecast" name="Forecast" stroke="#2563eb" strokeWidth={2.5} dot={false} />
 							</AreaChart>
-						</ResponsiveContainer> : <ChartEmptyState message="Demand forecast needs daily inquiry volume rows from mv_daily_inquiry_volume." />}
+						</ResponsiveContainer> : <ChartEmptyState message="The demand forecast needs recorded inquiries in the last 21 days." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Price distribution" description="Histogram of real listing prices." isLive={priceHistogramIsLive}>
 						{priceHistogramIsLive ? <ResponsiveContainer width="100%" height="100%">
@@ -660,13 +779,14 @@ function AnalyticsVisualSuite({
 						{clusterRowsAreLive ? <EChart option={clusterOption} /> : <ChartEmptyState message="Property clustering needs listings with price and area/sqm values." />}
 					</AnalyticsChartCard>
 				</div>
+				<div className="mt-4"><AiAnalyticsNarrative /></div>
 				<div className="mt-4"><AiCategoryInsight {...predictiveInsight} /></div>
 			</div> : null}
 
 			{category === "userEngagement" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Conversion funnel" description="Viewed to saved to inquired." isLive={funnelRowsAreLive}>
-						{funnelRowsAreLive ? <EChart option={funnelOption} /> : <ChartEmptyState message="The funnel needs real view, saved/detail-open, and inquiry events." />}
+					<AnalyticsChartCard title="Conversion funnel" description="Viewed to detail/gallery/map engagement to inquired." isLive={funnelRowsAreLive}>
+						{funnelRowsAreLive ? <EChart option={funnelOption} /> : <ChartEmptyState message="The funnel needs recorded views, engagement events, or inquiries." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Session duration" description="Bar chart from recorded property dwell time." isLive={durationRowsAreLive}>
 						{durationRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
@@ -679,15 +799,15 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Session duration needs property dwell-time rows from property analytics events." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Returning vs new users" description="Donut chart from captured session identity." isLive={sessions > 0}>
-						{sessions > 0 ? <ResponsiveContainer width="100%" height="100%">
+					<AnalyticsChartCard title="Returning vs new visitors" description="Distinct visitors grouped by whether they have one or multiple sessions." isLive={totalVisitors > 0}>
+						{totalVisitors > 0 ? <ResponsiveContainer width="100%" height="100%">
 							<PieChart>
 								<Pie data={userTypeRows} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
 									{userTypeRows.map((_, index) => <Cell key={index} fill={analyticsColors[index % analyticsColors.length]} />)}
 								</Pie>
 								<Tooltip content={<CmsChartTooltip />} />
 							</PieChart>
-						</ResponsiveContainer> : <ChartEmptyState message="New vs returning needs real sessions with session IDs and repeat page-view counts." />}
+						</ResponsiveContainer> : <ChartEmptyState message="New vs returning visitors needs tracked sessions with visitor IDs." />}
 					</AnalyticsChartCard>
 				</div>
 				<div className="mt-4"><AiCategoryInsight {...engagementInsight} /></div>
@@ -1672,6 +1792,7 @@ function AnalyticsPanel({
 	agentPerformance,
 	developerPortfolio,
 	engagementEvents,
+	sessions,
 	selectedPortfolioDeveloperId,
 	selectedPortfolioPropertyId,
 	onSelectPortfolioDeveloper,
@@ -1689,6 +1810,7 @@ function AnalyticsPanel({
 	agentPerformance: CmsRow[];
 	developerPortfolio: CmsRow[];
 	engagementEvents: CmsRow[];
+	sessions: CmsRow[];
 	selectedPortfolioDeveloperId: string | null;
 	selectedPortfolioPropertyId: string | null;
 	onSelectPortfolioDeveloper: (id: string | null) => void;
@@ -1805,8 +1927,20 @@ function AnalyticsPanel({
 	const showAgentReport = activeReport === "agentPerformance";
 	const showDeveloperReport = activeReport === "developerPortfolio";
 	const developerPortfolioLevel = selectedPortfolioProperty ? "property" : selectedPortfolioDeveloper ? "developer" : "portfolio";
-	const overviewTrafficRows = dailyEventRows(engagementEvents, 7, selectedDateFilter);
-	const weeklyVisitors = overviewTrafficRows.reduce((sum, row) => sum + row.visitors, 0);
+	const weekStart = new Date();
+	weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+	const weekStartKey = weekStart.toISOString().slice(0, 10);
+	const viewEventTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
+	const weeklyVisitorKeys = new Set<string>();
+	for (const event of engagementEvents) {
+		if (!viewEventTypes.has(asText(event.event_type))) continue;
+		if (asText(event.created_at).slice(0, 10) < weekStartKey) continue;
+		const visitor = asText(event.session_id);
+		if (visitor) weeklyVisitorKeys.add(visitor);
+	}
+	const weeklyVisitors = weeklyVisitorKeys.size;
+	const overviewDemand = buildDemandForecast(dailyInquiryVolume, 21, 7);
+	const nextDayForecast = overviewDemand.forecast[0]?.value ?? 0;
 	const topListing = listingChartRows.slice().sort((a, b) => b.total_views - a.total_views)[0] ?? null;
 	const totalListingViews = listingChartRows.reduce((sum, row) => sum + row.total_views, 0);
 	const funnelCompletionRate = totalListingViews ? (inquiries.length / totalListingViews) * 100 : 0;
@@ -1815,14 +1949,7 @@ function AnalyticsPanel({
 		return status === "active" || status === "published" || status === "available";
 	}).length || properties.length;
 	const avgPropertyPrice = numberAverage(properties.map(propertyPrice));
-	const appreciationArea = Object.entries(groupByLabel(properties, locationLabel))
-		.map(([location, rows]) => ({
-			location,
-			score: Math.round(numberAverage(rows.map(propertyPrice)) / 100000),
-			count: rows.length,
-		}))
-		.filter((row) => row.score > 0)
-		.sort((a, b) => b.score - a.score)[0] ?? null;
+
 
 	return (
 		<div>
@@ -1885,7 +2012,7 @@ function AnalyticsPanel({
 							</div>
 							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{weeklyVisitors.toLocaleString()}</div>
 						</div>
-						<p className="mt-3 text-xs leading-relaxed text-black/50">Weekly unique visitor traffic from recorded analytics events.</p>
+						<p className="mt-3 text-xs leading-relaxed text-black/50">Distinct visitors with at least one tracked session in the last 7 days.</p>
 					</div>
 
 					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
@@ -1911,15 +2038,13 @@ function AnalyticsPanel({
 					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
 						<div>
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Predictive Growth</span>
-								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Area Hub</span>
+								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Next-Day Demand</span>
+								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Forecast</span>
 							</div>
-							<div className="mt-3 truncate text-base font-semibold text-[#111111]" title={appreciationArea?.location || "Needs data"}>
-								{appreciationArea?.location || "Needs data"}
-							</div>
+							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{nextDayForecast.toFixed(1)}</div>
 						</div>
 						<p className="mt-3 text-xs leading-relaxed text-black/50">
-							{appreciationArea ? `Leading price appreciation proxy across ${appreciationArea.count} active listing${appreciationArea.count > 1 ? "s" : ""}.` : "Listing prices needed to generate area forecasts."}
+							Linear-regression inquiry forecast from the last 21 days ({overviewDemand.regression.trend} trend, R2 {overviewDemand.regression.r2}).
 						</p>
 					</div>
 
@@ -1964,6 +2089,7 @@ function AnalyticsPanel({
 						listingRows={listingChartRows}
 						inquiryVolumeRows={inquiryVolumeRows}
 						trafficRows={trafficChartRows}
+						sessions={sessions}
 						events={engagementEvents}
 					/>
 				</div>
@@ -2675,6 +2801,7 @@ export default function AdminCms({
 				developerPortfolioResult,
 				recommendationsResult,
 				engagementEventsResult,
+				sessionsResult,
 				profilesResult,
 				activityLogsResult,
 			] = await Promise.all([
@@ -2692,7 +2819,8 @@ export default function AdminCms({
 				supabaseBrowser.from("mv_agent_performance").select("*"),
 				supabaseBrowser.from("mv_developer_portfolio").select("*"),
 				supabaseBrowser.from("recommendations").select("id, was_clicked, is_fallback, clicked_at, generated_at"),
-				supabaseBrowser.from("analytics_events").select("id, event_type, created_at").order("created_at", { ascending: false }).limit(1000),
+				supabaseBrowser.from("analytics_events").select("id, event_type, session_id, created_at").order("created_at", { ascending: false }).limit(1000),
+				supabaseBrowser.from("sessions").select("id, anonymous_visitor_id, page_view_count, started_at, last_seen_at").order("last_seen_at", { ascending: false }).limit(2000),
 				supabaseBrowser.from("profiles").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100),
 			]);
@@ -2712,6 +2840,7 @@ export default function AdminCms({
 			nextWorkspace.developerPortfolio = developerPortfolioResult.data ?? [];
 			nextWorkspace.recommendations = recommendationsResult.data ?? [];
 			nextWorkspace.engagementEvents = engagementEventsResult.data ?? [];
+			nextWorkspace.sessions = sessionsResult.data ?? [];
 			nextWorkspace.profiles = profilesResult.data ?? [];
 			nextWorkspace.activityLogs = activityLogsResult.data ?? [];
 		} else if (activeIsDeveloper && developerId) {
@@ -3972,7 +4101,7 @@ export default function AdminCms({
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
-							<AnalyticsPanel activeReport={currentSection} isAdmin={isAdmin} properties={workspace.properties} inquiries={filteredInquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} dailyInquiryVolume={workspace.dailyInquiryVolume} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} engagementEvents={filteredEngagementEvents} selectedPortfolioDeveloperId={selectedPortfolioDeveloperId} selectedPortfolioPropertyId={selectedPortfolioPropertyId} onSelectPortfolioDeveloper={setSelectedPortfolioDeveloperId} onSelectPortfolioProperty={setSelectedPortfolioPropertyId} selectedDateFilter={selectedDateFilter} />
+							<AnalyticsPanel activeReport={currentSection} isAdmin={isAdmin} properties={workspace.properties} inquiries={filteredInquiries} recommendations={workspace.recommendations} listingPerformance={workspace.listingPerformance} dailyInquiryVolume={workspace.dailyInquiryVolume} trafficSources={workspace.trafficSources} agentPerformance={workspace.agentPerformance} developerPortfolio={workspace.developerPortfolio} engagementEvents={filteredEngagementEvents} sessions={workspace.sessions} selectedPortfolioDeveloperId={selectedPortfolioDeveloperId} selectedPortfolioPropertyId={selectedPortfolioPropertyId} onSelectPortfolioDeveloper={setSelectedPortfolioDeveloperId} onSelectPortfolioProperty={setSelectedPortfolioPropertyId} selectedDateFilter={selectedDateFilter} />
 						) : null}
 
 						{currentSection === "activityLogs" && isAdmin ? (
