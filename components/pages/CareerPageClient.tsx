@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import SectionHeader from "@/components/layout/SectionHeader";
+import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -57,24 +58,83 @@ const jobs: Job[] = [
 
 type ModalState = { open: false } | { open: true; job: Job };
 
+type ApplicationErrors = Partial<Record<"name" | "email" | "phone" | "subject" | "cv", string>>;
+
 function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
+	const backdropPointerDown = useRef(false);
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [form, setForm] = useState({
-		name: "", email: "", phone: "", referral: "", subject: "", cv: "", message: "",
+		name: "", email: "", phone: "", referral: "", subject: "", message: "",
 	});
+	const [cvFile, setCvFile] = useState<File | null>(null);
+	const [errors, setErrors] = useState<ApplicationErrors>({});
 	const [status, setStatus] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 
+	const emailError = form.email.trim() ? emailValidationMessage(form.email) : errors.email ?? "";
+	const phoneError = form.phone.trim() ? phoneValidationMessage(form.phone) : errors.phone ?? "";
+
+	function handleCvFile(file: File | null) {
+		if (!file) {
+			setCvFile(null);
+			return;
+		}
+		const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+		if (!isPdf) {
+			setCvFile(null);
+			setErrors((current) => ({ ...current, cv: "Only PDF files are accepted." }));
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			return;
+		}
+		if (file.size > 5 * 1024 * 1024) {
+			setCvFile(null);
+			setErrors((current) => ({ ...current, cv: "The PDF must be 5 MB or smaller." }));
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			return;
+		}
+		setCvFile(file);
+		setErrors((current) => ({ ...current, cv: undefined }));
+	}
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
+
+		const nextErrors: ApplicationErrors = {
+			name: form.name.trim() ? undefined : "Your name is required.",
+			email: emailValidationMessage(form.email),
+			phone: phoneValidationMessage(form.phone),
+			subject: form.subject.trim() ? undefined : "Subject is required.",
+			cv: cvFile ? undefined : "Please upload your CV / resume as a PDF.",
+		};
+		if (Object.values(nextErrors).some(Boolean)) {
+			setErrors(nextErrors);
+			setStatus("Please fix the highlighted fields before applying.");
+			return;
+		}
+
+		setErrors({});
 		setSubmitting(true);
-		setStatus("Submitting your application...");
 
 		try {
+			if (!cvFile) return;
+			setStatus("Uploading your CV...");
+			const uploadBody = new FormData();
+			uploadBody.append("file", cvFile);
+			const uploadResponse = await fetch("/api/career/upload", { method: "POST", body: uploadBody });
+			const uploadData = (await uploadResponse.json().catch(() => null)) as { url?: string; error?: string } | null;
+			if (!uploadResponse.ok || !uploadData?.url) {
+				setStatus(uploadData?.error ?? "Unable to upload your CV right now. Please try again.");
+				setSubmitting(false);
+				return;
+			}
+
+			setStatus("Submitting your application...");
 			const response = await fetch("/api/career/applications", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					...form,
+					cv: uploadData.url,
 					jobId: job.id,
 					positionTitle: job.title,
 				}),
@@ -88,7 +148,10 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 			}
 
 			setStatus("Application submitted. Our admin team can now review it in the dashboard.");
-			setForm({ name: "", email: "", phone: "", referral: "", subject: "", cv: "", message: "" });
+			setForm({ name: "", email: "", phone: "", referral: "", subject: "", message: "" });
+			setCvFile(null);
+			setErrors({});
+			if (fileInputRef.current) fileInputRef.current.value = "";
 			setSubmitting(false);
 		} catch {
 			setStatus("Unable to submit right now. Please try again.");
@@ -99,7 +162,16 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 	return (
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+			onMouseDown={(e) => {
+				// Only treat it as a backdrop dismissal when the drag *started* on the
+				// backdrop. Selecting text in a field and releasing outside should not
+				// close the form.
+				backdropPointerDown.current = e.target === e.currentTarget;
+			}}
+			onClick={(e) => {
+				if (e.target === e.currentTarget && backdropPointerDown.current) onClose();
+				backdropPointerDown.current = false;
+			}}
 		>
 			<div className="relative w-full max-w-[580px] rounded-2xl bg-white px-8 py-8 shadow-xl">
 				{/* Close */}
@@ -116,45 +188,79 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 				<h2 className="text-[20px] font-semibold text-[#111111]">Application Form</h2>
 				<p className="mt-0.5 text-[12px] text-black/45">{job.title}</p>
 
-				<form onSubmit={handleSubmit} className="mt-6">
+				<form onSubmit={handleSubmit} noValidate className="mt-6">
 					{/* Row 1 */}
 					<div className="grid grid-cols-3 gap-2.5">
 						{[
 							{ key: "name", placeholder: "Your Name *", type: "text" },
 							{ key: "email", placeholder: "Your Email *", type: "email" },
 							{ key: "phone", placeholder: "Your Phone *", type: "tel" },
-						].map(({ key, placeholder, type }) => (
-							<input
-								key={key}
-								aria-label={placeholder}
-								type={type}
-								placeholder={placeholder}
-								value={form[key as keyof typeof form]}
-								onChange={(e) => setForm((s) => ({ ...s, [key]: e.target.value }))}
-								required={key === "name" || key === "email" || key === "phone"}
-								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
-							/>
-						))}
+						].map(({ key, placeholder, type }) => {
+							const fieldError = key === "email" ? emailError : key === "phone" ? phoneError : errors[key as "name" | "email" | "phone"];
+							return (
+								<div key={key}>
+									<input
+										aria-label={placeholder}
+										aria-invalid={fieldError ? true : undefined}
+										type={type}
+										placeholder={placeholder}
+										value={form[key as keyof typeof form]}
+										onChange={(e) => {
+											setForm((s) => ({ ...s, [key]: e.target.value }));
+											setErrors((current) => ({ ...current, [key]: undefined }));
+										}}
+										className={`h-10 w-full rounded-md border bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:bg-white ${fieldError ? "border-[#DE141C]" : "border-black/5 focus:border-[#DE141C]/35"}`}
+									/>
+									{fieldError ? <p className="mt-1 text-[11px] text-[#DE141C]">{fieldError}</p> : null}
+								</div>
+							);
+						})}
 					</div>
 
 					{/* Row 2 */}
-					<div className="mt-2.5 grid grid-cols-3 gap-2.5">
-						{[
-							{ key: "referral", placeholder: "Referral (Optional)", type: "text" },
-							{ key: "subject", placeholder: "Subject *", type: "text" },
-							{ key: "cv", placeholder: "CV / Resume Link *", type: "url" },
-						].map(({ key, placeholder, type }) => (
+					<div className="mt-2.5 grid grid-cols-2 gap-2.5">
+						<input
+							aria-label="Referral (Optional)"
+							type="text"
+							placeholder="Referral (Optional)"
+							value={form.referral}
+							onChange={(e) => setForm((s) => ({ ...s, referral: e.target.value }))}
+							className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
+						/>
+						<div>
 							<input
-								key={key}
-								aria-label={placeholder}
-								type={type}
-								placeholder={placeholder}
-								value={form[key as keyof typeof form]}
-								onChange={(e) => setForm((s) => ({ ...s, [key]: e.target.value }))}
-								required={key === "subject" || key === "cv"}
-								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
+								aria-label="Subject *"
+								type="text"
+								placeholder="Subject *"
+								value={form.subject}
+								onChange={(e) => {
+									setForm((s) => ({ ...s, subject: e.target.value }));
+									setErrors((current) => ({ ...current, subject: undefined }));
+								}}
+								aria-invalid={errors.subject ? true : undefined}
+								className={`h-10 w-full rounded-md border bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:bg-white ${errors.subject ? "border-[#DE141C]" : "border-black/5 focus:border-[#DE141C]/35"}`}
 							/>
-						))}
+							{errors.subject ? <p className="mt-1 text-[11px] text-[#DE141C]">{errors.subject}</p> : null}
+						</div>
+					</div>
+
+					{/* CV upload */}
+					<div className="mt-2.5 rounded-md border border-black/5 bg-zinc-100 px-3.5 py-3">
+						<div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">CV / Resume * (PDF only, max 5 MB)</div>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="application/pdf,.pdf"
+							onChange={(e) => handleCvFile(e.target.files?.[0] ?? null)}
+							aria-invalid={errors.cv ? true : undefined}
+							className="mt-2 block w-full text-[12px] text-black/60 file:mr-3 file:rounded-md file:border-0 file:bg-[#111111] file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white"
+						/>
+						{cvFile ? (
+							<p className="mt-1.5 text-[11px] text-emerald-700">
+								{cvFile.name} · {(cvFile.size / 1024 / 1024).toFixed(2)} MB
+							</p>
+						) : null}
+						{errors.cv ? <p className="mt-1 text-[11px] text-[#DE141C]">{errors.cv}</p> : null}
 					</div>
 
 					{/* Message */}

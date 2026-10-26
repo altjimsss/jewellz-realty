@@ -60,6 +60,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Each portal is strictly single-role. This prevents a session that changed
+  // in another tab (Supabase keeps one cookie per browser) from silently
+  // rendering a dashboard it does not belong to.
   if (pathname.startsWith("/admin") && role !== "admin") {
     return NextResponse.redirect(
       new URL(
@@ -69,15 +72,21 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (pathname.startsWith("/agent") && role !== "agent" && role !== "admin") {
+  if (pathname.startsWith("/agent") && role !== "agent") {
     return NextResponse.redirect(
-      new URL(role === "developer_partner" ? "/developer" : "/login", request.url)
+      new URL(
+        role === "admin" ? "/admin" : role === "developer_partner" ? "/developer" : "/login",
+        request.url
+      )
     );
   }
 
-  if (pathname.startsWith("/developer") && role !== "developer_partner" && role !== "admin") {
+  if (pathname.startsWith("/developer") && role !== "developer_partner") {
     return NextResponse.redirect(
-      new URL(role === "agent" ? "/agent" : "/login", request.url)
+      new URL(
+        role === "admin" ? "/admin" : role === "agent" ? "/agent" : "/login",
+        request.url
+      )
     );
   }
 

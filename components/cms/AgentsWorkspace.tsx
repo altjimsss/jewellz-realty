@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { AlertCircle, CheckCircle2, Mail, Plus, RefreshCw, Shield, Trash2, UserRound, X } from "lucide-react";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow } from "./types";
 import { asText } from "./utils";
@@ -38,16 +39,20 @@ function initials(name: string) {
 
 function AgentAvatar({ src, name, size = "sm" }: { src: string; name: string; size?: "sm" | "lg" }) {
 	const box = size === "lg" ? "h-14 w-14 rounded-full" : "h-10 w-10 rounded-full";
-	if (src.trim()) {
-		return (
-			// eslint-disable-next-line @next/next/no-img-element
-			<img src={src} alt={name} className={`${box} shrink-0 border border-black/10 bg-zinc-100 object-cover`} />
-		);
-	}
+	const pixels = size === "lg" ? 56 : 40;
 	return (
-		<div className={`flex ${box} shrink-0 items-center justify-center border border-black/10 bg-zinc-100 text-xs font-semibold text-black/50`}>
-			{initials(name) || <UserRound className="h-4 w-4" />}
-		</div>
+		<SafeImage
+			src={src}
+			alt={name}
+			width={pixels}
+			height={pixels}
+			className={`${box} shrink-0 border border-black/10 bg-zinc-100 object-cover`}
+			fallbackContent={
+				<div className={`flex ${box} shrink-0 items-center justify-center border border-black/10 bg-zinc-100 text-xs font-semibold text-black/50`}>
+					{initials(name) || <UserRound className="h-4 w-4" />}
+				</div>
+			}
+		/>
 	);
 }
 

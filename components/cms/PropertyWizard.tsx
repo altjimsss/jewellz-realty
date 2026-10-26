@@ -266,6 +266,7 @@ export function PropertyWizard({
 	const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 	const [previewPayload, setPreviewPayload] = useState<CmsPayload | null>(null);
 	const formRef = useRef<HTMLFormElement | null>(null);
+	const backdropPointerDown = useRef(false);
 
 	const selectedRow = useMemo(
 		() => rows.find((r) => asText(r.id) === asText(selectedId)) ?? null,
@@ -565,8 +566,12 @@ export function PropertyWizard({
 			{wizardOpen && (
 				<div
 					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+					onMouseDown={(e) => {
+						backdropPointerDown.current = e.target === e.currentTarget;
+					}}
 					onClick={(e) => {
-						if (e.target === e.currentTarget) closeWizard();
+						if (e.target === e.currentTarget && backdropPointerDown.current) closeWizard();
+						backdropPointerDown.current = false;
 					}}
 				>
 					<div className="relative flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">

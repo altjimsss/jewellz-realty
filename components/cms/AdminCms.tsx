@@ -14,6 +14,7 @@ import { LeadScoreBadge } from "@/components/dashboard/LeadScoreBadge";
 import { ListingPerformanceChart } from "@/components/dashboard/ListingPerformanceChart";
 import { TrafficSourceChart } from "@/components/dashboard/TrafficSourceChart";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
+import { SafeImage } from "@/components/ui/SafeImage";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
 import { AgentsWorkspace } from "./AgentsWorkspace";
@@ -1439,7 +1440,7 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 
 			{imageUrl ? (
 				<div className="mt-4 overflow-hidden rounded-xl border border-black/10 bg-white">
-					<Image src={imageUrl} alt={asText(galleryItem?.title || "Gallery image")} width={900} height={420} unoptimized className="h-56 w-full object-cover" />
+					<SafeImage src={imageUrl} alt={asText(galleryItem?.title || "Gallery image")} width={900} height={420} unoptimized className="h-56 w-full object-cover" fallbackContent={<div className="grid h-56 w-full place-items-center bg-zinc-100 text-xs text-black/45">Image link is not a valid image. Replace the URL or upload a photo.</div>} />
 					<div className="border-t border-black/10 px-3 py-2 text-xs text-black/45">{imageUrl}</div>
 				</div>
 			) : (
@@ -1628,13 +1629,14 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete
 				{images.map((image) => (
 					<div key={asText(image.id)} className="rounded-2xl border border-black/10 bg-white p-3">
 						{image.storage_url ? (
-							<Image
+							<SafeImage
 								src={asText(image.storage_url)}
 								alt={asText(image.caption || "Property image")}
 								width={360}
 								height={144}
 								unoptimized
 								className="mb-3 h-36 w-full rounded-xl object-cover"
+								fallbackContent={<div className="mb-3 grid h-36 w-full place-items-center rounded-xl bg-zinc-100 text-xs text-black/45">Image unavailable</div>}
 							/>
 						) : null}
 						<div className="truncate text-sm font-medium text-[#111111]">{image.caption || image.storage_url}</div>
@@ -2289,6 +2291,9 @@ export default function AdminCms({
 	// Never reuse in-memory data during server rendering; it is per browser tab.
 	const cachedSnapshot = typeof window === "undefined" ? null : adminWorkspaceSnapshot;
 	const [loading, setLoading] = useState(!cachedSnapshot);
+	// Never paint a snapshot from a previous auth session until the current
+	// browser session has been verified against this request.
+	const [authChecked, setAuthChecked] = useState(false);
 	const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
 	const [message, setMessage] = useState("");
 	const [saving, setSaving] = useState(false);
@@ -2770,6 +2775,7 @@ export default function AdminCms({
 	useEffect(() => {
 		let active = true;
 		void (async () => {
+			try {
 			const { data: sessionResult } = await supabaseBrowser.auth.getSession();
 			const user = sessionResult.session?.user ?? null;
 
@@ -2792,6 +2798,15 @@ export default function AdminCms({
 					setProfile(null);
 					setLoading(false);
 					setMessage("No profile row found for the current auth user.");
+				}
+				return;
+			}
+
+			if (profileResult.role !== "admin") {
+				if (active) {
+					adminWorkspaceSnapshot = null;
+					setLoading(false);
+					router.replace(profileResult.role === "agent" ? "/agent" : profileResult.role === "developer_partner" ? "/developer" : "/login");
 				}
 				return;
 			}
@@ -2821,6 +2836,9 @@ export default function AdminCms({
 			if (active) {
 				setLoading(false);
 				setMessage("");
+			}
+			} finally {
+				if (active) setAuthChecked(true);
 			}
 		})();
 
@@ -3580,7 +3598,7 @@ export default function AdminCms({
 
 					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
 						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
-							{loading ? (
+							{loading || !authChecked ? (
 								<AdminContentSkeleton section={currentSection} />
 							) : (
 							<>

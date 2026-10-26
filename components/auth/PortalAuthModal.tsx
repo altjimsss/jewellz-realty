@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -37,9 +37,19 @@ function PortalAuthModalContent({
 	initialRole: PortalRole;
 }) {
 	const router = useRouter();
+	const backdropPointerDown = useRef(false);
 	const [activeRole, setActiveRole] = useState<PortalRole>(initialRole);
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
+	// Keep credentials scoped to the selected role tab so switching Agent →
+	// Developer → Admin never carries another portal's values across.
+	const [credentials, setCredentials] = useState<Record<PortalRole, { email: string; password: string }>>({
+		agent: { email: "", password: "" },
+		developer: { email: "", password: "" },
+		admin: { email: "", password: "" },
+	});
+	const email = credentials[activeRole].email;
+	const password = credentials[activeRole].password;
+	const setEmail = (value: string) => setCredentials((current) => ({ ...current, [activeRole]: { ...current[activeRole], email: value } }));
+	const setPassword = (value: string) => setCredentials((current) => ({ ...current, [activeRole]: { ...current[activeRole], password: value } }));
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
@@ -264,8 +274,12 @@ function PortalAuthModalContent({
 	return (
 		<div
 			className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm transition-opacity duration-200"
+			onMouseDown={(e) => {
+				backdropPointerDown.current = e.target === e.currentTarget;
+			}}
 			onClick={(e) => {
-				if (e.target === e.currentTarget) onClose();
+				if (e.target === e.currentTarget && backdropPointerDown.current) onClose();
+				backdropPointerDown.current = false;
 			}}
 			role="dialog"
 			aria-modal="true"
@@ -405,7 +419,7 @@ function PortalAuthModalContent({
 						</div>
 					</form>
 				) : (
-					<form onSubmit={handlePasswordSignIn} className="mt-5 space-y-3.5">
+					<form onSubmit={handlePasswordSignIn} autoComplete="off" className="mt-5 space-y-3.5">
 						<label className="block">
 							<span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/55">
 								Email Address
@@ -413,7 +427,8 @@ function PortalAuthModalContent({
 							<input
 								type="email"
 								required
-								autoComplete="username"
+								name={`${activeRole}-email`}
+								autoComplete="off"
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder={currentConfig.placeholder}
@@ -441,7 +456,8 @@ function PortalAuthModalContent({
 								<input
 									type={showPassword ? "text" : "password"}
 									required
-									autoComplete="current-password"
+									name={`${activeRole}-password`}
+									autoComplete="off"
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="••••••••"

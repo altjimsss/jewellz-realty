@@ -1,3 +1,4 @@
+import { normalizeImageUrl } from "@/lib/image-url";
 import { supabaseServer } from "./server";
 
 export type PublicHeroBanner = {
@@ -64,6 +65,31 @@ function asNumber(value: unknown) {
 	return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
+async function liveSiteStats(agentCount: number): Promise<PublicSiteStat[]> {
+	const [propertyCountResult, provinceResult] = await Promise.all([
+		supabaseServer.from("properties").select("id", { count: "exact", head: true }).eq("status", "published"),
+		supabaseServer.from("properties").select("province").not("province", "is", null).limit(5000),
+	]);
+
+	const provinces = new Set(
+		(provinceResult.data ?? [])
+			.map((row) => String(row.province ?? "").trim().toLowerCase())
+			.filter(Boolean),
+	);
+
+	return [
+		{ key: "properties", label: "Properties", value: propertyCountResult.count ?? 0, suffix: "+" },
+		{ key: "agents", label: "Agents", value: agentCount, suffix: "+" },
+		{ key: "provinces", label: "Provinces", value: provinces.size, suffix: "+" },
+	];
+}
+
+function mergeSiteStats(cmsStats: PublicSiteStat[], liveStats: PublicSiteStat[]): PublicSiteStat[] {
+	if (cmsStats.length === 0) return liveStats;
+	const seen = new Set(cmsStats.map((stat) => stat.key.toLowerCase()));
+	return [...cmsStats, ...liveStats.filter((stat) => !seen.has(stat.key.toLowerCase()))];
+}
+
 export async function getPublicHomeContent() {
 	const [heroResult, statsResult, logosResult, testimonialsResult, agentsResult, agentProfilesResult, developerPartnersResult] = await Promise.all([
 		supabaseServer.from("hero_banners").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
@@ -88,7 +114,7 @@ export async function getPublicHomeContent() {
 
 	const devPartnerLogos: PublicPartnerLogo[] = devPartnersWithLogo.map((dp) => ({
 		name: String(dp.company_name ?? "Developer Partner"),
-		logoUrl: dp.logo_url ? String(dp.logo_url) : undefined,
+		logoUrl: normalizeImageUrl(dp.logo_url) ?? undefined,
 		websiteUrl: dp.website_url ? String(dp.website_url) : undefined,
 	}));
 
@@ -96,12 +122,23 @@ export async function getPublicHomeContent() {
 	const staticPartnerLogos: PublicPartnerLogo[] = (logosResult.data ?? [])
 		.map((row): PublicPartnerLogo => ({
 			name: String(row.name ?? ""),
-			logoUrl: row.logo_url ? String(row.logo_url) : undefined,
+			logoUrl: normalizeImageUrl(row.logo_url) ?? undefined,
 			websiteUrl: row.website_url ? String(row.website_url) : undefined,
 		}))
 		.filter((item) => item.name && !seenCompanyNames.has(item.name.toLowerCase().trim()));
 
 	const marqueeLogos = [...devPartnerLogos, ...staticPartnerLogos];
+	const cmsStats: PublicSiteStat[] = (statsResult.data ?? []).map((row): PublicSiteStat => ({
+		key: String(row.key ?? row.label ?? ""),
+		label: String(row.label ?? ""),
+		value: asNumber(row.value),
+		suffix: row.suffix ? String(row.suffix) : undefined,
+	})).filter((item) => item.key && item.label);
+	const statKeys = new Set(cmsStats.map((stat) => stat.key.toLowerCase()));
+	const needsLiveStats = ["properties", "agents", "provinces"].some((key) => !statKeys.has(key));
+	const stats = needsLiveStats
+		? mergeSiteStats(cmsStats, await liveSiteStats((agentsResult.data ?? []).length))
+		: cmsStats;
 
 	return {
 		heroBanners: (heroResult.data ?? []).map((row): PublicHeroBanner => ({
@@ -109,26 +146,21 @@ export async function getPublicHomeContent() {
 			subheadline: row.subheadline ? String(row.subheadline) : undefined,
 			ctaLabel: row.cta_label ? String(row.cta_label) : undefined,
 			ctaUrl: row.cta_url ? String(row.cta_url) : undefined,
-			imageUrl: String(row.image_url ?? ""),
+			imageUrl: normalizeImageUrl(row.image_url) ?? "",
 		})).filter((item) => item.headline && item.imageUrl),
-		siteStats: (statsResult.data ?? []).map((row): PublicSiteStat => ({
-			key: String(row.key ?? row.label ?? ""),
-			label: String(row.label ?? ""),
-			value: asNumber(row.value),
-			suffix: row.suffix ? String(row.suffix) : undefined,
-		})).filter((item) => item.key && item.label),
+		siteStats: stats,
 		partnerLogos: marqueeLogos,
 		testimonials: (testimonialsResult.data ?? []).map((row): PublicTestimonial => ({
 			authorName: String(row.author_name ?? ""),
 			authorTitle: row.author_title ? String(row.author_title) : undefined,
-			avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
+			avatarUrl: normalizeImageUrl(row.avatar_url) ?? undefined,
 			quote: String(row.quote ?? ""),
 			rating: row.rating == null ? undefined : asNumber(row.rating),
 		})).filter((item) => item.authorName && item.quote),
 		agents: (agentsResult.data ?? []).map((row): PublicAgent => ({
 			name: String(row.full_name ?? row.profile_id ?? "Jewellz Agent"),
 			top: Boolean(row.is_top_agent),
-			photoUrl: row.photo_url ? String(row.photo_url) : undefined,
+			photoUrl: normalizeImageUrl(row.photo_url) ?? undefined,
 			licenseNumber: row.license_number ? String(row.license_number) : undefined,
 			specialization: row.specialization ? String(row.specialization) : undefined,
 			facebookUrl: row.facebook_url ? String(row.facebook_url) : undefined,
@@ -154,7 +186,7 @@ export async function getPublicGalleryItems() {
 		section: String(row.section ?? "General"),
 		title: String(row.title ?? ""),
 		description: row.description ? String(row.description) : undefined,
-		imageUrl: String(row.image_url ?? ""),
+		imageUrl: normalizeImageUrl(row.image_url) ?? "",
 		linkUrl: row.link_url ? String(row.link_url) : undefined,
 		sortOrder: row.sort_order == null ? undefined : asNumber(row.sort_order),
 	})).filter((item) => item.title && item.imageUrl);

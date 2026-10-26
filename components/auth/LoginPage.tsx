@@ -15,24 +15,25 @@ export function LoginPage() {
 	);
 }
 
-function resolveTargetRoute(role: string, requestedNext: string | null): string {
-	if (requestedNext && requestedNext !== "/admin") {
-		if (requestedNext.startsWith("/admin") && role !== "admin") {
-			return role === "agent" ? "/agent" : role === "developer_partner" ? "/developer" : "/login";
-		}
-		if (requestedNext.startsWith("/agent") && role !== "agent" && role !== "admin") {
-			return role === "developer_partner" ? "/developer" : "/login";
-		}
-		if (requestedNext.startsWith("/developer") && role !== "developer_partner" && role !== "admin") {
-			return role === "agent" ? "/agent" : "/login";
-		}
-		return requestedNext;
-	}
-
+function homeForRole(role: string) {
 	if (role === "admin") return "/admin";
 	if (role === "agent") return "/agent";
 	if (role === "developer_partner") return "/developer";
-	return "/admin";
+	return "/login";
+}
+
+function resolveTargetRoute(role: string, requestedNext: string | null): string {
+	const home = homeForRole(role);
+	if (!requestedNext) return home;
+
+	// Never send a user into another role's portal. A stale ?next= value (for
+	// example /admin left over from the previous account) must not override the
+	// role returned by the current session.
+	if (requestedNext.startsWith("/admin")) return role === "admin" ? requestedNext : home;
+	if (requestedNext.startsWith("/agent")) return role === "agent" ? requestedNext : home;
+	if (requestedNext.startsWith("/developer")) return role === "developer_partner" ? requestedNext : home;
+
+	return requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : home;
 }
 
 function LoginForm() {
@@ -47,8 +48,17 @@ function LoginForm() {
 			: "agent";
 
 	const [activeRole, setActiveRole] = useState<PortalRole>(defaultRole);
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
+	// Each role tab owns its own credentials. Typing in the Agent tab must not
+	// populate Developer or Admin, including when the browser autofills a form.
+	const [credentials, setCredentials] = useState<Record<PortalRole, { email: string; password: string }>>({
+		agent: { email: "", password: "" },
+		developer: { email: "", password: "" },
+		admin: { email: "", password: "" },
+	});
+	const email = credentials[activeRole].email;
+	const password = credentials[activeRole].password;
+	const setEmail = (value: string) => setCredentials((current) => ({ ...current, [activeRole]: { ...current[activeRole], email: value } }));
+	const setPassword = (value: string) => setCredentials((current) => ({ ...current, [activeRole]: { ...current[activeRole], password: value } }));
 	const [showPassword, setShowPassword] = useState(false);
 	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -141,12 +151,13 @@ function LoginForm() {
 						.eq("id", data.session.user.id)
 						.maybeSingle();
 
-					if (profile?.is_active && profile?.role) {
-						const destination = resolveTargetRoute(profile.role, nextParam);
-						router.replace(destination);
-					} else {
-						router.replace(nextParam || "/admin");
-					}
+				if (profile?.is_active && profile?.role) {
+					const destination = resolveTargetRoute(profile.role, nextParam);
+					router.replace(destination);
+				} else {
+					await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+					setMessage({ text: "This account has no active portal profile. Contact the brokerage administrator.", type: "error" });
+				}
 				}
 			})
 			.catch(async () => {
@@ -414,7 +425,7 @@ function LoginForm() {
 						</div>
 					</form>
 				) : (
-					<form onSubmit={handlePasswordSignIn} className="mt-5 space-y-3.5">
+					<form onSubmit={handlePasswordSignIn} autoComplete="off" className="mt-5 space-y-3.5">
 						<label className="block">
 							<span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/55">
 								Email Address
@@ -422,7 +433,8 @@ function LoginForm() {
 							<input
 								type="email"
 								required
-								autoComplete="username"
+								name={`${activeRole}-email`}
+								autoComplete="off"
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder={currentConfig.placeholder}
@@ -450,7 +462,8 @@ function LoginForm() {
 								<input
 									type={showPassword ? "text" : "password"}
 									required
-									autoComplete="current-password"
+									name={`${activeRole}-password`}
+									autoComplete="off"
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="••••••••"

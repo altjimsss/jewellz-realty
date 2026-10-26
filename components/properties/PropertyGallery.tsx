@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 type PropertyGalleryProps = {
   images: string[];
@@ -64,8 +64,9 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
               className="relative overflow-hidden bg-black/5 text-left shadow-sm min-h-0"
               aria-label={isShowAllTile ? "Show all images" : `Show preview image ${idx + 1}`}
             >
-              <Image
+              <SafeImage
                 src={galleryImages[previewIndex] ?? FALLBACK_IMAGE}
+                fallbackSrc={FALLBACK_IMAGE}
                 alt={`${title} preview ${idx + 1}`}
                 fill
                 sizes="(min-width: 1024px) 200px, 140px"
@@ -92,8 +93,9 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
       </div>
 
       <div className="relative overflow-hidden bg-black/5 shadow-sm h-80 lg:h-96">
-        <Image
+        <SafeImage
           src={mainImage}
+          fallbackSrc={FALLBACK_IMAGE}
           alt={title}
           fill
           sizes="(min-width: 1024px) 740px, 100vw"
@@ -167,8 +169,9 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
             </div>
 
             <div className="relative mx-auto flex h-[56vh] w-full max-w-5xl overflow-hidden rounded-[18px]">
-              <Image
+              <SafeImage
                 src={mainImage}
+                fallbackSrc={FALLBACK_IMAGE}
                 alt={title}
                 fill
                 sizes="100vw"

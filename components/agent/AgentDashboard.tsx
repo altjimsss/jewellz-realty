@@ -37,6 +37,7 @@ import {
 	X,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { AgentBarChart, AgentDonut, AgentFunnel, AgentTrendChart, type AgentChartRow } from "./AgentCharts";
 
 type SectionId =
@@ -306,6 +307,33 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					router.replace("/login?next=/agent");
 					return;
 				}
+
+				// A browser only holds one Supabase session. If it was replaced by an
+				// admin/developer sign-in in another tab, do not render the agent
+				// workspace with the wrong account.
+				const { data: accountProfile } = await supabaseBrowser
+					.from("profiles")
+					.select("role, is_active")
+					.eq("id", user.id)
+					.maybeSingle();
+
+				if (accountProfile && accountProfile.is_active === false) {
+					router.replace("/login?next=/agent");
+					return;
+				}
+				if (accountProfile?.role === "admin") {
+					router.replace("/admin");
+					return;
+				}
+				if (accountProfile?.role === "developer_partner") {
+					router.replace("/developer");
+					return;
+				}
+				if (accountProfile?.role && accountProfile.role !== "agent") {
+					router.replace("/login?next=/agent");
+					return;
+				}
+
 				if (isMounted) setUserEmail(user.email ?? "");
 
 				const { data: agentRow } = await supabaseBrowser
@@ -919,8 +947,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					<div className="border-t border-black/10 px-3 py-3">
 						<div className="flex items-center gap-2.5">
 							{agent?.photo_url ? (
-								// eslint-disable-next-line @next/next/no-img-element
-								<img src={agent.photo_url} alt={agent.full_name} className="h-9 w-9 rounded-full border border-black/10 object-cover" />
+								<SafeImage src={agent.photo_url} alt={agent.full_name} width={36} height={36} className="h-9 w-9 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-9 w-9 place-items-center rounded-full bg-[#111111] text-xs font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
 							) : (
 								<div className="grid h-9 w-9 place-items-center rounded-full bg-[#111111] text-xs font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
 							)}
@@ -1156,8 +1183,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 											<p className="mt-1 text-xs text-black/45">How clients see you on the public site.</p>
 											<div className="mt-4 flex flex-col items-center text-center">
 												{agent?.photo_url ? (
-													// eslint-disable-next-line @next/next/no-img-element
-													<img src={agent.photo_url} alt={agent.full_name} className="h-20 w-20 rounded-full border border-black/10 object-cover" />
+													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
 												) : (
 													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
 												)}
@@ -1401,12 +1427,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 											{properties.map((prop) => (
 												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-lg border border-black/10 bg-white transition hover:shadow-md">
 													<div className="relative aspect-[16/10] w-full bg-zinc-100">
-														{prop.featured_image_url || prop.images?.[0] ? (
-															// eslint-disable-next-line @next/next/no-img-element
-															<img src={prop.featured_image_url || prop.images?.[0] || ""} alt={prop.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-														) : (
-															<div className="grid h-full w-full place-items-center text-xs text-black/40">No photo</div>
-														)}
+														<SafeImage src={prop.featured_image_url || prop.images?.[0]} alt={prop.title} fill sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition duration-300 group-hover:scale-105" fallbackContent={<div className="grid h-full w-full place-items-center text-xs text-black/40">No photo</div>} />
 														<span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">{prop.status || "Published"}</span>
 													</div>
 													<div className="flex flex-1 flex-col p-4">
@@ -1601,8 +1622,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 											<h2 className="text-sm font-semibold text-[#111111]">Public preview</h2>
 											<div className="mt-4 flex flex-col items-center text-center">
 												{agent?.photo_url ? (
-													// eslint-disable-next-line @next/next/no-img-element
-													<img src={agent.photo_url} alt={agent.full_name} className="h-20 w-20 rounded-full border border-black/10 object-cover" />
+													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
 												) : (
 													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
 												)}

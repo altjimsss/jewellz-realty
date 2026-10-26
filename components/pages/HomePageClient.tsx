@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
+import { PartnerLogoMark } from "@/components/home/PartnerLogoMark";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -219,9 +219,7 @@ export default function Page({
     ? homeContent.partnerLogos.map((logo) => ({
       title: logo.name,
       href: logo.websiteUrl,
-      node: logo.logoUrl
-        ? <Image src={logo.logoUrl} alt={logo.name} width={140} height={36} unoptimized className="h-9 max-w-[140px] object-contain" />
-        : <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">{logo.name}</span>,
+      node: <PartnerLogoMark name={logo.name} logoUrl={logo.logoUrl} />,
     }))
     : developerLogos;
 

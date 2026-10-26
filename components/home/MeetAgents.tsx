@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 export type Agent = {
 	name: string;
@@ -116,24 +116,14 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: Meet
 									{agent.top && (
 										<span className="absolute right-3 top-3 z-10 rounded-md bg-black px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-white">TOP AGENT</span>
 									)}
-									{agent.photoUrl ? (
-										<Image
-											src={agent.photoUrl}
-											alt={agent.name}
-											fill
-											sizes="280px"
-											unoptimized
-											className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
-										/>
-									) : (
-										<Image
-											src="/assets/broker.png"
-											alt={agent.name}
-											fill
-											sizes="280px"
-											className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
-										/>
-									)}
+									<SafeImage
+										src={agent.photoUrl}
+										fallbackSrc="/assets/broker.png"
+										alt={agent.name}
+										fill
+										sizes="280px"
+										className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
+									/>
 								</div>
 								<div className="bg-[#2A2A2A] px-3 py-3 text-center text-white">
 									<p className="truncate whitespace-nowrap text-[28px] font-bold uppercase leading-none tracking-[0.02em]">{agent.name}</p>

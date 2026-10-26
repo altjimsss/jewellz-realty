@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
+import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
 
 function text(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
@@ -28,8 +29,29 @@ export async function POST(request: Request) {
 		status: "new",
 	};
 
-	if (!payload.position_title || !payload.applicant_name || !payload.applicant_email) {
-		return NextResponse.json({ error: "Position, name, and email are required." }, { status: 400, headers: rateLimitHeaders(limiter) });
+	if (!payload.position_title || !payload.applicant_name) {
+		return NextResponse.json({ error: "Position and name are required." }, { status: 400, headers: rateLimitHeaders(limiter) });
+	}
+
+	const emailError = emailValidationMessage(payload.applicant_email);
+	if (emailError) {
+		return NextResponse.json({ error: emailError, field: "email" }, { status: 400, headers: rateLimitHeaders(limiter) });
+	}
+
+	const phoneError = phoneValidationMessage(payload.applicant_phone);
+	if (phoneError) {
+		return NextResponse.json({ error: phoneError, field: "phone" }, { status: 400, headers: rateLimitHeaders(limiter) });
+	}
+
+	if (!payload.resume_url) {
+		return NextResponse.json({ error: "Please upload your CV / resume as a PDF before applying.", field: "cv" }, { status: 400, headers: rateLimitHeaders(limiter) });
+	}
+
+	if (
+		!payload.resume_url.startsWith("https://") ||
+		!/\.pdf(?:$|[?#])/i.test(payload.resume_url)
+	) {
+		return NextResponse.json({ error: "The uploaded CV must be a PDF file. Please upload it again.", field: "cv" }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	const { data, error } = await supabaseServer.from("career_applications").insert(payload).select("id").single();

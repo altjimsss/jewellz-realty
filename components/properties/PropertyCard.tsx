@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import type { Property } from "@/types/property";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { formatPHPWhole } from "@/lib/currency";
 import { PropertyDetailSkeleton } from "@/components/properties/PropertyDetailSkeleton";
 import { useState } from "react";
@@ -102,8 +102,9 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 	const card = (
 		<article className="group overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
 			<div className="relative h-44 overflow-hidden bg-[#E7E7E7]">
-				<Image
+				<SafeImage
 					src={imageSrc}
+					fallbackSrc="/assets/housebanner1.png"
 					alt={property.title}
 					fill
 					sizes="(min-width: 768px) 33vw, 50vw"

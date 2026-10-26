@@ -1,4 +1,5 @@
 import type { Property } from "@/types/property";
+import { normalizeImageUrl } from "@/lib/image-url";
 import { supabaseServer } from "./server";
 
 type PropertyRow = {
@@ -87,12 +88,12 @@ function mapPropertyRow(row: PropertyRow): Property {
 	const floorCount = toNumber(row.floor_count);
 	const parkingSlots = toNumber(row.parking_slots);
 	const location = [row.city, row.province].filter(Boolean).join(", ") || row.address || undefined;
-	const image = row.cover_image_url || undefined;
+	const image = normalizeImageUrl(row.cover_image_url) ?? undefined;
 	const imageRows = Array.isArray(row.property_images) ? row.property_images : [];
 	const images = imageRows
 		.slice()
 		.sort((first, second) => Number(Boolean(second.is_cover)) - Number(Boolean(first.is_cover)) || (first.sort_order ?? 0) - (second.sort_order ?? 0))
-		.map((item) => item.storage_url)
+		.map((item) => normalizeImageUrl(item.storage_url))
 		.filter((item): item is string => Boolean(item));
 	const allImages = [...new Set([...(image ? [image] : []), ...images])];
 	const displayArea = floorArea ?? lotArea;

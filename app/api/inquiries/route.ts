@@ -3,6 +3,7 @@ import { computeLeadScore, priorityFromLeadScore } from "@/lib/lead-scoring";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { verifyRecaptchaToken } from "@/lib/recaptcha";
 import { supabaseServer } from "@/lib/supabase/server";
+import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
 
 function text(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
@@ -110,8 +111,18 @@ export async function POST(request: Request) {
 	const source = text(body?.source) || "website";
 	const requestedPriority = text(body?.priority);
 
-	if (!buyerName || !buyerEmail) {
-		return NextResponse.json({ error: "Name and email are required." }, { status: 400, headers: rateLimitHeaders(limiter) });
+	if (!buyerName) {
+		return NextResponse.json({ error: "Name is required." }, { status: 400, headers: rateLimitHeaders(limiter) });
+	}
+
+	const emailError = emailValidationMessage(buyerEmail);
+	if (emailError) {
+		return NextResponse.json({ error: emailError, field: "buyerEmail" }, { status: 400, headers: rateLimitHeaders(limiter) });
+	}
+
+	const phoneError = phoneValidationMessage(buyerPhone, false);
+	if (phoneError) {
+		return NextResponse.json({ error: phoneError, field: "buyerPhone" }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
 
 	const behaviorSignals = await getBehaviorSignals(propertyId, sessionId);

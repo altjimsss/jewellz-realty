@@ -8,6 +8,7 @@ import { Footer } from "@/components/layout/Footer";
 import SectionHeader from "@/components/layout/SectionHeader";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { getOrCreateSessionId } from "@/lib/session";
+import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -22,6 +23,7 @@ const navLinks = [
 
 export default function ContactPage() {
 	const [formState, setFormState] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
+	const [fieldErrors, setFieldErrors] = useState<{ email?: string; phone?: string }>({});
 	const [submitStatus, setSubmitStatus] = useState("");
 	const [captchaToken, setCaptchaToken] = useState("");
 	const [captchaResetKey, setCaptchaResetKey] = useState(0);
@@ -43,10 +45,19 @@ export default function ContactPage() {
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
-		if (!formState.name.trim() || !formState.email.trim()) {
-			setSubmitStatus("Name and email are required.");
+		if (!formState.name.trim()) {
+			setSubmitStatus("Your name is required.");
 			return;
 		}
+
+		const emailError = emailValidationMessage(formState.email);
+		const phoneError = phoneValidationMessage(formState.phone);
+		if (emailError || phoneError) {
+			setFieldErrors({ email: emailError || undefined, phone: phoneError || undefined });
+			setSubmitStatus(emailError || phoneError);
+			return;
+		}
+		setFieldErrors({});
 
 		if (!captchaToken) {
 			setSubmitStatus("Please complete the captcha before sending your message.");
@@ -154,22 +165,36 @@ export default function ContactPage() {
 								placeholder="Your Name *"
 								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
 							/>
-							<input
-								value={formState.email}
-								onChange={(e) => setFormState((s) => ({ ...s, email: e.target.value }))}
-								type="email"
-								aria-label="Your Email *"
-								placeholder="Your Email *"
-								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
-							/>
-							<input
-								value={formState.phone}
-								onChange={(e) => setFormState((s) => ({ ...s, phone: e.target.value }))}
-								type="tel"
-								aria-label="Your Phone *"
-								placeholder="Your Phone *"
-								className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white"
-							/>
+			<div>
+				<input
+					value={formState.email}
+					onChange={(e) => {
+						setFormState((s) => ({ ...s, email: e.target.value }));
+						setFieldErrors((current) => ({ ...current, email: undefined }));
+					}}
+					type="email"
+					aria-label="Your Email *"
+					aria-invalid={fieldErrors.email ? true : undefined}
+					placeholder="Your Email *"
+					className={`h-10 w-full rounded-md border bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:bg-white ${fieldErrors.email ? "border-[#DE141C]" : "border-black/5 focus:border-[#DE141C]/35"}`}
+				/>
+				{fieldErrors.email ? <p className="mt-1 text-[11px] text-[#DE141C]">{fieldErrors.email}</p> : null}
+			</div>
+			<div>
+				<input
+					value={formState.phone}
+					onChange={(e) => {
+						setFormState((s) => ({ ...s, phone: e.target.value }));
+						setFieldErrors((current) => ({ ...current, phone: undefined }));
+					}}
+					type="tel"
+					aria-label="Your Phone *"
+					aria-invalid={fieldErrors.phone ? true : undefined}
+					placeholder="Your Phone *"
+					className={`h-10 w-full rounded-md border bg-zinc-100 px-3.5 text-[12.5px] outline-none transition-colors placeholder:text-black/35 focus:bg-white ${fieldErrors.phone ? "border-[#DE141C]" : "border-black/5 focus:border-[#DE141C]/35"}`}
+				/>
+				{fieldErrors.phone ? <p className="mt-1 text-[11px] text-[#DE141C]">{fieldErrors.phone}</p> : null}
+			</div>
 						</div>
 
 						<input

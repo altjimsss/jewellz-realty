@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Image from "next/image";
 import LogoLoop from "@/components/home/LogoLoop";
+import { PartnerLogoMark } from "@/components/home/PartnerLogoMark";
 
 type PartnerLogoItem = {
 	title: string;
@@ -46,13 +46,11 @@ type PartnerLogosProps = {
 };
 
 export function PartnerLogos({ logos }: PartnerLogosProps) {
-	const [activeLogos, setActiveLogos] = useState<PartnerLogoItem[]>(logos || defaultDeveloperLogos);
+	const [liveLogos, setLiveLogos] = useState<PartnerLogoItem[] | null>(null);
+	const activeLogos = logos && logos.length > 0 ? logos : (liveLogos ?? defaultDeveloperLogos);
 
 	useEffect(() => {
-		if (logos && logos.length > 0) {
-			setActiveLogos(logos);
-			return;
-		}
+		if (logos && logos.length > 0) return;
 
 		let isMounted = true;
 		async function fetchLivePartnerLogos() {
@@ -64,22 +62,9 @@ export function PartnerLogos({ logos }: PartnerLogosProps) {
 					const mapped: PartnerLogoItem[] = data.partnerLogos.map((item: { name: string; logoUrl?: string; websiteUrl?: string }) => ({
 						title: item.name,
 						href: item.websiteUrl,
-						node: item.logoUrl ? (
-							<Image
-								src={item.logoUrl}
-								alt={item.name}
-								width={140}
-								height={36}
-								unoptimized
-								className="h-9 max-w-[140px] object-contain"
-							/>
-						) : (
-							<span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">
-								{item.name}
-							</span>
-						),
+					node: <PartnerLogoMark name={item.name} logoUrl={item.logoUrl} />,
 					}));
-					setActiveLogos(mapped);
+					setLiveLogos(mapped);
 				}
 			} catch {
 				// Keep current logos on error

@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { getOrCreateSessionId } from "@/lib/session";
+import { emailValidationMessage } from "@/lib/validation";
 import type { Property } from "@/types/property";
 
 export function InquireCard({ previewMode = false, property }: { previewMode?: boolean; property?: Property }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", name: "", subject: "", message: "" });
-  const [status, setStatus] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [form, setForm] = useState({ email: "", name: "", subject: "", message: "" });	const [status, setStatus] = useState("");
+	const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+	const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const { track } = useAnalytics();
 
@@ -37,11 +38,22 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
       handleOpen();
     }
     return () => window.removeEventListener("open-inquire-card", handleOpen);
-  }, []);
+  }, []);	async function submitInquiry() {
+		if (previewMode) return;
+		setAttemptedSubmit(true);
 
-  async function submitInquiry() {
-    if (previewMode) return;
-    if (!captchaToken) {
+		if (!form.name.trim()) {
+			setStatus("Please enter your name.");
+			return;
+		}
+
+		const emailError = emailValidationMessage(form.email);
+		if (emailError) {
+			setStatus(emailError);
+			return;
+		}
+
+		if (!captchaToken) {
       setStatus("Please complete the captcha before sending your inquiry.");
       return;
     }
@@ -61,15 +73,15 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
         sessionId: getOrCreateSessionId(),
         captchaToken,
       }),
-    });
-    if (response.ok) {
-      setStatus("Inquiry sent. Our team will contact you soon.");
-      setForm({ email: "", name: "", subject: "", message: "" });
-    } else {
-      const data = await response.json().catch(() => null);
-      setStatus(data?.error || "Unable to send inquiry right now.");
-    }
-    resetCaptcha();
+    });		if (response.ok) {
+			setStatus("Inquiry sent. Our team will contact you soon.");
+			setForm({ email: "", name: "", subject: "", message: "" });
+			setAttemptedSubmit(false);
+		} else {
+			const data = await response.json().catch(() => null);
+			setStatus(data?.error || "Unable to send inquiry right now.");
+		}
+		resetCaptcha();
   }
 
   return (
@@ -108,18 +120,24 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
       </button>
 
       {open && (
-        <div className="mt-3 space-y-2">
-          {["Email", "Name", "Subject", "Message"].map((field) => (
-            <input
-              key={field}
-              aria-label={field}
-              className="h-10 w-full border-b border-black/10 px-2 text-sm outline-none placeholder:text-black/35"
-              placeholder={field}
-              value={form[field.toLowerCase() as keyof typeof form]}
-              onChange={(event) => setForm((current) => ({ ...current, [field.toLowerCase()]: event.target.value }))}
-              disabled={previewMode}
-            />
-          ))}
+        <div className="mt-3 space-y-2">			{["Email", "Name", "Subject", "Message"].map((field) => {
+				const key = field.toLowerCase() as keyof typeof form;
+				const fieldError = key === "email" && attemptedSubmit ? emailValidationMessage(form.email) : "";
+				return (
+					<div key={field}>
+						<input
+							aria-label={field}
+							aria-invalid={fieldError ? true : undefined}
+							className={`h-10 w-full border-b px-2 text-sm outline-none placeholder:text-black/35 ${fieldError ? "border-[#DE141C]" : "border-black/10"}`}
+							placeholder={field}
+							value={form[key]}
+							onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+							disabled={previewMode}
+						/>
+						{fieldError ? <p className="mt-1 text-[11px] text-[#DE141C]">{fieldError}</p> : null}
+					</div>
+				);
+			})}
           <ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
           <button type="button" onClick={() => void submitInquiry()} disabled={previewMode || !form.name.trim() || !form.email.trim()} className="mt-2 h-10 w-full rounded-sm bg-[#DE141C] text-sm font-semibold text-white transition-colors hover:bg-[#c51018] disabled:cursor-not-allowed disabled:opacity-70">
             Send Inquiry

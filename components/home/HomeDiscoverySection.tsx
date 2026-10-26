@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/SafeImage";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatPHPWhole } from "@/lib/currency";
@@ -216,7 +216,7 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
               return (
                 <Link href={href} key={pick.title} className="group overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   <div className="relative h-32 overflow-hidden bg-[#E7E7E7] sm:h-44">
-                    <Image src={image} alt={pick.title} fill sizes="(min-width: 768px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                    <SafeImage src={image} fallbackSrc="/assets/housebanner1.png" alt={pick.title} fill sizes="(min-width: 768px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                   </div>
                   <div className="flex h-[118px] flex-col bg-[#F4F4F4] p-2.5 sm:h-[158px] sm:p-3.5">
                     <h3 className="line-clamp-2 min-h-[34px] text-[14px] font-semibold leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C] sm:min-h-[44px] sm:text-[18px]">{pick.title}</h3>
