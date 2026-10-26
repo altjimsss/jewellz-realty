@@ -345,35 +345,36 @@ function ChartEmptyState({ message }: { message: string }) {
 
 type ReadoutMetric = { label: string; value: string; meta?: string };
 
-function AiCategoryInsight({ title, insight, actions, metrics }: { title: string; insight: string; actions: string[]; metrics?: ReadoutMetric[] }) {
-	return (
-		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
-					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
-				</div>
-				<span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">Deterministic model</span>
-			</div>
-			{metrics?.length ? (
-				<div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-					{metrics.map((metric) => (
-						<div key={metric.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
-							<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{metric.label}</div>
-							<div className="mt-1 text-lg font-semibold tracking-[-0.03em]">{metric.value}</div>
-							{metric.meta ? <div className="mt-0.5 text-[11px] leading-4 text-white/50">{metric.meta}</div> : null}
-						</div>
-					))}
-				</div>
-			) : null}
-			<p className="mt-4 text-sm leading-6 text-white/70">{insight}</p>
-			<div className="mt-4 grid gap-2 md:grid-cols-3">
-				{actions.map((action) => (
-					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
-				))}
-			</div>
-		</div>
-	);
+const AI_READOUT_STORAGE_KEY = "jewellz.aiReadoutEnabled";
+const AI_READOUT_EVENT = "jewellz:ai-readout-change";
+
+function readAiReadoutEnabled() {
+	if (typeof window === "undefined") return false;
+	return window.localStorage.getItem(AI_READOUT_STORAGE_KEY) === "1";
+}
+
+function useAiReadoutEnabled() {
+	const [enabled, setEnabled] = useState(false);
+
+	useEffect(() => {
+		const sync = () => setEnabled(readAiReadoutEnabled());
+		const timer = window.setTimeout(sync, 0);
+		window.addEventListener(AI_READOUT_EVENT, sync);
+		window.addEventListener("storage", sync);
+		return () => {
+			window.clearTimeout(timer);
+			window.removeEventListener(AI_READOUT_EVENT, sync);
+			window.removeEventListener("storage", sync);
+		};
+	}, []);
+
+	const toggle = useCallback(() => {
+		const next = !readAiReadoutEnabled();
+		window.localStorage.setItem(AI_READOUT_STORAGE_KEY, next ? "1" : "0");
+		window.dispatchEvent(new Event(AI_READOUT_EVENT));
+	}, []);
+
+	return { enabled, toggle };
 }
 
 type AiAnalyticsReport = {
@@ -387,34 +388,46 @@ type AiAnalyticsReport = {
 	narrativeSource?: "ai" | "deterministic";
 };
 
-type ModelReadoutProps = {
-	demand: ReturnType<typeof buildDemandForecast>;
-	conversion: ReturnType<typeof buildConversionForecast>;
-	insight: { title: string; insight: string; actions: string[] };
+type ModelReadoutCategory = "traffic" | "property" | "engagement" | "predictive";
+
+const narrativeHeadingByCategory: Record<ModelReadoutCategory, string> = {
+	traffic: "Traffic insights",
+	property: "Listing insights",
+	predictive: "Predictive insights",
+	engagement: "Engagement insights",
 };
 
-function ModelReadout({ demand, conversion, insight }: ModelReadoutProps) {
-	const [state, setState] = useState<{ loading: boolean; error?: string; report?: AiAnalyticsReport; generatedAt?: string }>({ loading: true });
+type ModelReadoutProps = {
+	category: ModelReadoutCategory;
+	title: string;
+	insight: string;
+	actions: string[];
+	metrics: ReadoutMetric[];
+};
+
+function ModelReadout({ category, title, insight, actions, metrics }: ModelReadoutProps) {
+	const { enabled: aiEnabled, toggle: toggleAi } = useAiReadoutEnabled();
+	const [state, setState] = useState<{ loading: boolean; error?: string; report?: AiAnalyticsReport; generatedAt?: string }>({ loading: false });
 	const [regenerating, setRegenerating] = useState(false);
 
 	const loadReport = useCallback(async () => {
 		try {
-			const response = await fetch("/api/admin/ai-analytics-report?period=weekly", { cache: "no-store" });
+			const response = await fetch(`/api/admin/ai-analytics-report?period=weekly&category=${category}`, { cache: "no-store" });
 			const data = await response.json().catch(() => null) as { report?: AiAnalyticsReport | null; storedReport?: { created_at?: string } | null; error?: string } | null;
 			if (!response.ok) throw new Error(data?.error || "Unable to load the AI analytics report.");
 			setState({ loading: false, report: data?.report ?? undefined, generatedAt: data?.storedReport?.created_at });
 		} catch (error) {
 			setState({ loading: false, error: error instanceof Error ? error.message : "Unable to load the AI analytics report." });
 		}
-	}, []);
+	}, [category]);
 
 	const regenerateReport = useCallback(async () => {
 		setRegenerating(true);
 		try {
-			const response = await fetch("/api/admin/ai-analytics-report?period=weekly", {
+			const response = await fetch(`/api/admin/ai-analytics-report?period=weekly&category=${category}`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ period: "weekly" }),
+				body: JSON.stringify({ period: "weekly", category }),
 			});
 			const data = await response.json().catch(() => null) as { report?: AiAnalyticsReport; error?: string } | null;
 			if (!response.ok) throw new Error(data?.error || "Unable to regenerate the AI analytics report.");
@@ -424,65 +437,74 @@ function ModelReadout({ demand, conversion, insight }: ModelReadoutProps) {
 		} finally {
 			setRegenerating(false);
 		}
-	}, []);
+	}, [category]);
 
+	// AI is only requested when the operator turns it on, so leaving it off
+	// means zero AI tokens are spent for this readout.
 	useEffect(() => {
+		if (!aiEnabled) return;
 		const timer = window.setTimeout(() => {
+			setState({ loading: true });
 			void loadReport();
 		}, 0);
 		return () => window.clearTimeout(timer);
-	}, [loadReport]);
+	}, [aiEnabled, loadReport]);
 
-	const report = state.report;
+	const report = aiEnabled ? state.report : undefined;
 	const sourceLabel = report?.narrativeSource === "ai" ? "AI narrative" : report?.narrativeSource === "deterministic" ? "Deterministic fallback" : "Stored report";
-	const forecastSevenDay = demand.forecast.reduce((sum, row) => sum + row.value, 0);
-	const metrics = [
-		{ label: "Next-day inquiries", value: String(demand.regression.forecastNextPeriod), meta: `${demand.regression.trend} trend · R2 ${demand.regression.r2}` },
-		{ label: "Next 7-day inquiries", value: forecastSevenDay.toFixed(1), meta: `${demand.regression.observations} observed days` },
-		{ label: "Conversion forecast", value: `${conversion.forecast[0]?.value ?? 0}%`, meta: `${conversion.observations} days with tracked views` },
-		{ label: "Report confidence", value: report ? report.confidence.toUpperCase() : "—", meta: report ? sourceLabel : state.loading ? "building..." : "no report" },
-	];
 
 	return (
 		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
 					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
-					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{report?.title || insight.title}</h4>
+					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					{report ? <span className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${report.narrativeSource === "ai" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>{sourceLabel}</span> : null}
 					{report ? <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">{report.confidence} confidence</span> : null}
 					<button
 						type="button"
-						onClick={() => void regenerateReport()}
-						disabled={regenerating || state.loading}
-						className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+						onClick={toggleAi}
+						title={aiEnabled ? "Turn the AI narrative off to save AI tokens" : "Turn the AI narrative on (uses AI tokens)"}
+						className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${aiEnabled ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" : "border-white/15 bg-white/10 text-white/70 hover:bg-white/20"}`}
 					>
-						{regenerating ? "Regenerating..." : "Regenerate"}
+						AI narrative: {aiEnabled ? "ON" : "OFF"}
 					</button>
+					{aiEnabled ? (
+						<button
+							type="button"
+							onClick={() => void regenerateReport()}
+							disabled={regenerating || state.loading}
+							className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{regenerating ? "Regenerating..." : "Regenerate"}
+						</button>
+					) : null}
 				</div>
 			</div>
+
+			{!aiEnabled ? <p className="mt-2 text-[11px] text-white/45">AI narrative is off — deterministic metrics only, no AI tokens are used.</p> : null}
 
 			<div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
 				{metrics.map((metric) => (
 					<div key={metric.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 						<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{metric.label}</div>
 						<div className="mt-1 text-lg font-semibold tracking-[-0.03em]">{metric.value}</div>
-						<div className="mt-0.5 text-[11px] text-white/50">{metric.meta}</div>
+						{metric.meta ? <div className="mt-0.5 text-[11px] leading-4 text-white/50">{metric.meta}</div> : null}
 					</div>
 				))}
 			</div>
 
-			{state.loading ? <p className="mt-4 text-sm text-white/60">Building the report from tracked sessions, inquiries, listings, and recommendation data...</p> : null}
-			{state.error ? <p className="mt-4 text-sm text-red-300">{state.error} Showing deterministic model output only.</p> : null}
+			{aiEnabled && state.loading ? <p className="mt-4 text-sm text-white/60">Building the AI report from tracked sessions, inquiries, listings, and recommendation data...</p> : null}
+			{aiEnabled && state.error ? <p className="mt-4 text-sm text-red-300">{state.error} Showing deterministic model output only.</p> : null}
 
-			{report ? (
-				<div className="mt-4 space-y-4">
-					<p className="text-sm leading-6 text-white/70">{report.executiveSummary}</p>
+			{aiEnabled && report ? (
+				<div className="mt-4 space-y-4 rounded-xl border border-white/10 bg-white/5 p-3">
+					<p className="text-sm leading-6 text-white/75">{report.executiveSummary}</p>
 					{report.predictiveInsights.length ? (
 						<div>
-							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">Predictive insights</p>
+							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">{narrativeHeadingByCategory[category]}</p>
 							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-white/70">
 								{report.predictiveInsights.map((item) => <li key={item}>• {item}</li>)}
 							</ul>
@@ -506,13 +528,13 @@ function ModelReadout({ demand, conversion, insight }: ModelReadoutProps) {
 				</div>
 			) : null}
 
-			<p className="mt-4 text-sm leading-6 text-white/70">{insight.insight}</p>
+			<p className="mt-4 text-sm leading-6 text-white/70">{insight}</p>
 			<div className="mt-3 grid gap-2 md:grid-cols-3">
-				{insight.actions.map((action) => (
+				{actions.map((action) => (
 					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
 				))}
 			</div>
-			{state.generatedAt ? <p className="mt-3 text-[11px] text-white/40">Stored {new Date(state.generatedAt).toLocaleString()}</p> : null}
+			{aiEnabled && report?.narrativeSource && state.generatedAt ? <p className="mt-3 text-[11px] text-white/40">Stored {new Date(state.generatedAt).toLocaleString()}</p> : null}
 		</div>
 	);
 }
@@ -790,6 +812,12 @@ function AnalyticsVisualSuite({
 		insight: `The inquiry trend over the last ${demand.series.length} days is ${demandRegression.trend}; the next-day forecast is ${demandRegression.forecastNextPeriod} inquiries, with R2 ${demandRegression.r2}. The views-to-inquiry conversion rate has ${conversion.observations} observed days with traffic (trend ${conversion.regression.trend}, R2 ${conversion.regression.r2}); the next-period conversion forecast is ${conversion.forecast[0]?.value ?? 0}%. Treat low-R2 forecasts as directional only.`,
 		actions: ["Use forecasts as early warning, not certainty.", "Validate predicted demand against next report.", "Flag large price outliers for review."],
 	};
+	const predictiveMetrics: ReadoutMetric[] = [
+		{ label: "Next-day inquiries", value: String(demandRegression.forecastNextPeriod), meta: `${demandRegression.trend} trend · R2 ${demandRegression.r2}` },
+		{ label: "Next 7-day inquiries", value: demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1), meta: `${demandRegression.observations} observed days` },
+		{ label: "Conversion forecast", value: `${conversion.forecast[0]?.value ?? 0}%`, meta: `${conversion.observations} days with tracked views` },
+		{ label: "Conversion trend", value: conversion.regression.trend, meta: `R2 ${conversion.regression.r2} · ${conversion.observations} days` },
+	];
 	const engagementInsight = {
 		title: "Engagement readout",
 		metrics: [
@@ -851,7 +879,7 @@ function AnalyticsVisualSuite({
 						</ResponsiveContainer> : <ChartEmptyState message="Bounce rate needs tracked sessions with page-view counts before it can be calculated." />}
 					</AnalyticsChartCard>
 				</div>
-				<div className="mt-4"><AiCategoryInsight {...trafficInsight} /></div>
+				<div className="mt-4"><ModelReadout category="traffic" {...trafficInsight} /></div>
 			</div> : null}
 
 			{category === "propertyPerformance" ? <div>
@@ -895,7 +923,7 @@ function AnalyticsVisualSuite({
 						<PricePerSqmHeatmap properties={properties} />
 					</AnalyticsChartCard>
 				</div>
-				<div className="mt-4"><AiCategoryInsight {...propertyInsight} /></div>
+				<div className="mt-4"><ModelReadout category="property" {...propertyInsight} /></div>
 			</div> : null}
 
 			{category === "predictiveAnalytics" ? <div>
@@ -939,7 +967,7 @@ function AnalyticsVisualSuite({
 						{clusterRowsAreLive ? <EChart option={clusterOption} /> : <ChartEmptyState message="Property clustering needs listings with price and area/sqm values." />}
 					</AnalyticsChartCard>
 				</div>
-				<div className="mt-4"><ModelReadout demand={demand} conversion={conversion} insight={predictiveInsight} /></div>
+				<div className="mt-4"><ModelReadout category="predictive" title={predictiveInsight.title} insight={predictiveInsight.insight} actions={predictiveInsight.actions} metrics={predictiveMetrics} /></div>
 			</div> : null}
 
 			{category === "userEngagement" ? <div>
@@ -969,7 +997,7 @@ function AnalyticsVisualSuite({
 						</ResponsiveContainer> : <ChartEmptyState message="New vs returning visitors needs tracked sessions with visitor IDs." />}
 					</AnalyticsChartCard>
 				</div>
-				<div className="mt-4"><AiCategoryInsight {...engagementInsight} /></div>
+				<div className="mt-4"><ModelReadout category="engagement" {...engagementInsight} /></div>
 			</div> : null}
 		</div>
 	);

@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { hasAiConfigured, runAiChatCompletion } from "@/lib/ai/client";
 
 type ReportPeriod = "daily" | "weekly" | "monthly";
+type ReportCategory = "traffic" | "property" | "engagement" | "predictive";
 
 type AiAnalyticsReport = {
 	title: string;
@@ -76,6 +77,18 @@ function periodWindow(period: ReportPeriod) {
 function toPeriod(value: string | null): ReportPeriod {
 	if (value === "daily" || value === "weekly" || value === "monthly") return value;
 	return "weekly";
+}
+
+function toCategory(value: string | null): ReportCategory {
+	if (value === "traffic" || value === "property" || value === "engagement" || value === "predictive") return value;
+	return "predictive";
+}
+
+function categoryFocus(category: ReportCategory) {
+	if (category === "traffic") return "traffic and visitor behavior: session volume, traffic sources, bounce/page-view depth, and where visitors come from";
+	if (category === "property") return "property performance: listing views, dwell time, inquiry conversion per listing, and which listings need pricing or gallery attention";
+	if (category === "engagement") return "user engagement: the view to engagement to inquiry funnel, dwell time, and returning vs new visitor behavior";
+	return "predictive analytics: demand forecasts, conversion-rate forecasts, and classification risks for listings and the lead pipeline";
 }
 
 function historyDays(period: ReportPeriod) {
@@ -268,14 +281,6 @@ function parseAiReport(content: string, summary: Awaited<ReturnType<typeof build
 	}
 }
 
-function extractContent(data: unknown) {
-	if (!data || typeof data !== "object") return "";
-	const choices = (data as { choices?: unknown }).choices;
-	if (!Array.isArray(choices)) return "";
-	const message = choices[0] && typeof choices[0] === "object" ? (choices[0] as { message?: unknown }).message : null;
-	return message && typeof message === "object" ? text((message as { content?: unknown }).content) : "";
-}
-
 async function getUserIdFromCookies() {
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -350,7 +355,7 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 	] = await Promise.all([
 		supabaseServer.from("properties").select("id", { count: "exact", head: true }),
 		supabaseServer.from("inquiries").select("id, status, priority, lead_score, created_at").gte("created_at", start.toISOString()).lte("created_at", end.toISOString()).order("created_at", { ascending: false }).limit(1000),
-		supabaseServer.from("sessions").select("id", { count: "exact", head: true }).gte("last_seen_at", start.toISOString()).lte("last_seen_at", end.toISOString()),
+		supabaseServer.from("sessions").select("page_view_count, started_at, last_seen_at", { count: "exact" }).gte("last_seen_at", start.toISOString()).lte("last_seen_at", end.toISOString()).limit(2000),
 		supabaseServer.from("mv_listing_performance").select("*").limit(30),
 		supabaseServer.from("mv_daily_inquiry_volume").select("*").limit(400),
 		supabaseServer.from("mv_traffic_sources").select("*").limit(12),
@@ -360,6 +365,10 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 	]);
 
 	const inquiryRows = inquiries.data ?? [];
+	const sessionRows = sessions.data ?? [];
+	const bouncedSessions = sessionRows.filter((row) => numberValue(row.page_view_count) <= 1).length;
+	const funnelViews = (listingPerformance.data ?? []).reduce((sum, row) => sum + numberValue(row.total_views), 0);
+	const funnelEngagements = (listingPerformance.data ?? []).reduce((sum, row) => sum + numberValue(row.detail_opens) + numberValue(row.total_interactions), 0);
 	const recommendationRows = recommendations.data ?? [];
 	const clickedRecommendations = recommendationRows.filter((row) => row.was_clicked).length;
 	const fallbackRecommendations = recommendationRows.filter((row) => row.is_fallback).length;
@@ -400,6 +409,19 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 			inquiries: inquiryRows.length,
 			sessions: sessions.count ?? 0,
 			events: events.data?.length ?? 0,
+		},
+		sessionBehavior: {
+			sessionsSampled: sessionRows.length,
+			bouncePct: pct(bouncedSessions, sessionRows.length),
+			avgPageViews: sessionRows.length ? Number((sessionRows.reduce((sum, row) => sum + numberValue(row.page_view_count), 0) / sessionRows.length).toFixed(2)) : 0,
+		},
+		funnel: {
+			views: funnelViews,
+			engagements: funnelEngagements,
+			inquiries: inquiryRows.length,
+			viewToEngagementPct: pct(funnelEngagements, funnelViews),
+			engagementToInquiryPct: pct(inquiryRows.length, funnelEngagements),
+			viewToInquiryPct: pct(inquiryRows.length, funnelViews),
 		},
 		leadMix: {
 			highPriority,
@@ -451,7 +473,7 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 	};
 }
 
-async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>) {
+async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>, category: ReportCategory) {
 	if (!hasAiConfigured()) return fallbackReport(summary);
 
 	try {
@@ -464,7 +486,7 @@ async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalytic
 				},
 				{
 					role: "user",
-					content: `Create a ${summary.period} CMS analytics report. JSON shape: {"title":"","executiveSummary":"","descriptiveFindings":[""],"predictiveInsights":[""],"recommendedActions":[""],"riskFlags":[""],"confidence":"low|medium|high"}\n\n${JSON.stringify(summary)}`,
+					content: `Create a ${summary.period} CMS analytics report focused on ${categoryFocus(category)}. JSON shape: {"title":"","executiveSummary":"","descriptiveFindings":[""],"predictiveInsights":[""],"recommendedActions":[""],"riskFlags":[""],"confidence":"low|medium|high"}\n\n${JSON.stringify(summary)}`,
 				},
 			],
 			temperature: 0.2,
@@ -479,8 +501,8 @@ async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalytic
 	}
 }
 
-async function storeReport(report: AiAnalyticsReport, summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>, userId: string | null) {
-	const reportType = `cms_analytics_${summary.period}`;
+async function storeReport(report: AiAnalyticsReport, summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>, userId: string | null, category: ReportCategory) {
+	const reportType = `cms_analytics_${category}_${summary.period}`;
 	await supabaseServer.from("ai_analytics_reports").insert({
 		report_type: reportType,
 		period_label: summary.period,
@@ -493,11 +515,11 @@ async function storeReport(report: AiAnalyticsReport, summary: Awaited<ReturnTyp
 	});
 }
 
-async function createReport(period: ReportPeriod, userId: string | null) {
+async function createReport(period: ReportPeriod, userId: string | null, category: ReportCategory) {
 	try {
 		const summary = await buildAnalyticsSummary(period);
-		const report = await generateAiReport(summary);
-		await storeReport(report, summary, userId).catch(() => undefined);
+		const report = await generateAiReport(summary, category);
+		await storeReport(report, summary, userId, category).catch(() => undefined);
 		return { report, summary };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unable to build AI analytics report.";
@@ -517,12 +539,13 @@ function isReportStorageError(message: string) {
 export async function GET(request: Request) {
 	const url = new URL(request.url);
 	const period = toPeriod(url.searchParams.get("period"));
+	const category = toCategory(url.searchParams.get("category"));
 	const run = url.searchParams.get("run") === "1";
 
 	if (run) {
 		const cron = requireCron(request);
 		if ("error" in cron) return NextResponse.json({ error: cron.error }, { status: cron.status });
-		return NextResponse.json(await createReport(period, null));
+		return NextResponse.json(await createReport(period, null, category));
 	}
 
 	const admin = await requireAdmin(request);
@@ -531,6 +554,7 @@ export async function GET(request: Request) {
 	const { data, error } = await supabaseServer
 		.from("ai_analytics_reports")
 		.select("id, report_type, period_label, period_start, period_end, report, model_outputs, created_at")
+		.eq("report_type", `cms_analytics_${category}_${period}`)
 		.eq("period_label", period)
 		.order("created_at", { ascending: false })
 		.limit(1)
@@ -538,7 +562,7 @@ export async function GET(request: Request) {
 
 	if (error) {
 		if (isReportStorageError(error.message)) {
-			const generated = await createReport(period, admin.userId).catch((reportError) => {
+			const generated = await createReport(period, admin.userId, category).catch((reportError) => {
 				const message = reportError instanceof Error ? reportError.message : "Unable to build AI analytics report.";
 				return { error: message };
 			});
@@ -555,7 +579,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 	if (!data) {
-		const generated = await createReport(period, admin.userId).catch((reportError) => {
+		const generated = await createReport(period, admin.userId, category).catch((reportError) => {
 			const message = reportError instanceof Error ? reportError.message : "Unable to build AI analytics report.";
 			return { error: message };
 		});
@@ -581,7 +605,8 @@ export async function POST(request: Request) {
 
 	const body = await request.json().catch(() => null);
 	const period = toPeriod(text((body as { period?: unknown } | null)?.period) || new URL(request.url).searchParams.get("period"));
-	const result = await createReport(period, admin.userId).catch((error) => {
+	const category = toCategory(text((body as { category?: unknown } | null)?.category) || new URL(request.url).searchParams.get("category"));
+	const result = await createReport(period, admin.userId, category).catch((error) => {
 		const message = error instanceof Error ? error.message : "Unable to build AI analytics report.";
 		return { error: message };
 	});

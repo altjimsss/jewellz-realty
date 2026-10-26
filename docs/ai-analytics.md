@@ -62,13 +62,18 @@ On Vercel, cron requests are accepted through the Vercel cron header. `CRON_SECR
 
 ## CMS Behavior
 
-From the CMS:
+Every analytics Model readout (Traffic, Property Performance, User Engagement, Predictive) can show an AI narrative:
 
 ```text
-Analytics -> Predictive Analytics -> AI Analytics Report
+Analytics -> <section> -> Model readout
 ```
 
-The report is generated from tracked sessions/page views, inquiries, listings, recommendations, and agent activity. The CMS loads the latest stored weekly report; if none exists it creates one and displays it. If no AI key is configured, the report is clearly labelled as a deterministic fallback instead of being presented as AI output.
+Each readout has an **AI narrative: ON/OFF** toggle. The setting is shared across readouts (stored in localStorage):
+
+- **OFF (default)** — only the deterministic metrics render and **no AI request is made, so zero AI tokens are spent**.
+- **ON** — the readout loads its category-specific stored report (`?period=weekly&category=traffic|property|engagement|predictive`); if none exists it generates one, then displays the charts and report sections. **Regenerate** forces a fresh AI call.
+
+Reports are stored per category in `ai_analytics_reports.report_type = cms_analytics_<category>_<period>`. If no AI key is configured, the report is clearly labelled as a deterministic fallback instead of being presented as AI output.
 
 ## Manual API Testing
 
