@@ -230,6 +230,44 @@ function buildDemandForecast(rows: CmsRow[], historyDays = 21, forecastDays = 7)
 	return { series, forecast, regression };
 }
 
+function buildConversionForecast(events: CmsRow[], inquiryVolumeRows: CmsRow[], days = 21, forecastDays = 7) {
+	const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
+	const viewsByDay = new Map<string, number>();
+	for (const event of events) {
+		if (!viewTypes.has(asText(event.event_type))) continue;
+		const key = asText(event.created_at).slice(0, 10);
+		viewsByDay.set(key, (viewsByDay.get(key) ?? 0) + 1);
+	}
+
+	const inquiryCounts = new Map<string, number>();
+	for (const row of inquiryVolumeRows) {
+		const key = asText(row.inquiry_date).slice(0, 10);
+		if (!key) continue;
+		inquiryCounts.set(key, (inquiryCounts.get(key) ?? 0) + (toNullableNumber(row.total_inquiries) ?? 0));
+	}
+
+	const series = Array.from({ length: days }, (_, index) => {
+		const date = utcDayKey(-(days - 1 - index));
+		const views = viewsByDay.get(date) ?? 0;
+		const inquiries = inquiryCounts.get(date) ?? 0;
+		return {
+			date,
+			views,
+			inquiries,
+			rate: views > 0 ? Number(((inquiries / views) * 100).toFixed(2)) : null,
+		};
+	});
+
+	const observedRates = series.map((row) => row.rate).filter((rate): rate is number => rate !== null);
+	const regression = localRegression(observedRates);
+	const forecast = Array.from({ length: forecastDays }, (_, index) => {
+		const raw = regression.intercept + regression.slope * (observedRates.length + index + 1);
+		return { date: utcDayKey(index + 1), value: Number(Math.max(0, Math.min(100, raw)).toFixed(2)) };
+	});
+
+	return { series, forecast, regression, observations: observedRates.length };
+}
+
 function monthlyPriceSeries(properties: CmsRow[]) {
 	const months = new Map<string, number[]>();
 	for (const property of properties) {
@@ -523,6 +561,13 @@ function AnalyticsVisualSuite({
 		...demand.forecast.map((row) => ({ date: row.date, demand: null, forecast: row.value })),
 	];
 	const demandRowsAreLive = demand.series.some((row) => row.value > 0);
+	const conversion = buildConversionForecast(events, inquiryVolumeRows, 21, 7);
+	const conversionForecastIsLive = conversion.observations >= 3;
+	const lastObservedIndex = conversion.series.map((row) => row.rate !== null).lastIndexOf(true);
+	const conversionRows = [
+		...conversion.series.map((row, index) => ({ date: row.date, rate: row.rate, forecast: index === lastObservedIndex ? row.rate : null })),
+		...conversion.forecast.map((row) => ({ date: row.date, rate: null, forecast: row.value })),
+	];
 	const priceHistogramRaw = histogram(properties.map(propertyPrice));
 	const priceHistogramIsLive = hasMeaningfulChartValue(priceHistogramRaw, ["count"]);
 	const priceHistogram = priceHistogramRaw;
@@ -633,7 +678,7 @@ function AnalyticsVisualSuite({
 	};
 	const predictiveInsight = {
 		title: "Predictive readout",
-		insight: `The inquiry trend over the last ${demand.series.length} days is ${demandRegression.trend}; the next-day forecast is ${demandRegression.forecastNextPeriod} inquiries, with R2 ${demandRegression.r2}. The ${priceTrendIsLive ? "monthly asking-price trend" : "asking-price forecast"} ${priceTrendIsLive ? `has R2 ${priceRegression.r2}` : "is waiting for listings recorded across at least two months"}. Treat low-R2 forecasts as directional only.`,
+		insight: `The inquiry trend over the last ${demand.series.length} days is ${demandRegression.trend}; the next-day forecast is ${demandRegression.forecastNextPeriod} inquiries, with R2 ${demandRegression.r2}. The views-to-inquiry conversion rate has ${conversion.observations} observed days with traffic (trend ${conversion.regression.trend}, R2 ${conversion.regression.r2}); the next-period conversion forecast is ${conversion.forecast[0]?.value ?? 0}%. Treat low-R2 forecasts as directional only.`,
 		actions: ["Use forecasts as early warning, not certainty.", "Validate predicted demand against next report.", "Flag large price outliers for review."],
 	};
 	const engagementInsight = {
@@ -740,17 +785,17 @@ function AnalyticsVisualSuite({
 
 			{category === "predictiveAnalytics" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Asking-price forecast" description="Monthly average asking price plus a next-month linear-regression forecast." isLive={priceForecastIsLive}>
-						{priceForecastIsLive ? <ResponsiveContainer width="100%" height="100%">
-							<LineChart data={priceTrendRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+					<AnalyticsChartCard title="Conversion-rate forecast" description="Daily views-to-inquiry conversion rate from tracked page views and inquiries, plus a 7-day regression forecast." isLive={conversionForecastIsLive}>
+						{conversionForecastIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={conversionRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
-								<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
+								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="average" name="Average price" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="rate" name="Conversion rate" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
 								<Line type="monotone" dataKey="forecast" name="Forecast" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
 							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="The asking-price forecast needs listings with prices recorded across at least two months." />}
+						</ResponsiveContainer> : <ChartEmptyState message="The conversion-rate forecast needs at least 3 days with tracked page views in the last 21 days." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Demand forecast" description="Daily inquiries for the last 21 days plus a 7-day linear-regression forecast." isLive={demandRowsAreLive}>
 						{demandRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
