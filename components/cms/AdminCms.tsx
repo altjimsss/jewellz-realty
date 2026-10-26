@@ -343,12 +343,30 @@ function ChartEmptyState({ message }: { message: string }) {
 	);
 }
 
-function AiCategoryInsight({ title, insight, actions }: { title: string; insight: string; actions: string[] }) {
+type ReadoutMetric = { label: string; value: string; meta?: string };
+
+function AiCategoryInsight({ title, insight, actions, metrics }: { title: string; insight: string; actions: string[]; metrics?: ReadoutMetric[] }) {
 	return (
 		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
-			<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
-			<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
-			<p className="mt-2 text-sm leading-6 text-white/70">{insight}</p>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
+					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
+				</div>
+				<span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">Deterministic model</span>
+			</div>
+			{metrics?.length ? (
+				<div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+					{metrics.map((metric) => (
+						<div key={metric.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+							<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{metric.label}</div>
+							<div className="mt-1 text-lg font-semibold tracking-[-0.03em]">{metric.value}</div>
+							{metric.meta ? <div className="mt-0.5 text-[11px] leading-4 text-white/50">{metric.meta}</div> : null}
+						</div>
+					))}
+				</div>
+			) : null}
+			<p className="mt-4 text-sm leading-6 text-white/70">{insight}</p>
 			<div className="mt-4 grid gap-2 md:grid-cols-3">
 				{actions.map((action) => (
 					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
@@ -409,7 +427,10 @@ function ModelReadout({ demand, conversion, insight }: ModelReadoutProps) {
 	}, []);
 
 	useEffect(() => {
-		void loadReport();
+		const timer = window.setTimeout(() => {
+			void loadReport();
+		}, 0);
+		return () => window.clearTimeout(timer);
 	}, [loadReport]);
 
 	const report = state.report;
@@ -720,17 +741,47 @@ function AnalyticsVisualSuite({
 	}
 	const totalVisitors = newUsers + returningUsers;
 	const userTypeRows = totalVisitors ? [{ name: "New", value: newUsers }, { name: "Returning", value: returningUsers }] : [];
+	const totalSessions14d = visitorsOverTime.reduce((sum, row) => sum + row.sessions, 0);
+	const avgBounceRate = numberAverage(visitorsOverTime.filter((row) => row.sessions > 0).map((row) => row.bounceRate));
+	const sessionTrend = localRegression(visitorsOverTime.map((row) => row.sessions));
+	const windowStart = utcDayKey(-13);
+	const visitorWindow = new Set<string>();
+	const viewTypeNames = new Set(["property_view", "page_view", "view", "listing_view"]);
+	for (const event of events) {
+		if (!viewTypeNames.has(asText(event.event_type))) continue;
+		if (asText(event.created_at).slice(0, 10) < windowStart) continue;
+		const visitor = asText(event.session_id);
+		if (visitor) visitorWindow.add(visitor);
+	}
+	const topSource = trafficRows[0] ?? null;
 	const trafficInsight = {
 		title: "Traffic & behavior readout",
-		insight: trafficRows[0]
-			? `${trafficRows[0].source || "Top source"} currently drives the most sessions. Visitor activity is ${visitorsOverTime.some((row) => row.visitors > 0) ? "being captured and can be compared by day." : "still sparse, so trend confidence is low."}`
-			: "Traffic source data is not populated yet, so channel-level recommendations are limited.",
+		metrics: [
+			{ label: "Sessions (14d)", value: String(totalSessions14d), meta: `${visitorWindow.size} unique visitors` },
+			{ label: "Avg bounce rate", value: `${avgBounceRate.toFixed(0)}%`, meta: "single-view sessions" },
+			{ label: "Top source share", value: `${topSource?.share_pct ?? 0}%`, meta: topSource?.source || "No source yet" },
+			{ label: "Next-day sessions", value: String(sessionTrend.forecastNextPeriod), meta: `${sessionTrend.trend} trend · R2 ${sessionTrend.r2}` },
+		],
+		insight: topSource
+			? `${topSource.source || "Direct"} leads with ${topSource.share_pct}% of sessions and ${topSource.total_page_views} page views. Across the last 14 days the session trend is ${sessionTrend.trend} (R2 ${sessionTrend.r2}) with a next-day forecast of ${sessionTrend.forecastNextPeriod} sessions; average bounce is ${avgBounceRate.toFixed(0)}%.`
+			: `No session sources are recorded yet. The 14-day session trend is ${sessionTrend.trend} with a next-day forecast of ${sessionTrend.forecastNextPeriod} sessions — add UTM/referrer capture to unlock channel-level recommendations.`,
 		actions: ["Compare top source against inquiry quality.", "Watch high-bounce days before scaling campaigns.", "Keep UTM capture on all ads and social posts."],
 	};
+	const totalListingViews = listingRows.reduce((sum, row) => sum + row.total_views, 0);
+	const totalListingInquiries = listingRows.reduce((sum, row) => sum + row.total_inquiries, 0);
+	const listingConversionRate = totalListingViews ? (totalListingInquiries / totalListingViews) * 100 : 0;
+	const avgDwellSeconds = numberAverage(listingRows.map((row) => row.avg_dwell_seconds).filter((value) => value > 0));
+	const lowViewNoInquiry = listingRows.filter((row) => row.total_views >= 5 && row.inquiry_rate_pct < 2).length;
 	const propertyInsight = {
 		title: "Property performance readout",
+		metrics: [
+			{ label: "Total listing views", value: String(totalListingViews), meta: `${listingRows.length} listings tracked` },
+			{ label: "View → inquiry", value: `${listingConversionRate.toFixed(2)}%`, meta: `${totalListingInquiries} inquiries` },
+			{ label: "Avg dwell time", value: `${avgDwellSeconds.toFixed(0)}s`, meta: "recorded on property pages" },
+			{ label: "High-view, low-inquiry", value: String(lowViewNoInquiry), meta: "listings under 2% conversion" },
+		],
 		insight: mostViewed[0]
-			? `${mostViewed[0].title} is the highest-view listing. Compare its views to inquiries before deciding whether it needs pricing, gallery, or CTA changes.`
+			? `${mostViewed[0].title} leads with ${mostViewed[0].total_views} views and ${mostViewed[0].total_inquiries} inquiries (${mostViewed[0].inquiry_rate_pct}% conversion). Overall the catalog converts ${listingConversionRate.toFixed(2)}% of views to inquiries; ${lowViewNoInquiry} listing${lowViewNoInquiry === 1 ? " has" : "s have"} 5+ views but under 2% conversion — those are the pricing, gallery, or CTA candidates.`
 			: "Listing performance data is still sparse. Views and inquiries will sharpen this section.",
 		actions: ["Review high-view low-inquiry listings.", "Compare price per sqm by location.", "Improve galleries for listings with low engagement."],
 	};
@@ -741,7 +792,13 @@ function AnalyticsVisualSuite({
 	};
 	const engagementInsight = {
 		title: "Engagement readout",
-		insight: `The funnel currently shows ${totalViews} views, ${totalDetailOpens} detail/gallery/map interactions, and ${totalInquiries} inquiries. Focus on the step with the sharpest drop.`,
+		metrics: [
+			{ label: "View → engagement", value: `${(totalViews ? (totalDetailOpens / totalViews) * 100 : 0).toFixed(1)}%`, meta: `${totalDetailOpens} detail/gallery/map actions` },
+			{ label: "Engagement → inquiry", value: `${(totalDetailOpens ? (totalInquiries / totalDetailOpens) * 100 : 0).toFixed(1)}%`, meta: `${totalInquiries} inquiries` },
+			{ label: "End-to-end funnel", value: `${(totalViews ? (totalInquiries / totalViews) * 100 : 0).toFixed(2)}%`, meta: "views to inquiries" },
+			{ label: "Returning / new", value: `${returningUsers} / ${newUsers}`, meta: "visitors in loaded window" },
+		],
+		insight: `The funnel recorded ${totalViews} views, ${totalDetailOpens} detail/gallery/map interactions, and ${totalInquiries} inquiries: ${(totalViews ? (totalDetailOpens / totalViews) * 100 : 0).toFixed(1)}% of views engage, ${(totalDetailOpens ? (totalInquiries / totalDetailOpens) * 100 : 0).toFixed(1)}% of engaged sessions inquire, and ${(totalViews ? (totalInquiries / totalViews) * 100 : 0).toFixed(2)}% convert end-to-end. Returning visitors: ${returningUsers} of ${totalVisitors}.`,
 		actions: ["Improve CTAs where views do not become inquiries.", "Use gallery and map interactions to find listing intent.", "Use dwell-time outliers to find strong listings."],
 	};
 
@@ -1899,7 +1956,7 @@ function AnalyticsPanel({
 	selectedPortfolioPropertyId,
 	onSelectPortfolioDeveloper,
 	onSelectPortfolioProperty,
-	selectedDateFilter = null,
+	selectedDateFilter: _selectedDateFilter = null,
 }: {
 	activeReport: CmsSection;
 	isAdmin: boolean;
