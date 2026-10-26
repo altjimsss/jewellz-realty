@@ -111,6 +111,7 @@ function localRegression(points: number[]) {
 			slope: 0,
 			intercept: points[0] ?? 0,
 			r2: 0,
+			observations: n,
 			observedTotal: points.reduce((sum, value) => sum + value, 0),
 			forecastNextPeriod: points[0] ?? 0,
 			trend: "flat" as const,
@@ -135,6 +136,7 @@ function localRegression(points: number[]) {
 		slope: Number(slope.toFixed(3)),
 		intercept: Number(intercept.toFixed(3)),
 		r2: Number(r2.toFixed(3)),
+		observations: n,
 		observedTotal: points.reduce((sum, value) => sum + value, 0),
 		forecastNextPeriod: Number(forecastNextPeriod.toFixed(2)),
 		trend: Math.abs(slope) < 0.1 ? "flat" as const : slope > 0 ? "up" as const : "down" as const,
@@ -367,73 +369,129 @@ type AiAnalyticsReport = {
 	narrativeSource?: "ai" | "deterministic";
 };
 
-function AiAnalyticsNarrative() {
+type ModelReadoutProps = {
+	demand: ReturnType<typeof buildDemandForecast>;
+	conversion: ReturnType<typeof buildConversionForecast>;
+	insight: { title: string; insight: string; actions: string[] };
+};
+
+function ModelReadout({ demand, conversion, insight }: ModelReadoutProps) {
 	const [state, setState] = useState<{ loading: boolean; error?: string; report?: AiAnalyticsReport; generatedAt?: string }>({ loading: true });
+	const [regenerating, setRegenerating] = useState(false);
+
+	const loadReport = useCallback(async () => {
+		try {
+			const response = await fetch("/api/admin/ai-analytics-report?period=weekly", { cache: "no-store" });
+			const data = await response.json().catch(() => null) as { report?: AiAnalyticsReport | null; storedReport?: { created_at?: string } | null; error?: string } | null;
+			if (!response.ok) throw new Error(data?.error || "Unable to load the AI analytics report.");
+			setState({ loading: false, report: data?.report ?? undefined, generatedAt: data?.storedReport?.created_at });
+		} catch (error) {
+			setState({ loading: false, error: error instanceof Error ? error.message : "Unable to load the AI analytics report." });
+		}
+	}, []);
+
+	const regenerateReport = useCallback(async () => {
+		setRegenerating(true);
+		try {
+			const response = await fetch("/api/admin/ai-analytics-report?period=weekly", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ period: "weekly" }),
+			});
+			const data = await response.json().catch(() => null) as { report?: AiAnalyticsReport; error?: string } | null;
+			if (!response.ok) throw new Error(data?.error || "Unable to regenerate the AI analytics report.");
+			setState({ loading: false, report: data?.report ?? undefined, generatedAt: new Date().toISOString() });
+		} catch (error) {
+			setState({ loading: false, error: error instanceof Error ? error.message : "Unable to regenerate the AI analytics report." });
+		} finally {
+			setRegenerating(false);
+		}
+	}, []);
 
 	useEffect(() => {
-		let active = true;
-		void (async () => {
-			try {
-				const response = await fetch("/api/admin/ai-analytics-report?period=weekly", { cache: "no-store" });
-				const data = await response.json().catch(() => null) as { report?: AiAnalyticsReport | null; storedReport?: { created_at?: string } | null; error?: string } | null;
-				if (!response.ok) throw new Error(data?.error || "Unable to load the AI analytics report.");
-				if (!active) return;
-				setState({ loading: false, report: data?.report ?? undefined, generatedAt: data?.storedReport?.created_at });
-			} catch (error) {
-				if (!active) return;
-				setState({ loading: false, error: error instanceof Error ? error.message : "Unable to load the AI analytics report." });
-			}
-		})();
-		return () => {
-			active = false;
-		};
-	}, []);
+		void loadReport();
+	}, [loadReport]);
 
 	const report = state.report;
 	const sourceLabel = report?.narrativeSource === "ai" ? "AI narrative" : report?.narrativeSource === "deterministic" ? "Deterministic fallback" : "Stored report";
+	const forecastSevenDay = demand.forecast.reduce((sum, row) => sum + row.value, 0);
+	const metrics = [
+		{ label: "Next-day inquiries", value: String(demand.regression.forecastNextPeriod), meta: `${demand.regression.trend} trend · R2 ${demand.regression.r2}` },
+		{ label: "Next 7-day inquiries", value: forecastSevenDay.toFixed(1), meta: `${demand.regression.observations} observed days` },
+		{ label: "Conversion forecast", value: `${conversion.forecast[0]?.value ?? 0}%`, meta: `${conversion.observations} days with tracked views` },
+		{ label: "Report confidence", value: report ? report.confidence.toUpperCase() : "—", meta: report ? sourceLabel : state.loading ? "building..." : "no report" },
+	];
 
 	return (
-		<div className="rounded-2xl border border-black/10 bg-white p-4">
+		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-black/45">AI Analytics Report</div>
-					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#111111]">{report?.title || "Weekly report"}</h4>
+					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
+					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{report?.title || insight.title}</h4>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					{report ? <span className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${report.narrativeSource === "ai" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{sourceLabel}</span> : null}
-					{report ? <span className="rounded-md bg-zinc-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">{report.confidence} confidence</span> : null}
+					{report ? <span className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${report.narrativeSource === "ai" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>{sourceLabel}</span> : null}
+					{report ? <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">{report.confidence} confidence</span> : null}
+					<button
+						type="button"
+						onClick={() => void regenerateReport()}
+						disabled={regenerating || state.loading}
+						className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{regenerating ? "Regenerating..." : "Regenerate"}
+					</button>
 				</div>
 			</div>
 
-			{state.loading ? <p className="mt-3 text-sm text-black/55">Building the report from tracked sessions, inquiries, listings, and recommendation data...</p> : null}
-			{state.error ? <p className="mt-3 text-sm text-red-600">{state.error}</p> : null}
+			<div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+				{metrics.map((metric) => (
+					<div key={metric.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+						<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{metric.label}</div>
+						<div className="mt-1 text-lg font-semibold tracking-[-0.03em]">{metric.value}</div>
+						<div className="mt-0.5 text-[11px] text-white/50">{metric.meta}</div>
+					</div>
+				))}
+			</div>
+
+			{state.loading ? <p className="mt-4 text-sm text-white/60">Building the report from tracked sessions, inquiries, listings, and recommendation data...</p> : null}
+			{state.error ? <p className="mt-4 text-sm text-red-300">{state.error} Showing deterministic model output only.</p> : null}
+
 			{report ? (
-				<div className="mt-3 space-y-4">
-					<p className="text-sm leading-6 text-black/65">{report.executiveSummary}</p>
+				<div className="mt-4 space-y-4">
+					<p className="text-sm leading-6 text-white/70">{report.executiveSummary}</p>
 					{report.predictiveInsights.length ? (
 						<div>
-							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">Predictive insights</p>
-							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-black/70">
-								{report.predictiveInsights.map((insight) => <li key={insight}>• {insight}</li>)}
+							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">Predictive insights</p>
+							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-white/70">
+								{report.predictiveInsights.map((item) => <li key={item}>• {item}</li>)}
 							</ul>
 						</div>
 					) : null}
 					{report.recommendedActions.length ? (
 						<div>
-							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">Recommended actions</p>
-							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-black/70">
-								{report.recommendedActions.slice(0, 3).map((action) => <li key={action}>• {action}</li>)}
-							</ul>
+							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">Recommended actions</p>
+							<div className="mt-1.5 grid gap-2 md:grid-cols-3">
+								{report.recommendedActions.slice(0, 3).map((action) => (
+									<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
+								))}
+							</div>
 						</div>
 					) : null}
 					{report.riskFlags.length ? (
-						<div className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+						<div className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-200">
 							{report.riskFlags.map((risk) => <p key={risk}>{risk}</p>)}
 						</div>
 					) : null}
 				</div>
 			) : null}
-			{state.generatedAt ? <p className="mt-3 text-[11px] text-black/40">Stored {new Date(state.generatedAt).toLocaleString()}</p> : null}
+
+			<p className="mt-4 text-sm leading-6 text-white/70">{insight.insight}</p>
+			<div className="mt-3 grid gap-2 md:grid-cols-3">
+				{insight.actions.map((action) => (
+					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
+				))}
+			</div>
+			{state.generatedAt ? <p className="mt-3 text-[11px] text-white/40">Stored {new Date(state.generatedAt).toLocaleString()}</p> : null}
 		</div>
 	);
 }
@@ -824,8 +882,7 @@ function AnalyticsVisualSuite({
 						{clusterRowsAreLive ? <EChart option={clusterOption} /> : <ChartEmptyState message="Property clustering needs listings with price and area/sqm values." />}
 					</AnalyticsChartCard>
 				</div>
-				<div className="mt-4"><AiAnalyticsNarrative /></div>
-				<div className="mt-4"><AiCategoryInsight {...predictiveInsight} /></div>
+				<div className="mt-4"><ModelReadout demand={demand} conversion={conversion} insight={predictiveInsight} /></div>
 			</div> : null}
 
 			{category === "userEngagement" ? <div>
