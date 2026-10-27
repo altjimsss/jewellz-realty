@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UserCircle, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, Sparkles, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -1469,6 +1469,7 @@ function PropertyPublicPreview({ payload, currentRow, imageUrls }: { payload: Cm
 		coordinates: latitude != null && longitude != null ? [latitude, longitude] : undefined,
 		image: galleryImages[0],
 		images: galleryImages.length ? galleryImages : undefined,
+		videoUrl: asText(payload.video_url || currentRow?.video_url).trim() || undefined,
 		beds: Number(payload.bedrooms || currentRow?.bedrooms || 0),
 		baths: Number(payload.bathrooms || currentRow?.bathrooms || 0),
 		areaSqm: Number(payload.floor_area_sqm || payload.lot_area_sqm || currentRow?.floor_area_sqm || currentRow?.lot_area_sqm || 0),
@@ -2594,6 +2595,59 @@ function AnalyticsPanel({
 	);
 }
 
+function playNotificationChime() {
+	if (typeof window === "undefined") return;
+	try {
+		const AudioContextClass =
+			window.AudioContext ||
+			(window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+		if (!AudioContextClass) return;
+		const ctx = new AudioContextClass();
+		if (ctx.state === "suspended") void ctx.resume();
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = "sine";
+		osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+		osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+		gain.gain.setValueAtTime(0.2, ctx.currentTime);
+		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		osc.start();
+		osc.stop(ctx.currentTime + 0.35);
+	} catch {
+		// Audio policy safely handled
+	}
+}
+
+function formatRelativeTime(isoString?: string) {
+	if (!isoString) return "just now";
+	const diff = Date.now() - new Date(isoString).getTime();
+	if (Number.isNaN(diff)) return "recently";
+	const mins = Math.floor(diff / 60000);
+	if (mins < 1) return "just now";
+	if (mins < 60) return `${mins}m ago`;
+	const hours = Math.floor(mins / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
+}
+
+type AdminLiveNotification = {
+	id: string;
+	type: "agent_progress" | "new_inquiry" | "status_change";
+	title: string;
+	message: string;
+	inquiryId?: string;
+	agentName?: string;
+	propertyTitle?: string;
+	oldStatus?: string;
+	newStatus?: string;
+	note?: string;
+	timestamp: string;
+	read: boolean;
+};
+
 export default function AdminCms({
 	initialPrimary = "dashboard",
 	initialSection = "overview",
@@ -2623,6 +2677,9 @@ export default function AdminCms({
 	const [dashboardSearch, setDashboardSearch] = useState("");
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
+	const [adminNotifications, setAdminNotifications] = useState<AdminLiveNotification[]>([]);
+	const [adminToast, setAdminToast] = useState<AdminLiveNotification | null>(null);
+	const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
 	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
@@ -2638,6 +2695,150 @@ export default function AdminCms({
 		return stored && stored.length > 0 ? stored : [createAnalyticsChatWelcomeMessage()];
 	});
 	const [analyticsChatIsThinking, setAnalyticsChatIsThinking] = useState(false);
+
+	useEffect(() => {
+		if (!adminToast) return;
+		const timer = setTimeout(() => setAdminToast(null), 8000);
+		return () => clearTimeout(timer);
+	}, [adminToast]);
+
+	// Live subscription for Admin: listen for agent progress (inquiry_timeline) and incoming leads (inquiries)
+	useEffect(() => {
+		if (!sessionUser) return;
+		let mounted = true;
+
+		const channel = supabaseBrowser
+			.channel("admin_realtime_activity_listener")
+			.on(
+				"postgres_changes",
+				{ event: "INSERT", schema: "public", table: "inquiry_timeline" },
+				async (payload) => {
+					if (!mounted) return;
+					const newRow = payload.new as {
+						id?: string;
+						inquiry_id?: string;
+						changed_by?: string;
+						old_status?: string;
+						new_status?: string;
+						note?: string;
+						created_at?: string;
+					};
+					if (!newRow || !newRow.inquiry_id) return;
+
+					// Fetch related inquiry and agent details
+					const [inqRes, agentRes] = await Promise.all([
+						supabaseBrowser
+							.from("inquiries")
+							.select("id, buyer_name, buyer_email, property_id, status, assigned_agent_id, properties(title)")
+							.eq("id", newRow.inquiry_id)
+							.maybeSingle(),
+						newRow.changed_by
+							? supabaseBrowser
+									.from("agents")
+									.select("id, full_name")
+									.or(`id.eq.${newRow.changed_by},profile_id.eq.${newRow.changed_by}`)
+									.maybeSingle()
+							: Promise.resolve({ data: null }),
+					]);
+
+					const inq = inqRes.data;
+					const agent = agentRes.data;
+					const agentName = agent?.full_name || "Agent";
+					const buyerName = inq?.buyer_name || "Lead";
+					const propTitle = (inq?.properties as { title?: string } | null)?.title || "Listing";
+					const newStatusLabel = (newRow.new_status || inq?.status || "updated").replace("_", " ");
+
+					const notif: AdminLiveNotification = {
+						id: `notif_${newRow.id || Date.now()}`,
+						type: "agent_progress",
+						title: `Lead Progress: ${agentName}`,
+						message: `${agentName} updated ${buyerName} to "${newStatusLabel}"`,
+						inquiryId: newRow.inquiry_id,
+						agentName,
+						propertyTitle: propTitle,
+						oldStatus: newRow.old_status ?? undefined,
+						newStatus: newRow.new_status ?? undefined,
+						note: newRow.note ?? undefined,
+						timestamp: newRow.created_at || new Date().toISOString(),
+						read: false,
+					};
+
+					setAdminNotifications((prev) => [notif, ...prev.slice(0, 49)]);
+					setAdminToast(notif);
+					setUnreadNotifCount((prev) => prev + 1);
+					playNotificationChime();
+
+					// Sync status in workspace inquiries state in real-time
+					setWorkspace((prev) => ({
+						...prev,
+						inquiries: prev.inquiries.map((item) =>
+							item.id === newRow.inquiry_id
+								? { ...item, status: newRow.new_status || item.status, last_activity_at: new Date().toISOString() }
+								: item
+						),
+					}));
+				}
+			)
+			.on(
+				"postgres_changes",
+				{ event: "INSERT", schema: "public", table: "inquiries" },
+				async (payload) => {
+					if (!mounted) return;
+					const newInq = payload.new as CmsRow;
+					if (!newInq || !newInq.id) return;
+
+					let propTitle = "Property";
+					if (newInq.property_id) {
+						const { data: prop } = await supabaseBrowser
+							.from("properties")
+							.select("title")
+							.eq("id", newInq.property_id)
+							.maybeSingle();
+						if (prop?.title) propTitle = prop.title;
+					}
+
+					const notif: AdminLiveNotification = {
+						id: `notif_inq_${newInq.id}_${Date.now()}`,
+						type: "new_inquiry",
+						title: "New Lead Received!",
+						message: `${newInq.buyer_name || "A visitor"} submitted an inquiry for ${propTitle}.`,
+						inquiryId: asText(newInq.id),
+						propertyTitle: propTitle,
+						newStatus: "new",
+						timestamp: asText(newInq.created_at) || new Date().toISOString(),
+						read: false,
+					};
+
+					setAdminNotifications((prev) => [notif, ...prev.slice(0, 49)]);
+					setAdminToast(notif);
+					setUnreadNotifCount((prev) => prev + 1);
+					playNotificationChime();
+
+					setWorkspace((prev) => {
+						const exists = prev.inquiries.some((item) => item.id === newInq.id);
+						if (exists) return prev;
+						return { ...prev, inquiries: [newInq, ...prev.inquiries] };
+					});
+				}
+			)
+			.subscribe();
+
+		return () => {
+			mounted = false;
+			void supabaseBrowser.removeChannel(channel);
+		};
+	}, [sessionUser?.id]);
+
+	function handleOpenAdminNotification(notif: AdminLiveNotification) {
+		if (notif.inquiryId) {
+			setActivePrimary("inquiries");
+			setActiveSection("inquiries");
+			setSelection((curr) => ({ ...curr, inquiries: notif.inquiryId ?? null }));
+			syncAdminUrl("/admin/inquiries");
+		}
+		setShowNotifications(false);
+		setAdminToast(null);
+	}
 
 	useEffect(() => {
 		let cancelled = false;
@@ -3888,19 +4089,90 @@ export default function AdminCms({
 									<MessageSquare className="h-4 w-4" />
 								</button>
 							) : null}
-							<button type="button" onClick={() => setShowNotifications((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title="Notifications">
-								<Bell className="h-4 w-4" />
-							</button>
+							<div className="relative">
+								<button
+									type="button"
+									onClick={() => {
+										setShowNotifications((current) => !current);
+										setUnreadNotifCount(0);
+									}}
+									className="relative rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100"
+									title="Notifications & Agent Activity"
+								>
+									<Bell className="h-4 w-4" />
+									{unreadNotifCount > 0 ? (
+										<span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#DE141C] px-1 text-[9px] font-bold text-white shadow-sm animate-pulse">
+											{unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+										</span>
+									) : null}
+								</button>
+								{showNotifications ? (
+									<div className="absolute right-0 top-10 z-30 w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 text-sm shadow-2xl">
+										<div className="flex items-center justify-between border-b border-black/10 pb-3">
+											<div>
+												<div className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">Notifications</div>
+												<div className="text-xs text-black/45">Live agent activity & pipeline updates</div>
+											</div>
+											{adminNotifications.length > 0 && (
+												<button
+													type="button"
+													onClick={() => {
+														setAdminNotifications([]);
+														setUnreadNotifCount(0);
+													}}
+													className="text-[11px] font-semibold text-[#DE141C] hover:underline"
+												>
+													Clear all
+												</button>
+											)}
+										</div>
+
+										<div className="mt-3 max-h-80 overflow-y-auto space-y-2 pr-1">
+											{adminNotifications.length === 0 ? (
+												<div className="py-6 text-center text-xs text-black/40">
+													No recent agent activity. Updates will appear here live when agents make progress.
+												</div>
+											) : (
+												adminNotifications.map((n) => (
+													<div
+														key={n.id}
+														onClick={() => handleOpenAdminNotification(n)}
+														className="group cursor-pointer rounded-xl border border-black/5 bg-zinc-50 p-2.5 transition hover:border-[#DE141C]/30 hover:bg-red-50/20"
+													>
+														<div className="flex items-center justify-between gap-2">
+															<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">
+																{n.title}
+															</span>
+															<span className="text-[10px] text-black/40 shrink-0">
+																{formatRelativeTime(n.timestamp)}
+															</span>
+														</div>
+														<p className="mt-0.5 text-xs text-black/70">{n.message}</p>
+														{n.propertyTitle && (
+															<p className="mt-0.5 text-[11px] text-black/45 truncate">
+																Listing: {n.propertyTitle}
+															</p>
+														)}
+														{n.note && (
+															<div className="mt-1.5 rounded-lg bg-white p-1.5 text-[11px] text-black/60 italic border border-black/5">
+																&ldquo;{n.note}&rdquo;
+															</div>
+														)}
+													</div>
+												))
+											)}
+										</div>
+
+										<div className="mt-3 border-t border-black/10 pt-2.5 text-[11px] text-black/50 space-y-1">
+											<p>• {workspace.inquiries.filter((item) => item.status === "new").length} uncontacted leads awaiting review.</p>
+											<p>• {workspace.properties.filter((item) => item.status === "draft").length} draft properties not yet public.</p>
+										</div>
+									</div>
+								) : null}
+							</div>
 							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title={asText(profile?.email ?? profile?.full_name)}>
 								<UserCircle className="h-5 w-5" />
 							</button>
-							{showNotifications ? (
-								<div className="absolute right-8 top-10 z-30 w-72 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
-									<div className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">Notifications</div>
-									<p className="mt-2 text-black/60">{workspace.inquiries.filter((item) => item.status === "new").length} new inquiries need review.</p>
-									<p className="mt-1 text-xs text-black/45">{workspace.properties.filter((item) => item.status === "draft").length} draft properties are not public yet.</p>
-								</div>
-							) : null}
 							{showProfileMenu ? (
 								<div className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
 									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
@@ -4368,6 +4640,54 @@ export default function AdminCms({
 								className="rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20"
 							>
 								{confirmingDestructiveAction ? "Verifying..." : destructiveAction.confirmLabel ?? "Verify password and delete"}
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
+			{/* Admin Live Agent Activity Toast */}
+			{adminToast ? (
+				<div className="fixed right-4 top-16 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl sm:right-8 sm:max-w-md animate-in slide-in-from-top-2">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+						<UserCheck className="h-5 w-5" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="flex items-center justify-between gap-2">
+							<p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+								{adminToast.title}
+							</p>
+							<button
+								type="button"
+								onClick={() => setAdminToast(null)}
+								className="rounded p-0.5 text-black/40 transition hover:text-black"
+								title="Dismiss"
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+						</div>
+						<p className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{adminToast.message}</p>
+						{adminToast.propertyTitle && (
+							<p className="mt-0.5 truncate text-xs text-black/55">Listing: <span className="font-medium text-black/75">{adminToast.propertyTitle}</span></p>
+						)}
+						{adminToast.note && (
+							<p className="mt-1 text-xs italic text-black/65 bg-zinc-50 rounded-lg p-1.5 border border-black/5">
+								&ldquo;{adminToast.note}&rdquo;
+							</p>
+						)}
+						<div className="mt-3 flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => handleOpenAdminNotification(adminToast)}
+								className="inline-flex items-center gap-1.5 rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-black/80"
+							>
+								View in Pipeline <ChevronRight className="h-3.5 w-3.5" />
+							</button>
+							<button
+								type="button"
+								onClick={() => setAdminToast(null)}
+								className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-black/5"
+							>
+								Dismiss
 							</button>
 						</div>
 					</div>

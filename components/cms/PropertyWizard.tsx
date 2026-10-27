@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
 import {
 	Building2,
 	MapPin,
@@ -20,7 +20,11 @@ import {
 	LandPlot,
 	Tractor,
 	Flower2,
+	Video,
+	UploadCloud,
+	Link2,
 } from "lucide-react";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
 import type { ReactNode } from "react";
@@ -150,6 +154,251 @@ function buildEmptyPayload(
 	return result;
 }
 
+function getYouTubeEmbedUrl(url: string): string {
+	try {
+		const parsed = new URL(url);
+		if (parsed.hostname.includes("youtu.be")) {
+			const id = parsed.pathname.slice(1);
+			return `https://www.youtube.com/embed/${id}`;
+		}
+		const v = parsed.searchParams.get("v");
+		if (v) return `https://www.youtube.com/embed/${v}`;
+		if (parsed.pathname.includes("/embed/")) return url;
+	} catch {
+		// fallback
+	}
+	return url;
+}
+
+function getVimeoEmbedUrl(url: string): string {
+	try {
+		const match = url.match(/vimeo\.com\/(\d+)/);
+		if (match?.[1]) {
+			return `https://player.vimeo.com/video/${match[1]}`;
+		}
+	} catch {
+		// fallback
+	}
+	return url;
+}
+
+function VideoWalkthroughInput({
+	value,
+	canEdit,
+	onChange,
+}: {
+	value: string;
+	canEdit: boolean;
+	onChange: (val: string) => void;
+}) {
+	const [uploading, setUploading] = useState(false);
+	const [uploadError, setUploadError] = useState<string | null>(null);
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+	const videoSrc = String(value || "").trim();
+	const isYouTube = videoSrc.includes("youtube.com") || videoSrc.includes("youtu.be");
+	const isVimeo = videoSrc.includes("vimeo.com");
+	const isDirectVideo =
+		/\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(videoSrc) ||
+		videoSrc.includes("storage/v1/object/public");
+
+	async function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		setUploading(true);
+		setUploadError(null);
+
+		try {
+			const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+			const filePath = `property-videos/${Date.now()}-${cleanName}`;
+
+			// Try direct Supabase storage upload
+			const { error: uploadErr } = await supabaseBrowser.storage
+				.from("property-images")
+				.upload(filePath, file, {
+					contentType: file.type || "video/mp4",
+					upsert: true,
+				});
+
+			if (!uploadErr) {
+				const { data: publicUrlData } = supabaseBrowser.storage
+					.from("property-images")
+					.getPublicUrl(filePath);
+				onChange(publicUrlData.publicUrl);
+				return;
+			}
+
+			// Fallback to /api/upload
+			const session = (await supabaseBrowser.auth.getSession()).data.session;
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("folder", "property-videos");
+
+			const res = await fetch("/api/upload", {
+				method: "POST",
+				headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+				body: formData,
+			});
+
+			const data = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+			if (res.ok && data.url) {
+				onChange(data.url);
+			} else {
+				throw new Error(data.error || uploadErr.message || "Failed to upload video.");
+			}
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Failed to upload video.";
+			setUploadError(msg);
+		} finally {
+			setUploading(false);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+		}
+	}
+
+	return (
+		<div className="space-y-3 rounded-2xl border border-black/10 bg-zinc-50/70 p-4">
+			<input
+				ref={fileInputRef}
+				type="file"
+				accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/*"
+				className="hidden"
+				onChange={handleFileSelect}
+				disabled={!canEdit || uploading}
+			/>
+
+			{videoSrc ? (
+				<div className="space-y-2">
+					<div className="relative overflow-hidden rounded-xl border border-black/15 bg-black">
+						{isDirectVideo ? (
+							<video
+								src={videoSrc}
+								controls
+								playsInline
+								className="max-h-56 w-full object-contain"
+								preload="metadata"
+							/>
+						) : isYouTube ? (
+							<div className="aspect-video w-full">
+								<iframe
+									src={getYouTubeEmbedUrl(videoSrc)}
+									className="h-full w-full"
+									allowFullScreen
+								/>
+							</div>
+						) : isVimeo ? (
+							<div className="aspect-video w-full">
+								<iframe
+									src={getVimeoEmbedUrl(videoSrc)}
+									className="h-full w-full"
+									allowFullScreen
+								/>
+							</div>
+						) : (
+							<div className="flex h-36 flex-col items-center justify-center p-4 text-center text-white">
+								<Video className="mb-2 h-8 w-8 text-white/70" />
+								<p className="max-w-md truncate text-xs font-medium text-white/80">{videoSrc}</p>
+								<a
+									href={videoSrc}
+									target="_blank"
+									rel="noreferrer"
+									className="mt-2 text-xs font-semibold text-white/90 underline hover:text-white"
+								>
+									Open video link ↗
+								</a>
+							</div>
+						)}
+					</div>
+
+					<div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+						<span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+							<Check className="h-3.5 w-3.5 text-emerald-600" />
+							Video walkthrough attached
+						</span>
+						{canEdit && (
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									onClick={() => fileInputRef.current?.click()}
+									disabled={uploading}
+									className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1 text-xs font-medium text-[#111111] transition hover:bg-zinc-100 disabled:opacity-50"
+								>
+									<UploadCloud className="h-3 w-3 text-black/60" />
+									Replace file
+								</button>
+								<button
+									type="button"
+									onClick={() => onChange("")}
+									className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-100"
+								>
+									<Trash2 className="h-3 w-3" />
+									Remove
+								</button>
+							</div>
+						)}
+					</div>
+				</div>
+			) : (
+				<div
+					onClick={() => {
+						if (canEdit && !uploading) fileInputRef.current?.click();
+					}}
+					className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/15 bg-white p-6 text-center transition ${
+						canEdit ? "cursor-pointer hover:border-black/30 hover:bg-zinc-50" : "opacity-60"
+					}`}
+				>
+					<div className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-[#DE141C]">
+						{uploading ? (
+							<span className="h-5 w-5 animate-spin rounded-full border-2 border-[#DE141C]/30 border-t-[#DE141C]" />
+						) : (
+							<Video className="h-5 w-5" />
+						)}
+					</div>
+					<div className="text-sm font-semibold text-[#111111]">
+						{uploading ? "Uploading video walkthrough…" : "Upload Video Walkthrough"}
+					</div>
+					<p className="mt-1 text-xs text-black/50">
+						{uploading
+							? "Please wait while your video is uploading to storage."
+							: "Click to upload an MP4, MOV, or WebM walkthrough file"}
+					</p>
+					{canEdit && !uploading && (
+						<button
+							type="button"
+							className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[#111111] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/80"
+						>
+							<UploadCloud className="h-3.5 w-3.5" />
+							Choose video file
+						</button>
+					)}
+				</div>
+			)}
+
+			{uploadError && (
+				<div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-medium text-red-700">
+					{uploadError}
+				</div>
+			)}
+
+			<div className="pt-1">
+				<div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-black/50">
+					<Link2 className="h-3 w-3" />
+					<span>Or paste video URL directly (YouTube, Vimeo, external link)</span>
+				</div>
+				<input
+					type="url"
+					name="video_url"
+					value={videoSrc}
+					placeholder="https://www.youtube.com/watch?v=... or https://..."
+					disabled={!canEdit || uploading}
+					onChange={(e) => onChange(e.target.value)}
+					className="mt-1.5 w-full rounded-xl border border-black/10 bg-white px-3.5 py-2 text-xs text-[#111111] outline-none transition placeholder:text-black/30 focus:border-black/30 focus:ring-2 focus:ring-black/5 disabled:bg-zinc-100"
+				/>
+			</div>
+		</div>
+	);
+}
+
 // ─── Field renderer ───────────────────────────────────────────────────────────
 
 function FieldInput({
@@ -165,6 +414,16 @@ function FieldInput({
 	canEdit: boolean;
 	onChange: (name: string, val: string | boolean) => void;
 }) {
+	if (field.name === "video_url") {
+		return (
+			<VideoWalkthroughInput
+				value={asText(value)}
+				canEdit={canEdit}
+				onChange={(val) => onChange("video_url", val)}
+			/>
+		);
+	}
+
 	const commonClass =
 		"mt-1 w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-[#111111] outline-none transition placeholder:text-black/30 focus:border-black/30 focus:ring-2 focus:ring-black/5 disabled:bg-zinc-50 disabled:text-black/45";
 

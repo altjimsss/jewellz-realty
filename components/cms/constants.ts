@@ -126,7 +126,7 @@ export const propertyFields: FieldSpec[] = [
 	{ section: "Step 6 · Content & AI Context", name: "description", label: "Description", type: "textarea", rows: 5, help: "Write buyer-friendly details. This also helps AI search understand the property." },
 	{ section: "Step 6 · Content & AI Context", name: "key_features", label: "Key Features", type: "array", rows: 4, help: "One feature per line, or comma-separated." },
 	{ section: "Step 6 · Content & AI Context", name: "amenities", label: "Amenities", type: "array", rows: 4, help: "One amenity per line, or comma-separated." },
-	{ section: "Step 7 · Photos & Publish", name: "video_url", label: "Optional Video URL", type: "url" },
+	{ section: "Step 7 · Photos & Publish", name: "video_url", label: "Video Walkthrough", type: "url", help: "Upload a property video walkthrough (MP4, WebM, MOV) or paste a YouTube / Vimeo link." },
 	{ section: "Step 7 · Photos & Publish", name: "published_at", label: "Published At", type: "datetime-local", help: "Leave blank when saving as draft. The CMS fills this automatically when publishing." },
 ];
 

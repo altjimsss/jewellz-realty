@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -289,6 +289,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	const [editStatus, setEditStatus] = useState("new");
 	const [editNotes, setEditNotes] = useState("");
 	const [updatingInquiry, setUpdatingInquiry] = useState(false);
+	const selfUpdatedInquiryRef = useRef<{ id: string; timestamp: number } | null>(null);
 
 	const [profileForm, setProfileForm] = useState<Partial<AgentProfile>>({});
 	const [savingProfile, setSavingProfile] = useState(false);
@@ -451,7 +452,12 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					if (!mounted) return;
 					const newRow = payload.new as InquiryRow & { assigned_agent_id?: string | null };
 					if (!newRow || !newRow.id) return;
-					if (newRow.assigned_agent_id !== agent.id) return;
+
+					// If this lead is no longer assigned to this agent, remove from local list
+					if (newRow.assigned_agent_id !== agent.id) {
+						setInquiries((prev) => prev.filter((item) => item.id !== newRow.id));
+						return;
+					}
 
 					let propertyInfo = newRow.properties;
 					if (!propertyInfo && newRow.property_id) {
@@ -464,26 +470,60 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					}
 
 					const fullInquiry: InquiryRow = { ...newRow, properties: propertyInfo };
+					let isBrandNewAssignment = false;
+
 					setInquiries((prev) => {
 						const exists = prev.some((item) => item.id === fullInquiry.id);
-						if (exists) return prev.map((item) => (item.id === fullInquiry.id ? fullInquiry : item));
+						if (exists) {
+							return prev.map((item) => (item.id === fullInquiry.id ? { ...item, ...fullInquiry } : item));
+						}
+						isBrandNewAssignment = true;
 						return [fullInquiry, ...prev];
 					});
 
-					const notif: AgentNotification = {
-						id: `notif_${fullInquiry.id}_${Date.now()}`,
-						inquiryId: fullInquiry.id,
-						title: "New Lead Assigned!",
-						message: `${fullInquiry.buyer_name || "A buyer"} was assigned to you by Admin.`,
-						propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
-						buyerEmail: fullInquiry.buyer_email,
-						buyerPhone: fullInquiry.buyer_phone,
-						timestamp: new Date().toISOString(),
-						read: false,
-					};
-					setNotifications((prev) => [notif, ...prev.filter((item) => item.inquiryId !== notif.inquiryId)]);
-					setToastNotification(notif);
-					playNotificationChime();
+					// Do not notify the agent if they were the ones who just made this update locally
+					const isSelfUpdate =
+						selfUpdatedInquiryRef.current &&
+						selfUpdatedInquiryRef.current.id === fullInquiry.id &&
+						Date.now() - selfUpdatedInquiryRef.current.timestamp < 6000;
+
+					if (isSelfUpdate) {
+						return;
+					}
+
+					// Only notify "New Lead Assigned" for brand new leads or newly assigned leads
+					if (payload.eventType === "INSERT" || isBrandNewAssignment) {
+						const notif: AgentNotification = {
+							id: `notif_${fullInquiry.id}_${Date.now()}`,
+							inquiryId: fullInquiry.id,
+							title: "New Lead Assigned!",
+							message: `${fullInquiry.buyer_name || "A buyer"} was assigned to you by Admin.`,
+							propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
+							buyerEmail: fullInquiry.buyer_email,
+							buyerPhone: fullInquiry.buyer_phone,
+							timestamp: new Date().toISOString(),
+							read: false,
+						};
+						setNotifications((prev) => [notif, ...prev.filter((item) => item.inquiryId !== notif.inquiryId)]);
+						setToastNotification(notif);
+						playNotificationChime();
+					} else if (payload.eventType === "UPDATE") {
+						// Someone else (e.g. Admin) updated this lead's status/details
+						const notif: AgentNotification = {
+							id: `notif_upd_${fullInquiry.id}_${Date.now()}`,
+							inquiryId: fullInquiry.id,
+							title: "Lead Updated by Admin",
+							message: `${fullInquiry.buyer_name || "Lead"} was updated to ${fullInquiry.status?.replace("_", " ")}.`,
+							propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
+							buyerEmail: fullInquiry.buyer_email,
+							buyerPhone: fullInquiry.buyer_phone,
+							timestamp: new Date().toISOString(),
+							read: false,
+						};
+						setNotifications((prev) => [notif, ...prev.filter((item) => item.id !== notif.id)]);
+						setToastNotification(notif);
+						playNotificationChime();
+					}
 				},
 			)
 			.subscribe();
@@ -500,8 +540,13 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				setInquiries((prev) => {
 					const existingIds = new Set(prev.map((item) => item.id));
 					const brandNew = (latestData as InquiryRow[]).filter((item) => !existingIds.has(item.id));
-					if (brandNew.length > 0) {
-						const newest = brandNew[0];
+					const recentNew = brandNew.filter((item) => {
+						if (!item.created_at) return false;
+						return Date.now() - new Date(item.created_at).getTime() < 120000;
+					});
+
+					if (recentNew.length > 0) {
+						const newest = recentNew[0];
 						const notif: AgentNotification = {
 							id: `notif_${newest.id}_${Date.now()}`,
 							inquiryId: newest.id,
@@ -634,6 +679,8 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			if (["reserved", "closed_won", "closed_lost"].includes(newStatus) && !target?.closed_at) {
 				payload.closed_at = now;
 			}
+
+			selfUpdatedInquiryRef.current = { id: inquiryId, timestamp: Date.now() };
 
 			const { error } = await supabaseBrowser
 				.from("inquiries")
@@ -1693,7 +1740,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DE141C]/10 text-[#DE141C]"><Sparkles className="h-5 w-5" /></div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">New lead assigned by Admin</p>
+							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">{toastNotification.title || "Lead Update"}</p>
 							<button type="button" onClick={() => setToastNotification(null)} className="rounded p-0.5 text-black/40 transition hover:text-black" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
 						</div>
 						<p className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{toastNotification.message}</p>

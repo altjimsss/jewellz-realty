@@ -35,10 +35,12 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: "No file provided." }, { status: 400 });
 		}
 
-		// Ensure allowed image formats
-		const mimeType = file.type || "image/png";
-		if (!mimeType.startsWith("image/")) {
-			return NextResponse.json({ error: "File must be an image (PNG, SVG, JPG, WebP)." }, { status: 400 });
+		// Ensure allowed image or video formats
+		const mimeType = file.type || "application/octet-stream";
+		const isImage = mimeType.startsWith("image/");
+		const isVideo = mimeType.startsWith("video/") || /\.(mp4|webm|mov|m4v|ogg|avi)$/i.test(file.name);
+		if (!isImage && !isVideo) {
+			return NextResponse.json({ error: "File must be an image (PNG, SVG, JPG, WebP) or video (MP4, WebM, MOV)." }, { status: 400 });
 		}
 
 		const buffer = Buffer.from(await file.arrayBuffer());
