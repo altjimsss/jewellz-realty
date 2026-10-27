@@ -3852,7 +3852,7 @@ export default function AdminCms({
 
 	if (!loading && (!sessionUser || !profile)) {
 		return (
-			<main className="min-h-screen bg-[#f2f2ef] flex items-center justify-center p-6 text-[#111111]">
+			<main className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 text-[#0f172a]">
 				<div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-sm text-center">
 					<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-50 border border-black/10 shadow-xs mb-4">
 						<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
@@ -3879,9 +3879,9 @@ export default function AdminCms({
 	}
 
 	return (
-		<main className="min-h-screen bg-[#f2f2ef] text-[#111111]">
+		<main className="min-h-screen bg-[#f8fafc] bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#0f172a] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
-				<aside className="hidden border-r border-black/10 bg-[#fbfbfa] py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+				<aside className="hidden border-r border-slate-200/80 bg-white/95 backdrop-blur-md py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
 						<div className="flex h-10 w-10 items-center justify-center rounded-md bg-white ring-1 ring-black/10">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
@@ -3908,13 +3908,13 @@ export default function AdminCms({
 						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111] disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
 				</aside>
 
-				<aside className={`${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-black/10 bg-[#fbfbfa] transition-[width] duration-200 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
+				<aside className={`${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
 					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-2 py-3">
 						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
@@ -4015,13 +4015,13 @@ export default function AdminCms({
 						)}
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">Refresh</button>
-							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
+							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
 						</div>
 					</div>
 				</aside>
 
-				<section className="flex min-w-0 flex-col bg-[#f2f2ef]">
-					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-black/10 bg-[#fbfbfa] px-4">
+				<section className="flex min-w-0 flex-col bg-transparent">
+					<header className="sticky top-0 z-20 flex h-13 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
 						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-md border border-black/10 bg-white text-black/60 transition hover:text-[#111111]" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -4178,13 +4178,13 @@ export default function AdminCms({
 									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 									<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); router.push("/login"); router.refresh(); }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
 								</div>
 							) : null}
 						</div>
 					</header>
 
-					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
+					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-4 lg:px-5">
 						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
 							{loading || !authChecked ? (
 								<AdminContentSkeleton section={currentSection} />

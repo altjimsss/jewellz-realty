@@ -361,7 +361,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 
 	async function handleSignOut() {
 		await supabaseBrowser.auth.signOut();
-		router.replace("/login");
+		window.location.href = "/";
 	}
 
 	async function handleSendPasswordReset() {
