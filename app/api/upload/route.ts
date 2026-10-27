@@ -23,8 +23,8 @@ export async function POST(request: Request) {
 			.maybeSingle();
 
 		const role = profile?.role;
-		if (!profile?.is_active || (role !== "admin" && role !== "developer_partner")) {
-			return NextResponse.json({ error: "Admin or developer partner access is required." }, { status: 403 });
+		if (!profile?.is_active || (role !== "admin" && role !== "developer_partner" && role !== "agent")) {
+			return NextResponse.json({ error: "Admin, agent, or developer partner access is required." }, { status: 403 });
 		}
 
 		const formData = await request.formData();

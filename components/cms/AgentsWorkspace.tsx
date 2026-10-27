@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
-import { AlertCircle, CheckCircle2, Mail, Plus, RefreshCw, Shield, Trash2, UserRound, X } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { AlertCircle, CheckCircle2, Loader2, Mail, Plus, RefreshCw, Shield, Trash2, Upload, UserRound, X } from "lucide-react";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow } from "./types";
@@ -196,6 +196,111 @@ export function AgentsWorkspace({ rows, selectedId, canEdit, rowMeta, emailForRo
 	);
 }
 
+function AgentPhotoUploadButton({
+	currentUrl,
+	onUploaded,
+	disabled = false,
+}: {
+	currentUrl?: string | null;
+	onUploaded: (url: string) => void;
+	disabled?: boolean;
+}) {
+	const [uploading, setUploading] = useState(false);
+	const [error, setError] = useState("");
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		if (!file.type.startsWith("image/")) {
+			setError("Please choose a PNG, JPG, or WebP image.");
+			return;
+		}
+
+		setUploading(true);
+		setError("");
+
+		try {
+			const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+			const filePath = `agent-photos/${Date.now()}-${cleanName}`;
+
+			// Try direct Supabase storage upload
+			const { error: uploadErr } = await supabaseBrowser.storage
+				.from("property-images")
+				.upload(filePath, file, {
+					contentType: file.type || "image/jpeg",
+					upsert: true,
+				});
+
+			if (!uploadErr) {
+				const { data: publicUrlData } = supabaseBrowser.storage
+					.from("property-images")
+					.getPublicUrl(filePath);
+				onUploaded(publicUrlData.publicUrl);
+				return;
+			}
+
+			// Fallback to /api/upload
+			const session = (await supabaseBrowser.auth.getSession()).data.session;
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("folder", "agent-photos");
+
+			const res = await fetch("/api/upload", {
+				method: "POST",
+				headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+				body: formData,
+			});
+
+			const data = (await res.json().catch(() => null)) as { ok?: boolean; url?: string; error?: string } | null;
+			if (res.ok && data?.url) {
+				onUploaded(data.url);
+			} else {
+				setError(data?.error || uploadErr.message || "Failed to upload photo.");
+			}
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Upload error.";
+			setError(msg);
+		} finally {
+			setUploading(false);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+		}
+	}
+
+	return (
+		<div className="flex flex-col gap-1">
+			<input
+				ref={fileInputRef}
+				type="file"
+				accept="image/png,image/jpeg,image/jpg,image/webp"
+				onChange={handleFileChange}
+				disabled={disabled || uploading}
+				className="hidden"
+			/>
+			<button
+				type="button"
+				onClick={() => fileInputRef.current?.click()}
+				disabled={disabled || uploading}
+				className="inline-flex items-center gap-1.5 rounded-md border border-black/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+			>
+				{uploading ? (
+					<>
+						<Loader2 className="h-3.5 w-3.5 animate-spin text-black/60" />
+						<span>Uploading...</span>
+					</>
+				) : (
+					<>
+						<Upload className="h-3.5 w-3.5 text-black/60" />
+						<span>{currentUrl ? "Change picture (PNG/JPG)" : "Upload picture (PNG/JPG)"}</span>
+					</>
+				)}
+			</button>
+			{error ? <p className="text-xs text-red-600">{error}</p> : null}
+		</div>
+	);
+}
+
 type RegisterProps = {
 	onRegistered: () => Promise<void>;
 	onDone: () => void;
@@ -272,10 +377,38 @@ function RegisterAgentForm({ onRegistered, onDone }: RegisterProps) {
 					<div className={labelClass}>Specialization</div>
 					<input type="text" value={form.specialization} onChange={(event) => update("specialization", event.target.value)} placeholder="e.g. Condo & Pre-selling" className={inputClass} />
 				</label>
-				<label className="block md:col-span-2">
-					<div className={labelClass}>Photo URL</div>
-					<input type="url" value={form.photoUrl} onChange={(event) => update("photoUrl", event.target.value)} placeholder="Paste an image link (e.g. https://...)" className={inputClass} />
-				</label>
+				<div className="block md:col-span-2 rounded-lg border border-black/10 bg-white p-3">
+					<div className="flex flex-wrap items-center justify-between gap-2">
+						<div>
+							<div className={labelClass}>Agent Photo (PNG/JPG)</div>
+							<p className="text-xs text-black/50">Upload a picture for the new agent or paste an image link.</p>
+						</div>
+						{form.photoUrl ? (
+							<button
+								type="button"
+								onClick={() => update("photoUrl", "")}
+								className="text-xs text-red-600 hover:text-red-700"
+							>
+								Remove
+							</button>
+						) : null}
+					</div>
+					<div className="mt-2.5 flex flex-wrap items-center gap-3">
+						<AgentAvatar src={form.photoUrl} name={form.fullName || "New Agent"} size="sm" />
+						<AgentPhotoUploadButton
+							currentUrl={form.photoUrl}
+							onUploaded={(url) => update("photoUrl", url)}
+							disabled={saving}
+						/>
+						<input
+							type="url"
+							value={form.photoUrl}
+							onChange={(event) => update("photoUrl", event.target.value)}
+							placeholder="Or paste photo URL (https://...)"
+							className="h-8 min-w-[200px] flex-1 rounded-md border border-black/10 bg-white px-2.5 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30"
+						/>
+					</div>
+				</div>
 				<label className="block">
 					<div className={labelClass}>Facebook URL</div>
 					<input type="url" value={form.facebookUrl} onChange={(event) => update("facebookUrl", event.target.value)} placeholder="https://facebook.com/..." className={inputClass} />
@@ -434,14 +567,24 @@ function AgentEditor({ row, canEdit, loginEmail, metrics, onDelete, onSubmit }: 
 				</div>
 				<div className="mt-3 flex flex-wrap items-center gap-4">
 					<AgentAvatar src={form.photo_url} name={displayName} size="lg" />
-					<input
-						type="url"
-						value={form.photo_url}
-						onChange={(event) => update("photo_url", event.target.value)}
-						placeholder="Paste an image URL (https://...)"
-						disabled={!canEdit}
-						className="h-9 min-w-[220px] flex-1 rounded-md border border-black/10 bg-white px-3 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30"
-					/>
+					<div className="flex flex-1 flex-col gap-2 min-w-[220px]">
+						<div className="flex items-center gap-2">
+							<AgentPhotoUploadButton
+								currentUrl={form.photo_url}
+								onUploaded={(url) => update("photo_url", url)}
+								disabled={!canEdit}
+							/>
+							<span className="text-[11px] text-black/45">or paste URL below</span>
+						</div>
+						<input
+							type="url"
+							value={form.photo_url}
+							onChange={(event) => update("photo_url", event.target.value)}
+							placeholder="Paste an image URL (https://...)"
+							disabled={!canEdit}
+							className="h-9 min-w-[220px] w-full rounded-md border border-black/10 bg-white px-3 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30"
+						/>
+					</div>
 				</div>
 			</div>
 

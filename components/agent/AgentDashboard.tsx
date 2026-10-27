@@ -11,11 +11,13 @@ import {
 	Bell,
 	Building2,
 	Building,
+	Camera,
 	CheckCheck,
 	ChevronRight,
 	Clock,
 	Inbox,
 	LayoutDashboard,
+	Loader2,
 	LogOut,
 	Mail,
 	MapPin,
@@ -30,7 +32,9 @@ import {
 	Sparkles,
 	Star,
 	Target,
+	Trash2,
 	TrendingUp,
+	Upload,
 	UserCircle,
 	Users,
 	Wallet,
@@ -295,6 +299,9 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	const [profileForm, setProfileForm] = useState<Partial<AgentProfile>>({});
 	const [savingProfile, setSavingProfile] = useState(false);
 	const [profileMessage, setProfileMessage] = useState("");
+	const [uploadingAgentPhoto, setUploadingAgentPhoto] = useState(false);
+	const [agentPhotoError, setAgentPhotoError] = useState("");
+	const agentPhotoInputRef = useRef<HTMLInputElement>(null);
 
 	const unreadCount = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
 
@@ -637,6 +644,65 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			.eq("assigned_agent_id", agent.id)
 			.order("created_at", { ascending: false });
 		if (data) setInquiries(data as InquiryRow[]);
+	}
+
+	async function handleAgentPhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		if (!file.type.startsWith("image/")) {
+			setAgentPhotoError("Please select a valid image file (PNG, JPG, WebP).");
+			return;
+		}
+
+		setUploadingAgentPhoto(true);
+		setAgentPhotoError("");
+
+		try {
+			const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+			const filePath = `agent-photos/${Date.now()}-${cleanName}`;
+
+			// Try direct Supabase storage upload
+			const { error: uploadErr } = await supabaseBrowser.storage
+				.from("property-images")
+				.upload(filePath, file, {
+					contentType: file.type || "image/jpeg",
+					upsert: true,
+				});
+
+			if (!uploadErr) {
+				const { data: publicUrlData } = supabaseBrowser.storage
+					.from("property-images")
+					.getPublicUrl(filePath);
+				setProfileForm((prev) => ({ ...prev, photo_url: publicUrlData.publicUrl }));
+				return;
+			}
+
+			// Fallback to /api/upload
+			const session = (await supabaseBrowser.auth.getSession()).data.session;
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("folder", "agent-photos");
+
+			const res = await fetch("/api/upload", {
+				method: "POST",
+				headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+				body: formData,
+			});
+
+			const data = (await res.json().catch(() => null)) as { ok?: boolean; url?: string; error?: string } | null;
+			if (res.ok && data?.url) {
+				setProfileForm((prev) => ({ ...prev, photo_url: data.url }));
+			} else {
+				setAgentPhotoError(data?.error || uploadErr.message || "Failed to upload photo.");
+			}
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Network error while uploading photo.";
+			setAgentPhotoError(msg);
+		} finally {
+			setUploadingAgentPhoto(false);
+			if (agentPhotoInputRef.current) agentPhotoInputRef.current.value = "";
+		}
 	}
 
 	async function handleSaveProfile(event: FormEvent) {
@@ -1650,10 +1716,91 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Specialization</span>
 													<input type="text" value={profileForm.specialization || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, specialization: event.target.value }))} placeholder="e.g. Residential & Condominium" className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
 												</label>
-												<label className="block">
-													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Photo URL</span>
-													<input type="url" value={profileForm.photo_url || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, photo_url: event.target.value }))} placeholder="https://..." className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
-												</label>
+											</div>
+
+											{/* Agent Photo Upload Card */}
+											<div className="rounded-lg border border-black/10 bg-zinc-50/70 p-4">
+												<div className="flex flex-wrap items-center justify-between gap-2">
+													<div>
+														<span className="text-xs font-semibold uppercase tracking-wider text-[#111111]">Profile Photo (PNG/JPG)</span>
+														<p className="mt-0.5 text-xs text-black/50">Upload a picture for your public agent profile and agent cards.</p>
+													</div>
+													{profileForm.photo_url ? (
+														<button
+															type="button"
+															onClick={() => setProfileForm((prev) => ({ ...prev, photo_url: "" }))}
+															disabled={uploadingAgentPhoto}
+															className="inline-flex items-center gap-1 text-xs font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50"
+														>
+															<Trash2 className="h-3 w-3" />
+															Remove photo
+														</button>
+													) : null}
+												</div>
+
+												<div className="mt-3 flex flex-wrap items-center gap-4">
+													{profileForm.photo_url ? (
+														<SafeImage
+															src={profileForm.photo_url}
+															alt={profileForm.full_name || "Agent"}
+															width={64}
+															height={64}
+															className="h-16 w-16 rounded-full border border-black/15 object-cover shadow-sm"
+															fallbackContent={
+																<div className="grid h-16 w-16 place-items-center rounded-full bg-[#111111] text-base font-bold text-white">
+																	{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}
+																</div>
+															}
+														/>
+													) : (
+														<div className="grid h-16 w-16 place-items-center rounded-full border border-dashed border-black/20 bg-white text-black/40 shadow-sm">
+															<Camera className="h-6 w-6" />
+														</div>
+													)}
+
+													<div className="flex flex-1 flex-col gap-2 min-w-[220px]">
+														<div className="flex items-center gap-2">
+															<input
+																ref={agentPhotoInputRef}
+																type="file"
+																accept="image/png,image/jpeg,image/jpg,image/webp"
+																onChange={handleAgentPhotoUpload}
+																disabled={uploadingAgentPhoto}
+																className="hidden"
+																id="agent-self-photo-upload"
+															/>
+															<label
+																htmlFor="agent-self-photo-upload"
+																className={`inline-flex items-center gap-2 rounded-md border border-black/15 bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] shadow-sm transition hover:bg-zinc-100 cursor-pointer ${
+																	uploadingAgentPhoto ? "pointer-events-none opacity-50" : ""
+																}`}
+															>
+																{uploadingAgentPhoto ? (
+																	<>
+																		<Loader2 className="h-3.5 w-3.5 animate-spin text-black/60" />
+																		<span>Uploading...</span>
+																	</>
+																) : (
+																	<>
+																		<Upload className="h-3.5 w-3.5 text-black/60" />
+																		<span>{profileForm.photo_url ? "Change photo (PNG/JPG)" : "Upload photo (PNG/JPG)"}</span>
+																	</>
+																)}
+															</label>
+															<span className="text-[11px] text-black/45">or paste URL below</span>
+														</div>
+
+														<input
+															type="url"
+															value={profileForm.photo_url || ""}
+															onChange={(event) => setProfileForm((prev) => ({ ...prev, photo_url: event.target.value }))}
+															placeholder="https://..."
+															disabled={uploadingAgentPhoto}
+															className="h-9 w-full rounded-md border border-black/10 bg-white px-3 text-xs outline-none transition focus:border-black/30"
+														/>
+														{agentPhotoError ? <p className="text-xs text-red-600">{agentPhotoError}</p> : null}
+													</div>
+												</div>
 											</div>
 											<label className="block">
 												<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Biography</span>
@@ -1681,14 +1828,14 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										<div className="rounded-lg border border-black/10 bg-white p-4">
 											<h2 className="text-sm font-semibold text-[#111111]">Public preview</h2>
 											<div className="mt-4 flex flex-col items-center text-center">
-												{agent?.photo_url ? (
-													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
+												{(profileForm.photo_url || agent?.photo_url) ? (
+													<SafeImage src={(profileForm.photo_url || agent?.photo_url)!} alt={profileForm.full_name || agent?.full_name || "Agent"} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}</div>} />
 												) : (
-													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
+													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}</div>
 												)}
-												<div className="mt-3 text-base font-semibold text-[#111111]">{agent?.full_name}</div>
-												<div className="text-xs font-medium text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
-												<div className="mt-1 text-[11px] text-black/45">{agent?.license_number || "PRC Accredited"}</div>
+												<div className="mt-3 text-base font-semibold text-[#111111]">{profileForm.full_name || agent?.full_name}</div>
+												<div className="text-xs font-medium text-[#DE141C]">{profileForm.specialization || agent?.specialization || "Licensed Real Estate Agent"}</div>
+												<div className="mt-1 text-[11px] text-black/45">{profileForm.license_number || agent?.license_number || "PRC Accredited"}</div>
 											</div>
 										</div>
 									</div>
