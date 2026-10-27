@@ -289,7 +289,8 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	const [editStatus, setEditStatus] = useState("new");
 	const [editNotes, setEditNotes] = useState("");
 	const [updatingInquiry, setUpdatingInquiry] = useState(false);
-	const selfUpdatedInquiryRef = useRef<{ id: string; timestamp: number } | null>(null);
+	const selfUpdatedInquiriesRef = useRef<Map<string, number>>(new Map());
+	const knownInquiryIdsRef = useRef<Set<string>>(new Set());
 
 	const [profileForm, setProfileForm] = useState<Partial<AgentProfile>>({});
 	const [savingProfile, setSavingProfile] = useState(false);
@@ -406,11 +407,13 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					readIds = [];
 				}
 
+				inqList.forEach((inq) => knownInquiryIdsRef.current.add(inq.id));
+
 				const initialNotifs: AgentNotification[] = inqList.map((inq) => ({
 					id: `notif_${inq.id}`,
 					inquiryId: inq.id,
 					title: "Lead Assigned",
-					message: `${inq.buyer_name || "A buyer"} was assigned to you by Admin.`,
+					message: `${inq.buyer_name || "A buyer"} was assigned to you.`,
 					propertyTitle: inq.properties?.title || "Property Inquiry",
 					buyerEmail: inq.buyer_email,
 					buyerPhone: inq.buyer_phone,
@@ -453,9 +456,21 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					const newRow = payload.new as InquiryRow & { assigned_agent_id?: string | null };
 					if (!newRow || !newRow.id) return;
 
-					// If this lead is no longer assigned to this agent, remove from local list
+					// If this lead is no longer assigned to this agent, remove it
 					if (newRow.assigned_agent_id !== agent.id) {
 						setInquiries((prev) => prev.filter((item) => item.id !== newRow.id));
+						knownInquiryIdsRef.current.delete(newRow.id);
+						return;
+					}
+
+					// Suppress ANY notification if the agent updated this inquiry themselves locally
+					const selfUpdatedTime = selfUpdatedInquiriesRef.current.get(newRow.id);
+					if (selfUpdatedTime && Date.now() - selfUpdatedTime < 30000) {
+						selfUpdatedInquiriesRef.current.delete(newRow.id);
+						// Silently merge the update into state — no toast, no chime
+						setInquiries((prev) =>
+							prev.map((item) => (item.id === newRow.id ? { ...item, ...newRow } : item)),
+						);
 						return;
 					}
 
@@ -470,34 +485,32 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					}
 
 					const fullInquiry: InquiryRow = { ...newRow, properties: propertyInfo };
-					let isBrandNewAssignment = false;
 
+					// Check if this inquiry was already known to the agent
+					const isGenuinelyNew = !knownInquiryIdsRef.current.has(fullInquiry.id);
+					knownInquiryIdsRef.current.add(fullInquiry.id);
+
+					// Merge into local list
 					setInquiries((prev) => {
 						const exists = prev.some((item) => item.id === fullInquiry.id);
 						if (exists) {
 							return prev.map((item) => (item.id === fullInquiry.id ? { ...item, ...fullInquiry } : item));
 						}
-						isBrandNewAssignment = true;
 						return [fullInquiry, ...prev];
 					});
 
-					// Do not notify the agent if they were the ones who just made this update locally
-					const isSelfUpdate =
-						selfUpdatedInquiryRef.current &&
-						selfUpdatedInquiryRef.current.id === fullInquiry.id &&
-						Date.now() - selfUpdatedInquiryRef.current.timestamp < 6000;
-
-					if (isSelfUpdate) {
+					// If event is UPDATE on an existing lead: NEVER show any toast
+					if (payload.eventType === "UPDATE") {
 						return;
 					}
 
-					// Only notify "New Lead Assigned" for brand new leads or newly assigned leads
-					if (payload.eventType === "INSERT" || isBrandNewAssignment) {
+					// ONLY notify "New Lead Assigned" for genuinely new leads (INSERT)
+					if (payload.eventType === "INSERT" && isGenuinelyNew) {
 						const notif: AgentNotification = {
 							id: `notif_${fullInquiry.id}_${Date.now()}`,
 							inquiryId: fullInquiry.id,
 							title: "New Lead Assigned!",
-							message: `${fullInquiry.buyer_name || "A buyer"} was assigned to you by Admin.`,
+							message: `${fullInquiry.buyer_name || "A buyer"} was assigned to you.`,
 							propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
 							buyerEmail: fullInquiry.buyer_email,
 							buyerPhone: fullInquiry.buyer_phone,
@@ -507,27 +520,14 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 						setNotifications((prev) => [notif, ...prev.filter((item) => item.inquiryId !== notif.inquiryId)]);
 						setToastNotification(notif);
 						playNotificationChime();
-					} else if (payload.eventType === "UPDATE") {
-						// Someone else (e.g. Admin) updated this lead's status/details
-						const notif: AgentNotification = {
-							id: `notif_upd_${fullInquiry.id}_${Date.now()}`,
-							inquiryId: fullInquiry.id,
-							title: "Lead Updated by Admin",
-							message: `${fullInquiry.buyer_name || "Lead"} was updated to ${fullInquiry.status?.replace("_", " ")}.`,
-							propertyTitle: fullInquiry.properties?.title || "Property Inquiry",
-							buyerEmail: fullInquiry.buyer_email,
-							buyerPhone: fullInquiry.buyer_phone,
-							timestamp: new Date().toISOString(),
-							read: false,
-						};
-						setNotifications((prev) => [notif, ...prev.filter((item) => item.id !== notif.id)]);
-						setToastNotification(notif);
-						playNotificationChime();
 					}
 				},
 			)
 			.subscribe();
 
+		// Poll every 30 s as a fallback for missed realtime events.
+		// ONLY notify if a genuinely brand-new lead appears that wasn't
+		// present when the page loaded or known previously.
 		const pollInterval = setInterval(async () => {
 			if (!mounted) return;
 			const { data: latestData } = await supabaseBrowser
@@ -536,36 +536,48 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				.eq("assigned_agent_id", agent.id)
 				.order("created_at", { ascending: false });
 
-			if (latestData && Array.isArray(latestData) && mounted) {
-				setInquiries((prev) => {
-					const existingIds = new Set(prev.map((item) => item.id));
-					const brandNew = (latestData as InquiryRow[]).filter((item) => !existingIds.has(item.id));
-					const recentNew = brandNew.filter((item) => {
-						if (!item.created_at) return false;
-						return Date.now() - new Date(item.created_at).getTime() < 120000;
-					});
+			if (!latestData || !Array.isArray(latestData) || !mounted) return;
 
-					if (recentNew.length > 0) {
-						const newest = recentNew[0];
-						const notif: AgentNotification = {
-							id: `notif_${newest.id}_${Date.now()}`,
-							inquiryId: newest.id,
-							title: "New Lead Assigned!",
-							message: `${newest.buyer_name || "A buyer"} was assigned to you by Admin.`,
-							propertyTitle: newest.properties?.title || "Property Inquiry",
-							buyerEmail: newest.buyer_email,
-							buyerPhone: newest.buyer_phone,
-							timestamp: new Date().toISOString(),
-							read: false,
-						};
-						setNotifications((prevNotifs) => [notif, ...prevNotifs.filter((item) => item.inquiryId !== notif.inquiryId)]);
-						setToastNotification(notif);
-						playNotificationChime();
-					}
-					return latestData as InquiryRow[];
-				});
+			// Brand new leads that have NEVER been seen in this session
+			const brandNew = (latestData as InquiryRow[]).filter(
+				(item) => !knownInquiryIdsRef.current.has(item.id),
+			);
+
+			// Mark all fetched rows as known now
+			latestData.forEach((item) => knownInquiryIdsRef.current.add(item.id));
+
+			// Among brand-new, only notify for those created in the last 2 minutes
+			const recentNew = brandNew.filter((item) => {
+				if (!item.created_at) return false;
+				return Date.now() - new Date(item.created_at).getTime() < 120000;
+			});
+
+			if (recentNew.length > 0) {
+				const newest = recentNew[0];
+				const notif: AgentNotification = {
+					id: `notif_poll_${newest.id}_${Date.now()}`,
+					inquiryId: newest.id,
+					title: "New Lead Assigned!",
+					message: `${newest.buyer_name || "A buyer"} was assigned to you.`,
+					propertyTitle: newest.properties?.title || "Property Inquiry",
+					buyerEmail: newest.buyer_email,
+					buyerPhone: newest.buyer_phone,
+					timestamp: new Date().toISOString(),
+					read: false,
+				};
+				setNotifications((prevNotifs) => [notif, ...prevNotifs.filter((item) => item.inquiryId !== notif.inquiryId)]);
+				setToastNotification(notif);
+				playNotificationChime();
 			}
-		}, 15000);
+
+			// Merge all: keep existing rows with any fresh data applied on top
+			const latestById = new Map((latestData as InquiryRow[]).map((item) => [item.id, item]));
+			setInquiries((prev) => {
+				return prev
+					.map((item) => (latestById.has(item.id) ? { ...item, ...latestById.get(item.id) } : item))
+					.concat(brandNew);
+			});
+		}, 30000);
 
 		return () => {
 			mounted = false;
@@ -680,7 +692,8 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				payload.closed_at = now;
 			}
 
-			selfUpdatedInquiryRef.current = { id: inquiryId, timestamp: Date.now() };
+			selfUpdatedInquiriesRef.current.set(inquiryId, Date.now());
+			knownInquiryIdsRef.current.add(inquiryId);
 
 			const { error } = await supabaseBrowser
 				.from("inquiries")
