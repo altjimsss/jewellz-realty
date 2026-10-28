@@ -190,14 +190,16 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
 
           <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
             {hotPicksLoading ? Array.from({ length: hotPicksPerPage }).map((_, index) => (
-              <article key={`hotpick-skeleton-${index}`} className="overflow-hidden bg-white shadow-sm">
-                <div className="h-32 animate-pulse bg-[#E7E7E7] sm:h-44" />
-                <div className="flex h-[118px] flex-col bg-[#F4F4F4] p-2.5 sm:h-[158px] sm:p-3.5">
-                  <div className="h-4 w-[88%] animate-pulse rounded bg-[#DFDFDF] sm:h-5" />
-                  <div className="mt-1 h-4 w-[62%] animate-pulse rounded bg-[#E5E5E5]" />
-                  <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-4 sm:pt-3">
-                    <div className="h-4 w-20 animate-pulse rounded bg-[#DCDCDC] sm:w-28" />
-                    <div className="h-6 w-12 animate-pulse rounded bg-[#CFCFCF] sm:h-9 sm:w-20" />
+              <article key={`hotpick-skeleton-${index}`} className="flex flex-col overflow-hidden bg-white shadow-sm">
+                <div className="h-28 animate-pulse bg-[#E7E7E7] sm:h-44" />
+                <div className="flex flex-1 flex-col justify-between bg-[#F4F4F4] p-2 sm:p-3.5">
+                  <div>
+                    <div className="h-3.5 w-[88%] animate-pulse rounded bg-[#DFDFDF] sm:h-5" />
+                    <div className="mt-1 h-3 w-[62%] animate-pulse rounded bg-[#E5E5E5]" />
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-black/5 sm:border-0 sm:pt-0">
+                    <div className="h-3 w-20 animate-pulse rounded bg-[#DCDCDC] sm:w-28" />
+                    <div className="mt-1.5 h-6 w-16 animate-pulse rounded bg-[#CFCFCF] sm:h-9 sm:w-24" />
                   </div>
                 </div>
               </article>
@@ -214,29 +216,31 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
               const href = propertyPick ? `/project-list/${pick.slug}` : "/project-list";
 
               return (
-                <Link href={href} key={pick.title} className="group overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-                  <div className="relative h-32 overflow-hidden bg-[#E7E7E7] sm:h-44">
+                <Link href={href} key={pick.title} className="group flex flex-col overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                  <div className="relative h-28 overflow-hidden bg-[#E7E7E7] sm:h-44">
                     <SafeImage src={image} fallbackSrc="/assets/housebanner1.png" alt={pick.title} fill sizes="(min-width: 768px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                   </div>
-                  <div className="flex h-[118px] flex-col bg-[#F4F4F4] p-2.5 sm:h-[158px] sm:p-3.5">
-                    <h3 className="line-clamp-2 min-h-[34px] text-[14px] font-semibold leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C] sm:min-h-[44px] sm:text-[18px]">{pick.title}</h3>
-                    <p className="mt-1 text-[11px] text-gray-500 sm:text-[13px]">{location}</p>
-                    <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-4 sm:pt-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#1F2328] sm:gap-3 sm:text-[13px]">
-                        <span className="flex items-center gap-1.5">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3 text-black/75 sm:h-3.5 sm:w-3.5" fill="none" aria-hidden="true">
+                  <div className="flex flex-1 flex-col justify-between bg-[#F4F4F4] p-2 sm:p-3.5">
+                    <div>
+                      <h3 className="line-clamp-2 min-h-[30px] sm:min-h-[44px] text-[12px] sm:text-[18px] font-semibold leading-snug sm:leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C]">{pick.title}</h3>
+                      <p className="mt-0.5 sm:mt-1 truncate text-[10px] sm:text-[13px] text-gray-500">{location}</p>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-black/5 sm:border-0 sm:pt-0">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-[13px] text-[#1F2328]">
+                        <span className="flex items-center gap-1">
+                          <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black/75" fill="none" aria-hidden="true">
                             <path d="M3 18v-7h18v7M3 14h18M6 11V7h6v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           {beds}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3 text-black/75 sm:h-3.5 sm:w-3.5" fill="none" aria-hidden="true">
+                        <span className="flex items-center gap-1">
+                          <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black/75" fill="none" aria-hidden="true">
                             <path d="M4 13h16v1a5 5 0 01-5 5H9a5 5 0 01-5-5v-1zM7 13V8a2 2 0 114 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           {baths}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3 text-black/75 sm:h-3.5 sm:w-3.5" fill="none" aria-hidden="true">
+                        <span className="flex items-center gap-1">
+                          <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black/75" fill="none" aria-hidden="true">
                             <rect x="3.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
                             <rect x="13.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
                             <rect x="3.5" y="13.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
@@ -245,20 +249,14 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
                           {area}
                         </span>
                       </div>
-                      <p className="ml-1 inline-flex h-6 shrink-0 items-center bg-[#11141C] px-2 text-[10px] font-semibold text-white sm:ml-3 sm:h-9 sm:px-4 sm:text-[15px]">{price}</p>
+                      <div className="mt-1.5 flex items-center justify-start sm:mt-auto sm:justify-end">
+                        <p className="inline-flex h-6 sm:h-9 shrink-0 items-center bg-[#11141C] px-2 sm:px-4 text-[10px] sm:text-[15px] font-bold sm:font-semibold text-white tracking-tight">{price}</p>
+                      </div>
                     </div>
                   </div>
                 </Link>
               );
             })}
-          </div>
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <button type="button" onClick={() => changeHotPicksPage("prev")} disabled={hotPicksLoading} className="grid h-9 w-8 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
-              &lsaquo;
-            </button>
-            <button type="button" onClick={() => changeHotPicksPage("next")} disabled={hotPicksLoading} className="grid h-9 w-8 place-items-center bg-[#DE141C] text-lg leading-none text-white disabled:cursor-not-allowed disabled:opacity-50">
-              &rsaquo;
-            </button>
           </div>
         </div>
       </section>

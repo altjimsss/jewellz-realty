@@ -27,15 +27,17 @@ const DEFAULT_AGENTS: Agent[] = [
 	{ name: "EVAN YU", top: false },
 ];
 
-export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: MeetAgentsProps) {
+export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 5000 }: MeetAgentsProps) {
 	const [autoPaused, setAutoPaused] = useState(false);
 	const railRef = useRef<HTMLDivElement | null>(null);
+	const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	const scrollAgents = useCallback((direction: "prev" | "next") => {
 		const rail = railRef.current;
 		if (!rail) return;
 
-		const step = 280 + 24; // card width + gap-6
+		const card = rail.querySelector("article");
+		const step = card ? card.clientWidth + 24 : 304;
 		const maxLeft = rail.scrollWidth - rail.clientWidth;
 
 		if (maxLeft <= 0) return;
@@ -61,6 +63,15 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: Meet
 		rail.scrollTo({ left: nextLeft, behavior: "smooth" });
 	}, []);
 
+	// Pause sliding on touch, and only resume after 15 seconds of inactivity
+	const handleTouchInteraction = useCallback(() => {
+		setAutoPaused(true);
+		if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+		resumeTimeoutRef.current = setTimeout(() => {
+			setAutoPaused(false);
+		}, 15000);
+	}, []);
+
 	useEffect(() => {
 		if (autoPaused) return;
 		if (typeof window === "undefined") return;
@@ -71,7 +82,10 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: Meet
 			scrollAgents("next");
 		}, autoSlideMs);
 
-		return () => window.clearInterval(t);
+		return () => {
+			window.clearInterval(t);
+			if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+		};
 	}, [autoPaused, autoSlideMs, scrollAgents]);
 
 	return (
@@ -98,21 +112,21 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: Meet
 				</button>
 				<div
 					ref={railRef}
-					className="mx-12 overflow-x-auto scroll-smooth snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+					className="mx-10 sm:mx-12 overflow-x-auto scroll-smooth snap-x snap-mandatory touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 					onMouseEnter={() => setAutoPaused(true)}
 					onMouseLeave={() => setAutoPaused(false)}
-					onTouchStart={() => setAutoPaused(true)}
-					onTouchEnd={() => setAutoPaused(false)}
+					onTouchStart={handleTouchInteraction}
+					onTouchMove={handleTouchInteraction}
 					onFocusCapture={() => setAutoPaused(true)}
 					onBlurCapture={() => setAutoPaused(false)}
 				>
-					<div className="flex w-max gap-6">
+					<div className="flex w-max gap-4 sm:gap-6 py-2 px-1">
 						{agents.map((agent, idx) => (
 							<article
 								key={agent.name}
-								className="w-[280px] shrink-0 snap-start overflow-hidden rounded-sm border border-black/10 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+								className="w-[calc(100vw-96px)] max-w-[280px] sm:w-[280px] shrink-0 snap-center sm:snap-start overflow-hidden rounded-sm border border-black/10 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
 							>
-								<div className={`relative h-60 ${idx % 2 === 0 ? "bg-[#DE141C]" : "bg-white"}`}>
+								<div className={`relative h-52 sm:h-60 ${idx % 2 === 0 ? "bg-[#DE141C]" : "bg-white"}`}>
 									{agent.top && (
 										<span className="absolute right-3 top-3 z-10 rounded-md bg-black px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-white">TOP AGENT</span>
 									)}
@@ -121,12 +135,12 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 2600 }: Meet
 										fallbackSrc="/assets/broker.png"
 										alt={agent.name}
 										fill
-										sizes="280px"
+										sizes="(max-width: 640px) 280px, 280px"
 										className="object-contain object-bottom transition-transform duration-300 group-hover:scale-[1.02]"
 									/>
 								</div>
 								<div className="bg-[#2A2A2A] px-3 py-3 text-center text-white">
-									<p className="truncate whitespace-nowrap text-[28px] font-bold uppercase leading-none tracking-[0.02em]">{agent.name}</p>
+									<p className="truncate whitespace-nowrap text-xl sm:text-[26px] font-bold uppercase leading-none tracking-[0.02em]">{agent.name}</p>
 									<p className="mt-1 text-[15px] font-medium text-gray-200">{agent.specialization || "Real Estate Broker"}</p>
 									<div className="mx-auto mt-2 h-px w-20 bg-white/20" />
 									{agent.licenseNumber ? (

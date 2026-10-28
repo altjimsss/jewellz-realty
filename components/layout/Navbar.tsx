@@ -44,7 +44,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 	return (
 		<nav className="sticky inset-x-0 top-0 z-[5000] border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
 			<div className="mx-auto flex max-w-[1200px] items-center">
-				<div className="hidden min-w-[170px] items-center md:flex">
+				<Link href="/" className="hidden min-w-[170px] items-center md:flex" aria-label="Jewellz Realty Home">
 					<Image
 						src="/assets/jewellz-logo.png"
 						alt="Jewellz Realty Logo"
@@ -53,16 +53,18 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 						priority
 						className="h-14 w-[220px] shrink-0 object-contain"
 					/>
-				</div>
+				</Link>
 				<div className="flex w-full items-center gap-2 md:hidden">
-					<Image
-						src="/assets/jewellz-logo.png"
-						alt="Jewellz Realty Logo"
-						width={180}
-						height={40}
-						priority
-						className="-ml-4 h-10 w-[140px] shrink-0 object-contain sm:w-[180px]"
-					/>
+					<Link href="/" className="-ml-4 shrink-0 sm:w-[180px]" aria-label="Jewellz Realty Home">
+						<Image
+							src="/assets/jewellz-logo.png"
+							alt="Jewellz Realty Logo"
+							width={180}
+							height={40}
+							priority
+							className="h-10 w-[140px] shrink-0 object-contain sm:w-[180px]"
+						/>
+					</Link>
 					<form className="relative block min-w-0 flex-1" onSubmit={handleSearchSubmit}>
 						<input aria-label="What are you looking for?"
 							type="search"
@@ -117,6 +119,12 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 							<Link
 								key={link.href}
 								href={link.href}
+								onClick={(e) => {
+									if (link.href === "/" && pathname === "/") {
+										e.preventDefault();
+										window.scrollTo({ top: 0, behavior: "smooth" });
+									}
+								}}
 								className={`group relative pb-2 font-medium transition-colors duration-200 ${
 									isActive ? "text-black" : "text-black/70 hover:text-black"
 								}`}
@@ -165,7 +173,13 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 								<Link
 									key={link.href}
 									href={link.href}
-									onClick={() => setMobileMenuOpen(false)}
+									onClick={(e) => {
+										setMobileMenuOpen(false);
+										if (link.href === "/" && pathname === "/") {
+											e.preventDefault();
+											window.scrollTo({ top: 0, behavior: "smooth" });
+										}
+									}}
 									className={`rounded-lg px-2.5 py-3 text-sm font-medium transition-colors duration-150 hover:bg-[#DE141C]/10 hover:text-[#DE141C] ${
 										mobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
 									} ${isActive ? "text-black" : "text-black/80"}`}

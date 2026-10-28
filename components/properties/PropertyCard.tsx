@@ -133,8 +133,8 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 				</h3>
 				<p className="mt-1 text-[12px] text-gray-500">{property.location ?? ""}</p>
 
-				<div className="mt-3 flex items-center justify-between gap-2 border-t border-black/8 pt-3">
-					<div className="flex items-center gap-3">
+				<div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-black/8 pt-3">
+					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
 						{specs.map((spec) => (
 							<span
 								key={`${spec.label}-${spec.value}`}
@@ -146,9 +146,11 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 							</span>
 						))}
 					</div>
-					<p className="shrink-0 inline-flex h-8 items-center bg-[#11141C] px-3 text-[11px] font-semibold text-white">
-						{displayPrice}
-					</p>
+					<div className="flex items-center justify-start sm:justify-end">
+						<p className="shrink-0 inline-flex h-7 sm:h-8 items-center bg-[#11141C] px-2.5 sm:px-3 text-[10px] sm:text-[11px] font-bold sm:font-semibold text-white tracking-tight">
+							{displayPrice}
+						</p>
+					</div>
 				</div>
 
 				{/* AI reason tag */}
