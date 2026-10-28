@@ -60,7 +60,15 @@ function LoginForm() {
 	const setEmail = (value: string) => setCredentials((current) => ({ ...current, [activeRole]: { ...current[activeRole], email: value } }));
 	const setPassword = (value: string) => setCredentials((current) => ({ ...current, [activeRole]: { ...current[activeRole], password: value } }));
 	const [showPassword, setShowPassword] = useState(false);
-	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(null);
+	const isExpired = searchParams.get("expired") === "1";
+	const [message, setMessage] = useState<{ text: string; type: "info" | "error" | "success" } | null>(() =>
+		isExpired
+			? {
+					text: "Your portal session has expired due to inactivity. Please sign in again.",
+					type: "info",
+			  }
+			: null,
+	);
 	const [loading, setLoading] = useState(false);
 	const [isForgotPassword, setIsForgotPassword] = useState(false);
 	const [captchaToken, setCaptchaToken] = useState("");
@@ -96,6 +104,11 @@ function LoginForm() {
 	}
 
 	useEffect(() => {
+		if (isExpired) {
+			void supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+			return;
+		}
+
 		// If arriving via a password setup link/token, redirect to /reset-password immediately.
 		if (typeof window !== "undefined") {
 			const hash = window.location.hash;
