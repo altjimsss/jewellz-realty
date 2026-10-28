@@ -274,6 +274,37 @@ export function PropertyDetailContent({
 								</div>
 							))}
 						</div>
+
+						<div className="mt-5 border-t border-black/10 pt-4">
+							{previewMode ? (
+								<button
+									type="button"
+									disabled
+									className="flex w-full items-center justify-center gap-2 rounded-xl bg-black/10 py-3 text-sm font-semibold text-black/40 cursor-not-allowed"
+								>
+									<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+										<path d="M8 2v4" />
+										<path d="M16 2v4" />
+										<rect width="18" height="18" x="3" y="4" rx="2" />
+										<path d="M3 10h18" />
+									</svg>
+									Book an Appointment
+								</button>
+							) : (
+								<Link
+									href={`/appointment?from=${encodeURIComponent("/project-list/" + property.slug)}&property=${encodeURIComponent(property.title)}`}
+									className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#DE141C] py-3 text-sm font-semibold text-white shadow-md shadow-red-500/20 transition duration-150 hover:bg-[#b80f16] active:scale-[0.99]"
+								>
+									<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+										<path d="M8 2v4" />
+										<path d="M16 2v4" />
+										<rect width="18" height="18" x="3" y="4" rx="2" />
+										<path d="M3 10h18" />
+									</svg>
+									Book an Appointment
+								</Link>
+							)}
+						</div>
 					</div>
 
 					<PropertyChatAssistant property={property} previewMode={previewMode} />
