@@ -3323,7 +3323,7 @@ export default function AdminCms({
 				if (active) {
 					adminWorkspaceSnapshot = null;
 					setLoading(false);
-					router.replace(profileResult.role === "agent" ? "/agent" : profileResult.role === "developer_partner" ? "/developer" : "/login");
+					router.replace("/login?next=/admin");
 				}
 				return;
 			}

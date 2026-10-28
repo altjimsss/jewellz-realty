@@ -7,6 +7,36 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 
 export type PortalRole = "agent" | "developer" | "admin";
 
+export const PORTAL_ROLE_MAP: Record<
+	PortalRole,
+	{ title: string; subtitle: string; destination: string; placeholder: string; allowedRoles: string[]; portalName: string }
+> = {
+	agent: {
+		title: "Agent Portal",
+		subtitle: "Sign in to access your assigned buyer leads, property listings, and sales pipeline.",
+		destination: "/agent",
+		placeholder: "agent@jewellzrealty.com",
+		allowedRoles: ["agent"],
+		portalName: "Agent Portal",
+	},
+	developer: {
+		title: "Developer Partner Hub",
+		subtitle: "Sign in to manage your master developments, unit inventory, and track buyer analytics.",
+		destination: "/developer",
+		placeholder: "partner@developer.com",
+		allowedRoles: ["developer_partner", "developer"],
+		portalName: "Developer Partner Hub",
+	},
+	admin: {
+		title: "Admin CMS",
+		subtitle: "Brokerage management, site settings, agent registrations, and full analytics.",
+		destination: "/admin",
+		placeholder: "admin@jewellzrealty.com",
+		allowedRoles: ["admin"],
+		portalName: "Admin CMS",
+	},
+};
+
 type PortalAuthModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
@@ -67,31 +97,7 @@ function PortalAuthModalContent({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [onClose]);
 
-	const roleConfig: Record<
-		PortalRole,
-		{ title: string; subtitle: string; destination: string; placeholder: string }
-	> = {
-		agent: {
-			title: "Agent Portal",
-			subtitle: "Sign in to access your assigned buyer leads, property listings, and sales pipeline.",
-			destination: "/agent",
-			placeholder: "agent@jewellzrealty.com",
-		},
-		developer: {
-			title: "Developer Partner Hub",
-			subtitle: "Sign in to manage your master developments, unit inventory, and track buyer analytics.",
-			destination: "/developer",
-			placeholder: "partner@developer.com",
-		},
-		admin: {
-			title: "Admin CMS",
-			subtitle: "Brokerage management, site settings, agent registrations, and full analytics.",
-			destination: "/admin",
-			placeholder: "admin@jewellzrealty.com",
-		},
-	};
-
-	const currentConfig = roleConfig[activeRole];
+	const currentConfig = PORTAL_ROLE_MAP[activeRole];
 
 	function resetCaptcha() {
 		setCaptchaToken("");
@@ -169,23 +175,32 @@ function PortalAuthModalContent({
 			}
 
 			if (profile && profile.is_active === false) {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
 				setMessage({ text: "Your account is inactive. Please contact the brokerage administrator.", type: "error" });
 				resetCaptcha();
 				setLoading(false);
 				return;
 			}
 
-			// Intelligent role destination fallback
-			let targetDestination = currentConfig.destination;
-			if (profile?.role) {
-				if (profile.role === "admin") {
-					targetDestination = "/admin";
-				} else if (profile.role === "agent") {
-					targetDestination = "/agent";
-				} else if (profile.role === "developer_partner") {
-					targetDestination = "/developer";
-				}
+			// Strict portal role validation:
+			// Agent form -> agent only
+			// Admin form -> admin only
+			// Developer form -> developer only
+			const currentTarget = PORTAL_ROLE_MAP[activeRole];
+			const userRole = (profile?.role || "").trim().toLowerCase();
+
+			if (!currentTarget.allowedRoles.includes(userRole)) {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+				setMessage({
+					text: `Access denied: This login form is exclusively for the ${currentTarget.portalName}. Your account does not have permission to access this portal.`,
+					type: "error",
+				});
+				resetCaptcha();
+				setLoading(false);
+				return;
 			}
+
+			const targetDestination = currentTarget.destination;
 
 			setMessage({ text: "Authenticated! Opening your workspace...", type: "success" });
 			setTimeout(() => {

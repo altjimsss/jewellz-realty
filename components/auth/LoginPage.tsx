@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { PortalRole } from "@/components/auth/PortalAuthModal";
+import { PORTAL_ROLE_MAP, type PortalRole } from "@/components/auth/PortalAuthModal";
 
 export function LoginPage() {
 	return (
@@ -66,31 +66,7 @@ function LoginForm() {
 	const [captchaToken, setCaptchaToken] = useState("");
 	const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
-	const roleConfig: Record<
-		PortalRole,
-		{ title: string; subtitle: string; destination: string; placeholder: string }
-	> = {
-		agent: {
-			title: "Agent Portal",
-			subtitle: "Sign in to access your assigned buyer leads, property listings, and sales pipeline.",
-			destination: "/agent",
-			placeholder: "agent@jewellzrealty.com",
-		},
-		developer: {
-			title: "Developer Partner Hub",
-			subtitle: "Sign in to manage your master developments, unit inventory, and track buyer analytics.",
-			destination: "/developer",
-			placeholder: "partner@developer.com",
-		},
-		admin: {
-			title: "Admin CMS",
-			subtitle: "Brokerage management, site settings, agent registrations, and full analytics.",
-			destination: "/admin",
-			placeholder: "admin@jewellzrealty.com",
-		},
-	};
-
-	const currentConfig = roleConfig[activeRole];
+	const currentConfig = PORTAL_ROLE_MAP[activeRole];
 
 	function resetCaptcha() {
 		setCaptchaToken("");
@@ -151,13 +127,19 @@ function LoginForm() {
 						.eq("id", data.session.user.id)
 						.maybeSingle();
 
-				if (profile?.is_active && profile?.role) {
-					const destination = resolveTargetRoute(profile.role, nextParam);
-					router.replace(destination);
-				} else {
-					await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
-					setMessage({ text: "This account has no active portal profile. Contact the brokerage administrator.", type: "error" });
-				}
+					if (profile?.is_active && profile?.role) {
+						const currentTarget = PORTAL_ROLE_MAP[activeRole];
+						const userRole = profile.role.trim().toLowerCase();
+						if (currentTarget.allowedRoles.includes(userRole)) {
+							const destination = resolveTargetRoute(profile.role, nextParam);
+							router.replace(destination);
+						} else {
+							await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+						}
+					} else {
+						await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+						setMessage({ text: "This account has no active portal profile. Contact the brokerage administrator.", type: "error" });
+					}
 				}
 			})
 			.catch(async () => {
@@ -213,16 +195,33 @@ function LoginForm() {
 			}
 
 			if (profile && profile.is_active === false) {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
 				setMessage({ text: "This profile is inactive. Please contact the administrator.", type: "error" });
 				resetCaptcha();
 				setLoading(false);
 				return;
 			}
 
-			const destination = resolveTargetRoute(profile?.role || "agent", nextParam || currentConfig.destination);
+			// Strict portal role validation:
+			// Agent form -> agent only
+			// Admin form -> admin only
+			// Developer form -> developer only
+			const currentTarget = PORTAL_ROLE_MAP[activeRole];
+			const userRole = (profile?.role || "").trim().toLowerCase();
+
+			if (!currentTarget.allowedRoles.includes(userRole)) {
+				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
+				setMessage({
+					text: `Access denied: This login form is exclusively for the ${currentTarget.portalName}. Your account does not have permission to access this portal.`,
+					type: "error",
+				});
+				resetCaptcha();
+				setLoading(false);
+				return;
+			}
 
 			setMessage({ text: "Signed in! Opening workspace...", type: "success" });
-			router.replace(destination);
+			router.replace(currentTarget.destination);
 			router.refresh();
 		} catch {
 			setMessage({ text: "Connection error. Please try again.", type: "error" });

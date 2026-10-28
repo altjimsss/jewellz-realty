@@ -260,6 +260,22 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					return;
 				}
 
+				const { data: accountProfile } = await supabaseBrowser
+					.from("profiles")
+					.select("role, is_active")
+					.eq("id", user.id)
+					.maybeSingle();
+
+				if (accountProfile && accountProfile.is_active === false) {
+					router.replace("/login?next=/developer");
+					return;
+				}
+
+				if (accountProfile?.role !== "developer_partner" && accountProfile?.role !== "developer") {
+					router.replace("/login?next=/developer");
+					return;
+				}
+
 				if (isMounted) setUserEmail(user.email ?? "");
 
 				const { data: devRow } = await supabaseBrowser

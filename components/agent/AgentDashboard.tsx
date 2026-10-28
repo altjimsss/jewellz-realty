@@ -331,15 +331,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					router.replace("/login?next=/agent");
 					return;
 				}
-				if (accountProfile?.role === "admin") {
-					router.replace("/admin");
-					return;
-				}
-				if (accountProfile?.role === "developer_partner") {
-					router.replace("/developer");
-					return;
-				}
-				if (accountProfile?.role && accountProfile.role !== "agent") {
+				if (accountProfile?.role !== "agent") {
 					router.replace("/login?next=/agent");
 					return;
 				}
