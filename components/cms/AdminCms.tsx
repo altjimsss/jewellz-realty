@@ -1262,6 +1262,7 @@ function formatHour(hour: number) {
 }
 
 const NEW_RECORD_ID = "__new__";
+const DEFAULT_PROPERTY_VALUES = { status: "draft", badge: "none" };
 
 function PeakEngagementChart({ events }: { events: CmsRow[] }) {
 	const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -4368,7 +4369,7 @@ export default function AdminCms({
 										rows={workspace.properties}
 										selectedId={selectedPropertyId}
 										fields={propertyEditorFields}
-										defaultValues={{ status: "draft", badge: "none" }}
+										defaultValues={DEFAULT_PROPERTY_VALUES}
 										canEdit={canEditCatalog}
 										rowLabel={labelForRow}
 										rowMeta={(row) => `${row.city ?? ""} ${row.province ?? ""} • ${row.status ?? "draft"}`}

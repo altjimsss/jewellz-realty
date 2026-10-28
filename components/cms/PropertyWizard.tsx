@@ -432,7 +432,7 @@ function FieldInput({
 			<textarea
 				name={field.name}
 				rows={field.rows ?? 4}
-				defaultValue={displayValue(field, value)}
+				value={displayValue(field, value)}
 				placeholder={field.placeholder}
 				disabled={!canEdit}
 				onChange={(e) => onChange(field.name, e.target.value)}
@@ -455,7 +455,7 @@ function FieldInput({
 		return (
 			<select
 				name={field.name}
-				defaultValue={displayValue(field, value)}
+				value={displayValue(field, value)}
 				disabled={isDisabled}
 				onChange={(e) => onChange(field.name, e.target.value)}
 				className={commonClass}
@@ -478,7 +478,7 @@ function FieldInput({
 				<input
 					type="checkbox"
 					name={field.name}
-					defaultChecked={Boolean(value)}
+					checked={Boolean(value)}
 					disabled={!canEdit}
 					onChange={(e) => onChange(field.name, e.target.checked)}
 					className="h-4 w-4 accent-[#111111]"
@@ -492,7 +492,7 @@ function FieldInput({
 		<input
 			type={field.type}
 			name={field.name}
-			defaultValue={displayValue(field, value)}
+			value={displayValue(field, value)}
 			placeholder={field.placeholder}
 			disabled={!canEdit}
 			onChange={(e) => onChange(field.name, e.target.value)}
@@ -589,11 +589,49 @@ export function PropertyWizard({
 		}
 	}
 
+	const prevSelectedIdRef = useRef<string | null>(selectedId);
+
 	useEffect(() => {
-		setPayload(buildEmptyPayload(fields, defaultValues, selectedRow));
-		setCurrentStep(0);
-		setStepErrors({});
-	}, [selectedRow, fields, defaultValues]);
+		if (prevSelectedIdRef.current !== selectedId) {
+			prevSelectedIdRef.current = selectedId;
+			let initialData = buildEmptyPayload(fields, defaultValues, selectedRow);
+			try {
+				const draftKey = selectedId === "__new__" || !selectedId
+					? "jewellz_property_wizard_draft_new"
+					: `jewellz_property_wizard_draft_${selectedId}`;
+				const saved = typeof window !== "undefined" ? localStorage.getItem(draftKey) : null;
+				if (saved) {
+					const parsed = JSON.parse(saved);
+					if (parsed && typeof parsed === "object") {
+						initialData = { ...initialData, ...parsed };
+					}
+				}
+			} catch {}
+			setPayload(initialData);
+			setCurrentStep(0);
+			setStepErrors({});
+		}
+	}, [selectedId, selectedRow, fields, defaultValues]);
+
+	// Autosave active draft to localStorage
+	useEffect(() => {
+		if (!wizardOpen) return;
+		try {
+			const draftKey = selectedId === "__new__" || !selectedId
+				? "jewellz_property_wizard_draft_new"
+				: `jewellz_property_wizard_draft_${selectedId}`;
+			localStorage.setItem(draftKey, JSON.stringify(payload));
+		} catch {}
+	}, [payload, selectedId, wizardOpen]);
+
+	function clearDraft() {
+		try {
+			const draftKey = selectedId === "__new__" || !selectedId
+				? "jewellz_property_wizard_draft_new"
+				: `jewellz_property_wizard_draft_${selectedId}`;
+			localStorage.removeItem(draftKey);
+		} catch {}
+	}
 
 	useEffect(() => {
 		if (selectedId === "__new__") {
@@ -621,15 +659,6 @@ export function PropertyWizard({
 			return next;
 		});
 	}, []);
-
-	function handleFormChange(e: FormEvent<HTMLFormElement>) {
-		const data = new FormData(e.currentTarget);
-		const updates: CmsPayload = {};
-		for (const [key, val] of data.entries()) {
-			updates[key] = val as string;
-		}
-		setPayload((prev) => ({ ...prev, ...updates }));
-	}
 
 	function handleNext() {
 		const step = STEPS[currentStep];
@@ -672,6 +701,7 @@ export function PropertyWizard({
 		setSaving(true);
 		try {
 			await onSubmit(payload, selectedRow);
+			clearDraft();
 			setWizardOpen(false);
 			onSelect(null);
 		} finally {
@@ -700,6 +730,7 @@ export function PropertyWizard({
 	}
 
 	function closeWizard() {
+		clearDraft();
 		setWizardOpen(false);
 		setPreviewPayload(null);
 		setStepErrors({});
@@ -814,7 +845,6 @@ export function PropertyWizard({
 							<form
 								ref={formRef}
 								id="property-wizard-form"
-								onChange={handleFormChange}
 								onSubmit={(e) => e.preventDefault()}
 							>
 								<div className="grid gap-5 sm:grid-cols-2">
@@ -845,9 +875,7 @@ export function PropertyWizard({
 										</div>
 									)}
 									{stepFieldList.map((field) => {
-										const val = selectedRow
-											? selectedRow[field.name]
-											: (defaultValues?.[field.name] ?? "");
+										const val = payload[field.name] ?? "";
 										const isWide =
 											field.type === "textarea" ||
 											field.type === "array" ||
