@@ -1,13 +1,14 @@
 "use client";
 
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, Sparkles, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
 import { AgentPerformanceTable } from "@/components/dashboard/AgentPerformanceTable";
 import { InquiryVolumeChart } from "@/components/dashboard/InquiryVolumeChart";
 import { LeadScoreBadge } from "@/components/dashboard/LeadScoreBadge";
@@ -1632,6 +1633,22 @@ function adminSectionFromLocation(): { primary: CmsPrimary; section: CmsSection;
 const PROPERTY_IMAGE_BUCKET = "property-images";
 const GALLERY_IMAGE_FOLDER = "gallery";
 
+type StagedPhoto = {
+	id: string;
+	file: File;
+	previewUrl: string;
+	status: "uploading" | "done" | "error";
+	progress: number;
+	storageUrl: string | null;
+	storagePath: string | null;
+	error?: string;
+};
+
+function newStagedPhotoId() {
+	if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+	return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function sanitizeFileName(fileName: string) {
 	return fileName
 		.toLowerCase()
@@ -1773,7 +1790,25 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 	);
 }
 
-function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete }: { propertyId: string | null; canEdit: boolean; onChanged: () => Promise<void> | void; onRequestDelete: (action: DestructiveAction) => void }) {
+function PropertyImagesManager({
+	propertyId,
+	canEdit,
+	onChanged,
+	onRequestDelete,
+	stagedPhotos,
+	onAddStagedPhotos,
+	onRemoveStagedPhoto,
+	onRetryStagedPhoto,
+}: {
+	propertyId: string | null;
+	canEdit: boolean;
+	onChanged: () => Promise<void> | void;
+	onRequestDelete: (action: DestructiveAction) => void;
+	stagedPhotos?: StagedPhoto[];
+	onAddStagedPhotos?: (files: File[]) => void;
+	onRemoveStagedPhoto?: (photo: StagedPhoto) => void;
+	onRetryStagedPhoto?: (photo: StagedPhoto) => void;
+}) {
 	const [images, setImages] = useState<CmsRow[]>([]);
 	const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [uploadMessage, setUploadMessage] = useState("");
@@ -1902,10 +1937,131 @@ function PropertyImagesManager({ propertyId, canEdit, onChanged, onRequestDelete
 	}
 
 	if (!propertyId) {
+		const staged = stagedPhotos ?? [];
+		const readyCount = staged.filter((photo) => photo.status === "done").length;
+		const uploadingCount = staged.filter((photo) => photo.status === "uploading").length;
+		const errorCount = staged.filter((photo) => photo.status === "error").length;
+
 		return (
-			<div className="rounded-lg border border-dashed border-black/15 bg-zinc-50 px-4 py-5">
-				<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Photo Uploads</div>
-				<p className="mt-1 text-sm text-black/55">Save the property details first, then upload as many photos as you need. This keeps each photo attached to the correct property.</p>
+			<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Photo Uploads</div>
+						<div className="mt-1 text-sm text-black/60">
+							Photos upload immediately as you select them. They are attached automatically when you create the listing.
+						</div>
+					</div>
+					{staged.length > 0 && (
+						<div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+							{readyCount > 0 && (
+								<span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+									{readyCount} ready
+								</span>
+							)}
+							{uploadingCount > 0 && (
+								<span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+									{uploadingCount} uploading
+								</span>
+							)}
+							{errorCount > 0 && (
+								<span className="rounded-full bg-red-50 px-2.5 py-1 text-red-700">
+									{errorCount} failed
+								</span>
+							)}
+						</div>
+					)}
+				</div>
+				{canEdit && (
+					<label className="mt-4 flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-black/15 bg-white p-4 text-sm text-black/50 transition hover:border-black/25 hover:bg-zinc-50">
+						<UploadCloud className="h-4 w-4 shrink-0 text-black/40" />
+						<span>{staged.length > 0 ? "Add more photos…" : "Click to select photos…"}</span>
+						<input
+							type="file"
+							accept="image/jpeg,image/png,image/webp,image/gif"
+							multiple
+							className="sr-only"
+							onChange={(event) => {
+								const files = Array.from(event.target.files ?? []);
+								event.target.value = "";
+								if (files.length > 0) onAddStagedPhotos?.(files);
+							}}
+						/>
+					</label>
+				)}
+				{staged.length > 0 && (
+					<div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
+						{staged.map((photo) => (
+							<div
+								key={photo.id}
+								className="group relative aspect-square overflow-hidden rounded-lg border border-black/10 bg-white"
+							>
+								<img
+									src={photo.previewUrl}
+									alt={photo.file.name}
+									className={`h-full w-full object-cover ${photo.status === "error" ? "opacity-60" : ""}`}
+								/>
+								{photo.status === "uploading" && (
+									<div className="absolute inset-x-0 bottom-0 bg-black/65 p-1.5 text-[10px] font-semibold text-white">
+										<div className="flex items-center justify-between gap-1">
+											<span>Uploading…</span>
+											<span className="tabular-nums">{photo.progress}%</span>
+										</div>
+										<div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/30">
+											<div
+												className="h-full rounded-full bg-white transition-all"
+												style={{ width: `${photo.progress}%` }}
+											/>
+										</div>
+									</div>
+								)}
+								{photo.status === "done" && (
+									<span className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+										<CheckCircle2 className="h-3.5 w-3.5" />
+									</span>
+								)}
+								{photo.status === "error" && (
+									<div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-950/70 p-1 text-center text-[10px] font-medium text-white">
+										<span>Upload failed</span>
+										<button
+											type="button"
+											onClick={() => onRetryStagedPhoto?.(photo)}
+											className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-red-700"
+										>
+											Retry
+										</button>
+									</div>
+								)}
+								{canEdit && (
+									<button
+										type="button"
+										onClick={() => onRemoveStagedPhoto?.(photo)}
+										title="Remove photo"
+										className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white opacity-90 transition hover:bg-black"
+									>
+										<X className="h-3 w-3" />
+									</button>
+								)}
+							</div>
+						))}
+					</div>
+				)}
+				{staged.length > 0 && (
+					<p className="mt-2 text-xs">
+						{uploadingCount > 0 ? (
+							<span className="font-medium text-amber-700">
+								Uploading {uploadingCount} photo{uploadingCount === 1 ? "" : "s"}… &ldquo;Create listing&rdquo; unlocks when the upload finishes.
+							</span>
+						) : errorCount > 0 ? (
+							<span className="font-medium text-red-700">
+								{errorCount} photo{errorCount === 1 ? "" : "s"} failed to upload. Retry or remove {errorCount === 1 ? "it" : "them"}, or create the listing without {errorCount === 1 ? "it" : "them"}.
+							</span>
+						) : (
+							<span className="font-medium text-emerald-700">
+								✓ {readyCount} photo{readyCount === 1 ? "" : "s"} ready and will be attached when you click &ldquo;Create listing&rdquo;.
+							</span>
+						)}
+					</p>
+				)}
 			</div>
 		);
 	}
@@ -2671,6 +2827,8 @@ export default function AdminCms({
 	const [developerProfile, setDeveloperProfile] = useState<CmsRow | null>(cachedSnapshot?.developerProfile ?? null);
 	const [workspace, setWorkspace] = useState<Workspace>(cachedSnapshot?.workspace ?? emptyWorkspace);
 	const [selectedPropertyImages, setSelectedPropertyImages] = useState<CmsRow[]>([]);
+	const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
+	const stagedUploadControllers = useRef<Record<string, AbortController>>({});
 	const [destructiveAction, setDestructiveAction] = useState<DestructiveAction | null>(null);
 	const [destructivePassword, setDestructivePassword] = useState("");
 	const [destructiveMessage, setDestructiveMessage] = useState("");
@@ -3657,6 +3815,97 @@ export default function AdminCms({
 		});
 	}
 
+	function updateStagedPhoto(id: string, patch: Partial<StagedPhoto>) {
+		setStagedPhotos((previous) =>
+			previous.map((photo) => (photo.id === id ? { ...photo, ...patch } : photo)),
+		);
+	}
+
+	async function uploadStagedPhoto(photo: StagedPhoto) {
+		stagedUploadControllers.current[photo.id]?.abort();
+		const controller = new AbortController();
+		stagedUploadControllers.current[photo.id] = controller;
+		updateStagedPhoto(photo.id, { status: "uploading", progress: 0, error: undefined });
+
+		try {
+			const extension = photo.file.name.includes(".") ? photo.file.name.split(".").pop() : "jpg";
+			const baseName = sanitizeFileName(photo.file.name.replace(/\.[^.]+$/, "")) || "property-image";
+			const storagePath = `staged/${photo.id}-${baseName}.${extension}`;
+
+			const result = await uploadFileWithProgress({
+				bucket: PROPERTY_IMAGE_BUCKET,
+				path: storagePath,
+				file: photo.file,
+				contentType: photo.file.type || "image/jpeg",
+				signal: controller.signal,
+				onProgress: ({ percent }) => updateStagedPhoto(photo.id, { progress: percent }),
+			});
+
+			if (controller.signal.aborted) {
+				await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove([result.path]);
+				return;
+			}
+
+			updateStagedPhoto(photo.id, {
+				status: "done",
+				progress: 100,
+				storageUrl: result.publicUrl,
+				storagePath: result.path,
+				error: undefined,
+			});
+		} catch (error) {
+			if (
+				error instanceof UploadCancelledError ||
+				(error instanceof Error && error.name === "AbortError")
+			) {
+				return;
+			}
+			updateStagedPhoto(photo.id, {
+				status: "error",
+				error: error instanceof Error ? error.message : "Photo upload failed.",
+			});
+		} finally {
+			delete stagedUploadControllers.current[photo.id];
+		}
+	}
+
+	function addStagedPhotos(files: File[]) {
+		const photos: StagedPhoto[] = files.map((file) => ({
+			id: newStagedPhotoId(),
+			file,
+			previewUrl: URL.createObjectURL(file),
+			status: "uploading",
+			progress: 0,
+			storageUrl: null,
+			storagePath: null,
+		}));
+		setStagedPhotos((previous) => [...previous, ...photos]);
+		for (const photo of photos) void uploadStagedPhoto(photo);
+	}
+
+	function removeStagedPhoto(photo: StagedPhoto) {
+		stagedUploadControllers.current[photo.id]?.abort();
+		delete stagedUploadControllers.current[photo.id];
+		URL.revokeObjectURL(photo.previewUrl);
+		if (photo.storagePath) {
+			void supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove([photo.storagePath]);
+		}
+		setStagedPhotos((previous) => previous.filter((item) => item.id !== photo.id));
+	}
+
+	function clearStagedPhotos() {
+		Object.values(stagedUploadControllers.current).forEach((controller) => controller.abort());
+		stagedUploadControllers.current = {};
+		const stagedPaths = stagedPhotos
+			.map((photo) => photo.storagePath)
+			.filter((path): path is string => Boolean(path));
+		if (stagedPaths.length > 0) {
+			void supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove(stagedPaths);
+		}
+		stagedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+		setStagedPhotos([]);
+	}
+
 	async function saveProperty(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.developer_id) {
 			setMessage("Choose a Developer Partner first. If none exists, create one under People → Developer Partners.");
@@ -3704,6 +3953,76 @@ export default function AdminCms({
 		}
 
 		const success = await saveEntity("properties", payload, currentRow);
+
+		// Photos are uploaded to temporary storage as soon as they are selected.
+		// After the property row exists, move them into the property folder and
+		// create the property_images rows.
+		if (success && !currentRow && stagedPhotos.length > 0) {
+			const photosToAttach = stagedPhotos.filter(
+				(photo) => photo.status === "done" && photo.storageUrl,
+			);
+			const { data: insertedProp } = await supabaseBrowser
+				.from("properties")
+				.select("id")
+				.eq("slug", payload.slug)
+				.maybeSingle();
+
+			const newPropertyId = insertedProp?.id ?? workspace.properties.find((p) => p.slug === payload.slug)?.id;
+			if (newPropertyId) {
+				const pid = String(newPropertyId);
+				let attachedCount = 0;
+
+				if (photosToAttach.length > 0) {
+					setMessage(`Attaching ${photosToAttach.length} uploaded photo${photosToAttach.length === 1 ? "" : "s"}...`);
+				}
+
+				for (const photo of photosToAttach) {
+					const extension = photo.file.name.includes(".") ? photo.file.name.split(".").pop() : "jpg";
+					const baseName = sanitizeFileName(photo.file.name.replace(/\.[^.]+$/, "")) || "property-image";
+					const targetPath = `${pid}/${Date.now()}-${attachedCount}-${baseName}.${extension}`;
+					let publicUrl = photo.storageUrl as string;
+
+					if (photo.storagePath) {
+						const { error: moveError } = await supabaseBrowser.storage
+							.from(PROPERTY_IMAGE_BUCKET)
+							.move(photo.storagePath, targetPath);
+						if (moveError) {
+							console.warn("Could not move staged photo into the property folder:", moveError.message);
+						} else {
+							publicUrl = supabaseBrowser.storage
+								.from(PROPERTY_IMAGE_BUCKET)
+								.getPublicUrl(targetPath).data.publicUrl;
+						}
+					}
+
+					const isCover = attachedCount === 0;
+					const { error: insertError } = await supabaseBrowser.from("property_images").insert({
+						property_id: pid,
+						storage_url: publicUrl,
+						caption: photo.file.name.replace(/\.[^.]+$/, ""),
+						sort_order: attachedCount,
+						is_cover: isCover,
+					});
+					if (insertError) {
+						setMessage(`Photo attach failed: ${insertError.message}`);
+						continue;
+					}
+					if (isCover) {
+						await supabaseBrowser.from("properties").update({ cover_image_url: publicUrl }).eq("id", pid);
+					}
+					attachedCount += 1;
+				}
+
+				stagedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+				setStagedPhotos([]);
+				await reloadWorkspace();
+				setMessage(
+					attachedCount > 0
+						? `Property created with ${attachedCount} photo${attachedCount === 1 ? "" : "s"}!`
+						: "Property created. No photos were attached.",
+				);
+			}
+		}
 
 		if (success && finalLat != null && finalLng != null) {
 			const savedId = currentRow ? String(currentRow.id) : workspace.properties.find((p) => p.slug === payload.slug)?.id;
@@ -4373,16 +4692,22 @@ export default function AdminCms({
 										canEdit={canEditCatalog}
 										rowLabel={labelForRow}
 										rowMeta={(row) => `${row.city ?? ""} ${row.province ?? ""} • ${row.status ?? "draft"}`}
-										onSelect={(row) => setSelection((current) => ({ ...current, properties: row ? asText(row.id) : null }))}
-										onCreateNew={() => setSelection((current) => ({ ...current, properties: NEW_RECORD_ID }))}
+										onSelect={(row) => { setSelection((current) => ({ ...current, properties: row ? asText(row.id) : null })); clearStagedPhotos(); }}
+										onCreateNew={() => { setSelection((current) => ({ ...current, properties: NEW_RECORD_ID })); clearStagedPhotos(); }}
 										onDelete={(row) => deleteEntity("properties", row)}
 										onSubmit={saveProperty}
+										saveBlocked={!selectedProperty && stagedPhotos.some((photo) => photo.status === "uploading")}
+										saveBlockedMessage="Wait for the selected photos to finish uploading before creating the listing."
 										renderPreview={(payload, currentRow) => <PropertyPublicPreview payload={payload} currentRow={currentRow} imageUrls={selectedPropertyImageUrls} />}
 										extra={
 											<PropertyImagesManager
 												propertyId={selectedProperty ? asText(selectedProperty.id) : null}
 												canEdit={canEditCatalog}
 												onRequestDelete={requestDestructiveAction}
+												stagedPhotos={selectedProperty ? undefined : stagedPhotos}
+												onAddStagedPhotos={selectedProperty ? undefined : addStagedPhotos}
+												onRemoveStagedPhoto={selectedProperty ? undefined : removeStagedPhoto}
+												onRetryStagedPhoto={selectedProperty ? undefined : uploadStagedPhoto}
 												onChanged={async () => {
 													await reloadWorkspace();
 													await loadPropertyImages(selectedProperty ? asText(selectedProperty.id) : null);

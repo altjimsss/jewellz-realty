@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
 import {
 	Building2,
 	MapPin,
@@ -24,7 +24,8 @@ import {
 	UploadCloud,
 	Link2,
 } from "lucide-react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { compressVideo, VIDEO_COMPRESS_THRESHOLD_BYTES, VIDEO_MAX_UPLOAD_BYTES } from "@/lib/media/compress-video";
+import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
 import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
 import type { ReactNode } from "react";
@@ -45,6 +46,8 @@ export type PropertyWizardProps = {
 	onSubmit: (payload: CmsPayload, currentRow: CmsRow | null) => Promise<void>;
 	renderPreview?: (payload: CmsPayload, currentRow: CmsRow | null) => ReactNode;
 	extra?: ReactNode;
+	saveBlocked?: boolean;
+	saveBlockedMessage?: string;
 };
 
 // ─── Step definitions ────────────────────────────────────────────────────────
@@ -186,14 +189,22 @@ function VideoWalkthroughInput({
 	value,
 	canEdit,
 	onChange,
+	onUploadingChange,
 }: {
 	value: string;
 	canEdit: boolean;
 	onChange: (val: string) => void;
+	onUploadingChange?: (uploading: boolean) => void;
 }) {
 	const [uploading, setUploading] = useState(false);
+	const [uploadPhase, setUploadPhase] = useState<"idle" | "compressing" | "uploading">("idle");
+	const [uploadProgress, setUploadProgress] = useState(0);
+	const [uploadedMB, setUploadedMB] = useState(0);
+	const [totalMB, setTotalMB] = useState(0);
 	const [uploadError, setUploadError] = useState<string | null>(null);
+	const [compressionNotice, setCompressionNotice] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
 
 	const videoSrc = String(value || "").trim();
 	const isYouTube = videoSrc.includes("youtube.com") || videoSrc.includes("youtu.be");
@@ -202,58 +213,95 @@ function VideoWalkthroughInput({
 		/\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(videoSrc) ||
 		videoSrc.includes("storage/v1/object/public");
 
+	const maxUploadMB = Math.round(VIDEO_MAX_UPLOAD_BYTES / 1024 / 1024);
+
 	async function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
 		const file = e.target.files?.[0];
 		if (!file) return;
 
+		if (file.size > VIDEO_MAX_UPLOAD_BYTES) {
+			setUploadError(
+				`This video is ${(file.size / 1024 / 1024).toFixed(1)} MB. The direct upload limit is ${maxUploadMB} MB — paste a YouTube or Vimeo link instead.`,
+			);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			return;
+		}
+
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
 		setUploading(true);
+		onUploadingChange?.(true);
 		setUploadError(null);
+		setCompressionNotice(null);
+		setUploadProgress(0);
+		setUploadedMB(0);
+		setTotalMB(+(file.size / 1024 / 1024).toFixed(1));
 
 		try {
-			const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-			const filePath = `property-videos/${Date.now()}-${cleanName}`;
+			let fileToUpload = file;
 
-			// Try direct Supabase storage upload
-			const { error: uploadErr } = await supabaseBrowser.storage
-				.from("property-images")
-				.upload(filePath, file, {
-					contentType: file.type || "video/mp4",
-					upsert: true,
-				});
-
-			if (!uploadErr) {
-				const { data: publicUrlData } = supabaseBrowser.storage
-					.from("property-images")
-					.getPublicUrl(filePath);
-				onChange(publicUrlData.publicUrl);
-				return;
+			if (file.size >= VIDEO_COMPRESS_THRESHOLD_BYTES) {
+				setUploadPhase("compressing");
+				try {
+					fileToUpload = await compressVideo(file, {
+						signal: controller.signal,
+						onProgress: setUploadProgress,
+					});
+				} catch (err) {
+					if (controller.signal.aborted) throw err;
+					console.warn("Browser video compression failed; uploading the original file.", err);
+					setCompressionNotice(
+						"Browser compression was unavailable, so the original video will be uploaded.",
+					);
+					fileToUpload = file;
+				}
 			}
 
-			// Fallback to /api/upload
-			const session = (await supabaseBrowser.auth.getSession()).data.session;
-			const formData = new FormData();
-			formData.append("file", file);
-			formData.append("folder", "property-videos");
+			if (controller.signal.aborted) throw new UploadCancelledError();
 
-			const res = await fetch("/api/upload", {
-				method: "POST",
-				headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-				body: formData,
+			setUploadPhase("uploading");
+			setUploadProgress(0);
+			setUploadedMB(0);
+			setTotalMB(+(fileToUpload.size / 1024 / 1024).toFixed(1));
+
+			const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+			const uniqueSuffix = Math.random().toString(36).slice(2, 8);
+			const filePath = `${Date.now()}-${uniqueSuffix}-${cleanName}`;
+
+			const uploaded = await uploadFileWithProgress({
+				bucket: "property-videos",
+				path: filePath,
+				file: fileToUpload,
+				contentType: fileToUpload.type || "video/mp4",
+				signal: controller.signal,
+				onProgress: ({ percent, loaded, total }) => {
+					setUploadProgress(percent);
+					setUploadedMB(+(loaded / 1024 / 1024).toFixed(1));
+					setTotalMB(+(total / 1024 / 1024).toFixed(1));
+				},
 			});
 
-			const data = (await res.json()) as { ok?: boolean; url?: string; error?: string };
-			if (res.ok && data.url) {
-				onChange(data.url);
-			} else {
-				throw new Error(data.error || uploadErr.message || "Failed to upload video.");
-			}
+			onChange(uploaded.publicUrl);
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Failed to upload video.";
-			setUploadError(msg);
+			const cancelled =
+				controller.signal.aborted ||
+				err instanceof UploadCancelledError ||
+				(err instanceof Error && err.name === "AbortError");
+			if (!cancelled) {
+				setUploadError(err instanceof Error ? err.message : "Failed to upload video.");
+			}
 		} finally {
+			abortControllerRef.current = null;
 			setUploading(false);
+			onUploadingChange?.(false);
+			setUploadPhase("idle");
+			setUploadProgress(0);
 			if (fileInputRef.current) fileInputRef.current.value = "";
 		}
+	}
+
+	function handleCancelUpload() {
+		abortControllerRef.current?.abort();
 	}
 
 	return (
@@ -310,6 +358,39 @@ function VideoWalkthroughInput({
 						)}
 					</div>
 
+					{uploading && (
+						<div className="space-y-1.5 rounded-xl border border-[#DE141C]/20 bg-white p-3">
+							<div className="flex items-center justify-between text-xs font-semibold text-[#DE141C]">
+								<span>
+									{uploadPhase === "compressing"
+										? "Optimizing video in your browser…"
+										: "Uploading new video…"}
+								</span>
+								<span className="tabular-nums">{uploadProgress}%</span>
+							</div>
+							<div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
+								<div
+									className="h-full rounded-full bg-[#DE141C] transition-all duration-200"
+									style={{ width: `${uploadProgress}%` }}
+								/>
+							</div>
+							<div className="flex items-center justify-between gap-2 text-[11px] text-black/50">
+								<span>
+									{uploadPhase === "compressing"
+										? "Compressing before upload"
+										: `${uploadedMB} / ${totalMB} MB`}
+								</span>
+								<button
+									type="button"
+									onClick={handleCancelUpload}
+									className="font-semibold text-red-600 underline hover:text-red-700"
+								>
+									Cancel
+								</button>
+							</div>
+						</div>
+					)}
+
 					<div className="flex flex-wrap items-center justify-between gap-2 pt-1">
 						<span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
 							<Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -344,7 +425,7 @@ function VideoWalkthroughInput({
 						if (canEdit && !uploading) fileInputRef.current?.click();
 					}}
 					className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/15 bg-white p-6 text-center transition ${
-						canEdit ? "cursor-pointer hover:border-black/30 hover:bg-zinc-50" : "opacity-60"
+						canEdit && !uploading ? "cursor-pointer hover:border-black/30 hover:bg-zinc-50" : "opacity-60"
 					}`}
 				>
 					<div className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-[#DE141C]">
@@ -355,21 +436,52 @@ function VideoWalkthroughInput({
 						)}
 					</div>
 					<div className="text-sm font-semibold text-[#111111]">
-						{uploading ? "Uploading video walkthrough…" : "Upload Video Walkthrough"}
+						{uploadPhase === "compressing"
+							? "Optimizing video walkthrough…"
+							: uploading
+								? "Uploading video walkthrough…"
+								: "Upload Video Walkthrough"}
 					</div>
-					<p className="mt-1 text-xs text-black/50">
-						{uploading
-							? "Please wait while your video is uploading to storage."
-							: "Click to upload an MP4, MOV, or WebM walkthrough file"}
-					</p>
-					{canEdit && !uploading && (
-						<button
-							type="button"
-							className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[#111111] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/80"
-						>
-							<UploadCloud className="h-3.5 w-3.5" />
-							Choose video file
-						</button>
+					{uploading ? (
+						<div className="mt-3 w-full max-w-xs space-y-1.5" onClick={(ev) => ev.stopPropagation()}>
+							<div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
+								<div
+									className="h-full rounded-full bg-[#DE141C] transition-all duration-200"
+									style={{ width: `${uploadProgress}%` }}
+								/>
+							</div>
+							<p className="text-xs font-semibold tabular-nums text-[#DE141C]">
+								{uploadProgress}%&nbsp;&nbsp;
+								<span className="font-normal text-black/50">
+									{uploadPhase === "compressing" ? "optimized" : `${uploadedMB} / ${totalMB} MB`}
+								</span>
+							</p>
+							<button
+								type="button"
+								onClick={handleCancelUpload}
+								className="text-xs font-semibold text-red-600 underline hover:text-red-700"
+							>
+								Cancel upload
+							</button>
+						</div>
+					) : (
+						<>
+							<p className="mt-1 text-xs text-black/50">
+								Click to upload an MP4, MOV, or WebM walkthrough file
+							</p>
+							<p className="mt-1 text-[11px] text-black/40">
+								Videos over 15 MB are compressed in your browser first. Limit: {maxUploadMB} MB.
+							</p>
+							{canEdit && (
+								<button
+									type="button"
+									className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[#111111] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/80"
+								>
+									<UploadCloud className="h-3.5 w-3.5" />
+									Choose video file
+								</button>
+							)}
+						</>
 					)}
 				</div>
 			)}
@@ -377,6 +489,12 @@ function VideoWalkthroughInput({
 			{uploadError && (
 				<div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-medium text-red-700">
 					{uploadError}
+				</div>
+			)}
+
+			{compressionNotice && (
+				<div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs font-medium text-amber-800">
+					{compressionNotice}
 				</div>
 			)}
 
@@ -407,12 +525,14 @@ function FieldInput({
 	payload,
 	canEdit,
 	onChange,
+	onVideoUploadingChange,
 }: {
 	field: FieldSpec;
 	value: CmsPayload[string];
 	payload: CmsPayload;
 	canEdit: boolean;
 	onChange: (name: string, val: string | boolean) => void;
+	onVideoUploadingChange?: (uploading: boolean) => void;
 }) {
 	if (field.name === "video_url") {
 		return (
@@ -420,6 +540,7 @@ function FieldInput({
 				value={asText(value)}
 				canEdit={canEdit}
 				onChange={(val) => onChange("video_url", val)}
+				onUploadingChange={onVideoUploadingChange}
 			/>
 		);
 	}
@@ -517,6 +638,8 @@ export function PropertyWizard({
 	onSubmit,
 	renderPreview,
 	extra,
+	saveBlocked = false,
+	saveBlockedMessage,
 }: PropertyWizardProps) {
 	const [search, setSearch] = useState("");
 	const [wizardOpen, setWizardOpen] = useState(false);
@@ -537,7 +660,14 @@ export function PropertyWizard({
 	);
 	const [isGeocoding, setIsGeocoding] = useState(false);
 	const [geocodeFeedback, setGeocodeFeedback] = useState<string | null>(null);
-	const [isWarmingAllCache, setIsWarmingAllCache] = useState(false);
+	const [videoUploading, setVideoUploading] = useState(false);
+
+	const saveIsBlocked = saveBlocked || videoUploading;
+	const saveBlockedLabel = saveBlocked
+		? saveBlockedMessage
+		: videoUploading
+			? "Wait for the video upload to finish before saving."
+			: undefined;
 
 	async function handleAutoGeocode() {
 		const address = asText(payload.address);
@@ -569,23 +699,6 @@ export function PropertyWizard({
 			setGeocodeFeedback("Geocoding failed. Please check network connection.");
 		} finally {
 			setIsGeocoding(false);
-		}
-	}
-
-	async function handleWarmNearbyCache() {
-		setIsWarmingAllCache(true);
-		try {
-			const res = await fetch("/api/admin/property-nearby-cache?limit=30", { method: "POST" });
-			const data = (await res.json()) as { updated?: number; skipped?: number; error?: string };
-			if (res.ok) {
-				alert("Nearby places cache updated! " + (data.updated ?? 0) + " properties cached, " + (data.skipped ?? 0) + " skipped.");
-			} else {
-				alert(data.error ?? "Failed to warm nearby cache.");
-			}
-		} catch {
-			alert("Could not trigger nearby cache warming.");
-		} finally {
-			setIsWarmingAllCache(false);
 		}
 	}
 
@@ -633,13 +746,6 @@ export function PropertyWizard({
 		} catch {}
 	}
 
-	useEffect(() => {
-		if (selectedId === "__new__") {
-			setWizardOpen(true);
-			setCurrentStep(0);
-		}
-	}, [selectedId]);
-
 	const filteredRows = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		if (!q) return rows;
@@ -682,6 +788,14 @@ export function PropertyWizard({
 	}
 
 	async function handleSave() {
+		if (saveIsBlocked) {
+			setStepErrors({
+				[STEPS[STEPS.length - 1].id]:
+					saveBlockedLabel ?? "Please wait for the current upload to finish.",
+			});
+			return;
+		}
+
 		const errors: Record<string, string> = {};
 		for (const step of STEPS) {
 			const missing = step.required.filter((name) => {
@@ -896,6 +1010,7 @@ export function PropertyWizard({
 														payload={payload}
 														canEdit={canEdit}
 														onChange={handleFieldChange}
+														onVideoUploadingChange={setVideoUploading}
 													/>
 													{field.help && (
 														<p className="mt-1.5 text-[11px] leading-5 text-black/40">
@@ -954,6 +1069,12 @@ export function PropertyWizard({
 									{currentStep + 1} / {STEPS.length}
 								</span>
 
+								{saveIsBlocked && saveBlockedLabel && (
+									<span className="hidden max-w-[260px] text-right text-[11px] font-medium text-amber-700 sm:inline">
+										{saveBlockedLabel}
+									</span>
+								)}
+
 								{isLastStep && renderPreview && (
 									<button
 										type="button"
@@ -978,7 +1099,7 @@ export function PropertyWizard({
 								) : (
 									<button
 										type="button"
-										disabled={!canEdit || saving}
+										disabled={!canEdit || saving || saveIsBlocked}
 										onClick={handleSave}
 										className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#111111] px-5 text-xs font-semibold text-white transition hover:bg-black/80 shadow-sm disabled:cursor-not-allowed disabled:bg-black/20"
 									>
@@ -1153,7 +1274,7 @@ export function PropertyWizard({
 								</button>
 								<button
 									type="button"
-									disabled={!canEdit || saving}
+									disabled={!canEdit || saving || saveIsBlocked}
 									onClick={handleSave}
 									className="rounded-xl bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:bg-black/20"
 								>
