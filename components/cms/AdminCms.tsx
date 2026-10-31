@@ -2818,6 +2818,14 @@ type AdminLiveNotification = {
 	read: boolean;
 };
 
+type CreatedListingToast = {
+	propertyId: string | null;
+	title: string;
+	slug: string;
+	status: string;
+	photoCount: number;
+};
+
 export default function AdminCms({
 	initialPrimary = "dashboard",
 	initialSection = "overview",
@@ -2851,6 +2859,7 @@ export default function AdminCms({
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [adminNotifications, setAdminNotifications] = useState<AdminLiveNotification[]>([]);
 	const [adminToast, setAdminToast] = useState<AdminLiveNotification | null>(null);
+	const [createdListingToast, setCreatedListingToast] = useState<CreatedListingToast | null>(null);
 	const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
@@ -2873,6 +2882,12 @@ export default function AdminCms({
 		const timer = setTimeout(() => setAdminToast(null), 8000);
 		return () => clearTimeout(timer);
 	}, [adminToast]);
+
+	useEffect(() => {
+		if (!createdListingToast) return;
+		const timer = setTimeout(() => setCreatedListingToast(null), 15000);
+		return () => clearTimeout(timer);
+	}, [createdListingToast]);
 
 	// Live subscription for Admin: listen for agent progress (inquiry_timeline) and incoming leads (inquiries)
 	useEffect(() => {
@@ -3922,11 +3937,11 @@ export default function AdminCms({
 	async function saveProperty(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.developer_id) {
 			setMessage("Choose a Developer Partner first. If none exists, create one under People → Developer Partners.");
-			return;
+			return false;
 		}
 		if (!payload.title || !payload.slug || !payload.address || !payload.city || !payload.province) {
 			setMessage("Property records need title, slug, address, city, and province.");
-			return;
+			return false;
 		}
 
 		// Auto-resolve coordinates from address if not manually set
@@ -3966,86 +3981,104 @@ export default function AdminCms({
 		}
 
 		const success = await saveEntity("properties", payload, currentRow);
+		if (!success) return false;
 
-		// Photos are uploaded to temporary storage as soon as they are selected.
-		// After the property row exists, move them into the property folder and
-		// create the property_images rows.
-		if (success && !currentRow && stagedPhotos.length > 0) {
-			const photosToAttach = stagedPhotos.filter(
-				(photo) => photo.status === "done" && photo.storageUrl,
-			);
+		let propertyId: string | null = currentRow ? String(currentRow.id) : null;
+		let attachedCount = 0;
+
+		if (!currentRow) {
 			const { data: insertedProp } = await supabaseBrowser
 				.from("properties")
 				.select("id")
 				.eq("slug", payload.slug)
 				.maybeSingle();
+			propertyId = insertedProp?.id ? String(insertedProp.id) : null;
+		}
 
-			const newPropertyId = insertedProp?.id ?? workspace.properties.find((p) => p.slug === payload.slug)?.id;
-			if (newPropertyId) {
-				const pid = String(newPropertyId);
-				let attachedCount = 0;
+		// Photos are uploaded to temporary storage as soon as they are selected.
+		// After the property row exists, move them into the property folder and
+		// create the property_images rows.
+		if (!currentRow && propertyId && stagedPhotos.length > 0) {
+			const pid = propertyId;
+			const photosToAttach = stagedPhotos.filter(
+				(photo) => photo.status === "done" && photo.storageUrl,
+			);
 
-				if (photosToAttach.length > 0) {
-					setMessage(`Attaching ${photosToAttach.length} uploaded photo${photosToAttach.length === 1 ? "" : "s"}...`);
-				}
+			if (photosToAttach.length > 0) {
+				setMessage(`Attaching ${photosToAttach.length} uploaded photo${photosToAttach.length === 1 ? "" : "s"}...`);
+			}
 
-				for (const photo of photosToAttach) {
-					const extension = photo.file.name.includes(".") ? photo.file.name.split(".").pop() : "jpg";
-					const baseName = sanitizeFileName(photo.file.name.replace(/\.[^.]+$/, "")) || "property-image";
-					const targetPath = `${pid}/${Date.now()}-${attachedCount}-${baseName}.${extension}`;
-					let publicUrl = photo.storageUrl as string;
+			for (const photo of photosToAttach) {
+				const extension = photo.file.name.includes(".") ? photo.file.name.split(".").pop() : "jpg";
+				const baseName = sanitizeFileName(photo.file.name.replace(/\.[^.]+$/, "")) || "property-image";
+				const targetPath = `${pid}/${Date.now()}-${attachedCount}-${baseName}.${extension}`;
+				let publicUrl = photo.storageUrl as string;
 
-					if (photo.storagePath) {
-						const { error: moveError } = await supabaseBrowser.storage
+				if (photo.storagePath) {
+					const { error: moveError } = await supabaseBrowser.storage
+						.from(PROPERTY_IMAGE_BUCKET)
+						.move(photo.storagePath, targetPath);
+					if (moveError) {
+						console.warn("Could not move staged photo into the property folder:", moveError.message);
+					} else {
+						publicUrl = supabaseBrowser.storage
 							.from(PROPERTY_IMAGE_BUCKET)
-							.move(photo.storagePath, targetPath);
-						if (moveError) {
-							console.warn("Could not move staged photo into the property folder:", moveError.message);
-						} else {
-							publicUrl = supabaseBrowser.storage
-								.from(PROPERTY_IMAGE_BUCKET)
-								.getPublicUrl(targetPath).data.publicUrl;
-						}
+							.getPublicUrl(targetPath).data.publicUrl;
 					}
-
-					const isCover = attachedCount === 0;
-					const { error: insertError } = await supabaseBrowser.from("property_images").insert({
-						property_id: pid,
-						storage_url: publicUrl,
-						caption: photo.file.name.replace(/\.[^.]+$/, ""),
-						sort_order: attachedCount,
-						is_cover: isCover,
-					});
-					if (insertError) {
-						setMessage(`Photo attach failed: ${insertError.message}`);
-						continue;
-					}
-					if (isCover) {
-						await supabaseBrowser.from("properties").update({ cover_image_url: publicUrl }).eq("id", pid);
-					}
-					attachedCount += 1;
 				}
 
-				stagedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
-				setStagedPhotos([]);
-				await reloadWorkspace();
-				setMessage(
-					attachedCount > 0
-						? `Property created with ${attachedCount} photo${attachedCount === 1 ? "" : "s"}!`
-						: "Property created. No photos were attached.",
-				);
+				const isCover = attachedCount === 0;
+				const { error: insertError } = await supabaseBrowser.from("property_images").insert({
+					property_id: pid,
+					storage_url: publicUrl,
+					caption: photo.file.name.replace(/\.[^.]+$/, ""),
+					sort_order: attachedCount,
+					is_cover: isCover,
+				});
+				if (insertError) {
+					setMessage(`Photo attach failed: ${insertError.message}`);
+					continue;
+				}
+				if (isCover) {
+					await supabaseBrowser.from("properties").update({ cover_image_url: publicUrl }).eq("id", pid);
+				}
+				attachedCount += 1;
 			}
+
+			stagedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+			setStagedPhotos([]);
+			await reloadWorkspace();
 		}
 
-		if (success && finalLat != null && finalLng != null) {
-			const savedId = currentRow ? String(currentRow.id) : workspace.properties.find((p) => p.slug === payload.slug)?.id;
-			if (savedId) {
-				setMessage("Property saved! Pre-warming nearby places in cache...");
-				fetch(`/api/nearby?lat=${finalLat}&lng=${finalLng}&propertyId=${encodeURIComponent(String(savedId))}&type=${encodeURIComponent(String(payload.category ?? ""))}`)
-					.then(() => setMessage("Property saved and nearby cache ready!"))
-					.catch(() => {});
+		if (!currentRow) {
+			if (propertyId) {
+				setSelection((current) => ({ ...current, properties: propertyId }));
+				syncAdminUrl(`/admin/listings/${propertyId}`);
 			}
+			setCreatedListingToast({
+				propertyId,
+				title: asText(payload.title) || "Untitled property",
+				slug: asText(payload.slug),
+				status: asText(payload.status) || "draft",
+				photoCount: attachedCount,
+			});
+			setMessage(
+				attachedCount > 0
+					? `Property created with ${attachedCount} photo${attachedCount === 1 ? "" : "s"}!`
+					: "Property created successfully.",
+			);
+		} else {
+			setMessage("Property saved successfully.");
 		}
+
+		if (finalLat != null && finalLng != null && propertyId) {
+			setMessage("Property saved! Pre-warming nearby places in cache...");
+			fetch(`/api/nearby?lat=${finalLat}&lng=${finalLng}&propertyId=${encodeURIComponent(String(propertyId))}&type=${encodeURIComponent(String(payload.category ?? ""))}`)
+				.then(() => setMessage("Property saved and nearby cache ready!"))
+				.catch(() => {});
+		}
+
+		return true;
 	}
 
 	async function saveProject(payload: CmsPayload, currentRow: CmsRow | null) {
@@ -5024,6 +5057,111 @@ export default function AdminCms({
 							<button
 								type="button"
 								onClick={() => setAdminToast(null)}
+								className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-black/5"
+							>
+								Dismiss
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
+			{/* Property creation confirmation */}
+			{createdListingToast ? (
+				<div className="fixed bottom-4 right-4 z-50 flex w-[min(92vw,400px)] items-start gap-3 rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-2 sm:bottom-8 sm:right-8">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+						<CheckCircle2 className="h-5 w-5" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="flex items-center justify-between gap-2">
+							<p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+								Property created
+							</p>
+							<button
+								type="button"
+								onClick={() => setCreatedListingToast(null)}
+								className="rounded p-0.5 text-black/40 transition hover:text-black"
+								title="Dismiss"
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+						</div>
+						<p className="mt-1 break-words text-sm font-semibold leading-snug text-[#111111]">
+							{createdListingToast.title}
+						</p>
+						{createdListingToast.photoCount > 0 && (
+							<p className="mt-0.5 text-xs text-black/55">
+								{createdListingToast.photoCount} photo{createdListingToast.photoCount === 1 ? "" : "s"} attached.
+							</p>
+						)}
+						<div
+							className={`mt-2 rounded-lg border p-2 text-xs font-medium ${
+								createdListingToast.status === "published"
+									? "border-emerald-200 bg-emerald-50 text-emerald-800"
+									: "border-amber-200 bg-amber-50 text-amber-800"
+							}`}
+						>
+							{createdListingToast.status === "published"
+								? "This listing is live on the public website."
+								: `Saved as ${createdListingToast.status.replace(/_/g, " ")}. The public website only shows Published listings — open it and change Status to Published to make it visible.`}
+						</div>
+						<div className="mt-3 flex flex-wrap items-center gap-2">
+							{createdListingToast.propertyId && (
+								<button
+									type="button"
+									onClick={() => {
+										const id = createdListingToast.propertyId;
+										if (!id) return;
+										setActivePrimary("listings");
+										setActiveSection("properties");
+										setPropertyCategoryFilter("all");
+										setSelection((current) => ({ ...current, properties: id }));
+										syncAdminUrl(`/admin/listings/${id}`);
+										setCreatedListingToast(null);
+									}}
+									className="inline-flex items-center gap-1.5 rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-black/80"
+								>
+									Open listing <ChevronRight className="h-3.5 w-3.5" />
+								</button>
+							)}
+							{createdListingToast.status !== "published" && createdListingToast.propertyId && (
+								<button
+									type="button"
+									onClick={async () => {
+										const id = createdListingToast.propertyId;
+										if (!id) return;
+										setMessage("Publishing listing...");
+										const { error } = await supabaseBrowser
+											.from("properties")
+											.update({ status: "published", published_at: new Date().toISOString() })
+											.eq("id", id);
+										if (error) {
+											setMessage(`Could not publish listing: ${error.message}`);
+											return;
+										}
+										await reloadWorkspace();
+										setCreatedListingToast((current) =>
+											current ? { ...current, status: "published" } : current,
+										);
+										setMessage("Listing published! It is now visible on the website.");
+									}}
+									className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+								>
+									Publish now
+								</button>
+							)}
+							{createdListingToast.status === "published" && createdListingToast.slug && (
+								<a
+									href={`/project-list/${encodeURIComponent(createdListingToast.slug)}`}
+									target="_blank"
+									rel="noreferrer"
+									className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/70 transition hover:bg-black/5"
+								>
+									View on website
+								</a>
+							)}
+							<button
+								type="button"
+								onClick={() => setCreatedListingToast(null)}
 								className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-black/5"
 							>
 								Dismiss

@@ -43,7 +43,7 @@ export type PropertyWizardProps = {
 	onSelect: (row: CmsRow | null) => void;
 	onCreateNew: () => void;
 	onDelete?: (row: CmsRow) => Promise<void>;
-	onSubmit: (payload: CmsPayload, currentRow: CmsRow | null) => Promise<void>;
+	onSubmit: (payload: CmsPayload, currentRow: CmsRow | null) => Promise<boolean | void>;
 	renderPreview?: (payload: CmsPayload, currentRow: CmsRow | null) => ReactNode;
 	extra?: ReactNode;
 	saveBlocked?: boolean;
@@ -814,10 +814,10 @@ export function PropertyWizard({
 		}
 		setSaving(true);
 		try {
-			await onSubmit(payload, selectedRow);
+			const saved = await onSubmit(payload, selectedRow);
+			if (saved !== true) return;
 			clearDraft();
 			setWizardOpen(false);
-			onSelect(null);
 		} finally {
 			setSaving(false);
 		}
