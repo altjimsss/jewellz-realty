@@ -4438,7 +4438,7 @@ export default function AdminCms({
 				</aside>
 
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="sticky top-0 z-20 flex h-13 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
+					<header className="sticky top-0 z-40 flex h-12 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
 						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -4511,6 +4511,7 @@ export default function AdminCms({
 									type="button"
 									onClick={() => {
 										setShowNotifications((current) => !current);
+										setShowProfileMenu(false);
 										setUnreadNotifCount(0);
 									}}
 									className="relative rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
@@ -4524,80 +4525,96 @@ export default function AdminCms({
 									) : null}
 								</button>
 								{showNotifications ? (
-									<div className="absolute right-0 top-10 z-30 w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 text-sm shadow-2xl">
-										<div className="flex items-center justify-between border-b border-black/10 pb-3">
-											<div>
-												<div className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">Notifications</div>
-												<div className="text-xs text-black/45">Live agent activity & pipeline updates</div>
-											</div>
-											{adminNotifications.length > 0 && (
-												<button
-													type="button"
-													onClick={() => {
-														setAdminNotifications([]);
-														setUnreadNotifCount(0);
-													}}
-													className="text-[11px] font-semibold text-[#DE141C] hover:underline"
-												>
-													Clear all
-												</button>
-											)}
-										</div>
-
-										<div className="mt-3 max-h-80 overflow-y-auto space-y-2 pr-1">
-											{adminNotifications.length === 0 ? (
-												<div className="py-6 text-center text-xs text-black/40">
-													No recent agent activity. Updates will appear here live when agents make progress.
+									<>
+										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
+										<div className="absolute right-0 top-10 z-50 w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 text-sm shadow-2xl">
+											<div className="flex items-center justify-between border-b border-black/10 pb-3">
+												<div>
+													<div className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">Notifications</div>
+													<div className="text-xs text-black/45">Live agent activity & pipeline updates</div>
 												</div>
-											) : (
-												adminNotifications.map((n) => (
-													<div
-														key={n.id}
-														onClick={() => handleOpenAdminNotification(n)}
-														className="group cursor-pointer rounded-xl border border-black/5 bg-zinc-50 p-2.5 transition hover:border-[#DE141C]/30 hover:bg-red-50/20"
+												{adminNotifications.length > 0 && (
+													<button
+														type="button"
+														onClick={() => {
+															setAdminNotifications([]);
+															setUnreadNotifCount(0);
+														}}
+														className="text-[11px] font-semibold text-[#DE141C] hover:underline"
 													>
-														<div className="flex items-center justify-between gap-2">
-															<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">
-																{n.title}
-															</span>
-															<span className="text-[10px] text-black/40 shrink-0">
-																{formatRelativeTime(n.timestamp)}
-															</span>
-														</div>
-														<p className="mt-0.5 text-xs text-black/70">{n.message}</p>
-														{n.propertyTitle && (
-															<p className="mt-0.5 text-[11px] text-black/45 truncate">
-																Listing: {n.propertyTitle}
-															</p>
-														)}
-														{n.note && (
-															<div className="mt-1.5 rounded-lg bg-white p-1.5 text-[11px] text-black/60 italic border border-black/5">
-																&ldquo;{n.note}&rdquo;
-															</div>
-														)}
-													</div>
-												))
-											)}
-										</div>
+														Clear all
+													</button>
+												)}
+											</div>
 
-										<div className="mt-3 border-t border-black/10 pt-2.5 text-[11px] text-black/50 space-y-1">
-											<p>• {workspace.inquiries.filter((item) => item.status === "new").length} uncontacted leads awaiting review.</p>
-											<p>• {workspace.properties.filter((item) => item.status === "draft").length} draft properties not yet public.</p>
+											<div className="mt-3 max-h-80 overflow-y-auto space-y-2 pr-1">
+												{adminNotifications.length === 0 ? (
+													<div className="py-6 text-center text-xs text-black/40">
+														No recent agent activity. Updates will appear here live when agents make progress.
+													</div>
+												) : (
+													adminNotifications.map((n) => (
+														<div
+															key={n.id}
+															onClick={() => handleOpenAdminNotification(n)}
+															className="group cursor-pointer rounded-xl border border-black/5 bg-zinc-50 p-2.5 transition hover:border-[#DE141C]/30 hover:bg-red-50/20"
+														>
+															<div className="flex items-center justify-between gap-2">
+																<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">
+																	{n.title}
+																</span>
+																<span className="text-[10px] text-black/40 shrink-0">
+																	{formatRelativeTime(n.timestamp)}
+																</span>
+															</div>
+															<p className="mt-0.5 text-xs text-black/70">{n.message}</p>
+															{n.propertyTitle && (
+																<p className="mt-0.5 text-[11px] text-black/45 truncate">
+																	Listing: {n.propertyTitle}
+																</p>
+															)}
+															{n.note && (
+																<div className="mt-1.5 rounded-lg bg-white p-1.5 text-[11px] text-black/60 italic border border-black/5">
+																	&ldquo;{n.note}&rdquo;
+																</div>
+															)}
+														</div>
+													))
+												)}
+											</div>
+
+											<div className="mt-3 border-t border-black/10 pt-2.5 text-[11px] text-black/50 space-y-1">
+												<p>• {workspace.inquiries.filter((item) => item.status === "new").length} uncontacted leads awaiting review.</p>
+												<p>• {workspace.properties.filter((item) => item.status === "draft").length} draft properties not yet public.</p>
+											</div>
 										</div>
-									</div>
+									</>
 								) : null}
 							</div>
-							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={asText(profile?.email ?? profile?.full_name)}>
-								<UserCircle className="h-5 w-5" />
-							</button>
-							{showProfileMenu ? (
-								<div className="absolute right-0 top-10 z-30 w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
-									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
-									<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
-									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
-								</div>
-							) : null}
+							<div className="relative">
+								<button
+									type="button"
+									onClick={() => {
+										setShowProfileMenu((current) => !current);
+										setShowNotifications(false);
+									}}
+									className="rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
+									title={asText(profile?.email ?? profile?.full_name)}
+								>
+									<UserCircle className="h-5 w-5" />
+								</button>
+								{showProfileMenu ? (
+									<>
+										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowProfileMenu(false)} />
+										<div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
+											<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
+											<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
+											<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
+											<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
+										</div>
+									</>
+								) : null}
+							</div>
 						</div>
 					</header>
 

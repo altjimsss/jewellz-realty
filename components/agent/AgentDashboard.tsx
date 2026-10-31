@@ -1097,7 +1097,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 				{/* Main column */}
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="sticky top-0 z-20 flex h-13 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs md:px-6">
+					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs md:px-6">
 						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:text-[#0f172a] hover:bg-slate-50" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
