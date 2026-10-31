@@ -180,10 +180,11 @@ function scoreListing(row: ListingPerformanceRow) {
 }
 
 export async function getHomepageFeaturedProperties(limit = 12): Promise<HomepageFeaturedProperty[]> {
-	const [properties, performanceResult] = await Promise.all([
+	const [publishedProperties, performanceResult] = await Promise.all([
 		getPublishedProperties(),
 		supabaseServer.from("mv_listing_performance").select("*").limit(250),
 	]);
+	const properties = publishedProperties.filter((property) => property.featured);
 
 	const performanceByProperty = new Map<string, ReturnType<typeof scoreListing>>();
 	if (performanceResult.error) {

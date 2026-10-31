@@ -472,9 +472,20 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 					onChange={setDraftFilters}
 					onSubmit={() => {
 						const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);
+						const isEmptySearch = Object.values(enrichedFilters).every((value) => !value.trim());
+
+						if (isEmptySearch) {
+							setActiveCategory("All");
+							setAiSuggestions([]);
+							setAiRecommendedProperties([]);
+							setAiRecommendationStatus("idle");
+							setHasSearched(false);
+						} else {
+							setHasSearched(true);
+						}
+
 						setDraftFilters(enrichedFilters);
 						setAppliedFilters(enrichedFilters);
-						setHasSearched(true);
 					}}
 				/>
 			</section>
