@@ -207,7 +207,7 @@ function buildDailyTrend(rows: InquiryItem[], days: number): DashboardChartRow[]
 
 function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint: string; accent?: boolean }) {
 	return (
-		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
+		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-sm">
 			<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
 			<div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
 			<p className="mt-1 text-xs text-zinc-500">{hint}</p>
@@ -696,7 +696,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						{projects.map((project) => {
 							const unitCount = properties.filter((property) => property.project_id === project.id).length;
 							return (
-								<div key={project.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
+								<div key={project.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-sm">
 									<div className="relative aspect-[16/9] w-full bg-zinc-100 overflow-hidden">
 										{project.cover_image_url ? (
 											// eslint-disable-next-line @next/next/no-img-element
@@ -971,7 +971,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 										key={group.id}
 										type="button"
 										onClick={() => openSection(group.items[0].id)}
-										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -1003,7 +1003,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 										key={item.id}
 										type="button"
 										onClick={() => openSection(item.id)}
-										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<Icon className="h-4 w-4 shrink-0" />
 										<span className="min-w-0 flex-1">

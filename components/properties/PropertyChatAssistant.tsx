@@ -254,6 +254,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [status, setStatus] = useState<string>("Jewel is ready to help.");
+  const [announcement, setAnnouncement] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const history = messages.slice(-8);
@@ -269,6 +270,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
     setInput("");
     setIsSending(true);
     setStatus("Jewel is thinking…");
+    setAnnouncement("Jewel is thinking.");
 
     const userMessage: ChatMessage = {
       id: createId(),
@@ -289,6 +291,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
       const rawContent = payload.content || payload.fallbackReply;
       const { text, actions } = parseActions(rawContent);
       setStatus("Jewel is ready.");
+      setAnnouncement(`Jewel replied: ${text}`);
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
@@ -299,6 +302,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
     } catch (error) {
       const fallbackMessage =
         error instanceof Error ? error.message : "I'm having a little trouble right now — try again in a moment!";
+      setAnnouncement(`Jewel could not respond: ${fallbackMessage}`);
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
@@ -336,7 +340,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                   AI Guide
                 </span>
               </div>
-              <p className="text-[10.5px] text-black/40">{status}</p>
+              <p className="text-[10.5px] text-black/60">{status}</p>
             </div>
           </div>
         </div>
@@ -344,7 +348,6 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
         {/* Messages */}
         <div
           className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-[#fafafa] to-white p-3.5"
-          aria-live="polite"
         >
           <div className="space-y-3.5">
             {messages.map((message) => (
@@ -409,6 +412,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
             <div ref={bottomRef} />
           </div>
         </div>
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
 
         {/* Footer */}
         <div className="shrink-0 border-t border-black/[0.07] bg-[#f5f5f5] p-2.5">
@@ -438,7 +442,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              className="h-9 w-full rounded-xl border border-black/10 bg-white px-3 text-[12px] text-black/80 outline-none placeholder:text-black/30 focus:border-[#DE141C]/35 focus:ring-2 focus:ring-[#DE141C]/10"
+              className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-base text-black/80 placeholder:text-black/40 focus:border-[#DE141C]/45 focus:ring-2 focus:ring-[#DE141C]/20 focus-visible:outline-none"
               aria-label="Message Jewel"
               placeholder="Ask Jewel anything about this property…"
               disabled={isSending || previewMode}

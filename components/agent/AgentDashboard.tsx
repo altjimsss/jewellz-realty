@@ -258,7 +258,7 @@ function PriorityPill({ priority }: { priority?: string | null }) {
 
 function StatCard({ label, value, hint, accent = false, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
 	return (
-		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
+		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-sm">
 			<div className="flex items-center justify-between gap-2">
 				<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
 				{Icon ? <Icon className="h-4 w-4 text-zinc-400" /> : null}
@@ -435,12 +435,6 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			isMounted = false;
 		};
 	}, [router]);
-
-	useEffect(() => {
-		if (!toastNotification) return;
-		const timer = setTimeout(() => setToastNotification(null), 8000);
-		return () => clearTimeout(timer);
-	}, [toastNotification]);
 
 	useEffect(() => {
 		if (!agent?.id) return;
@@ -1513,7 +1507,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 													<div className="flex max-h-[520px] flex-col gap-2 overflow-y-auto p-2.5">
 														{items.length === 0 ? <p className="px-2 py-6 text-center text-xs text-zinc-400">No leads</p> : null}
 														{items.map((inq) => (
-															<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="rounded-lg border border-black/10 bg-white p-3 text-left shadow-2xs transition-all duration-150 hover:border-black/25 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+															<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="rounded-lg border border-black/10 bg-white p-3 text-left shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/25 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 																<div className="truncate text-xs font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
 																<div className="mt-1 truncate text-[11px] text-zinc-500">{inq.properties?.title ?? "General inquiry"}</div>
 																<div className="mt-2.5 flex items-center justify-between gap-2">
@@ -1578,7 +1572,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 									) : (
 										<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 											{properties.map((prop) => (
-												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-md">
+												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-md">
 													<div className="relative aspect-[16/10] w-full bg-zinc-100 overflow-hidden">
 														<SafeImage src={prop.featured_image_url || prop.images?.[0]} alt={prop.title} fill sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition duration-300 group-hover:scale-105" fallbackContent={<div className="grid h-full w-full place-items-center text-xs text-zinc-400">No photo</div>} />
 														<span className="absolute left-3 top-3 rounded-full bg-black/75 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm shadow-xs">{prop.status || "Published"}</span>
@@ -1930,7 +1924,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">{toastNotification.title || "Lead Update"}</p>
 							<button type="button" onClick={() => setToastNotification(null)} className="rounded p-0.5 text-black/40 transition hover:text-black" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
 						</div>
-						<p className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{toastNotification.message}</p>
+						<p role="status" aria-live="polite" className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{toastNotification.message}</p>
 						{toastNotification.propertyTitle ? <p className="mt-0.5 truncate text-xs text-black/55">Listing: <span className="font-medium text-black/75">{toastNotification.propertyTitle}</span></p> : null}
 						<div className="mt-3 flex items-center gap-2">
 							<button type="button" onClick={() => handleOpenNotification(toastNotification)} className="inline-flex items-center gap-1.5 rounded-md bg-[#DE141C] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b51016]">

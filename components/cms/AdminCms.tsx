@@ -1167,7 +1167,7 @@ function AnalyticsChatSidebar(props: {
 	}
 
 	return (
-			<aside className="sticky top-3 flex h-[calc(100vh-104px)] min-h-[560px] flex-col overflow-hidden rounded-lg border border-black/10 bg-[#fbfbfa] shadow-sm lg:fixed lg:right-0 lg:top-12 lg:z-20 lg:h-[calc(100vh-3rem)] lg:w-[276px] lg:rounded-none lg:border-y-0 lg:border-l lg:border-r-0">
+			<aside className="sticky top-3 flex h-[calc(100vh-104px)] min-h-[560px] flex-col overflow-hidden rounded-lg border border-black/10 bg-[#fbfbfa] shadow-sm lg:fixed lg:right-0 lg:top-[2.75rem] lg:z-20 lg:h-[calc(100vh-2.75rem)] lg:w-[276px] lg:rounded-none lg:border-y-0 lg:border-l lg:border-r-0">
 				<div className="border-b border-black/10 bg-[#fbfbfa] px-3 py-2.5">
 					<div className="flex items-center gap-2.5">
 						<div className="min-w-0">
@@ -2009,7 +2009,7 @@ function PropertyImagesManager({
 										</div>
 										<div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/30">
 											<div
-												className="h-full rounded-full bg-white transition-all"
+												className="h-full rounded-full bg-white transition-[width]"
 												style={{ width: `${photo.progress}%` }}
 											/>
 										</div>
@@ -2416,7 +2416,7 @@ function AnalyticsPanel({
 						</div>
 						<div className="mt-3">
 							<div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-								<div className="h-full rounded-full bg-[#111111] transition-all duration-500" style={{ width: `${Math.min(Math.max(funnelCompletionRate * 5, 4), 100)}%` }} />
+								<div className="h-full rounded-full bg-[#111111] transition-[width] duration-500" style={{ width: `${Math.min(Math.max(funnelCompletionRate * 5, 4), 100)}%` }} />
 							</div>
 							<p className="mt-1.5 text-[11px] text-black/45">View-to-inquiry funnel completion</p>
 						</div>
@@ -2887,20 +2887,8 @@ export default function AdminCms({
 	const [analyticsChatIsThinking, setAnalyticsChatIsThinking] = useState(false);
 
 	useEffect(() => {
-		if (!adminToast) return;
-		const timer = setTimeout(() => setAdminToast(null), 8000);
-		return () => clearTimeout(timer);
-	}, [adminToast]);
-
-	useEffect(() => {
-		if (!createdListingToast) return;
-		const timer = setTimeout(() => setCreatedListingToast(null), 15000);
-		return () => clearTimeout(timer);
-	}, [createdListingToast]);
-
-	useEffect(() => {
-		if (!actionToast) return;
-		const timer = setTimeout(() => setActionToast(null), actionToast.tone === "error" ? 10000 : 5000);
+		if (!actionToast || actionToast.tone === "error" || actionToast.href) return;
+		const timer = setTimeout(() => setActionToast(null), 5000);
 		return () => clearTimeout(timer);
 	}, [actionToast]);
 
@@ -4312,7 +4300,7 @@ export default function AdminCms({
 										key={group.id}
 										type="button"
 										onClick={() => openPrimary(group)}
-										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-500 hover:bg-zinc-100 hover:text-[#111111]"}`}
+										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-500 hover:bg-zinc-100 hover:text-[#111111]"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -4322,10 +4310,10 @@ export default function AdminCms({
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-150 hover:bg-zinc-100 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
+						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-100 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-150 hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
+						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -4340,7 +4328,7 @@ export default function AdminCms({
 									<button
 										type="button"
 										onClick={() => openSection(analyticsOverviewItem.id)}
-										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
 										<span className="min-w-0 flex-1">
@@ -4356,7 +4344,7 @@ export default function AdminCms({
 													key={item.id}
 													type="button"
 													onClick={() => openSection(item.id)}
-													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${index ? "mt-1" : ""} ${active ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${index ? "mt-1" : ""} ${active ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													{item.label}
 												</button>
@@ -4373,7 +4361,7 @@ export default function AdminCms({
 										<button
 											type="button"
 											onClick={() => openSection(item.id)}
-											className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+											className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
@@ -4388,7 +4376,7 @@ export default function AdminCms({
 												<button
 													type="button"
 													onClick={() => openPropertyCategory("all")}
-													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === "all" ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === "all" ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													All Categories
 												</button>
@@ -4397,7 +4385,7 @@ export default function AdminCms({
 														key={option.value}
 														type="button"
 														onClick={() => openPropertyCategory(option.value)}
-														className={`relative mt-1 w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === option.value ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+														className={`relative mt-1 w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === option.value ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 													>
 														{option.label}
 													</button>
@@ -4438,8 +4426,8 @@ export default function AdminCms({
 				</aside>
 
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="sticky top-0 z-40 flex h-12 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
-						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
+					<header className="sticky top-0 z-[60] flex h-12 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
+						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
 						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-black/45 md:flex">
@@ -4466,7 +4454,7 @@ export default function AdminCms({
 							) : null}
 						</div>
 						<div className="relative ml-auto hidden w-full max-w-xs md:block">
-							<div className="flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-sm text-zinc-600 shadow-2xs transition-all focus-within:border-black/30 focus-within:ring-2 focus-within:ring-black/10">
+							<div className="flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-sm text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] focus-within:border-black/30 focus-within:ring-2 focus-within:ring-black/10">
 								<Search className="h-4 w-4" />
 								<input aria-label="Search..." value={dashboardSearch} onChange={(event) => setDashboardSearch(event.target.value)} placeholder="Search..." className="w-full bg-transparent text-sm outline-none placeholder:text-black/35" />
 							</div>
@@ -4489,7 +4477,7 @@ export default function AdminCms({
 								countsByDate={activityCountsByDate}
 							/>
 							{isAdmin ? (
-								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111111] px-3 text-xs font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111111] px-3 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 									<Download className="h-3.5 w-3.5" />
 									Export CSV
 								</button>
@@ -4500,7 +4488,7 @@ export default function AdminCms({
 								<button
 									type="button"
 									onClick={() => setShowAnalyticsAssistant((current) => !current)}
-									className={`rounded-lg border border-black/10 p-1.5 shadow-2xs transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${showAnalyticsAssistant ? "bg-[#111111] text-white" : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"}`}
+									className={`rounded-lg border border-black/10 p-1.5 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${showAnalyticsAssistant ? "bg-[#111111] text-white" : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"}`}
 									title={showAnalyticsAssistant ? "Close analytics assistant" : "Open analytics assistant"}
 								>
 									<MessageSquare className="h-4 w-4" />
@@ -4514,7 +4502,7 @@ export default function AdminCms({
 										setShowProfileMenu(false);
 										setUnreadNotifCount(0);
 									}}
-									className="relative rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
+									className="relative rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
 									title="Notifications & Agent Activity"
 								>
 									<Bell className="h-4 w-4" />
@@ -4527,7 +4515,7 @@ export default function AdminCms({
 								{showNotifications ? (
 									<>
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
-										<div className="absolute right-0 top-10 z-50 w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 text-sm shadow-2xl">
+										<div className="absolute right-0 top-10 z-[70] w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 text-sm shadow-2xl">
 											<div className="flex items-center justify-between border-b border-black/10 pb-3">
 												<div>
 													<div className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">Notifications</div>
@@ -4553,33 +4541,22 @@ export default function AdminCms({
 														No recent agent activity. Updates will appear here live when agents make progress.
 													</div>
 												) : (
-													adminNotifications.map((n) => (
-														<div
-															key={n.id}
-															onClick={() => handleOpenAdminNotification(n)}
-															className="group cursor-pointer rounded-xl border border-black/5 bg-zinc-50 p-2.5 transition hover:border-[#DE141C]/30 hover:bg-red-50/20"
-														>
-															<div className="flex items-center justify-between gap-2">
-																<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">
-																	{n.title}
-																</span>
-																<span className="text-[10px] text-black/40 shrink-0">
-																	{formatRelativeTime(n.timestamp)}
-																</span>
-															</div>
-															<p className="mt-0.5 text-xs text-black/70">{n.message}</p>
-															{n.propertyTitle && (
-																<p className="mt-0.5 text-[11px] text-black/45 truncate">
-																	Listing: {n.propertyTitle}
-																</p>
-															)}
-															{n.note && (
-																<div className="mt-1.5 rounded-lg bg-white p-1.5 text-[11px] text-black/60 italic border border-black/5">
-																	&ldquo;{n.note}&rdquo;
-																</div>
-															)}
-														</div>
-													))
+												adminNotifications.map((n) => (
+													<button
+														key={n.id}
+														type="button"
+														onClick={() => handleOpenAdminNotification(n)}
+														className="group block w-full rounded-xl border border-black/5 bg-zinc-50 p-2.5 text-left transition-[border-color,background-color,color] hover:border-[#DE141C]/30 hover:bg-red-50/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
+													>
+														<span className="flex items-center justify-between gap-2">
+															<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">{n.title}</span>
+															<span className="shrink-0 text-[10px] text-black/40">{formatRelativeTime(n.timestamp)}</span>
+														</span>
+														<span className="mt-0.5 block text-xs text-black/70">{n.message}</span>
+														{n.propertyTitle ? <span className="mt-0.5 block truncate text-[11px] text-black/45">Listing: {n.propertyTitle}</span> : null}
+														{n.note ? <span className="mt-1.5 block rounded-lg border border-black/5 bg-white p-1.5 text-[11px] italic text-black/60">&ldquo;{n.note}&rdquo;</span> : null}
+													</button>
+												))
 												)}
 											</div>
 
@@ -4598,7 +4575,7 @@ export default function AdminCms({
 										setShowProfileMenu((current) => !current);
 										setShowNotifications(false);
 									}}
-									className="rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
+									className="rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
 									title={asText(profile?.email ?? profile?.full_name)}
 								>
 									<UserCircle className="h-5 w-5" />
@@ -4606,11 +4583,11 @@ export default function AdminCms({
 								{showProfileMenu ? (
 									<>
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowProfileMenu(false)} />
-										<div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
+										<div className="absolute right-0 top-10 z-[70] w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
 											<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 											<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 											<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-											<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
+											<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 										</div>
 									</>
 								) : null}
@@ -4634,7 +4611,7 @@ export default function AdminCms({
 									<button type="button" className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-zinc-600 shadow-2xs hover:bg-zinc-50">
 										Daily
 									</button>
-									<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] shadow-2xs transition-all duration-150 hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
+									<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
 										<RefreshCw className={`h-3.5 w-3.5 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 										Refresh
 									</button>
@@ -4664,22 +4641,22 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Needs attention</div>
 											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{urgentLeads.length}</div>
 											<p className="mt-2 text-xs text-black/50">High-intent or overdue leads.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Unassigned leads</div>
 											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{unassignedLeads.length}</div>
 											<p className="mt-2 text-xs text-black/50">Assign these before follow-up slips.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Draft listings</div>
 											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{draftListings.length}</div>
 											<p className="mt-2 text-xs text-black/50">Listings not yet public.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Low inquiry listings</div>
 											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{lowPerformingListings.length}</div>
 											<p className="mt-2 text-xs text-black/50">Viewed listings below target rate.</p>
@@ -4692,7 +4669,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Inquiry Trend</div>
 												<p className="mt-1 text-xs text-black/45">Latest daily lead volume from the analytics view.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">View report</button>
+											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">View report</button>
 										</div>
 										<div className="mt-3">
 											<OverviewBars rows={overviewInquiryTrend} />
@@ -4707,12 +4684,12 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Priority Leads</div>
 												<p className="mt-1 text-xs text-black/45">Sorted by lead score and follow-up urgency.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Open queue</button>
+											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Open queue</button>
 										</div>
 										<div className="mt-4 space-y-2">
 											{urgentLeads.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-4 text-sm text-black/50">No urgent leads right now.</p> : null}
 											{urgentLeads.map((lead) => (
-												<button key={asText(lead.id)} type="button" onClick={() => openInquiryForEditing(asText(lead.id))} className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-left shadow-2xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+												<button key={asText(lead.id)} type="button" onClick={() => openInquiryForEditing(asText(lead.id))} className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-left shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 													<div className="flex items-start justify-between gap-3">
 														<div className="min-w-0">
 															<div className="truncate text-sm font-semibold text-[#111111]">{lead.buyer_name ?? lead.buyer_email}</div>
@@ -4749,7 +4726,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Recent Inquiries</div>
 												<p className="mt-1 text-xs text-black/45">Newest lead submissions entering the pipeline.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">See all</button>
+											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">See all</button>
 										</div>
 										<div className="overflow-x-auto">
 											<table className="min-w-full text-left text-sm">
@@ -4764,10 +4741,13 @@ export default function AdminCms({
 												<tbody>
 													{recentOverviewInquiries.length === 0 ? <tr><td colSpan={4} className="px-4 py-6 text-sm text-black/45">No inquiries yet.</td></tr> : null}
 													{recentOverviewInquiries.map((inquiry) => (
-														<tr key={asText(inquiry.id)} onClick={() => openInquiryForEditing(asText(inquiry.id))} className="cursor-pointer border-t border-black/5 transition hover:bg-zinc-50">
+													<tr key={asText(inquiry.id)} className="border-t border-black/5 transition-colors hover:bg-zinc-50">
 															<td className="max-w-[220px] px-4 py-3">
-																<div className="truncate font-medium text-[#111111]">{inquiry.buyer_name ?? "Unnamed buyer"}</div>
-																<div className="truncate text-xs text-black/45">{inquiry.buyer_email}</div>
+															<button type="button" aria-label={`Open inquiry for ${inquiry.buyer_name ?? "unnamed buyer"}`} onClick={() => openInquiryForEditing(asText(inquiry.id))} className="block max-w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/50">
+																<span className="block truncate font-medium text-[#111111]">{inquiry.buyer_name ?? "Unnamed buyer"}</span>
+																<span className="block truncate text-xs text-black/45">{inquiry.buyer_email}</span>
+																<span className="sr-only">Open inquiry</span>
+															</button>
 															</td>
 															<td className="px-4 py-3 text-black/60">{inquiry.status ?? "new"}</td>
 															<td className="px-4 py-3 text-black/60">{inquiry.priority ?? "standard"}</td>
@@ -4785,7 +4765,7 @@ export default function AdminCms({
 												<div className="text-sm font-semibold text-[#111111]">Listing Performance</div>
 												<p className="mt-1 text-xs text-black/45">Quick view of views and inquiry rate.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Full chart</button>
+											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Full chart</button>
 										</div>
 										<div className="mt-4">
 											<OverviewListingChart rows={listingPreviewRows} />
@@ -5105,7 +5085,7 @@ export default function AdminCms({
 								<X className="h-3.5 w-3.5" />
 							</button>
 						</div>
-						<p className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{adminToast.message}</p>
+						<p role="status" aria-live="polite" className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{adminToast.message}</p>
 						{adminToast.propertyTitle && (
 							<p className="mt-0.5 truncate text-xs text-black/55">Listing: <span className="font-medium text-black/75">{adminToast.propertyTitle}</span></p>
 						)}
@@ -5141,7 +5121,7 @@ export default function AdminCms({
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+							<p role="status" aria-live="polite" className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
 								Property created
 							</p>
 							<button
@@ -5241,7 +5221,6 @@ export default function AdminCms({
 			{/* Save / error confirmation */}
 			{actionToast ? (
 				<div
-					role={actionToast.tone === "error" ? "alert" : "status"}
 					className={`fixed bottom-4 left-4 z-50 flex w-[min(92vw,380px)] items-start gap-3 rounded-2xl border bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-2 sm:bottom-8 sm:left-8 ${
 						actionToast.tone === "success" ? "border-emerald-300" : "border-red-300"
 					}`}
@@ -5271,7 +5250,7 @@ export default function AdminCms({
 								<X className="h-3.5 w-3.5" />
 							</button>
 						</div>
-						<p className="mt-1 break-words text-sm font-semibold leading-snug text-[#111111]">
+						<p role={actionToast.tone === "error" ? "alert" : "status"} aria-live={actionToast.tone === "error" ? "assertive" : "polite"} className="mt-1 break-words text-sm font-semibold leading-snug text-[#111111]">
 							{actionToast.message}
 						</p>
 						{actionToast.href ? (
