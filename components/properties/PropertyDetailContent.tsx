@@ -285,27 +285,25 @@ export function PropertyDetailContent({
 
 			{videoSrc && isVideoOpen ? (
 				<div
-					className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+					className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
 					role="dialog"
 					aria-modal="true"
 					aria-label={`${property.title} walkthrough video`}
 					onClick={() => setIsVideoOpen(false)}
 				>
 					<div className="relative w-full max-w-5xl" onClick={(event) => event.stopPropagation()}>
-						<div className="mb-3 flex items-center justify-between gap-3">
-							<h2 className="text-sm font-semibold text-white/90">Property Walkthrough Video</h2>
+						<div className="relative overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl">
 							<button
 								type="button"
 								onClick={() => setIsVideoOpen(false)}
 								aria-label="Close video"
-								className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+								className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur transition hover:bg-black/95"
 							>
 								<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 									<path d="M18 6 6 18M6 6l12 12" />
 								</svg>
+								Close
 							</button>
-						</div>
-						<div className="overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl">
 							{isYouTube ? (
 								<div className="aspect-video w-full">
 									<iframe
