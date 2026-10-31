@@ -31,7 +31,6 @@ export async function uploadFileWithProgress({
 	bucket,
 	path,
 	file,
-	contentType,
 	upsert = true,
 	signal,
 	onProgress,
@@ -51,10 +50,35 @@ export async function uploadFileWithProgress({
 	const session = (await supabaseBrowser.auth.getSession()).data.session;
 	if (signal?.aborted) throw uploadCancelledError();
 
-	const encodedPath = path
-		.split("/")
-		.map((segment) => encodeURIComponent(segment))
-		.join("/");
+	const accessToken = session?.access_token;
+	if (!accessToken) {
+		throw new Error("Your session has expired. Please sign in again.");
+	}
+
+	const signedResponse = await fetch("/api/storage/signed-upload", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${accessToken}`,
+		},
+		body: JSON.stringify({ bucket, path }),
+		signal,
+	});
+
+	let signedPayload: { signedUrl?: string; token?: string; path?: string; error?: string } = {};
+	try {
+		signedPayload = (await signedResponse.json()) as typeof signedPayload;
+	} catch {
+		// Keep the status-based error below.
+	}
+
+	if (!signedResponse.ok || !signedPayload.signedUrl) {
+		throw new Error(signedPayload.error || `Could not prepare the upload (${signedResponse.status}).`);
+	}
+
+	const signedUrl = signedPayload.signedUrl;
+	const uploadPath = signedPayload.path || path;
+	if (signal?.aborted) throw uploadCancelledError();
 
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
@@ -71,11 +95,10 @@ export async function uploadFileWithProgress({
 			xhr.abort();
 		}
 
-		xhr.open("POST", `${supabaseUrl}/storage/v1/object/${bucket}/${encodedPath}`);
+		xhr.open("PUT", signedUrl);
 		xhr.setRequestHeader("apikey", supabaseAnonKey);
-		xhr.setRequestHeader("Authorization", `Bearer ${session?.access_token ?? supabaseAnonKey}`);
+		xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
 		if (upsert) xhr.setRequestHeader("x-upsert", "true");
-		xhr.setRequestHeader("Content-Type", contentType || file.type || "application/octet-stream");
 
 		xhr.upload.addEventListener("progress", (event) => {
 			if (!event.lengthComputable || !onProgress) return;
@@ -88,8 +111,8 @@ export async function uploadFileWithProgress({
 
 		xhr.addEventListener("load", () => {
 			if (xhr.status >= 200 && xhr.status < 300) {
-				const { data } = supabaseBrowser.storage.from(bucket).getPublicUrl(path);
-				finish(() => resolve({ publicUrl: data.publicUrl, path }));
+				const { data } = supabaseBrowser.storage.from(bucket).getPublicUrl(uploadPath);
+				finish(() => resolve({ publicUrl: data.publicUrl, path: uploadPath }));
 				return;
 			}
 
@@ -108,6 +131,9 @@ export async function uploadFileWithProgress({
 		xhr.addEventListener("abort", () => finish(() => reject(uploadCancelledError())));
 
 		signal?.addEventListener("abort", handleAbort, { once: true });
-		xhr.send(file);
+		const formData = new FormData();
+		formData.append("cacheControl", "3600");
+		formData.append("", file);
+		xhr.send(formData);
 	});
 }

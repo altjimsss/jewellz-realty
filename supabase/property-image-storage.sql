@@ -27,7 +27,7 @@ ON storage.objects
 FOR INSERT
 WITH CHECK (
   bucket_id = 'property-images'
-  AND public.current_user_role() = 'admin'
+  AND public.is_admin()
 );
 
 DROP POLICY IF EXISTS "property_images_admin_update" ON storage.objects;
@@ -36,11 +36,11 @@ ON storage.objects
 FOR UPDATE
 USING (
   bucket_id = 'property-images'
-  AND public.current_user_role() = 'admin'
+  AND public.is_admin()
 )
 WITH CHECK (
   bucket_id = 'property-images'
-  AND public.current_user_role() = 'admin'
+  AND public.is_admin()
 );
 
 DROP POLICY IF EXISTS "property_images_admin_delete" ON storage.objects;
@@ -49,5 +49,5 @@ ON storage.objects
 FOR DELETE
 USING (
   bucket_id = 'property-images'
-  AND public.current_user_role() = 'admin'
+  AND public.is_admin()
 );
