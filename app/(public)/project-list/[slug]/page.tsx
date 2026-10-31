@@ -5,7 +5,6 @@ import { PropertyDetailContent } from "@/components/properties/PropertyDetailCon
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
 import { fetchNearbyPlacesFromStadia, geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
 import {
-	SAMPLE_PROPERTIES,
 	getPropertyBySlug,
 	getRelatedProperties as getSampleRelatedProperties,
 } from "@/lib/sample-properties";
@@ -18,14 +17,8 @@ type PageProps = {
 	params: Promise<{ slug: string }>;
 };
 
-export function generateStaticParams() {
-	return SAMPLE_PROPERTIES.map((property) => ({ slug: property.slug }));
-}
-
-// Revalidate each property page in the background at most every 5 minutes.
-// generateStaticParams() above still pre-builds all known slugs at build time,
-// and newly published slugs are rendered on demand once, then cached.
-export const revalidate = 300;
+// Always render from the latest property row so CMS edits show up immediately.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
 	title: "Property Details | Jewellz Realty",

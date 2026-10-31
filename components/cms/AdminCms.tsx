@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -2826,6 +2826,14 @@ type CreatedListingToast = {
 	photoCount: number;
 };
 
+type ActionToast = {
+	tone: "success" | "error";
+	title: string;
+	message: string;
+	href?: string;
+	hrefLabel?: string;
+};
+
 export default function AdminCms({
 	initialPrimary = "dashboard",
 	initialSection = "overview",
@@ -2860,6 +2868,7 @@ export default function AdminCms({
 	const [adminNotifications, setAdminNotifications] = useState<AdminLiveNotification[]>([]);
 	const [adminToast, setAdminToast] = useState<AdminLiveNotification | null>(null);
 	const [createdListingToast, setCreatedListingToast] = useState<CreatedListingToast | null>(null);
+	const [actionToast, setActionToast] = useState<ActionToast | null>(null);
 	const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
@@ -2888,6 +2897,12 @@ export default function AdminCms({
 		const timer = setTimeout(() => setCreatedListingToast(null), 15000);
 		return () => clearTimeout(timer);
 	}, [createdListingToast]);
+
+	useEffect(() => {
+		if (!actionToast) return;
+		const timer = setTimeout(() => setActionToast(null), actionToast.tone === "error" ? 10000 : 5000);
+		return () => clearTimeout(timer);
+	}, [actionToast]);
 
 	// Live subscription for Admin: listen for agent progress (inquiry_timeline) and incoming leads (inquiries)
 	useEffect(() => {
@@ -3769,15 +3784,28 @@ export default function AdminCms({
 		setMessage(`Saving ${table}...`);
 		setSaving(true);
 
+		const recordLabel = labelForRow(payload as CmsRow);
 		const result = currentRow ? await supabaseBrowser.from(table).update(payload).eq(idKey, currentRow[idKey]) : await supabaseBrowser.from(table).insert(payload);
 		if (result.error) {
 			setMessage(result.error.message);
+			setActionToast({
+				tone: "error",
+				title: "Could not save changes",
+				message: result.error.message,
+			});
 			setSaving(false);
 			return false;
 		}
 
 		setSaving(false);
 		await reloadWorkspace();
+		if (!(table === "properties" && !currentRow)) {
+			setActionToast({
+				tone: "success",
+				title: currentRow ? "Changes saved" : "Record created",
+				message: `${recordLabel} ${currentRow ? "updated" : "created"} successfully.`,
+			});
+		}
 		return true;
 	}
 
@@ -4069,6 +4097,13 @@ export default function AdminCms({
 			);
 		} else {
 			setMessage("Property saved successfully.");
+			setActionToast({
+				tone: "success",
+				title: "Changes saved",
+				message: "Property details updated successfully.",
+				href: payload.status === "published" && asText(payload.slug) ? `/project-list/${encodeURIComponent(asText(payload.slug))}` : undefined,
+				hrefLabel: "View on website",
+			});
 		}
 
 		if (finalLat != null && finalLng != null && propertyId) {
@@ -5167,6 +5202,57 @@ export default function AdminCms({
 								Dismiss
 							</button>
 						</div>
+					</div>
+				</div>
+			) : null}
+			{/* Save / error confirmation */}
+			{actionToast ? (
+				<div
+					role={actionToast.tone === "error" ? "alert" : "status"}
+					className={`fixed bottom-4 left-4 z-50 flex w-[min(92vw,380px)] items-start gap-3 rounded-2xl border bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-2 sm:bottom-8 sm:left-8 ${
+						actionToast.tone === "success" ? "border-emerald-300" : "border-red-300"
+					}`}
+				>
+					<div
+						className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+							actionToast.tone === "success" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+						}`}
+					>
+						{actionToast.tone === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="flex items-center justify-between gap-2">
+							<p
+								className={`text-[11px] font-bold uppercase tracking-wider ${
+									actionToast.tone === "success" ? "text-emerald-700" : "text-red-700"
+								}`}
+							>
+								{actionToast.title}
+							</p>
+							<button
+								type="button"
+								onClick={() => setActionToast(null)}
+								className="rounded p-0.5 text-black/40 transition hover:text-black"
+								title="Dismiss"
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+						</div>
+						<p className="mt-1 break-words text-sm font-semibold leading-snug text-[#111111]">
+							{actionToast.message}
+						</p>
+						{actionToast.href ? (
+							<div className="mt-3">
+								<a
+									href={actionToast.href}
+									target="_blank"
+									rel="noreferrer"
+									className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/70 transition hover:bg-black/5"
+								>
+									{actionToast.hrefLabel ?? "Open"} <ChevronRight className="h-3.5 w-3.5" />
+								</a>
+							</div>
+						) : null}
 					</div>
 				</div>
 			) : null}
