@@ -258,13 +258,13 @@ function PriorityPill({ priority }: { priority?: string | null }) {
 
 function StatCard({ label, value, hint, accent = false, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
 	return (
-		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-sm">
+		<div className="portal-stat-card">
 			<div className="flex items-center justify-between gap-2">
-				<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
-				{Icon ? <Icon className="h-4 w-4 text-zinc-400" /> : null}
+				<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">{label}</div>
+				{Icon ? <Icon className="h-4 w-4 text-slate-500" /> : null}
 			</div>
-			<div className={`mt-3 text-3xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
-			<p className="mt-2 text-xs text-zinc-500">{hint}</p>
+			<div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
+			<p className="mt-1 text-xs text-slate-600">{hint}</p>
 		</div>
 	);
 }
@@ -1001,10 +1001,10 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	}
 
 	return (
-		<main className="min-h-screen bg-[#f8fafc] bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#0f172a] selection:bg-[#DE141C]/15">
+		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				{/* Primary icon rail */}
-				<aside className="hidden border-r border-slate-200/80 bg-white/95 backdrop-blur-md py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+				<aside className="portal-sidebar hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
 						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-xs ring-1 ring-slate-200 transition hover:ring-black/20" title="Jewellz Realty — Go to website">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
@@ -1042,7 +1042,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				</aside>
 
 				{/* Secondary navigation */}
-				<aside className={`${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-slate-200/80 bg-white/90 backdrop-blur-md lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(15,23,42,0.02)]`}>
+				<aside className={`portal-sidebar ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(15,23,42,0.02)]`}>
 					<nav className="flex max-h-[60vh] flex-col overflow-auto px-2 py-3 lg:max-h-[calc(100vh-96px)]">
 						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{activeGroup.label}</div>
 						<div className="space-y-1">
@@ -1091,7 +1091,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 				{/* Main column */}
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs md:px-6">
+					<header className="portal-header sticky top-0 z-20 flex h-12 items-center gap-3 px-4 md:px-6">
 						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:text-[#0f172a] hover:bg-slate-50" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -1144,18 +1144,18 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 								<ArrowUpRight className="h-3 w-3 text-slate-400" />
 							</Link>
 
-							<button type="button" onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); }} className="relative rounded-lg border border-slate-200 bg-white p-1.5 transition hover:bg-slate-50 shadow-2xs" title="Notifications">
+							<button type="button" aria-label="Notifications" aria-expanded={showNotifications} onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); }} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white transition-[background-color,border-color,color] hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 shadow-2xs" title="Notifications">
 								<Bell className="h-4 w-4" />
 								{unreadCount > 0 ? <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#DE141C] px-1 text-[10px] font-bold text-white ring-2 ring-white">{unreadCount}</span> : null}
 							</button>
-							<button type="button" onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); }} className="rounded-lg border border-slate-200 bg-white p-1.5 transition hover:bg-slate-50 shadow-2xs" title={agent?.full_name}>
+							<button type="button" aria-label="Profile menu" aria-expanded={showProfileMenu} onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); }} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white transition-[background-color,border-color,color] hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 shadow-2xs" title={agent?.full_name}>
 								<UserCircle className="h-5 w-5" />
 							</button>
 
 							{showNotifications ? (
-								<div className="absolute right-0 top-11 z-30 w-80 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-xl sm:w-96">
+								<div className="portal-popover absolute right-0 top-12 z-30 w-80 p-4 text-sm sm:w-96">
 									<div className="flex items-center justify-between border-b border-slate-100 pb-2">
-										<div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Notifications</div>
+											<div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-600">Notifications</div>
 										{notifications.length > 0 ? (
 											<button type="button" onClick={handleMarkAllAsRead} className="flex items-center gap-1 text-[11px] font-medium text-slate-500 transition hover:text-black">
 												<CheckCheck className="h-3 w-3" />
@@ -1165,7 +1165,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 									</div>
 									<div className="mt-2 max-h-80 space-y-1 overflow-y-auto">
 										{notifications.length === 0 ? (
-											<div className="py-8 text-center text-xs text-slate-400">No notifications yet. New lead assignments appear here.</div>
+												<div className="py-8 text-center text-xs text-slate-600">No notifications yet. New lead assignments appear here.</div>
 										) : (
 											notifications.slice(0, 15).map((notif) => (
 												<button
@@ -1180,10 +1180,10 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 													<span className="min-w-0 flex-1">
 														<span className="flex items-center justify-between gap-2">
 															<span className={`text-xs font-semibold ${!notif.read ? "text-[#DE141C]" : "text-[#0f172a]"}`}>{notif.title}</span>
-															<span className="shrink-0 text-[10px] text-slate-400">{formatTimeAgo(notif.timestamp)}</span>
+											<span className="shrink-0 text-[10px] text-slate-600">{formatTimeAgo(notif.timestamp)}</span>
 														</span>
 														<span className="mt-0.5 block truncate text-xs font-medium text-slate-700">{notif.message}</span>
-														{notif.propertyTitle ? <span className="block truncate text-[11px] text-slate-400">{notif.propertyTitle}</span> : null}
+										{notif.propertyTitle ? <span className="block truncate text-[11px] text-slate-600">{notif.propertyTitle}</span> : null}
 													</span>
 												</button>
 											))
@@ -1193,7 +1193,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							) : null}
 
 							{showProfileMenu ? (
-								<div className="absolute right-0 top-11 z-30 w-64 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-xl">
+								<div className="portal-popover absolute right-0 top-12 z-30 w-64 p-4 text-sm">
 									<div className="font-semibold text-[#0f172a]">{agent?.full_name ?? "Agent"}</div>
 									<div className="mt-0.5 truncate text-xs text-slate-500">{userEmail}</div>
 									<div className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">{agent?.license_number || "Licensed Agent"}</div>
@@ -1253,7 +1253,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 								</div>
 							</div>
 
-							{statusMessage ? <div className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-medium text-[#111111] shadow-sm">{statusMessage}</div> : null}
+											{statusMessage ? <div role={/failed|error|could not/i.test(statusMessage) ? "alert" : "status"} aria-live={/failed|error|could not/i.test(statusMessage) ? "assertive" : "polite"} className="portal-inline-status">{statusMessage}</div> : null}
 
 							{/* ── OVERVIEW ───────────────────────────────────────────── */}
 							{activeSection === "overview" ? (
@@ -1917,20 +1917,20 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 			{/* Floating live assignment toast */}
 			{toastNotification ? (
-				<div className="fixed right-4 top-20 z-50 flex max-w-sm items-start gap-3 rounded-lg border border-[#DE141C]/25 bg-white p-4 shadow-2xl sm:right-8 sm:max-w-md">
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DE141C]/10 text-[#DE141C]"><Sparkles className="h-5 w-5" /></div>
+				<div className="portal-live-toast portal-motion">
+					<div className="portal-live-toast-icon"><Sparkles className="h-5 w-5" /></div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
 							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">{toastNotification.title || "Lead Update"}</p>
-							<button type="button" onClick={() => setToastNotification(null)} className="rounded p-0.5 text-black/40 transition hover:text-black" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
+							<button type="button" aria-label="Dismiss notification" onClick={() => setToastNotification(null)} className="portal-icon-dismiss"><X className="h-4 w-4" /></button>
 						</div>
 						<p role="status" aria-live="polite" className="mt-1 text-sm font-semibold leading-snug text-[#111111]">{toastNotification.message}</p>
 						{toastNotification.propertyTitle ? <p className="mt-0.5 truncate text-xs text-black/55">Listing: <span className="font-medium text-black/75">{toastNotification.propertyTitle}</span></p> : null}
 						<div className="mt-3 flex items-center gap-2">
-							<button type="button" onClick={() => handleOpenNotification(toastNotification)} className="inline-flex items-center gap-1.5 rounded-md bg-[#DE141C] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b51016]">
+						<button type="button" onClick={() => handleOpenNotification(toastNotification)} className="portal-toast-primary">
 								Review lead now<ChevronRight className="h-3.5 w-3.5" />
 							</button>
-							<button type="button" onClick={() => setToastNotification(null)} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-black/5">Dismiss</button>
+						<button type="button" onClick={() => setToastNotification(null)} className="portal-toast-secondary">Dismiss</button>
 						</div>
 					</div>
 				</div>

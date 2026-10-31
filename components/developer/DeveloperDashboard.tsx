@@ -207,10 +207,10 @@ function buildDailyTrend(rows: InquiryItem[], days: number): DashboardChartRow[]
 
 function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint: string; accent?: boolean }) {
 	return (
-		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-sm">
-			<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
+		<div className="portal-stat-card">
+			<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">{label}</div>
 			<div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
-			<p className="mt-1 text-xs text-zinc-500">{hint}</p>
+			<p className="mt-1 text-xs text-slate-600">{hint}</p>
 		</div>
 	);
 }
@@ -922,7 +922,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							<div className="mt-1 text-sm text-[#111111]">Accredited Developer Partner</div>
 						</div>
 						<div className="border-t border-black/10 pt-4">
-							{statusMessage ? <div className="mb-3 rounded-lg border border-black/10 bg-zinc-50 p-2.5 text-xs font-medium text-[#DE141C]">{statusMessage}</div> : null}
+							{statusMessage ? <div role={statusMessage.startsWith("Error:") ? "alert" : "status"} aria-live={statusMessage.startsWith("Error:") ? "assertive" : "polite"} className="portal-inline-status mb-3">{statusMessage}</div> : null}
 							<button type="button" onClick={() => void handleSendPasswordReset()} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#111111] px-4 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 								<Mail className="h-3.5 w-3.5" />
 								Send Password Reset Email
@@ -954,10 +954,10 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	};
 
 	return (
-		<main className="min-h-screen bg-[#f2f2ef] text-[#111111]">
+		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				{/* Primary icon rail */}
-				<aside className="hidden border-r border-black/10 bg-[#fbfbfa] py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between shadow-[1px_0_3px_rgba(0,0,0,0.02)]">
+				<aside className="portal-sidebar hidden border-r py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between shadow-[1px_0_3px_rgba(15,23,42,0.02)]">
 					<div className="flex flex-col items-center gap-4">
 						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Jewellz Realty">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
@@ -991,7 +991,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				</aside>
 
 				{/* Secondary navigation */}
-				<aside className={`${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-black/10 bg-[#fbfbfa] lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(0,0,0,0.02)]`}>
+				<aside className={`portal-sidebar ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(15,23,42,0.02)]`}>
 					<nav className="flex max-h-[60vh] flex-col overflow-auto px-2 py-3 lg:max-h-[calc(100vh-120px)]">
 						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{activeGroup.label}</div>
 						<div className="space-y-1">
@@ -1038,8 +1038,8 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				</aside>
 
 				{/* Main column */}
-				<section className="flex min-w-0 flex-col bg-[#f2f2ef]">
-					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-black/10 bg-[#fbfbfa]/95 px-4 backdrop-blur-md shadow-2xs">
+				<section className="flex min-w-0 flex-col bg-transparent">
+					<header className="portal-header sticky top-0 z-20 flex h-12 items-center gap-3 px-4">
 						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 transition hover:text-[#111111] hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -1052,13 +1052,13 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							View-only access
 						</span>
 						<div className="relative">
-							<button type="button" onClick={() => setShowAccountMenu((current) => !current)} className="flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white pl-2 pr-2.5 text-xs font-medium text-[#111111] shadow-2xs transition hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+							<button type="button" aria-label="Developer account menu" aria-expanded={showAccountMenu} onClick={() => setShowAccountMenu((current) => !current)} className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white pl-2 pr-2.5 text-xs font-medium text-[#111111] shadow-2xs transition-[background-color,border-color,color] hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
 								<span className="grid h-5 w-5 place-items-center rounded-full bg-[#DE141C] text-[10px] font-bold text-white shadow-2xs">{developer?.company_name?.charAt(0) ?? "D"}</span>
 								<span className="hidden max-w-28 truncate sm:block">{developer?.company_name}</span>
 								<ChevronRight className={`h-3.5 w-3.5 text-zinc-400 transition ${showAccountMenu ? "rotate-90" : ""}`} />
 							</button>
 							{showAccountMenu ? (
-								<div className="absolute right-0 top-10 z-30 w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
+								<div className="portal-popover absolute right-0 top-12 z-30 w-64 p-4 text-sm">
 									<div className="font-semibold text-[#111111]">{developer?.company_name}</div>
 									<div className="mt-1 truncate text-xs text-zinc-500">{userEmail}</div>
 									<div className="mt-2 inline-flex rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-medium text-zinc-600">Accredited Developer Partner</div>
@@ -1069,7 +1069,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						</div>
 					</header>
 
-					<div className="flex-1 overflow-auto bg-[#f2f2ef] px-3 py-3 sm:px-4 lg:px-5">
+					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-5 lg:px-6">
 						<div className="mx-auto flex max-w-7xl flex-col gap-3">
 							<div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
 								{navGroups.map((group) => {
@@ -1091,7 +1091,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 
 							<div className="flex flex-wrap items-end justify-between gap-3">
 								<div>
-									<h1 className="text-lg font-semibold tracking-[-0.02em] text-[#111111]">{SECTION_META[activeSection].title}</h1>
+										<h1 className="text-2xl font-semibold tracking-[-0.04em] text-[#111111]">{SECTION_META[activeSection].title}</h1>
 									<p className="mt-0.5 text-xs text-zinc-500">{SECTION_META[activeSection].subtitle}</p>
 								</div>
 								<button type="button" onClick={handleRefresh} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] shadow-2xs transition hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
@@ -1101,7 +1101,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							</div>
 
 							{statusMessage && activeSection !== "security" ? (
-								<div className="rounded-lg border border-black/10 bg-white p-3 text-xs font-medium text-[#DE141C]">{statusMessage}</div>
+								<div role={statusMessage.startsWith("Error:") ? "alert" : "status"} aria-live={statusMessage.startsWith("Error:") ? "assertive" : "polite"} className="portal-inline-status">{statusMessage}</div>
 							) : null}
 
 							{sectionRenderers[activeSection]()}

@@ -4284,9 +4284,9 @@ export default function AdminCms({
 	}
 
 	return (
-		<main className="min-h-screen bg-[#f8fafc] bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#0f172a] selection:bg-[#DE141C]/15">
+		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
-				<aside className="hidden border-r border-slate-200/80 bg-white/95 backdrop-blur-md py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+				<aside className="portal-sidebar hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
 						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
@@ -4319,7 +4319,7 @@ export default function AdminCms({
 					</div>
 				</aside>
 
-				<aside className={`${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
+				<aside className={`portal-sidebar ${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
 					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-2 py-3">
 						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
@@ -4426,7 +4426,7 @@ export default function AdminCms({
 				</aside>
 
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="sticky top-0 z-[60] flex h-12 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
+					<header className="portal-header sticky top-0 z-[60] flex h-12 items-center gap-3 px-4">
 						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -4502,7 +4502,9 @@ export default function AdminCms({
 										setShowProfileMenu(false);
 										setUnreadNotifCount(0);
 									}}
-									className="relative rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
+									className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-slate-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
+									aria-label="Notifications"
+									aria-expanded={showNotifications}
 									title="Notifications & Agent Activity"
 								>
 									<Bell className="h-4 w-4" />
@@ -4515,11 +4517,11 @@ export default function AdminCms({
 								{showNotifications ? (
 									<>
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
-										<div className="absolute right-0 top-10 z-[70] w-80 sm:w-96 rounded-2xl border border-black/10 bg-white p-4 text-sm shadow-2xl">
+									<div className="portal-popover absolute right-0 top-12 z-[70] w-80 p-4 text-sm sm:w-96">
 											<div className="flex items-center justify-between border-b border-black/10 pb-3">
 												<div>
-													<div className="text-xs font-bold uppercase tracking-[0.16em] text-black/50">Notifications</div>
-													<div className="text-xs text-black/45">Live agent activity & pipeline updates</div>
+											<div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">Notifications</div>
+											<div className="text-xs text-slate-600">Live agent activity & pipeline updates</div>
 												</div>
 												{adminNotifications.length > 0 && (
 													<button
@@ -4537,26 +4539,26 @@ export default function AdminCms({
 
 											<div className="mt-3 max-h-80 overflow-y-auto space-y-2 pr-1">
 												{adminNotifications.length === 0 ? (
-													<div className="py-6 text-center text-xs text-black/40">
+													<div className="py-6 text-center text-xs text-slate-600">
 														No recent agent activity. Updates will appear here live when agents make progress.
 													</div>
 												) : (
-												adminNotifications.map((n) => (
-													<button
-														key={n.id}
-														type="button"
-														onClick={() => handleOpenAdminNotification(n)}
-														className="group block w-full rounded-xl border border-black/5 bg-zinc-50 p-2.5 text-left transition-[border-color,background-color,color] hover:border-[#DE141C]/30 hover:bg-red-50/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
-													>
-														<span className="flex items-center justify-between gap-2">
-															<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">{n.title}</span>
-															<span className="shrink-0 text-[10px] text-black/40">{formatRelativeTime(n.timestamp)}</span>
-														</span>
-														<span className="mt-0.5 block text-xs text-black/70">{n.message}</span>
-														{n.propertyTitle ? <span className="mt-0.5 block truncate text-[11px] text-black/45">Listing: {n.propertyTitle}</span> : null}
-														{n.note ? <span className="mt-1.5 block rounded-lg border border-black/5 bg-white p-1.5 text-[11px] italic text-black/60">&ldquo;{n.note}&rdquo;</span> : null}
-													</button>
-												))
+													adminNotifications.map((n) => (
+														<button
+															key={n.id}
+															type="button"
+															onClick={() => handleOpenAdminNotification(n)}
+															className="group block w-full rounded-xl border border-black/5 bg-zinc-50 p-2.5 text-left transition-[border-color,background-color,color] hover:border-[#DE141C]/30 hover:bg-red-50/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
+														>
+															<span className="flex items-center justify-between gap-2">
+																<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">{n.title}</span>
+																<span className="shrink-0 text-[10px] text-slate-600">{formatRelativeTime(n.timestamp)}</span>
+															</span>
+															<span className="mt-0.5 block text-xs text-black/70">{n.message}</span>
+															{n.propertyTitle ? <span className="mt-0.5 block truncate text-[11px] text-slate-600">Listing: {n.propertyTitle}</span> : null}
+															{n.note ? <span className="mt-1.5 block rounded-lg border border-black/5 bg-white p-1.5 text-[11px] italic text-black/60">&ldquo;{n.note}&rdquo;</span> : null}
+														</button>
+													))
 												)}
 											</div>
 
@@ -4575,7 +4577,9 @@ export default function AdminCms({
 										setShowProfileMenu((current) => !current);
 										setShowNotifications(false);
 									}}
-									className="rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
+								className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-slate-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
+								aria-label="Profile menu"
+								aria-expanded={showProfileMenu}
 									title={asText(profile?.email ?? profile?.full_name)}
 								>
 									<UserCircle className="h-5 w-5" />
@@ -4583,7 +4587,7 @@ export default function AdminCms({
 								{showProfileMenu ? (
 									<>
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowProfileMenu(false)} />
-										<div className="absolute right-0 top-10 z-[70] w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
+									<div className="portal-popover absolute right-0 top-12 z-[70] w-64 p-4 text-sm">
 											<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 											<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 											<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
@@ -4641,25 +4645,25 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
-											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Needs attention</div>
-											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{urgentLeads.length}</div>
-											<p className="mt-2 text-xs text-black/50">High-intent or overdue leads.</p>
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
+											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Needs attention</div>
+											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{urgentLeads.length}</div>
+											<p className="mt-1 text-xs text-slate-600">High-intent or overdue leads.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
-											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Unassigned leads</div>
-											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{unassignedLeads.length}</div>
-											<p className="mt-2 text-xs text-black/50">Assign these before follow-up slips.</p>
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
+											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Unassigned leads</div>
+											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{unassignedLeads.length}</div>
+											<p className="mt-1 text-xs text-slate-600">Assign these before follow-up slips.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
-											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Draft listings</div>
-											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{draftListings.length}</div>
-											<p className="mt-2 text-xs text-black/50">Listings not yet public.</p>
+										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
+											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Draft listings</div>
+											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{draftListings.length}</div>
+											<p className="mt-1 text-xs text-slate-600">Listings not yet public.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
-											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Low inquiry listings</div>
-											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{lowPerformingListings.length}</div>
-											<p className="mt-2 text-xs text-black/50">Viewed listings below target rate.</p>
+										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
+											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Low inquiry listings</div>
+											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{lowPerformingListings.length}</div>
+											<p className="mt-1 text-xs text-slate-600">Viewed listings below target rate.</p>
 										</button>
 									</div>
 
@@ -5067,20 +5071,20 @@ export default function AdminCms({
 			) : null}
 			{/* Admin Live Agent Activity Toast */}
 			{adminToast ? (
-				<div className="fixed right-4 top-16 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl sm:right-8 sm:max-w-md animate-in slide-in-from-top-2">
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+				<div className="portal-live-toast portal-motion">
+					<div className="portal-live-toast-icon">
 						<UserCheck className="h-5 w-5" />
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+							<p className="text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">
 								{adminToast.title}
 							</p>
 							<button
 								type="button"
 								onClick={() => setAdminToast(null)}
-								className="rounded p-0.5 text-black/40 transition hover:text-black"
-								title="Dismiss"
+								className="portal-icon-dismiss"
+								aria-label="Dismiss notification"
 							>
 								<X className="h-3.5 w-3.5" />
 							</button>
@@ -5098,14 +5102,14 @@ export default function AdminCms({
 							<button
 								type="button"
 								onClick={() => handleOpenAdminNotification(adminToast)}
-								className="inline-flex items-center gap-1.5 rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-black/80"
+								className="portal-toast-primary"
 							>
 								View in Pipeline <ChevronRight className="h-3.5 w-3.5" />
 							</button>
 							<button
 								type="button"
 								onClick={() => setAdminToast(null)}
-								className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-black/5"
+								className="portal-toast-secondary"
 							>
 								Dismiss
 							</button>
@@ -5115,7 +5119,7 @@ export default function AdminCms({
 			) : null}
 			{/* Property creation confirmation */}
 			{createdListingToast ? (
-				<div className="fixed bottom-4 right-4 z-50 flex w-[min(92vw,400px)] items-start gap-3 rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-2 sm:bottom-8 sm:right-8">
+				<div className="portal-action-toast portal-motion bottom-4 right-4 w-[min(92vw,400px)] border-emerald-300 sm:bottom-8 sm:right-8">
 					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
 						<CheckCircle2 className="h-5 w-5" />
 					</div>
@@ -5221,7 +5225,7 @@ export default function AdminCms({
 			{/* Save / error confirmation */}
 			{actionToast ? (
 				<div
-					className={`fixed bottom-4 left-4 z-50 flex w-[min(92vw,380px)] items-start gap-3 rounded-2xl border bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-2 sm:bottom-8 sm:left-8 ${
+					className={`portal-action-toast portal-motion bottom-4 left-4 w-[min(92vw,380px)] sm:bottom-8 sm:left-8 ${
 						actionToast.tone === "success" ? "border-emerald-300" : "border-red-300"
 					}`}
 				>
