@@ -4,7 +4,7 @@ import { asText, buildPayload, displayValue } from "./utils";
 
 export function SectionShell({ title, description, children }: SectionProps) {
 	return (
-		<section className="overflow-hidden rounded-lg border border-black/10 bg-white">
+		<section className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 			<div className="border-b border-black/10 px-4 py-3">
 				<div className="flex flex-col gap-1">
 					<h2 className="text-sm font-semibold text-[#111111]">{title}</h2>
@@ -20,16 +20,16 @@ export function InfoCard({ label, value, hint }: { label: string; value: string 
 	const text = String(value);
 	const isLong = text.length > 14;
 	return (
-		<div className="group rounded-lg border border-black/10 bg-white p-3.5 transition hover:border-black/20">
+		<div className="group rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0 flex-1">
-					<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">{label}</div>
-					<div className={`mt-2 break-all font-semibold leading-tight text-[#111111] ${isLong ? "text-base md:text-lg" : "text-2xl tracking-[-0.04em]"}`}>{value}</div>
+					<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
+					<div className={`mt-2 break-all font-semibold tabular-nums leading-tight text-[#111111] ${isLong ? "text-base md:text-lg" : "text-2xl tracking-tight"}`}>{value}</div>
 				</div>
-				<span className="shrink-0 rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-black/50">Live</span>
+				<span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600 ring-1 ring-zinc-200">Live</span>
 			</div>
 			<div className="mt-3 flex items-center justify-between border-t border-black/5 pt-2">
-				{hint ? <div className="truncate text-[11px] text-black/45">{hint}</div> : <span />}
+				{hint ? <div className="truncate text-[11px] text-zinc-500">{hint}</div> : <span />}
 			</div>
 		</div>
 	);
@@ -109,11 +109,11 @@ export function EntityEditor({
 	return (
 		<SectionShell title={title} description={description}>
 			<div className="grid gap-4 xl:grid-cols-[260px_1fr]">
-				<aside className="rounded-lg border border-black/10 bg-white p-3">
+				<aside className="rounded-xl border border-black/10 bg-white p-3.5 shadow-xs">
 					<div className="flex items-center justify-between gap-2 px-1 pb-3">
 						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Records</div>
 						{canEdit && canCreate ? (
-							<button type="button" onClick={onCreateNew} className="rounded-md border border-black/10 px-3 py-1 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+							<button type="button" onClick={onCreateNew} className="rounded-lg border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#111111] shadow-2xs transition-all duration-150 hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 								New
 							</button>
 						) : null}
@@ -125,7 +125,7 @@ export function EntityEditor({
 							value={recordSearch}
 							onChange={(event) => setRecordSearch(event.target.value)}
 							placeholder={`Search ${title.toLowerCase()}...`}
-							className="h-9 w-full rounded-md border border-black/10 bg-zinc-50 px-3 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30 focus:bg-white"
+							className="h-9 w-full rounded-lg border border-black/10 bg-zinc-50 px-3 text-xs text-[#111111] shadow-2xs outline-none transition placeholder:text-zinc-400 focus:border-black/30 focus:bg-white focus:ring-2 focus:ring-black/10"
 						/>
 					</label>
 					<div className="max-h-[720px] min-h-[620px] space-y-2 overflow-auto pr-1 xl:max-h-[calc(100vh-260px)]">
@@ -135,7 +135,7 @@ export function EntityEditor({
 							const rowId = asText(row?.[idKey]);
 							const active = rowId === asText(selectedId);
 							return (
-								<button key={rowId} type="button" onClick={() => onSelect(row)} className={`w-full rounded-md border px-3 py-2 text-left transition ${active ? "border-black/20 bg-zinc-100" : "border-transparent bg-white hover:border-black/10 hover:bg-zinc-50"}`}>
+								<button key={rowId} type="button" onClick={() => onSelect(row)} className={`w-full rounded-lg border px-3 py-2 text-left transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "border-black/20 bg-zinc-100 shadow-2xs font-medium" : "border-transparent bg-white hover:border-black/10 hover:bg-zinc-50"}`}>
 									<div className="truncate text-sm font-medium text-[#111111]">{rowLabel(row)}</div>
 									{rowMeta ? <div className="mt-1 truncate text-xs text-black/50">{rowMeta(row)}</div> : null}
 								</button>
@@ -144,7 +144,7 @@ export function EntityEditor({
 					</div>
 				</aside>
 
-				<div className="rounded-lg border border-black/10 bg-white p-4">
+				<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
 						<div>
 							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Editor</div>
@@ -152,7 +152,7 @@ export function EntityEditor({
 						</div>
 						<div className="flex flex-wrap items-center gap-2">
 							{selectedRow && canEdit && onDelete ? (
-								<button type="button" onClick={() => onDelete(selectedRow)} className="rounded-md border border-black/15 bg-zinc-100 px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-zinc-200">
+								<button type="button" onClick={() => onDelete(selectedRow)} className="rounded-lg border border-red-200 bg-red-50/50 px-4 py-2 text-sm font-medium text-red-700 shadow-2xs transition-all duration-150 hover:bg-red-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300">
 									Delete
 								</button>
 							) : null}
@@ -171,7 +171,7 @@ export function EntityEditor({
 						<div className="grid gap-4 md:grid-cols-2">
 							{fields.map((field, index) => {
 								const value = selectedRow ? selectedRow[field.name] : (defaultValues?.[field.name] ?? "");
-								const commonInputClass = "mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm outline-none transition focus:border-black/30 disabled:bg-zinc-50 disabled:text-black/45";
+								const commonInputClass = "mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-2xs outline-none transition placeholder:text-zinc-400 focus:border-black/30 focus:ring-2 focus:ring-black/10 disabled:bg-zinc-50 disabled:text-zinc-400";
 								const previousField = fields[index - 1];
 								const shouldShowSection = field.section && field.section !== previousField?.section;
 								return (
@@ -216,11 +216,11 @@ export function EntityEditor({
 					<div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
 						<p className="text-xs text-black/45">{renderPreview ? "Preview the public listing before saving changes." : selectedRow ? "Review the details before saving." : "Fill in the form to create a new row."}</p>
 						{renderPreview ? (
-							<button type="button" onClick={openPreview} disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
+							<button type="button" onClick={openPreview} disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-lg bg-[#111111] px-5 text-sm font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
 								Preview property
 							</button>
 						) : (
-							<button form={formId} type="submit" disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
+							<button form={formId} type="submit" disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-lg bg-[#111111] px-5 text-sm font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
 									{selectedRow ? "Save changes" : saveLabel ?? "Save property"}
 							</button>
 						)}

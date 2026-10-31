@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -321,13 +321,13 @@ function hasMeaningfulChartValue<T extends Record<string, unknown>>(rows: T[], k
 
 function AnalyticsChartCard({ title, description, isLive = true, children }: { title: string; description: string; isLive?: boolean; children: React.ReactNode }) {
 	return (
-		<div className="rounded-2xl border border-black/10 bg-white p-4">
+		<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 			<div className="flex items-start justify-between gap-3">
 				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">{title}</div>
-					<p className="mt-1 text-sm text-black/55">{description}</p>
+					<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{title}</div>
+					<p className="mt-1 text-sm text-zinc-500">{description}</p>
 				</div>
-				<span className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${isLive ? "bg-zinc-100 text-black/45" : "bg-amber-50 text-amber-700"}`}>
+				<span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ${isLive ? "bg-zinc-100 text-zinc-600 ring-zinc-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
 					{isLive ? "Live" : "Waiting"}
 				</span>
 			</div>
@@ -1281,7 +1281,7 @@ function PeakEngagementChart({ events }: { events: CmsRow[] }) {
 	const peakDay = dayCounts.reduce((best, row) => row.count > best.count ? row : best, dayCounts[0]);
 
 	return (
-		<div className="rounded-lg border border-black/10 bg-white p-4">
+		<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
 					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Peak Engagement Periods</div>
@@ -2711,7 +2711,7 @@ function AnalyticsPanel({
 
 						{developerPortfolioLevel === "property" && selectedPortfolioProperty ? (
 							<div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-								<div className="rounded-lg border border-black/10 bg-white p-4">
+								<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 									<div className="flex flex-wrap items-start justify-between gap-3">
 										<div>
 											<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Property Analytics</div>
@@ -2733,7 +2733,7 @@ function AnalyticsPanel({
 									</div>
 								</div>
 
-								<div className="rounded-lg border border-black/10 bg-white p-4">
+								<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Engagement Detail</div>
 									<div className="mt-4 grid gap-3 sm:grid-cols-2">
 										<InfoCard label="Total views" value={selectedPropertyPerformance?.total_views ?? 0} hint="Property page views." />
@@ -4300,7 +4300,7 @@ export default function AdminCms({
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				<aside className="hidden border-r border-slate-200/80 bg-white/95 backdrop-blur-md py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
-						<div className="flex h-10 w-10 items-center justify-center rounded-md bg-white ring-1 ring-black/10">
+						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
 						</div>
 						<div className="flex flex-col gap-2">
@@ -4312,7 +4312,7 @@ export default function AdminCms({
 										key={group.id}
 										type="button"
 										onClick={() => openPrimary(group)}
-										className={`flex h-9 w-9 items-center justify-center rounded-md transition ${active ? "bg-[#111111] text-white" : "text-black/55 hover:bg-white hover:text-[#111111]"}`}
+										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-500 hover:bg-zinc-100 hover:text-[#111111]"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -4322,10 +4322,10 @@ export default function AdminCms({
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111] disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
+						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-150 hover:bg-zinc-100 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-150 hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -4333,19 +4333,19 @@ export default function AdminCms({
 
 				<aside className={`${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
 					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-2 py-3">
-						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">{activeNavGroup?.label ?? "Dashboard"}</div>
+						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
 							{activePrimary === "analytics" && analyticsOverviewItem && AnalyticsOverviewIcon ? (
 								<div>
 									<button
 										type="button"
 										onClick={() => openSection(analyticsOverviewItem.id)}
-										className={`relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
 										<span className="min-w-0 flex-1">
 											<span className="block text-sm font-medium">{analyticsOverviewItem.label}</span>
-											<span className="block truncate text-[11px] text-black/45">{isAnalyticsChildSection ? activeNavItem?.label : "Performance summary"}</span>
+											<span className="block truncate text-[11px] text-zinc-500">{isAnalyticsChildSection ? activeNavItem?.label : "Performance summary"}</span>
 										</span>
 									</button>
 									<div className="border-l-2 border-transparent py-1 pl-8 pr-2">
@@ -4356,7 +4356,7 @@ export default function AdminCms({
 													key={item.id}
 													type="button"
 													onClick={() => openSection(item.id)}
-													className={`relative w-full rounded-md px-2 py-1.5 pl-3 text-left text-xs transition ${index ? "mt-1" : ""} ${active ? "bg-white font-medium text-[#111111] shadow-sm before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/50 hover:bg-white hover:text-[#111111]"}`}
+													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${index ? "mt-1" : ""} ${active ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													{item.label}
 												</button>
@@ -4373,13 +4373,13 @@ export default function AdminCms({
 										<button
 											type="button"
 											onClick={() => openSection(item.id)}
-											className={`relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition ${active ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
+											className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
 												<span className="block text-sm font-medium">{item.label}</span>
 												{activePrimary === "analytics" ? null : (
-													<span className={`block truncate text-[11px] ${active ? "text-black/45" : "text-black/40"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
+													<span className={`block truncate text-[11px] ${active ? "text-zinc-500" : "text-zinc-400"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
 												)}
 											</span>
 										</button>
@@ -4388,7 +4388,7 @@ export default function AdminCms({
 												<button
 													type="button"
 													onClick={() => openPropertyCategory("all")}
-													className={`relative w-full rounded-md px-2 py-1.5 pl-3 text-left text-xs transition ${propertyCategoryFilter === "all" ? "bg-white font-medium text-[#111111] shadow-sm before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/50 hover:bg-white hover:text-[#111111]"}`}
+													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === "all" ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													All Categories
 												</button>
@@ -4397,7 +4397,7 @@ export default function AdminCms({
 														key={option.value}
 														type="button"
 														onClick={() => openPropertyCategory(option.value)}
-														className={`relative mt-1 w-full rounded-md px-2 py-1.5 pl-3 text-left text-xs transition ${propertyCategoryFilter === option.value ? "bg-white font-medium text-[#111111] shadow-sm before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/50 hover:bg-white hover:text-[#111111]"}`}
+														className={`relative mt-1 w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === option.value ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 													>
 														{option.label}
 													</button>
@@ -4439,7 +4439,7 @@ export default function AdminCms({
 
 				<section className="flex min-w-0 flex-col bg-transparent">
 					<header className="sticky top-0 z-20 flex h-13 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-md shadow-2xs">
-						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-md border border-black/10 bg-white text-black/60 transition hover:text-[#111111]" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
+						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
 						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-black/45 md:flex">
@@ -4466,12 +4466,12 @@ export default function AdminCms({
 							) : null}
 						</div>
 						<div className="relative ml-auto hidden w-full max-w-xs md:block">
-							<div className="flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm text-black/60">
+							<div className="flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-sm text-zinc-600 shadow-2xs transition-all focus-within:border-black/30 focus-within:ring-2 focus-within:ring-black/10">
 								<Search className="h-4 w-4" />
 								<input aria-label="Search..." value={dashboardSearch} onChange={(event) => setDashboardSearch(event.target.value)} placeholder="Search..." className="w-full bg-transparent text-sm outline-none placeholder:text-black/35" />
 							</div>
 							{dashboardSearch.trim() ? (
-								<div className="absolute right-0 top-10 z-30 w-full overflow-hidden rounded-lg border border-black/10 bg-white shadow-xl">
+								<div className="absolute right-0 top-10 z-30 w-full overflow-hidden rounded-xl border border-black/10 bg-white shadow-xl">
 									{dashboardSearchResults.length === 0 ? <div className="px-3 py-3 text-xs text-black/45">No CMS records found.</div> : null}
 									{dashboardSearchResults.map((item) => (
 										<button key={`${item.meta}-${item.label}`} type="button" onClick={() => { item.open(); setDashboardSearch(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100">
@@ -4489,7 +4489,7 @@ export default function AdminCms({
 								countsByDate={activityCountsByDate}
 							/>
 							{isAdmin ? (
-								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-md bg-[#111111] px-3 text-xs font-medium text-white">
+								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111111] px-3 text-xs font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 									<Download className="h-3.5 w-3.5" />
 									Export CSV
 								</button>
@@ -4500,7 +4500,7 @@ export default function AdminCms({
 								<button
 									type="button"
 									onClick={() => setShowAnalyticsAssistant((current) => !current)}
-									className={`rounded-md border border-black/10 p-1.5 transition ${showAnalyticsAssistant ? "bg-[#111111] text-white" : "bg-white hover:bg-zinc-100"}`}
+									className={`rounded-lg border border-black/10 p-1.5 shadow-2xs transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${showAnalyticsAssistant ? "bg-[#111111] text-white" : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"}`}
 									title={showAnalyticsAssistant ? "Close analytics assistant" : "Open analytics assistant"}
 								>
 									<MessageSquare className="h-4 w-4" />
@@ -4513,7 +4513,7 @@ export default function AdminCms({
 										setShowNotifications((current) => !current);
 										setUnreadNotifCount(0);
 									}}
-									className="relative rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100"
+									className="relative rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
 									title="Notifications & Agent Activity"
 								>
 									<Bell className="h-4 w-4" />
@@ -4587,15 +4587,15 @@ export default function AdminCms({
 									</div>
 								) : null}
 							</div>
-							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-md border border-black/10 bg-white p-1.5 transition hover:bg-zinc-100" title={asText(profile?.email ?? profile?.full_name)}>
+							<button type="button" onClick={() => setShowProfileMenu((current) => !current)} className="rounded-lg border border-black/10 bg-white p-1.5 text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={asText(profile?.email ?? profile?.full_name)}>
 								<UserCircle className="h-5 w-5" />
 							</button>
 							{showProfileMenu ? (
-								<div className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
+								<div className="absolute right-0 top-10 z-30 w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
 									<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 									<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 									<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+									<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 								</div>
 							) : null}
 						</div>
@@ -4614,10 +4614,10 @@ export default function AdminCms({
 									</h1>
 								</div>
 								<div className="flex items-center gap-2">
-									<button type="button" className="inline-flex h-8 items-center gap-1 rounded-md border border-black/10 bg-white px-3 text-xs text-black/60">
+									<button type="button" className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-zinc-600 shadow-2xs hover:bg-zinc-50">
 										Daily
 									</button>
-									<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">
+									<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] shadow-2xs transition-all duration-150 hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
 										<RefreshCw className={`h-3.5 w-3.5 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 										Refresh
 									</button>
@@ -4647,35 +4647,35 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
-											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Needs attention</div>
-											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{urgentLeads.length}</div>
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Needs attention</div>
+											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{urgentLeads.length}</div>
 											<p className="mt-2 text-xs text-black/50">High-intent or overdue leads.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
-											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Unassigned leads</div>
-											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{unassignedLeads.length}</div>
+										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Unassigned leads</div>
+											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{unassignedLeads.length}</div>
 											<p className="mt-2 text-xs text-black/50">Assign these before follow-up slips.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
-											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Draft listings</div>
-											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{draftListings.length}</div>
+										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Draft listings</div>
+											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{draftListings.length}</div>
 											<p className="mt-2 text-xs text-black/50">Listings not yet public.</p>
 										</button>
-										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white p-4 text-left transition hover:border-black/20 hover:bg-zinc-50">
-											<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Low inquiry listings</div>
-											<div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#111111]">{lowPerformingListings.length}</div>
+										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-xl border border-black/10 bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+											<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Low inquiry listings</div>
+											<div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#111111]">{lowPerformingListings.length}</div>
 											<p className="mt-2 text-xs text-black/50">Viewed listings below target rate.</p>
 										</button>
 									</div>
 
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 										<div className="flex items-start justify-between gap-3">
 											<div>
 												<div className="text-sm font-semibold text-[#111111]">Inquiry Trend</div>
 												<p className="mt-1 text-xs text-black/45">Latest daily lead volume from the analytics view.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">View report</button>
+											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">View report</button>
 										</div>
 										<div className="mt-3">
 											<OverviewBars rows={overviewInquiryTrend} />
@@ -4684,18 +4684,18 @@ export default function AdminCms({
 								</div>
 
 								<div className="grid gap-3 xl:grid-cols-[0.95fr_1.05fr]">
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 										<div className="flex items-center justify-between gap-3">
 											<div>
 												<div className="text-sm font-semibold text-[#111111]">Priority Leads</div>
 												<p className="mt-1 text-xs text-black/45">Sorted by lead score and follow-up urgency.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Open queue</button>
+											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Open queue</button>
 										</div>
 										<div className="mt-4 space-y-2">
 											{urgentLeads.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-4 text-sm text-black/50">No urgent leads right now.</p> : null}
 											{urgentLeads.map((lead) => (
-												<button key={asText(lead.id)} type="button" onClick={() => openInquiryForEditing(asText(lead.id))} className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-left transition hover:bg-zinc-50">
+												<button key={asText(lead.id)} type="button" onClick={() => openInquiryForEditing(asText(lead.id))} className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-left shadow-2xs transition-all duration-150 hover:border-black/20 hover:bg-zinc-50/70 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 													<div className="flex items-start justify-between gap-3">
 														<div className="min-w-0">
 															<div className="truncate text-sm font-semibold text-[#111111]">{lead.buyer_name ?? lead.buyer_email}</div>
@@ -4711,13 +4711,13 @@ export default function AdminCms({
 										</div>
 									</div>
 
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 										<div className="flex items-start justify-between gap-3">
 											<div>
 												<div className="text-sm font-semibold text-[#111111]">Pipeline Health</div>
 												<p className="mt-1 text-xs text-black/45">Status distribution across visible leads.</p>
 											</div>
-											<div className="rounded-md bg-zinc-100 px-2.5 py-1.5 text-xs font-medium text-black/60">{stats.closedCount} closed</div>
+											<div className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 ring-1 ring-zinc-200">{stats.closedCount} closed</div>
 										</div>
 										<div className="mt-4">
 											<OverviewPipelineBars rows={overviewPipelineRows} />
@@ -4726,17 +4726,17 @@ export default function AdminCms({
 								</div>
 
 								<div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
-									<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 										<div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
 											<div>
 												<div className="text-sm font-semibold text-[#111111]">Recent Inquiries</div>
 												<p className="mt-1 text-xs text-black/45">Newest lead submissions entering the pipeline.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">See all</button>
+											<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">See all</button>
 										</div>
 										<div className="overflow-x-auto">
 											<table className="min-w-full text-left text-sm">
-												<thead className="bg-zinc-50 text-[11px] uppercase tracking-[0.08em] text-black/40">
+												<thead className="bg-zinc-50/80 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
 													<tr>
 														<th className="px-4 py-2 font-medium">Buyer</th>
 														<th className="px-4 py-2 font-medium">Status</th>
@@ -4762,13 +4762,13 @@ export default function AdminCms({
 										</div>
 									</div>
 
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 										<div className="flex items-center justify-between gap-3">
 											<div>
 												<div className="text-sm font-semibold text-[#111111]">Listing Performance</div>
 												<p className="mt-1 text-xs text-black/45">Quick view of views and inquiry rate.</p>
 											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Full chart</button>
+											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-all duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Full chart</button>
 										</div>
 										<div className="mt-4">
 											<OverviewListingChart rows={listingPreviewRows} />
@@ -4814,7 +4814,7 @@ export default function AdminCms({
 									/>
 								) : (
 									<SectionShell title={`${selectedCategoryLabel} Properties`} description={`Showing only listings categorized as ${selectedCategoryLabel}. Click any row to open it in Listings / Properties.`}>
-										<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+										<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 											<table className="w-full border-collapse text-sm">
 												<thead>
 													<tr className="border-b border-black/10 text-left text-[11px] uppercase tracking-[0.08em] text-black/45">

@@ -258,13 +258,13 @@ function PriorityPill({ priority }: { priority?: string | null }) {
 
 function StatCard({ label, value, hint, accent = false, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
 	return (
-		<div className="rounded-lg border border-black/10 bg-white p-4">
+		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
 			<div className="flex items-center justify-between gap-2">
-				<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">{label}</div>
-				{Icon ? <Icon className="h-4 w-4 text-black/30" /> : null}
+				<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
+				{Icon ? <Icon className="h-4 w-4 text-zinc-400" /> : null}
 			</div>
-			<div className={`mt-3 text-3xl font-semibold tracking-[-0.05em] ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
-			<p className="mt-2 text-xs text-black/50">{hint}</p>
+			<div className={`mt-3 text-3xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
+			<p className="mt-2 text-xs text-zinc-500">{hint}</p>
 		</div>
 	);
 }
@@ -1265,16 +1265,16 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							{activeSection === "overview" ? (
 								<>
 									{unreadCount > 0 ? (
-										<div className="flex flex-col gap-3 rounded-lg border border-[#DE141C]/25 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+										<div className="flex flex-col gap-3 rounded-xl border border-[#DE141C]/25 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
 											<div className="flex items-center gap-3">
-												<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#DE141C] text-white"><Bell className="h-5 w-5" /></span>
+												<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#DE141C] text-white shadow-2xs"><Bell className="h-5 w-5" /></span>
 												<div>
-													<div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#DE141C]">Action required</div>
+													<div className="text-[10px] font-bold uppercase tracking-wider text-[#DE141C]">Action required</div>
 													<div className="text-sm font-semibold text-[#111111]">You have {unreadCount} new lead{unreadCount > 1 ? "s" : ""} assigned by Admin.</div>
-													<div className="text-xs text-black/55">Review client details and reach out to start the conversation.</div>
+													<div className="text-xs text-zinc-500">Review client details and reach out to start the conversation.</div>
 												</div>
 											</div>
-											<button type="button" onClick={() => openSection("inquiries")} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/80">
+											<button type="button" onClick={() => openSection("inquiries")} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#111111] px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 												View leads
 												<ChevronRight className="h-3.5 w-3.5" />
 											</button>
@@ -1289,40 +1289,40 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 									</div>
 
 									<div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="flex items-start justify-between gap-3">
 												<div>
 													<div className="text-sm font-semibold text-[#111111]">Lead volume (last 14 days)</div>
-													<p className="mt-1 text-xs text-black/45">Buyer inquiries assigned to you over time.</p>
+													<p className="mt-1 text-xs text-zinc-500">Buyer inquiries assigned to you over time.</p>
 												</div>
-												<button type="button" onClick={() => openSection("trends")} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">View report</button>
+												<button type="button" onClick={() => openSection("trends")} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">View report</button>
 											</div>
 											<div className="mt-3"><AgentTrendChart rows={trendRows} name="Leads" /></div>
 										</div>
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Pipeline distribution</div>
-											<p className="mt-1 text-xs text-black/45">Leads by current stage.</p>
+											<p className="mt-1 text-xs text-zinc-500">Leads by current stage.</p>
 											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} emptyLabel="No leads assigned yet" emptyHint="Your pipeline fills up as Admin assigns leads to you." /></div>
 										</div>
 									</div>
 
 									<div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="flex items-center justify-between gap-3">
 												<div>
 													<div className="text-sm font-semibold text-[#111111]">Recent leads</div>
-													<p className="mt-1 text-xs text-black/45">Newest buyer inquiries needing attention.</p>
+													<p className="mt-1 text-xs text-zinc-500">Newest buyer inquiries needing attention.</p>
 												</div>
-												<button type="button" onClick={() => openSection("inquiries")} className="rounded-md border border-black/10 px-2.5 py-1.5 text-xs font-medium text-black/60 transition hover:bg-zinc-50">Open queue</button>
+												<button type="button" onClick={() => openSection("inquiries")} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Open queue</button>
 											</div>
 											<div className="mt-3 space-y-2">
-												{inquiries.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-4 text-sm text-black/50">No inquiries assigned yet.</p> : null}
+												{inquiries.length === 0 ? <p className="rounded-lg bg-zinc-50 px-3 py-4 text-sm text-zinc-500">No inquiries assigned yet.</p> : null}
 												{inquiries.slice(0, 5).map((inq) => (
-													<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-left transition hover:bg-zinc-50">
+													<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-left shadow-2xs transition hover:border-black/20 hover:bg-zinc-50/80 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 														<div className="flex items-start justify-between gap-3">
 															<div className="min-w-0">
 																<div className="truncate text-sm font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
-																<div className="mt-1 truncate text-xs text-black/50">{inq.properties?.title ?? "General inquiry"} · {formatTimeAgo(inq.created_at)}</div>
+																<div className="mt-1 truncate text-xs text-zinc-500">{inq.properties?.title ?? "General inquiry"} · <span className="tabular-nums">{formatTimeAgo(inq.created_at)}</span></div>
 															</div>
 															<StatusPill status={inq.status} />
 														</div>
@@ -1331,20 +1331,20 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 											</div>
 										</div>
 
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Agent card preview</div>
-											<p className="mt-1 text-xs text-black/45">How clients see you on the public site.</p>
+											<p className="mt-1 text-xs text-zinc-500">How clients see you on the public site.</p>
 											<div className="mt-4 flex flex-col items-center text-center">
 												{agent?.photo_url ? (
-													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
+													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover shadow-2xs" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
 												) : (
-													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>
+													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white shadow-2xs">{agent?.full_name?.charAt(0) ?? "A"}</div>
 												)}
 												<div className="mt-3 text-base font-semibold text-[#111111]">{agent?.full_name}</div>
-												<div className="text-xs font-medium text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
-												<div className="mt-1 text-[11px] text-black/45">License: {agent?.license_number || "PRC Accredited"}</div>
-												{agent?.bio ? <p className="mt-3 line-clamp-3 text-xs leading-5 text-black/60">{agent.bio}</p> : null}
-												<button type="button" onClick={() => openSection("profile")} className="mt-4 w-full rounded-md border border-black/10 py-2 text-xs font-semibold text-[#111111] transition hover:bg-black/5">Edit public details</button>
+												<div className="text-xs font-semibold text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
+												<div className="mt-1 text-[11px] text-zinc-500">License: {agent?.license_number || "PRC Accredited"}</div>
+												{agent?.bio ? <p className="mt-3 line-clamp-3 text-xs leading-5 text-zinc-600">{agent.bio}</p> : null}
+												<button type="button" onClick={() => openSection("profile")} className="mt-4 w-full rounded-lg border border-black/10 py-2 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Edit public details</button>
 											</div>
 										</div>
 									</div>
@@ -1354,17 +1354,17 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							{/* ── INQUIRIES ──────────────────────────────────────────── */}
 							{activeSection === "inquiries" ? (
 								<div className="space-y-3">
-									<div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+									<div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
 										<input
 											type="search"
 											value={inquirySearch}
 											onChange={(event) => setInquirySearch(event.target.value)}
 											placeholder="Search by buyer name, email, phone, or property..."
-											className="h-9 flex-1 rounded-md border border-black/10 bg-zinc-50 px-3 text-xs text-[#111111] outline-none transition focus:border-black/30 focus:bg-white"
+											className="h-9 flex-1 rounded-lg border border-black/10 bg-zinc-50/80 px-3 text-xs text-[#111111] outline-none transition focus:border-black/30 focus:bg-white focus:ring-2 focus:ring-black/5 placeholder:text-zinc-400"
 										/>
 										<div className="flex items-center gap-2">
-											<span className="text-xs font-medium text-black/50">Status</span>
-											<select value={inquiryStatusFilter} onChange={(event) => setInquiryStatusFilter(event.target.value)} className="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none">
+											<span className="text-xs font-medium text-zinc-500">Status</span>
+											<select value={inquiryStatusFilter} onChange={(event) => setInquiryStatusFilter(event.target.value)} className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none transition hover:border-black/20 focus:border-black/30 focus:ring-2 focus:ring-black/5">
 												<option value="all">All ({inquiries.length})</option>
 												{STATUS_ORDER.map((status) => (
 													<option key={status} value={status}>{statusMeta(status).label}</option>
@@ -1374,60 +1374,60 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 									</div>
 
 									{editingInquiry ? (
-										<div className="rounded-lg border border-[#DE141C]/30 bg-white p-4">
+										<div className="rounded-xl border border-[#DE141C]/30 bg-white p-5 shadow-xs">
 											<div className="flex items-center justify-between border-b border-black/10 pb-3">
 												<div>
-													<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Updating lead status</div>
+													<div className="text-[10px] font-semibold uppercase tracking-wider text-[#DE141C]">Updating lead status</div>
 													<h3 className="text-base font-bold text-[#111111]">{editingInquiry.buyer_name || "Lead details"}</h3>
 												</div>
-												<button type="button" onClick={() => setEditingInquiry(null)} className="rounded-md border border-black/10 px-2.5 py-1 text-xs font-medium text-black/60 hover:bg-black/5">Cancel</button>
+												<button type="button" onClick={() => setEditingInquiry(null)} className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium text-zinc-600 shadow-2xs hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Cancel</button>
 											</div>
 											<div className="mt-4 grid gap-4 sm:grid-cols-2">
 												<div>
-													<div className="text-xs font-semibold uppercase tracking-wider text-black/60">Buyer contact</div>
+													<div className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Buyer contact</div>
 													<div className="mt-1 text-sm font-medium text-[#111111]">{editingInquiry.buyer_name || "—"}</div>
-													<div className="text-xs text-black/50">
+													<div className="text-xs text-zinc-500">
 														Email:{" "}
-														{editingInquiry.buyer_email ? <a href={`mailto:${editingInquiry.buyer_email}`} className="break-all text-[#DE141C] hover:underline">{editingInquiry.buyer_email}</a> : "—"}
+														{editingInquiry.buyer_email ? <a href={`mailto:${editingInquiry.buyer_email}`} className="break-all text-[#DE141C] hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#DE141C] rounded">{editingInquiry.buyer_email}</a> : "—"}
 													</div>
-													<div className="text-xs text-black/50">
+													<div className="text-xs text-zinc-500">
 														Phone:{" "}
-														{editingInquiry.buyer_phone ? <a href={`tel:${editingInquiry.buyer_phone}`} className="text-[#DE141C] hover:underline">{editingInquiry.buyer_phone}</a> : "—"}
+														{editingInquiry.buyer_phone ? <a href={`tel:${editingInquiry.buyer_phone}`} className="text-[#DE141C] hover:underline tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#DE141C] rounded">{editingInquiry.buyer_phone}</a> : "—"}
 													</div>
-													{editingInquiry.buyer_message ? <p className="mt-2 rounded-md bg-zinc-50 px-3 py-2 text-xs leading-5 text-black/60">{editingInquiry.buyer_message}</p> : null}
+													{editingInquiry.buyer_message ? <p className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-700">{editingInquiry.buyer_message}</p> : null}
 													{editingInquiry.properties?.title ? (
-														<div className="mt-2 text-xs font-medium text-black/70">
+														<div className="mt-2 text-xs font-medium text-zinc-800">
 															Property: {editingInquiry.properties.title} ({editingInquiry.properties.city ?? "Batangas"})
 														</div>
 													) : null}
 													<div className="mt-3 flex flex-wrap items-center gap-2">
 														{editingInquiry.buyer_phone ? (
-															<a href={`tel:${editingInquiry.buyer_phone}`} onClick={() => { if (["new", "assigned"].includes(editingInquiry.status ?? "")) void handleQuickContact(editingInquiry, "call"); }} className="inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-sm transition hover:border-black/30" title="Call buyer & mark contacted">
+															<a href={`tel:${editingInquiry.buyer_phone}`} onClick={() => { if (["new", "assigned"].includes(editingInquiry.status ?? "")) void handleQuickContact(editingInquiry, "call"); }} className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-2xs transition hover:border-black/30 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Call buyer & mark contacted">
 																<Phone className="h-3.5 w-3.5 text-emerald-600" />Call
 															</a>
 														) : null}
 														{editingInquiry.buyer_email ? (
-															<a href={`mailto:${editingInquiry.buyer_email}`} onClick={() => { if (["new", "assigned"].includes(editingInquiry.status ?? "")) void handleQuickContact(editingInquiry, "email"); }} className="inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-sm transition hover:border-black/30" title="Email buyer & mark contacted">
+															<a href={`mailto:${editingInquiry.buyer_email}`} onClick={() => { if (["new", "assigned"].includes(editingInquiry.status ?? "")) void handleQuickContact(editingInquiry, "email"); }} className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] shadow-2xs transition hover:border-black/30 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Email buyer & mark contacted">
 																<Mail className="h-3.5 w-3.5 text-blue-600" />Email
 															</a>
 														) : null}
 														{!["contacted", "viewing_scheduled", "negotiating", "reserved", "closed_won"].includes(editingInquiry.status ?? "") ? (
-															<button type="button" onClick={() => void handleQuickContact(editingInquiry, "manual")} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+															<button type="button" onClick={() => void handleQuickContact(editingInquiry, "manual")} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30">
 																Mark contacted
 															</button>
 														) : null}
 													</div>
 												</div>
 												<div>
-													<label className="block text-xs font-semibold uppercase tracking-wider text-black/60">Pipeline stage</label>
-													<select value={editStatus} onChange={(event) => setEditStatus(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none">
+													<label className="block text-xs font-semibold uppercase tracking-wider text-zinc-600">Pipeline stage</label>
+													<select value={editStatus} onChange={(event) => setEditStatus(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5">
 														{STATUS_ORDER.map((status) => (
 															<option key={status} value={status}>{statusMeta(status).label}</option>
 														))}
 													</select>
-													<label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-black/60">Follow-up notes</label>
-													<textarea value={editNotes} onChange={(event) => setEditNotes(event.target.value)} rows={3} placeholder="e.g. Scheduled site visit Saturday 2PM..." className="mt-1 w-full rounded-md border border-black/10 bg-white p-2.5 text-xs text-[#111111] outline-none focus:border-black/30" />
-													<button type="button" disabled={updatingInquiry} onClick={() => void handleUpdateInquiryStatus(editingInquiry.id, editStatus, editNotes)} className="mt-3 inline-flex h-9 items-center justify-center rounded-md bg-[#111111] px-4 text-xs font-semibold text-white transition hover:bg-black/80 disabled:opacity-50">
+													<label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-zinc-600">Follow-up notes</label>
+													<textarea value={editNotes} onChange={(event) => setEditNotes(event.target.value)} rows={3} placeholder="e.g. Scheduled site visit Saturday 2PM..." className="mt-1 w-full rounded-lg border border-black/10 bg-white p-2.5 text-xs text-[#111111] outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5" />
+													<button type="button" disabled={updatingInquiry} onClick={() => void handleUpdateInquiryStatus(editingInquiry.id, editStatus, editNotes)} className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-[#111111] px-4 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 														{updatingInquiry ? "Saving..." : "Save status & notes"}
 													</button>
 												</div>
@@ -1435,10 +1435,10 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										</div>
 									) : null}
 
-									<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 										<div className="overflow-x-auto">
 											<table className="min-w-full text-left text-xs">
-												<thead className="border-b border-black/10 bg-zinc-50 font-semibold uppercase tracking-[0.12em] text-black/50">
+												<thead className="border-b border-black/10 bg-zinc-50/80 font-semibold uppercase tracking-wider text-[11px] text-zinc-500">
 													<tr>
 														<th className="px-4 py-3">Buyer</th>
 														<th className="px-4 py-3">Property</th>
@@ -1450,33 +1450,33 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 												</thead>
 												<tbody className="divide-y divide-black/5">
 													{filteredInquiries.length === 0 ? (
-														<tr><td colSpan={6} className="px-4 py-10 text-center text-black/45">No inquiries match your filters.</td></tr>
+														<tr><td colSpan={6} className="px-4 py-10 text-center text-zinc-400">No inquiries match your filters.</td></tr>
 													) : (
 														filteredInquiries.map((inq) => (
-															<tr key={inq.id} className="transition hover:bg-zinc-50/70">
+															<tr key={inq.id} className="transition hover:bg-zinc-50/80">
 																<td className="px-4 py-3">
 																	<div className="text-sm font-semibold text-[#111111]">{inq.buyer_name || "—"}</div>
-																	<div className="break-all text-black/50">{inq.buyer_email || inq.buyer_phone}</div>
+																	<div className="break-all text-zinc-500">{inq.buyer_email || inq.buyer_phone}</div>
 																</td>
 																<td className="px-4 py-3">
 																	{inq.properties?.title ? (
 																		<>
 																			<div className="font-medium text-[#111111]">{inq.properties.title}</div>
-																			<div className="text-black/45">{inq.properties.city ?? "Batangas"}</div>
+																			<div className="text-zinc-500">{inq.properties.city ?? "Batangas"}</div>
 																		</>
 																	) : (
-																		<span className="text-black/40">General inquiry</span>
+																		<span className="text-zinc-400">General inquiry</span>
 																	)}
 																</td>
 																<td className="px-4 py-3"><StatusPill status={inq.status} /></td>
 																<td className="px-4 py-3"><PriorityPill priority={inq.priority} /></td>
-																<td className="px-4 py-3 text-black/50">{formatDate(inq.created_at)}</td>
+																<td className="px-4 py-3 text-zinc-500 tabular-nums">{formatDate(inq.created_at)}</td>
 																<td className="px-4 py-3 text-right">
 																	<div className="inline-flex items-center justify-end gap-1.5">
 																		{["new", "assigned"].includes(inq.status ?? "") ? (
-																			<button type="button" onClick={() => void handleQuickContact(inq, "manual")} className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100">Mark contacted</button>
+																			<button type="button" onClick={() => void handleQuickContact(inq, "manual")} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-2xs transition hover:bg-emerald-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30">Mark contacted</button>
 																		) : null}
-																		<button type="button" onClick={() => openInquiryEditor(inq)} className="rounded-md border border-black/10 px-3 py-1 text-xs font-semibold text-[#111111] transition hover:bg-black/5">Update</button>
+																		<button type="button" onClick={() => openInquiryEditor(inq)} className="rounded-lg border border-black/10 bg-white px-3 py-1 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Update</button>
 																	</div>
 																</td>
 															</tr>
@@ -1502,23 +1502,23 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 											const meta = statusMeta(status);
 											const items = inquiries.filter((inq) => (inq.status ?? "new") === status);
 											return (
-												<div key={status} className="flex w-72 shrink-0 flex-col rounded-lg border border-black/10 bg-white">
-													<div className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5">
+												<div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-black/10 bg-white shadow-xs">
+													<div className="flex items-center justify-between gap-2 border-b border-black/10 px-3.5 py-2.5">
 														<div className="flex items-center gap-2">
-															<span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.dot }} />
-															<span className="text-xs font-semibold uppercase tracking-wider text-black/65">{meta.label}</span>
+															<span className="h-2.5 w-2.5 rounded-full ring-2 ring-white shadow-2xs" style={{ background: meta.dot }} />
+															<span className="text-xs font-semibold uppercase tracking-wider text-zinc-700">{meta.label}</span>
 														</div>
-														<span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/55">{items.length}</span>
+														<span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 tabular-nums">{items.length}</span>
 													</div>
-													<div className="flex max-h-[520px] flex-col gap-2 overflow-y-auto p-2">
-														{items.length === 0 ? <p className="px-2 py-4 text-center text-xs text-black/35">No leads</p> : null}
+													<div className="flex max-h-[520px] flex-col gap-2 overflow-y-auto p-2.5">
+														{items.length === 0 ? <p className="px-2 py-6 text-center text-xs text-zinc-400">No leads</p> : null}
 														{items.map((inq) => (
-															<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="rounded-md border border-black/10 bg-white p-2.5 text-left transition hover:border-black/25 hover:bg-zinc-50">
+															<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="rounded-lg border border-black/10 bg-white p-3 text-left shadow-2xs transition-all duration-150 hover:border-black/25 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 																<div className="truncate text-xs font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
-																<div className="mt-1 truncate text-[11px] text-black/50">{inq.properties?.title ?? "General inquiry"}</div>
-																<div className="mt-2 flex items-center justify-between gap-2">
+																<div className="mt-1 truncate text-[11px] text-zinc-500">{inq.properties?.title ?? "General inquiry"}</div>
+																<div className="mt-2.5 flex items-center justify-between gap-2">
 																	<PriorityPill priority={inq.priority} />
-																	<span className="text-[10px] text-black/40">{formatTimeAgo(inq.created_at)}</span>
+																	<span className="text-[10px] text-zinc-400 tabular-nums">{formatTimeAgo(inq.created_at)}</span>
 																</div>
 															</button>
 														))}
@@ -1532,28 +1532,28 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 							{/* ── ACTIVITY ───────────────────────────────────────────── */}
 							{activeSection === "activity" ? (
-								<div className="rounded-lg border border-black/10 bg-white p-4">
+								<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 									<div className="text-sm font-semibold text-[#111111]">Activity history</div>
-									<p className="mt-1 text-xs text-black/45">Status changes recorded across your assigned leads.</p>
-									<div className="mt-4 space-y-3">
-										{timeline.length === 0 ? <p className="rounded-md bg-zinc-50 px-3 py-6 text-center text-sm text-black/50">No activity recorded yet.</p> : null}
+									<p className="mt-1 text-xs text-zinc-500">Status changes recorded across your assigned leads.</p>
+									<div className="mt-5 space-y-3">
+										{timeline.length === 0 ? <p className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-sm text-zinc-500">No activity recorded yet.</p> : null}
 										{timeline.map((event, index) => {
 											const related = inquiries.find((inq) => inq.id === event.inquiry_id);
 											return (
 												<div key={event.id ?? `${event.inquiry_id}-${index}`} className="flex gap-3">
 													<div className="flex flex-col items-center">
-														<span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: statusMeta(event.new_status).dot }} />
+														<span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow-2xs" style={{ background: statusMeta(event.new_status).dot }} />
 														<span className="mt-1 w-px flex-1 bg-black/10" />
 													</div>
 													<div className="min-w-0 flex-1 pb-3">
 														<div className="flex flex-wrap items-center gap-2">
 															<span className="text-xs font-semibold text-[#111111]">{related?.buyer_name || "Lead"}</span>
 															<StatusPill status={event.old_status} />
-															<ChevronRight className="h-3 w-3 text-black/30" />
+															<ChevronRight className="h-3 w-3 text-zinc-400" />
 															<StatusPill status={event.new_status} />
-															<span className="ml-auto text-[10px] text-black/40">{formatTimeAgo(event.created_at)}</span>
+															<span className="ml-auto text-[10px] text-zinc-400 tabular-nums">{formatTimeAgo(event.created_at)}</span>
 														</div>
-														{event.note ? <p className="mt-1 text-xs leading-5 text-black/60">{event.note}</p> : null}
+														{event.note ? <p className="mt-1.5 text-xs leading-5 text-zinc-650">{event.note}</p> : null}
 													</div>
 												</div>
 											);
@@ -1571,30 +1571,30 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										<StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" />
 									</div>
 									{properties.length === 0 ? (
-										<div className="rounded-lg border border-dashed border-black/15 bg-white py-16 text-center">
+										<div className="rounded-xl border border-dashed border-black/15 bg-white py-16 text-center shadow-xs">
 											<p className="text-sm font-semibold text-[#111111]">No listings assigned yet</p>
-											<p className="mt-1 text-xs text-black/50">The brokerage admin can assign property listings to your account in the CMS.</p>
+											<p className="mt-1 text-xs text-zinc-500">The brokerage admin can assign property listings to your account in the CMS.</p>
 										</div>
 									) : (
 										<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 											{properties.map((prop) => (
-												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-lg border border-black/10 bg-white transition hover:shadow-md">
-													<div className="relative aspect-[16/10] w-full bg-zinc-100">
-														<SafeImage src={prop.featured_image_url || prop.images?.[0]} alt={prop.title} fill sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition duration-300 group-hover:scale-105" fallbackContent={<div className="grid h-full w-full place-items-center text-xs text-black/40">No photo</div>} />
-														<span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">{prop.status || "Published"}</span>
+												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-md">
+													<div className="relative aspect-[16/10] w-full bg-zinc-100 overflow-hidden">
+														<SafeImage src={prop.featured_image_url || prop.images?.[0]} alt={prop.title} fill sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition duration-300 group-hover:scale-105" fallbackContent={<div className="grid h-full w-full place-items-center text-xs text-zinc-400">No photo</div>} />
+														<span className="absolute left-3 top-3 rounded-full bg-black/75 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm shadow-xs">{prop.status || "Published"}</span>
 													</div>
 													<div className="flex flex-1 flex-col p-4">
 														<div className="text-[11px] font-semibold uppercase tracking-wider text-[#DE141C]">{prop.category || "Residential"}</div>
 														<h3 className="mt-1 line-clamp-1 text-base font-semibold tracking-tight text-[#111111]">{prop.title}</h3>
-														<p className="flex items-center gap-1 text-xs text-black/50"><MapPin className="h-3 w-3" />{prop.city ?? "Batangas"}, {prop.province ?? "Philippines"}</p>
-														<div className="mt-3 flex items-center gap-3 border-t border-black/5 pt-2 text-xs text-black/60">
+														<p className="flex items-center gap-1 text-xs text-zinc-500 mt-1"><MapPin className="h-3 w-3" />{prop.city ?? "Batangas"}, {prop.province ?? "Philippines"}</p>
+														<div className="mt-3 flex items-center gap-3 border-t border-black/5 pt-2 text-xs text-zinc-600">
 															{prop.bedrooms ? <span>{prop.bedrooms} beds</span> : null}
 															{prop.bathrooms ? <span>{prop.bathrooms} baths</span> : null}
 															{prop.lot_area_sqm ? <span>{prop.lot_area_sqm} sqm</span> : null}
 														</div>
 														<div className="mt-auto flex items-center justify-between border-t border-black/10 pt-3">
-															<div className="text-sm font-bold text-[#111111]">{formatCurrency(prop.price)}</div>
-															<Link href={`/project-list/${prop.slug}`} target="_blank" className="inline-flex items-center gap-1 text-xs font-semibold text-black/70 hover:text-[#DE141C]">
+															<div className="text-sm font-bold text-[#111111] tabular-nums">{formatCurrency(prop.price)}</div>
+															<Link href={`/project-list/${prop.slug}`} target="_blank" className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-700 transition hover:text-[#DE141C] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 rounded">
 																View<ArrowUpRight className="h-3.5 w-3.5" />
 															</Link>
 														</div>
@@ -1611,27 +1611,27 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 								<div className="space-y-3">
 									<div className="grid gap-3 sm:grid-cols-4">
 										<StatCard label="Listings" value={properties.length} hint="Total assigned" />
-										<StatCard label="Published" value={stats.publishedListings} hint="Publicly visible" />
+										<StatCard label="Published" value={stats.publishedListings} hint="Live visible units" />
 										<StatCard label="Avg price" value={formatCurrency(properties.length ? Math.round(listingValue / properties.length) : 0)} hint="Across your listings" />
 										<StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" />
 									</div>
 									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Portfolio by category</div>
-											<p className="mt-1 text-xs text-black/45">How your listings break down by category.</p>
+											<p className="mt-1 text-xs text-zinc-500">How your listings break down by category.</p>
 											<div className="mt-3"><AgentDonut rows={categoryRows} centerLabel="Listings" centerValue={properties.length} emptyLabel="No listings to show" emptyHint="Assigned listings will break down here by category." /></div>
 										</div>
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Listings by status</div>
-											<p className="mt-1 text-xs text-black/45">Publication status of your portfolio.</p>
+											<p className="mt-1 text-xs text-zinc-500">Publication status of your portfolio.</p>
 											<div className="mt-3"><AgentBarChart rows={listingStatusRows} name="Listings" horizontal /></div>
 										</div>
 									</div>
-									<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 										<div className="border-b border-black/10 px-4 py-3 text-sm font-semibold text-[#111111]">Listing breakdown</div>
 										<div className="overflow-x-auto">
 											<table className="min-w-full text-left text-xs">
-												<thead className="border-b border-black/10 bg-zinc-50 font-semibold uppercase tracking-[0.12em] text-black/50">
+												<thead className="border-b border-black/10 bg-zinc-50/80 font-semibold uppercase tracking-wider text-[11px] text-zinc-500">
 													<tr>
 														<th className="px-4 py-3">Listing</th>
 														<th className="px-4 py-3">Category</th>
@@ -1640,13 +1640,13 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 													</tr>
 												</thead>
 												<tbody className="divide-y divide-black/5">
-													{properties.length === 0 ? <tr><td colSpan={4} className="px-4 py-10 text-center text-black/45">No listings assigned.</td></tr> : null}
+													{properties.length === 0 ? <tr><td colSpan={4} className="px-4 py-10 text-center text-zinc-400">No listings assigned.</td></tr> : null}
 													{properties.map((prop) => (
-														<tr key={prop.id} className="transition hover:bg-zinc-50/70">
+														<tr key={prop.id} className="transition hover:bg-zinc-50/80">
 															<td className="px-4 py-3 font-medium text-[#111111]">{prop.title}</td>
-															<td className="px-4 py-3 capitalize text-black/55">{prop.category ?? "—"}</td>
-															<td className="px-4 py-3"><span className="rounded-full border border-black/10 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-black/60">{prop.status ?? "published"}</span></td>
-															<td className="px-4 py-3 text-right font-medium text-[#111111]">{formatCurrency(prop.price)}</td>
+															<td className="px-4 py-3 capitalize text-zinc-600">{prop.category ?? "—"}</td>
+															<td className="px-4 py-3"><span className="rounded-full border border-black/10 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-700">{prop.status ?? "published"}</span></td>
+															<td className="px-4 py-3 text-right font-semibold text-[#111111] tabular-nums">{formatCurrency(prop.price)}</td>
 														</tr>
 													))}
 												</tbody>
@@ -1666,26 +1666,26 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										<StatCard label="Closed deals" value={stats.won} hint={`${stats.lost} lost`} icon={CheckCheck} />
 									</div>
 									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Engagement funnel</div>
-											<p className="mt-1 text-xs text-black/45">How leads progress through your pipeline.</p>
+											<p className="mt-1 text-xs text-zinc-500">How leads progress through your pipeline.</p>
 											<div className="mt-4"><AgentFunnel rows={funnelRows} /></div>
 										</div>
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Leads by stage</div>
-											<p className="mt-1 text-xs text-black/45">Current distribution of your pipeline.</p>
+											<p className="mt-1 text-xs text-zinc-500">Current distribution of your pipeline.</p>
 											<div className="mt-3"><AgentBarChart rows={statusRows} name="Leads" horizontal /></div>
 										</div>
 									</div>
 									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Leads by priority</div>
-											<p className="mt-1 text-xs text-black/45">Focus on high and urgent leads first.</p>
+											<p className="mt-1 text-xs text-zinc-500">Focus on high and urgent leads first.</p>
 											<div className="mt-3"><AgentBarChart rows={priorityRows} name="Leads" horizontal /></div>
 										</div>
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Weekly lead rhythm</div>
-											<p className="mt-1 text-xs text-black/45">Which weekdays generate the most leads.</p>
+											<p className="mt-1 text-xs text-zinc-500">Which weekdays generate the most leads.</p>
 											<div className="mt-3"><AgentBarChart rows={weekdayRows} name="Leads" /></div>
 										</div>
 									</div>
@@ -1700,20 +1700,20 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										<StatCard label="Leads (30 days)" value={monthTrendRows.reduce((sum, row) => sum + row.value, 0)} hint="Last month" />
 										<StatCard label="Avg per day" value={(monthTrendRows.reduce((sum, row) => sum + row.value, 0) / 30).toFixed(1)} hint="30-day average" />
 									</div>
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 										<div className="text-sm font-semibold text-[#111111]">Lead volume (last 30 days)</div>
-										<p className="mt-1 text-xs text-black/45">Daily count of inquiries assigned to you.</p>
+										<p className="mt-1 text-xs text-zinc-500">Daily count of inquiries assigned to you.</p>
 										<div className="mt-3"><AgentTrendChart rows={monthTrendRows} name="Leads" /></div>
 									</div>
 									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Leads by weekday</div>
-											<p className="mt-1 text-xs text-black/45">All-time distribution across the week.</p>
+											<p className="mt-1 text-xs text-zinc-500">All-time distribution across the week.</p>
 											<div className="mt-3"><AgentBarChart rows={weekdayRows} name="Leads" /></div>
 										</div>
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<div className="text-sm font-semibold text-[#111111]">Stage mix</div>
-											<p className="mt-1 text-xs text-black/45">Share of leads in each pipeline stage.</p>
+											<p className="mt-1 text-xs text-zinc-500">Share of leads in each pipeline stage.</p>
 											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} emptyLabel="No leads assigned yet" emptyHint="Your pipeline fills up as Admin assigns leads to you." /></div>
 										</div>
 									</div>
@@ -1723,41 +1723,41 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							{/* ── PROFILE ────────────────────────────────────────────── */}
 							{activeSection === "profile" ? (
 								<div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 										<div className="border-b border-black/10 pb-3">
 											<h2 className="text-sm font-semibold text-[#111111]">Profile & credentials</h2>
-											<p className="mt-1 text-xs text-black/50">Manage your public credentials, biography, and contact links.</p>
+											<p className="mt-1 text-xs text-zinc-500">Manage your public credentials, biography, and contact links.</p>
 										</div>
-										{profileMessage ? <div className="mt-3 rounded-md border border-black/10 bg-zinc-50 p-3 text-xs font-semibold text-[#DE141C]">{profileMessage}</div> : null}
+										{profileMessage ? <div className="mt-3 rounded-lg border border-black/10 bg-zinc-50 p-3 text-xs font-semibold text-[#DE141C]">{profileMessage}</div> : null}
 										<form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
 											<div className="grid gap-4 sm:grid-cols-2">
 												<label className="block">
-													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Full name</span>
-													<input type="text" required value={profileForm.full_name || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, full_name: event.target.value }))} className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+													<span className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Full name</span>
+													<input type="text" required value={profileForm.full_name || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, full_name: event.target.value }))} className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-white px-3 text-sm text-[#111111] outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5" />
 												</label>
 												<label className="block">
-													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">PRC license number</span>
-													<input type="text" value={profileForm.license_number || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, license_number: event.target.value }))} placeholder="e.g. PRC-0012345" className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+													<span className="text-xs font-semibold uppercase tracking-wider text-zinc-600">PRC license number</span>
+													<input type="text" value={profileForm.license_number || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, license_number: event.target.value }))} placeholder="e.g. PRC-0012345" className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-white px-3 text-sm text-[#111111] outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5 placeholder:text-zinc-400" />
 												</label>
 												<label className="block">
-													<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Specialization</span>
-													<input type="text" value={profileForm.specialization || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, specialization: event.target.value }))} placeholder="e.g. Residential & Condominium" className="mt-1 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/30" />
+													<span className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Specialization</span>
+													<input type="text" value={profileForm.specialization || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, specialization: event.target.value }))} placeholder="e.g. Residential & Condominium" className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-white px-3 text-sm text-[#111111] outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5 placeholder:text-zinc-400" />
 												</label>
 											</div>
 
 											{/* Agent Photo Upload Card */}
-											<div className="rounded-lg border border-black/10 bg-zinc-50/70 p-4">
+											<div className="rounded-xl border border-black/10 bg-zinc-50/80 p-4">
 												<div className="flex flex-wrap items-center justify-between gap-2">
 													<div>
 														<span className="text-xs font-semibold uppercase tracking-wider text-[#111111]">Profile Photo (PNG/JPG)</span>
-														<p className="mt-0.5 text-xs text-black/50">Upload a picture for your public agent profile and agent cards.</p>
+														<p className="mt-0.5 text-xs text-zinc-500">Upload a picture for your public agent profile and agent cards.</p>
 													</div>
 													{profileForm.photo_url ? (
 														<button
 															type="button"
 															onClick={() => setProfileForm((prev) => ({ ...prev, photo_url: "" }))}
 															disabled={uploadingAgentPhoto}
-															className="inline-flex items-center gap-1 text-xs font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50"
+															className="inline-flex items-center gap-1 text-xs font-semibold text-red-650 transition hover:text-red-800 disabled:opacity-50"
 														>
 															<Trash2 className="h-3 w-3" />
 															Remove photo
@@ -1772,15 +1772,15 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 															alt={profileForm.full_name || "Agent"}
 															width={64}
 															height={64}
-															className="h-16 w-16 rounded-full border border-black/15 object-cover shadow-sm"
+															className="h-16 w-16 rounded-full border border-black/15 object-cover shadow-2xs"
 															fallbackContent={
-																<div className="grid h-16 w-16 place-items-center rounded-full bg-[#111111] text-base font-bold text-white">
+																<div className="grid h-16 w-16 place-items-center rounded-full bg-[#111111] text-base font-bold text-white shadow-2xs">
 																	{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}
 																</div>
 															}
 														/>
 													) : (
-														<div className="grid h-16 w-16 place-items-center rounded-full border border-dashed border-black/20 bg-white text-black/40 shadow-sm">
+														<div className="grid h-16 w-16 place-items-center rounded-full border border-dashed border-black/20 bg-white text-zinc-400 shadow-2xs">
 															<Camera className="h-6 w-6" />
 														</div>
 													)}
@@ -1798,23 +1798,23 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 															/>
 															<label
 																htmlFor="agent-self-photo-upload"
-																className={`inline-flex items-center gap-2 rounded-md border border-black/15 bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] shadow-sm transition hover:bg-zinc-100 cursor-pointer ${
+																className={`inline-flex items-center gap-2 rounded-lg border border-black/15 bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-100 hover:border-black/25 active:scale-[0.98] cursor-pointer focus-within:ring-2 focus-within:ring-black/20 ${
 																	uploadingAgentPhoto ? "pointer-events-none opacity-50" : ""
 																}`}
 															>
 																{uploadingAgentPhoto ? (
 																	<>
-																		<Loader2 className="h-3.5 w-3.5 animate-spin text-black/60" />
+																		<Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-600" />
 																		<span>Uploading...</span>
 																	</>
 																) : (
 																	<>
-																		<Upload className="h-3.5 w-3.5 text-black/60" />
+																		<Upload className="h-3.5 w-3.5 text-zinc-600" />
 																		<span>{profileForm.photo_url ? "Change photo (PNG/JPG)" : "Upload photo (PNG/JPG)"}</span>
 																	</>
 																)}
 															</label>
-															<span className="text-[11px] text-black/45">or paste URL below</span>
+															<span className="text-[11px] text-zinc-500">or paste URL below</span>
 														</div>
 
 														<input
@@ -1823,18 +1823,18 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 															onChange={(event) => setProfileForm((prev) => ({ ...prev, photo_url: event.target.value }))}
 															placeholder="https://..."
 															disabled={uploadingAgentPhoto}
-															className="h-9 w-full rounded-md border border-black/10 bg-white px-3 text-xs outline-none transition focus:border-black/30"
+															className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-xs outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5 placeholder:text-zinc-400"
 														/>
 														{agentPhotoError ? <p className="text-xs text-red-600">{agentPhotoError}</p> : null}
 													</div>
 												</div>
 											</div>
 											<label className="block">
-												<span className="text-xs font-semibold uppercase tracking-wider text-black/60">Biography</span>
-												<textarea rows={4} value={profileForm.bio || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, bio: event.target.value }))} placeholder="Introduce your experience, focus areas, and commitment to clients..." className="mt-1 w-full rounded-md border border-black/10 bg-white p-3 text-sm outline-none transition focus:border-black/30" />
+												<span className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Biography</span>
+												<textarea rows={4} value={profileForm.bio || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, bio: event.target.value }))} placeholder="Introduce your experience, focus areas, and commitment to clients..." className="mt-1 w-full rounded-lg border border-black/10 bg-white p-3 text-sm outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5 placeholder:text-zinc-400" />
 											</label>
 											<div className="border-t border-black/10 pt-4">
-												<h3 className="text-xs font-bold uppercase tracking-wider text-black/60">Social links</h3>
+												<h3 className="text-xs font-bold uppercase tracking-wider text-zinc-600">Social links</h3>
 												<div className="mt-3 grid gap-3 sm:grid-cols-2">
 													{([
 														["facebook_url", "Facebook profile URL"],
@@ -1842,27 +1842,27 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 														["linkedin_url", "LinkedIn profile URL"],
 														["twitter_url", "Twitter / X profile URL"],
 													] as const).map(([key, placeholder]) => (
-														<input key={key} type="url" placeholder={placeholder} value={(profileForm[key] as string) || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, [key]: event.target.value }))} className="h-9 rounded-md border border-black/10 bg-white px-3 text-xs outline-none focus:border-black/30" />
+														<input key={key} type="url" placeholder={placeholder} value={(profileForm[key] as string) || ""} onChange={(event) => setProfileForm((prev) => ({ ...prev, [key]: event.target.value }))} className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs outline-none transition focus:border-black/30 focus:ring-2 focus:ring-black/5 placeholder:text-zinc-400" />
 													))}
 												</div>
 											</div>
-											<button type="submit" disabled={savingProfile} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-6 text-xs font-semibold text-white transition hover:bg-black/80 disabled:opacity-50">
+											<button type="submit" disabled={savingProfile} className="inline-flex h-10 items-center justify-center rounded-lg bg-[#111111] px-6 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 												{savingProfile ? "Saving..." : "Save profile details"}
 											</button>
 										</form>
 									</div>
 									<div className="space-y-3">
-										<div className="rounded-lg border border-black/10 bg-white p-4">
+										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 											<h2 className="text-sm font-semibold text-[#111111]">Public preview</h2>
 											<div className="mt-4 flex flex-col items-center text-center">
 												{(profileForm.photo_url || agent?.photo_url) ? (
-													<SafeImage src={(profileForm.photo_url || agent?.photo_url)!} alt={profileForm.full_name || agent?.full_name || "Agent"} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}</div>} />
+													<SafeImage src={(profileForm.photo_url || agent?.photo_url)!} alt={profileForm.full_name || agent?.full_name || "Agent"} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover shadow-2xs" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}</div>} />
 												) : (
-													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}</div>
+													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white shadow-2xs">{(profileForm.full_name || agent?.full_name)?.charAt(0) ?? "A"}</div>
 												)}
 												<div className="mt-3 text-base font-semibold text-[#111111]">{profileForm.full_name || agent?.full_name}</div>
-												<div className="text-xs font-medium text-[#DE141C]">{profileForm.specialization || agent?.specialization || "Licensed Real Estate Agent"}</div>
-												<div className="mt-1 text-[11px] text-black/45">{profileForm.license_number || agent?.license_number || "PRC Accredited"}</div>
+												<div className="text-xs font-semibold text-[#DE141C]">{profileForm.specialization || agent?.specialization || "Licensed Real Estate Agent"}</div>
+												<div className="mt-1 text-[11px] text-zinc-500">License: {profileForm.license_number || agent?.license_number || "PRC Accredited"}</div>
 											</div>
 										</div>
 									</div>
@@ -1872,45 +1872,45 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							{/* ── SECURITY ───────────────────────────────────────────── */}
 							{activeSection === "security" ? (
 								<div className="grid gap-3 xl:grid-cols-2">
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 										<h2 className="text-sm font-semibold text-[#111111]">Account security</h2>
-										<p className="mt-1 text-xs text-black/50">Your authentication credentials and access.</p>
-										<div className="mt-4 space-y-3">
+										<p className="mt-1 text-xs text-zinc-500">Your authentication credentials and access.</p>
+										<div className="mt-5 space-y-3">
 											<div>
-												<span className="text-[11px] font-semibold uppercase tracking-wider text-black/45">Sign-in email</span>
+												<span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Sign-in email</span>
 												<div className="mt-0.5 break-all text-xs font-medium text-[#111111]">{userEmail || "—"}</div>
 											</div>
 											<div>
-												<span className="text-[11px] font-semibold uppercase tracking-wider text-black/45">Account type</span>
-												<div className="mt-0.5 text-xs text-black/60">Licensed Real Estate Agent</div>
+												<span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Account type</span>
+												<div className="mt-0.5 text-xs text-zinc-650">Licensed Real Estate Agent</div>
 											</div>
-											<div className="flex items-center gap-2 rounded-md bg-zinc-50 px-3 py-2 text-xs text-black/55">
+											<div className="flex items-center gap-2 rounded-lg bg-zinc-50/80 px-3 py-2 text-xs text-zinc-600 ring-1 ring-black/5">
 												<ShieldCheck className="h-4 w-4 text-emerald-600" />
 												Session secured by Supabase Auth.
 											</div>
-											<button type="button" onClick={handleSendPasswordReset} className="w-full rounded-md border border-black/10 bg-zinc-50 py-2.5 text-xs font-semibold text-[#111111] transition hover:bg-black/5">Send password reset email</button>
-											<button type="button" onClick={handleSignOut} className="w-full rounded-md bg-[#111111] py-2.5 text-xs font-semibold text-white transition hover:bg-black/80">Sign out</button>
+											<button type="button" onClick={handleSendPasswordReset} className="w-full rounded-lg border border-black/10 bg-zinc-50 py-2.5 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-100 hover:border-black/20 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Send password reset email</button>
+											<button type="button" onClick={handleSignOut} className="w-full rounded-lg bg-[#111111] py-2.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 										</div>
 									</div>
-									<div className="rounded-lg border border-black/10 bg-white p-4">
+									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 										<h2 className="text-sm font-semibold text-[#111111]">Workspace at a glance</h2>
-										<p className="mt-1 text-xs text-black/50">Your current workload.</p>
-										<div className="mt-4 space-y-3">
-											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
-												<span className="flex items-center gap-2 text-xs text-black/60"><Inbox className="h-4 w-4" />Assigned leads</span>
-												<span className="text-sm font-semibold text-[#111111]">{stats.total}</span>
+										<p className="mt-1 text-xs text-zinc-500">Your current workload.</p>
+										<div className="mt-5 space-y-3">
+											<div className="flex items-center justify-between rounded-lg border border-black/10 px-3.5 py-2.5 transition hover:bg-zinc-50/70">
+												<span className="flex items-center gap-2 text-xs text-zinc-600"><Inbox className="h-4 w-4 text-zinc-400" />Assigned leads</span>
+												<span className="text-sm font-semibold text-[#111111] tabular-nums">{stats.total}</span>
 											</div>
-											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
-												<span className="flex items-center gap-2 text-xs text-black/60"><Building2 className="h-4 w-4" />Assigned listings</span>
-												<span className="text-sm font-semibold text-[#111111]">{properties.length}</span>
+											<div className="flex items-center justify-between rounded-lg border border-black/10 px-3.5 py-2.5 transition hover:bg-zinc-50/70">
+												<span className="flex items-center gap-2 text-xs text-zinc-600"><Building2 className="h-4 w-4 text-zinc-400" />Assigned listings</span>
+												<span className="text-sm font-semibold text-[#111111] tabular-nums">{properties.length}</span>
 											</div>
-											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
-												<span className="flex items-center gap-2 text-xs text-black/60"><Wallet className="h-4 w-4" />Pipeline value</span>
-												<span className="text-sm font-semibold text-[#111111]">{formatCurrency(stats.pipelineValue)}</span>
+											<div className="flex items-center justify-between rounded-lg border border-black/10 px-3.5 py-2.5 transition hover:bg-zinc-50/70">
+												<span className="flex items-center gap-2 text-xs text-zinc-600"><Wallet className="h-4 w-4 text-zinc-400" />Pipeline value</span>
+												<span className="text-sm font-semibold text-[#111111] tabular-nums">{formatCurrency(stats.pipelineValue)}</span>
 											</div>
-											<div className="flex items-center justify-between rounded-md border border-black/10 px-3 py-2.5">
-												<span className="flex items-center gap-2 text-xs text-black/60"><Clock className="h-4 w-4" />Last activity</span>
-												<span className="text-sm font-semibold text-[#111111]">{formatTimeAgo(inquiries[0]?.last_activity_at ?? inquiries[0]?.created_at)}</span>
+											<div className="flex items-center justify-between rounded-lg border border-black/10 px-3.5 py-2.5 transition hover:bg-zinc-50/70">
+												<span className="flex items-center gap-2 text-xs text-zinc-600"><Clock className="h-4 w-4 text-zinc-400" />Last activity</span>
+												<span className="text-sm font-semibold text-[#111111] tabular-nums">{formatTimeAgo(inquiries[0]?.last_activity_at ?? inquiries[0]?.created_at)}</span>
 											</div>
 										</div>
 									</div>

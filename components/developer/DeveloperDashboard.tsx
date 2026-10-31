@@ -207,20 +207,32 @@ function buildDailyTrend(rows: InquiryItem[], days: number): DashboardChartRow[]
 
 function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint: string; accent?: boolean }) {
 	return (
-		<div className="rounded-lg border border-black/10 bg-white p-4">
-			<div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">{label}</div>
-			<div className={`mt-2 text-2xl font-semibold tracking-[-0.03em] ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
-			<p className="mt-1 text-xs text-black/45">{hint}</p>
+		<div className="rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
+			<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
+			<div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
+			<p className="mt-1 text-xs text-zinc-500">{hint}</p>
 		</div>
 	);
 }
 
 function StatusPill({ status, tone }: { status?: string | null; tone: "stage" | "property" }) {
 	const value = status ?? "new";
-	const stageTone = value === "closed_won" || value === "reserved" ? "bg-emerald-50 text-emerald-700" : value === "closed_lost" ? "bg-red-50 text-red-700" : value === "new" ? "bg-zinc-100 text-black/70" : "bg-indigo-50 text-indigo-700";
-	const propertyTone = value === "sold" ? "bg-red-50 text-red-700" : value === "reserved" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700";
+	const stageTone =
+		value === "closed_won" || value === "reserved"
+			? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"
+			: value === "closed_lost"
+			? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+			: value === "new"
+			? "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-300/40"
+			: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20";
+	const propertyTone =
+		value === "sold"
+			? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+			: value === "reserved"
+			? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20"
+			: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20";
 	return (
-		<span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone === "stage" ? stageTone : propertyTone}`}>
+		<span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone === "stage" ? stageTone : propertyTone}`}>
 			{titleCase(value)}
 		</span>
 	);
@@ -518,16 +530,16 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				</div>
 
 				<div className="grid gap-3 xl:grid-cols-3">
-					<div className="rounded-lg border border-black/10 bg-white p-4 xl:col-span-2">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs xl:col-span-2">
 						<div className="text-sm font-semibold text-[#111111]">Inquiry trend</div>
-						<p className="mt-1 text-xs text-black/45">Buyer leads received over the last 14 days.</p>
+						<p className="mt-1 text-xs text-zinc-500">Buyer leads received over the last 14 days.</p>
 						<div className="mt-3">
 							<DashboardTrendChart rows={trendRows} name="Inquiries" />
 						</div>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 						<div className="text-sm font-semibold text-[#111111]">Lead stages</div>
-						<p className="mt-1 text-xs text-black/45">Current pipeline of your inquiries.</p>
+						<p className="mt-1 text-xs text-zinc-500">Current pipeline of your inquiries.</p>
 						<div className="mt-3">
 							<DashboardDonut rows={inquiryStageRows} centerLabel="Leads" centerValue={inquiries.length} emptyLabel="No leads yet" emptyHint="Buyer inquiries will appear here." />
 						</div>
@@ -535,30 +547,30 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				</div>
 
 				<div className="grid gap-3 xl:grid-cols-3">
-					<div className="rounded-lg border border-black/10 bg-white p-4 xl:col-span-2">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs xl:col-span-2">
 						<div className="flex items-center justify-between gap-3">
 							<div>
 								<div className="text-sm font-semibold text-[#111111]">Recent buyer inquiries</div>
-								<p className="mt-1 text-xs text-black/45">Leads generated across your projects and units.</p>
+								<p className="mt-1 text-xs text-zinc-500">Leads generated across your projects and units.</p>
 							</div>
-							<button type="button" onClick={() => openSection("inquiries")} className="inline-flex items-center gap-1 text-xs font-semibold text-[#DE141C] hover:underline">
+							<button type="button" onClick={() => openSection("inquiries")} className="inline-flex items-center gap-1 text-xs font-semibold text-[#DE141C] transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 rounded">
 								View all <ChevronRight className="h-3.5 w-3.5" />
 							</button>
 						</div>
 						<div className="mt-3">
 							{recentInquiries.length === 0 ? (
-								<p className="rounded-lg border border-dashed border-black/10 py-8 text-center text-xs text-black/40">No buyer inquiries recorded yet.</p>
+								<p className="rounded-lg border border-dashed border-black/10 py-8 text-center text-xs text-zinc-400">No buyer inquiries recorded yet.</p>
 							) : (
 								<div className="divide-y divide-black/5">
 									{recentInquiries.map((inq) => (
-										<div key={inq.id} className="flex items-center justify-between gap-3 py-2.5">
+										<div key={inq.id} className="flex items-center justify-between gap-3 py-2.5 transition hover:bg-zinc-50/60 rounded-md px-1">
 											<div className="min-w-0">
 												<div className="truncate text-sm font-medium text-[#111111]">{inq.buyer_name || "Interested Buyer"}</div>
-												<div className="truncate text-xs text-black/50">{inq.property_title || "Project Unit"}</div>
+												<div className="truncate text-xs text-zinc-500">{inq.property_title || "Project Unit"}</div>
 											</div>
 											<div className="flex shrink-0 items-center gap-3">
 												<StatusPill status={inq.status} tone="stage" />
-												<span className="hidden text-xs text-black/40 sm:block">{inq.created_at ? inq.created_at.slice(0, 10) : "—"}</span>
+												<span className="hidden text-xs text-zinc-500 tabular-nums sm:block">{inq.created_at ? inq.created_at.slice(0, 10) : "—"}</span>
 											</div>
 										</div>
 									))}
@@ -566,19 +578,19 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							)}
 						</div>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 						<div className="text-sm font-semibold text-[#111111]">Top performing units</div>
-						<p className="mt-1 text-xs text-black/45">By tracked views.</p>
+						<p className="mt-1 text-xs text-zinc-500">By tracked views.</p>
 						<div className="mt-3">
 							{topListings.length === 0 ? (
-								<p className="rounded-lg border border-dashed border-black/10 py-8 text-center text-xs text-black/40">No engagement data yet.</p>
+								<p className="rounded-lg border border-dashed border-black/10 py-8 text-center text-xs text-zinc-400">No engagement data yet.</p>
 							) : (
 								<ol className="space-y-2.5">
 									{topListings.map((row, index) => (
-										<li key={row.property_id ?? index} className="flex items-center gap-3 text-xs">
-											<span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-black/5 font-semibold text-black/50">{index + 1}</span>
-											<span className="min-w-0 flex-1 truncate text-black/70">{row.title ?? "Untitled unit"}</span>
-											<span className="shrink-0 font-semibold text-[#111111]">{(row.total_views ?? 0).toLocaleString()}</span>
+										<li key={row.property_id ?? index} className="flex items-center gap-3 text-xs transition hover:bg-zinc-50/60 p-1 rounded-md">
+											<span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-zinc-100 font-semibold text-zinc-600 tabular-nums">{index + 1}</span>
+											<span className="min-w-0 flex-1 truncate text-zinc-700">{row.title ?? "Untitled unit"}</span>
+											<span className="shrink-0 font-semibold text-[#111111] tabular-nums">{(row.total_views ?? 0).toLocaleString()}</span>
 										</li>
 									))}
 								</ol>
@@ -593,20 +605,20 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	function renderProperties() {
 		return (
 			<div className="flex flex-col gap-3">
-				<div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-black/10 bg-zinc-50 px-3">
-						<Search className="h-4 w-4 text-black/40" />
+				<div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex h-9 flex-1 items-center gap-2 rounded-lg border border-black/10 bg-zinc-50/80 px-3 transition focus-within:border-black/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-black/5">
+						<Search className="h-4 w-4 text-zinc-400" />
 						<input
 							value={propertySearch}
 							onChange={(event) => setPropertySearch(event.target.value)}
 							placeholder="Search unit by title, city, or province..."
-							className="w-full bg-transparent text-sm outline-none placeholder:text-black/35"
+							className="w-full bg-transparent text-sm text-[#111111] outline-none placeholder:text-zinc-400"
 						/>
 					</div>
 					<select
 						value={propertyCategoryFilter}
 						onChange={(event) => setPropertyCategoryFilter(event.target.value)}
-						className="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none"
+						className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none transition hover:border-black/20 focus:border-black/30 focus:ring-2 focus:ring-black/5"
 					>
 						<option value="all">All categories ({properties.length})</option>
 						{availableCategories.map((category) => (
@@ -615,10 +627,10 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					</select>
 				</div>
 
-				<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+				<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 					<div className="overflow-x-auto">
 						<table className="min-w-full text-left text-xs">
-							<thead className="border-b border-black/10 bg-zinc-50 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/45">
+							<thead className="border-b border-black/10 bg-zinc-50/80 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
 								<tr>
 									<th className="px-4 py-3">Listing / Unit</th>
 									<th className="px-4 py-3">Category</th>
@@ -631,24 +643,24 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							<tbody className="divide-y divide-black/5">
 								{filteredProperties.length === 0 ? (
 									<tr>
-										<td colSpan={6} className="px-4 py-10 text-center text-black/45">No units found matching your search.</td>
+										<td colSpan={6} className="px-4 py-10 text-center text-zinc-400">No units found matching your search.</td>
 									</tr>
 								) : (
 									filteredProperties.map((property) => (
-										<tr key={property.id} className="transition hover:bg-zinc-50/70">
+										<tr key={property.id} className="transition hover:bg-zinc-50/80">
 											<td className="px-4 py-3">
 												<div className="text-sm font-medium text-[#111111]">{property.title}</div>
-												<div className="text-black/45">
+												<div className="text-zinc-500">
 													{property.bedrooms ? `${property.bedrooms} Bed · ` : ""}
 													{property.lot_area_sqm ? `${property.lot_area_sqm} sqm` : ""}
 												</div>
 											</td>
-											<td className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-black/55">{titleCase(property.category ?? "residential")}</td>
-											<td className="px-4 py-3 text-black/70">{property.city ?? "—"}, {property.province ?? "PH"}</td>
-											<td className="px-4 py-3 font-semibold text-[#111111]">{formatCurrency(property.price)}</td>
+											<td className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">{titleCase(property.category ?? "residential")}</td>
+											<td className="px-4 py-3 text-zinc-700">{property.city ?? "—"}, {property.province ?? "PH"}</td>
+											<td className="px-4 py-3 font-semibold text-[#111111] tabular-nums">{formatCurrency(property.price)}</td>
 											<td className="px-4 py-3"><StatusPill status={property.status ?? "published"} tone="property" /></td>
 											<td className="px-4 py-3 text-right">
-												<Link href={`/project-list/${property.slug}`} target="_blank" className="inline-flex items-center gap-1 rounded-md border border-black/10 px-2.5 py-1 text-xs font-medium text-[#111111] transition hover:bg-black/5">
+												<Link href={`/project-list/${property.slug}`} target="_blank" className="inline-flex items-center gap-1 rounded-md border border-black/10 bg-white px-2.5 py-1 text-xs font-medium text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 													View <ExternalLink className="h-3 w-3" />
 												</Link>
 											</td>
@@ -669,53 +681,53 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div>
 						<h2 className="text-sm font-semibold text-[#111111]">Master Projects & Developments</h2>
-						<p className="mt-0.5 text-xs text-black/45">Subdivisions, towers, and estates under your portfolio.</p>
+						<p className="mt-0.5 text-xs text-zinc-500">Subdivisions, towers, and estates under your portfolio.</p>
 					</div>
-					<span className="text-xs font-medium text-black/45">{projects.length} total</span>
+					<span className="text-xs font-medium text-zinc-500 tabular-nums">{projects.length} total</span>
 				</div>
 
 				{projects.length === 0 ? (
-					<div className="rounded-lg border border-dashed border-black/15 bg-white py-16 text-center">
+					<div className="rounded-xl border border-dashed border-black/15 bg-white py-16 text-center shadow-xs">
 						<p className="text-sm font-semibold text-[#111111]">No master projects yet</p>
-						<p className="mt-1 text-xs text-black/50">Contact the brokerage admin to link your development projects to this account.</p>
+						<p className="mt-1 text-xs text-zinc-500">Contact the brokerage admin to link your development projects to this account.</p>
 					</div>
 				) : (
 					<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 						{projects.map((project) => {
 							const unitCount = properties.filter((property) => property.project_id === project.id).length;
 							return (
-								<div key={project.id} className="group flex flex-col overflow-hidden rounded-lg border border-black/10 bg-white">
-									<div className="relative aspect-[16/9] w-full bg-zinc-100">
+								<div key={project.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
+									<div className="relative aspect-[16/9] w-full bg-zinc-100 overflow-hidden">
 										{project.cover_image_url ? (
 											// eslint-disable-next-line @next/next/no-img-element
-											<img src={project.cover_image_url} alt={project.project_name} className="h-full w-full object-cover" />
+											<img src={project.cover_image_url} alt={project.project_name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
 										) : (
-											<div className="grid h-full w-full place-items-center text-xs text-black/40">No cover image</div>
+											<div className="grid h-full w-full place-items-center text-xs text-zinc-400">No cover image</div>
 										)}
-										<span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
+										<span className="absolute left-3 top-3 rounded-full bg-black/75 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm shadow-xs">
 											{unitCount} {unitCount === 1 ? "Unit" : "Units"}
 										</span>
 									</div>
 									<div className="flex flex-1 flex-col p-4">
 										<h3 className="text-sm font-semibold text-[#111111]">{project.project_name}</h3>
 										{project.tagline ? <p className="mt-0.5 text-xs font-medium text-[#DE141C]">{project.tagline}</p> : null}
-										<p className="mt-1 inline-flex items-center gap-1 text-xs text-black/50">
+										<p className="mt-1 inline-flex items-center gap-1 text-xs text-zinc-500">
 											<MapPin className="h-3 w-3" />
 											{project.location_city || "Batangas"}, {project.location_province || "Philippines"}
 										</p>
-										{project.description ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-black/60">{project.description}</p> : null}
+										{project.description ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-600">{project.description}</p> : null}
 										<div className="mt-auto flex items-center justify-between border-t border-black/10 pt-3">
 											{project.brochure_url ? (
-												<a href={project.brochure_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[#DE141C] hover:underline">
+												<a href={project.brochure_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[#DE141C] transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 rounded">
 													Brochure <ExternalLink className="h-3 w-3" />
 												</a>
 											) : (
-												<span className="text-xs text-black/40">No brochure</span>
+												<span className="text-xs text-zinc-400">No brochure</span>
 											)}
 											<button
 												type="button"
 												onClick={() => { setPropertySearch(project.project_name); openSection("properties"); }}
-												className="inline-flex items-center gap-1 text-xs font-semibold text-black/70 hover:text-[#DE141C]"
+												className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-700 transition hover:text-[#DE141C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 rounded"
 											>
 												View units <ChevronRight className="h-3.5 w-3.5" />
 											</button>
@@ -743,16 +755,16 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				<ListingPerformanceChart rows={performance} />
 
 				<div className="grid gap-3 xl:grid-cols-2">
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 						<div className="text-sm font-semibold text-[#111111]">Portfolio by category</div>
-						<p className="mt-1 text-xs text-black/45">How your units are distributed by property type.</p>
+						<p className="mt-1 text-xs text-zinc-500">How your units are distributed by property type.</p>
 						<div className="mt-3">
 							<DashboardDonut rows={categoryRows} centerLabel="Units" centerValue={properties.length} emptyLabel="No units yet" emptyHint="Linked listings will appear here." />
 						</div>
 					</div>
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 						<div className="text-sm font-semibold text-[#111111]">Units by status</div>
-						<p className="mt-1 text-xs text-black/45">Current availability across your portfolio.</p>
+						<p className="mt-1 text-xs text-zinc-500">Current availability across your portfolio.</p>
 						<div className="mt-3">
 							<DashboardBarChart rows={propertyStatusRows} name="Units" horizontal />
 						</div>
@@ -765,30 +777,30 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	function renderInquiries() {
 		return (
 			<div className="flex flex-col gap-3">
-				<div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-black/10 bg-zinc-50 px-3">
-						<Search className="h-4 w-4 text-black/40" />
+				<div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex h-9 flex-1 items-center gap-2 rounded-lg border border-black/10 bg-zinc-50/80 px-3 transition focus-within:border-black/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-black/5">
+						<Search className="h-4 w-4 text-zinc-400" />
 						<input
 							value={inquirySearch}
 							onChange={(event) => setInquirySearch(event.target.value)}
 							placeholder="Search buyer name, email, or property..."
-							className="w-full bg-transparent text-sm outline-none placeholder:text-black/35"
+							className="w-full bg-transparent text-sm text-[#111111] outline-none placeholder:text-zinc-400"
 						/>
 					</div>
 					<select
 						value={inquiryStatusFilter}
 						onChange={(event) => setInquiryStatusFilter(event.target.value)}
-						className="h-9 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none"
+						className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] outline-none transition hover:border-black/20 focus:border-black/30 focus:ring-2 focus:ring-black/5"
 					>
 						<option value="all">All statuses ({inquiries.length})</option>
 						{STAGE_ORDER.map((stage) => <option key={stage} value={stage}>{titleCase(stage)}</option>)}
 					</select>
 				</div>
 
-				<div className="overflow-hidden rounded-lg border border-black/10 bg-white">
+				<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 					<div className="overflow-x-auto">
 						<table className="min-w-full text-left text-xs">
-							<thead className="border-b border-black/10 bg-zinc-50 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/45">
+							<thead className="border-b border-black/10 bg-zinc-50/80 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
 								<tr>
 									<th className="px-4 py-3">Buyer</th>
 									<th className="px-4 py-3">Property Inquired</th>
@@ -800,19 +812,19 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							<tbody className="divide-y divide-black/5">
 								{filteredInquiries.length === 0 ? (
 									<tr>
-										<td colSpan={5} className="px-4 py-10 text-center text-black/45">No inquiries found.</td>
+										<td colSpan={5} className="px-4 py-10 text-center text-zinc-400">No inquiries found.</td>
 									</tr>
 								) : (
 									filteredInquiries.map((inq) => (
-										<tr key={inq.id} className="transition hover:bg-zinc-50/70">
+										<tr key={inq.id} className="transition hover:bg-zinc-50/80">
 											<td className="px-4 py-3 text-sm font-medium text-[#111111]">{inq.buyer_name || "Prospective Buyer"}</td>
-											<td className="px-4 py-3 text-black/70">{inq.property_title || "Project Unit"}</td>
-											<td className="px-4 py-3 text-black/60">
-												{inq.buyer_email ? <a href={`mailto:${inq.buyer_email}`} className="block text-[#DE141C] hover:underline">{inq.buyer_email}</a> : null}
-												{inq.buyer_phone ? <span className="block text-black/50">{inq.buyer_phone}</span> : null}
+											<td className="px-4 py-3 text-zinc-700">{inq.property_title || "Project Unit"}</td>
+											<td className="px-4 py-3 text-zinc-600">
+												{inq.buyer_email ? <a href={`mailto:${inq.buyer_email}`} className="block text-[#DE141C] hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#DE141C] rounded">{inq.buyer_email}</a> : null}
+												{inq.buyer_phone ? <span className="block text-zinc-500 tabular-nums">{inq.buyer_phone}</span> : null}
 											</td>
 											<td className="px-4 py-3"><StatusPill status={inq.status} tone="stage" /></td>
-											<td className="px-4 py-3 text-black/50">{inq.created_at ? inq.created_at.slice(0, 10) : "—"}</td>
+											<td className="px-4 py-3 text-zinc-500 tabular-nums">{inq.created_at ? inq.created_at.slice(0, 10) : "—"}</td>
 										</tr>
 									))
 								)}
@@ -834,56 +846,59 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 		];
 		return (
 			<div className="grid gap-3 lg:grid-cols-3">
-				<div className="rounded-lg border border-black/10 bg-white p-5 lg:col-span-2">
+				<div className="rounded-xl border border-black/10 bg-white p-6 shadow-xs lg:col-span-2">
 					<div className="flex items-center gap-4">
 						{developer?.logo_url ? (
-							<div className="relative h-16 w-16 overflow-hidden rounded-lg border border-black/10 bg-white">
+							<div className="relative h-16 w-16 overflow-hidden rounded-xl border border-black/10 bg-white shadow-2xs">
 								<Image src={developer.logo_url} alt={developer.company_name} fill className="object-contain p-1" />
 							</div>
 						) : (
-							<div className="grid h-16 w-16 place-items-center rounded-lg bg-[#DE141C] text-xl font-bold text-white">
+							<div className="grid h-16 w-16 place-items-center rounded-xl bg-[#DE141C] text-xl font-bold text-white shadow-xs">
 								{developer?.company_name?.charAt(0) ?? "D"}
 							</div>
 						)}
 						<div className="min-w-0">
 							<h2 className="truncate text-base font-semibold text-[#111111]">{developer?.company_name}</h2>
-							<span className="mt-1 inline-block rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">Accredited Partner</span>
+							<span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+								<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+								Accredited Partner
+							</span>
 						</div>
 					</div>
 
-					<div className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2">
+					<div className="mt-6 grid gap-x-6 gap-y-4 sm:grid-cols-2">
 						{rows.map((row) => (
 							<div key={row.label}>
-								<div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">{row.label}</div>
+								<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{row.label}</div>
 								<div className="mt-1 text-sm text-[#111111]">
 									{row.value ? (
-										row.href ? <a href={row.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#DE141C] hover:underline">{row.value} <ExternalLink className="h-3 w-3" /></a> : row.value
+										row.href ? <a href={row.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#DE141C] hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#DE141C] rounded">{row.value} <ExternalLink className="h-3 w-3" /></a> : row.value
 									) : (
-										<span className="text-black/40">Not provided</span>
+										<span className="text-zinc-400">Not provided</span>
 									)}
 								</div>
 							</div>
 						))}
 					</div>
 
-					<div className="mt-5 border-t border-black/10 pt-4">
-						<div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Company Description</div>
-						<p className="mt-1 text-sm leading-relaxed text-black/65">{developer?.description || "No company description on file."}</p>
+					<div className="mt-6 border-t border-black/10 pt-4">
+						<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Company Description</div>
+						<p className="mt-1 text-sm leading-relaxed text-zinc-700">{developer?.description || "No company description on file."}</p>
 					</div>
 
-					<p className="mt-5 rounded-lg border border-dashed border-black/10 bg-zinc-50 p-3 text-xs text-black/50">
+					<p className="mt-6 rounded-lg border border-dashed border-black/10 bg-zinc-50 p-3.5 text-xs text-zinc-500 leading-relaxed">
 						Your partner profile is managed by the Jewellz Realty admin team. Contact them to request any updates.
 					</p>
 				</div>
 
 				<div className="space-y-3">
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
 						<div className="text-sm font-semibold text-[#111111]">Portfolio summary</div>
 						<div className="mt-3 space-y-2.5 text-xs">
-							<div className="flex items-center justify-between"><span className="text-black/55">Master projects</span><span className="font-semibold text-[#111111]">{projects.length}</span></div>
-							<div className="flex items-center justify-between"><span className="text-black/55">Active units</span><span className="font-semibold text-[#111111]">{properties.length}</span></div>
-							<div className="flex items-center justify-between"><span className="text-black/55">Buyer inquiries</span><span className="font-semibold text-[#111111]">{inquiries.length}</span></div>
-							<div className="flex items-center justify-between"><span className="text-black/55">Tracked views</span><span className="font-semibold text-[#111111]">{totalViews.toLocaleString()}</span></div>
+							<div className="flex items-center justify-between"><span className="text-zinc-600">Master projects</span><span className="font-semibold text-[#111111] tabular-nums">{projects.length}</span></div>
+							<div className="flex items-center justify-between"><span className="text-zinc-600">Active units</span><span className="font-semibold text-[#111111] tabular-nums">{properties.length}</span></div>
+							<div className="flex items-center justify-between"><span className="text-zinc-600">Buyer inquiries</span><span className="font-semibold text-[#111111] tabular-nums">{inquiries.length}</span></div>
+							<div className="flex items-center justify-between"><span className="text-zinc-600">Tracked views</span><span className="font-semibold text-[#111111] tabular-nums">{totalViews.toLocaleString()}</span></div>
 						</div>
 					</div>
 				</div>
@@ -894,21 +909,21 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	function renderSecurity() {
 		return (
 			<div className="grid gap-3 lg:grid-cols-2">
-				<div className="rounded-lg border border-black/10 bg-white p-5">
+				<div className="rounded-xl border border-black/10 bg-white p-6 shadow-xs">
 					<h2 className="text-sm font-semibold text-[#111111]">Account Credentials</h2>
-					<p className="mt-1 text-xs text-black/45">Your sign-in details for the developer portal.</p>
-					<div className="mt-4 space-y-4">
+					<p className="mt-1 text-xs text-zinc-500">Your sign-in details for the developer portal.</p>
+					<div className="mt-5 space-y-4">
 						<div>
-							<div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Login Email</div>
-							<div className="mt-1 text-sm text-[#111111]">{userEmail || "—"}</div>
+							<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Login Email</div>
+							<div className="mt-1 text-sm font-medium text-[#111111]">{userEmail || "—"}</div>
 						</div>
 						<div>
-							<div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Account Type</div>
+							<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Account Type</div>
 							<div className="mt-1 text-sm text-[#111111]">Accredited Developer Partner</div>
 						</div>
 						<div className="border-t border-black/10 pt-4">
-							{statusMessage ? <div className="mb-3 rounded-md border border-black/10 bg-zinc-50 p-2.5 text-xs font-medium text-[#DE141C]">{statusMessage}</div> : null}
-							<button type="button" onClick={() => void handleSendPasswordReset()} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-[#111111] px-4 text-xs font-semibold text-white transition hover:bg-black/85">
+							{statusMessage ? <div className="mb-3 rounded-lg border border-black/10 bg-zinc-50 p-2.5 text-xs font-medium text-[#DE141C]">{statusMessage}</div> : null}
+							<button type="button" onClick={() => void handleSendPasswordReset()} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#111111] px-4 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 								<Mail className="h-3.5 w-3.5" />
 								Send Password Reset Email
 							</button>
@@ -916,10 +931,10 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					</div>
 				</div>
 
-				<div className="rounded-lg border border-black/10 bg-white p-5">
+				<div className="rounded-xl border border-black/10 bg-white p-6 shadow-xs">
 					<h2 className="text-sm font-semibold text-[#111111]">Session</h2>
-					<p className="mt-1 text-xs text-black/45">Sign out of the developer portal on this device.</p>
-					<button type="button" onClick={() => void handleSignOut()} className="mt-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white px-4 text-xs font-semibold text-[#111111] transition hover:bg-black/5">
+					<p className="mt-1 text-xs text-zinc-500">Sign out of the developer portal on this device.</p>
+					<button type="button" onClick={() => void handleSignOut()} className="mt-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 						<LogOut className="h-3.5 w-3.5" />
 						Sign out
 					</button>
@@ -942,9 +957,9 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 		<main className="min-h-screen bg-[#f2f2ef] text-[#111111]">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				{/* Primary icon rail */}
-				<aside className="hidden border-r border-black/10 bg-[#fbfbfa] py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+				<aside className="hidden border-r border-black/10 bg-[#fbfbfa] py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between shadow-[1px_0_3px_rgba(0,0,0,0.02)]">
 					<div className="flex flex-col items-center gap-4">
-						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-md bg-white ring-1 ring-black/10" title="Jewellz Realty">
+						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Jewellz Realty">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
 						</Link>
 						<div className="flex flex-col gap-2">
@@ -956,7 +971,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 										key={group.id}
 										type="button"
 										onClick={() => openSection(group.items[0].id)}
-										className={`flex h-9 w-9 items-center justify-center rounded-md transition ${active ? "bg-[#111111] text-white" : "text-black/55 hover:bg-white hover:text-[#111111]"}`}
+										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -966,19 +981,19 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<button type="button" onClick={handleRefresh} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Refresh">
+						<button type="button" onClick={handleRefresh} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-white hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={() => void handleSignOut()} className="flex h-9 w-9 items-center justify-center rounded-md text-black/55 transition hover:bg-white hover:text-[#111111]" title="Sign out">
+						<button type="button" onClick={() => void handleSignOut()} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/20" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
 				</aside>
 
 				{/* Secondary navigation */}
-				<aside className={`${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-black/10 bg-[#fbfbfa] lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r`}>
+				<aside className={`${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b border-black/10 bg-[#fbfbfa] lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(0,0,0,0.02)]`}>
 					<nav className="flex max-h-[60vh] flex-col overflow-auto px-2 py-3 lg:max-h-[calc(100vh-120px)]">
-						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">{activeGroup.label}</div>
+						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{activeGroup.label}</div>
 						<div className="space-y-1">
 							{activeGroup.items.map((item) => {
 								const Icon = item.icon;
@@ -988,12 +1003,12 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 										key={item.id}
 										type="button"
 										onClick={() => openSection(item.id)}
-										className={`relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition ${active ? "bg-white text-[#111111] shadow-sm before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#111111]" : "text-black/65 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<Icon className="h-4 w-4 shrink-0" />
 										<span className="min-w-0 flex-1">
 											<span className="block truncate text-sm font-medium">{item.label}</span>
-											<span className="block truncate text-[11px] text-black/45">{item.hint}</span>
+											<span className="block truncate text-[11px] text-zinc-500 font-normal">{item.hint}</span>
 										</span>
 									</button>
 								);
@@ -1006,49 +1021,49 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						<div className="flex items-center gap-2.5">
 							{developer?.logo_url ? (
 								// eslint-disable-next-line @next/next/no-img-element
-								<img src={developer.logo_url} alt={developer.company_name} className="h-9 w-9 rounded-md border border-black/10 bg-white object-contain p-0.5" />
+								<img src={developer.logo_url} alt={developer.company_name} className="h-9 w-9 rounded-lg border border-black/10 bg-white object-contain p-0.5 shadow-2xs" />
 							) : (
-								<div className="grid h-9 w-9 place-items-center rounded-md bg-[#DE141C] text-xs font-bold text-white">{developer?.company_name?.charAt(0) ?? "D"}</div>
+								<div className="grid h-9 w-9 place-items-center rounded-lg bg-[#DE141C] text-xs font-bold text-white shadow-2xs">{developer?.company_name?.charAt(0) ?? "D"}</div>
 							)}
 							<div className="min-w-0">
 								<div className="truncate text-xs font-semibold text-[#111111]">{developer?.company_name}</div>
-								<div className="truncate text-[11px] text-black/45">Accredited Partner</div>
+								<div className="truncate text-[11px] text-zinc-500">Accredited Partner</div>
 							</div>
 						</div>
 						<div className="mt-3 flex gap-2 lg:hidden">
-							<button type="button" onClick={handleRefresh} className="flex-1 rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-medium">Refresh</button>
-							<button type="button" onClick={() => void handleSignOut()} className="flex-1 rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+							<button type="button" onClick={handleRefresh} className="flex-1 rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-2xs active:scale-[0.98]">Refresh</button>
+							<button type="button" onClick={() => void handleSignOut()} className="flex-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs active:scale-[0.98]">Sign out</button>
 						</div>
 					</div>
 				</aside>
 
 				{/* Main column */}
 				<section className="flex min-w-0 flex-col bg-[#f2f2ef]">
-					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-black/10 bg-[#fbfbfa] px-4">
-						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-md border border-black/10 bg-white text-black/60 transition hover:text-[#111111]" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
+					<header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-black/10 bg-[#fbfbfa]/95 px-4 backdrop-blur-md shadow-2xs">
+						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 transition hover:text-[#111111] hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
-						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-black/45 md:flex">
+						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-zinc-500 md:flex">
 							<span>Developer Hub</span>
 							<span>/</span>
-							<strong className="truncate text-[#111111]">{activeItem.label}</strong>
+							<strong className="truncate font-semibold text-[#111111]">{activeItem.label}</strong>
 						</div>
-						<span className="ml-auto hidden items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium text-black/55 sm:inline-flex">
+						<span className="ml-auto hidden items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-600 shadow-2xs sm:inline-flex">
 							View-only access
 						</span>
 						<div className="relative">
-							<button type="button" onClick={() => setShowAccountMenu((current) => !current)} className="flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white pl-2 pr-2.5 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
-								<span className="grid h-5 w-5 place-items-center rounded-full bg-[#DE141C] text-[10px] font-bold text-white">{developer?.company_name?.charAt(0) ?? "D"}</span>
+							<button type="button" onClick={() => setShowAccountMenu((current) => !current)} className="flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white pl-2 pr-2.5 text-xs font-medium text-[#111111] shadow-2xs transition hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+								<span className="grid h-5 w-5 place-items-center rounded-full bg-[#DE141C] text-[10px] font-bold text-white shadow-2xs">{developer?.company_name?.charAt(0) ?? "D"}</span>
 								<span className="hidden max-w-28 truncate sm:block">{developer?.company_name}</span>
-								<ChevronRight className={`h-3.5 w-3.5 text-black/40 transition ${showAccountMenu ? "rotate-90" : ""}`} />
+								<ChevronRight className={`h-3.5 w-3.5 text-zinc-400 transition ${showAccountMenu ? "rotate-90" : ""}`} />
 							</button>
 							{showAccountMenu ? (
-								<div className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-black/10 bg-white p-3 text-sm shadow-xl">
-									<div className="font-medium text-[#111111]">{developer?.company_name}</div>
-									<div className="mt-1 truncate text-xs text-black/45">{userEmail}</div>
-									<div className="mt-2 inline-flex rounded-full bg-black/5 px-3 py-1 text-[11px] text-black/60">Accredited Developer Partner</div>
-									<button type="button" onClick={() => { setShowAccountMenu(false); openSection("security"); }} className="mt-3 w-full rounded-md border border-black/10 px-3 py-2 text-left text-xs font-medium text-[#111111] transition hover:bg-black/5">Account security</button>
-									<button type="button" onClick={() => void handleSignOut()} className="mt-2 w-full rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white">Sign out</button>
+								<div className="absolute right-0 top-10 z-30 w-64 rounded-xl border border-black/10 bg-white p-3.5 text-sm shadow-xl">
+									<div className="font-semibold text-[#111111]">{developer?.company_name}</div>
+									<div className="mt-1 truncate text-xs text-zinc-500">{userEmail}</div>
+									<div className="mt-2 inline-flex rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-medium text-zinc-600">Accredited Developer Partner</div>
+									<button type="button" onClick={() => { setShowAccountMenu(false); openSection("security"); }} className="mt-3 w-full rounded-lg border border-black/10 px-3 py-2 text-left text-xs font-medium text-[#111111] transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Account security</button>
+									<button type="button" onClick={() => void handleSignOut()} className="mt-2 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white transition hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 								</div>
 							) : null}
 						</div>
@@ -1065,7 +1080,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 											key={group.id}
 											type="button"
 											onClick={() => openSection(group.items[0].id)}
-											className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active ? "border-[#111111] bg-[#111111] text-white" : "border-black/10 bg-white text-black/65"}`}
+											className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active ? "border-[#111111] bg-[#111111] text-white shadow-2xs" : "border-black/10 bg-white text-zinc-650"}`}
 										>
 											<Icon className="h-3.5 w-3.5" />
 											{group.label}
@@ -1077,9 +1092,9 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 							<div className="flex flex-wrap items-end justify-between gap-3">
 								<div>
 									<h1 className="text-lg font-semibold tracking-[-0.02em] text-[#111111]">{SECTION_META[activeSection].title}</h1>
-									<p className="mt-0.5 text-xs text-black/50">{SECTION_META[activeSection].subtitle}</p>
+									<p className="mt-0.5 text-xs text-zinc-500">{SECTION_META[activeSection].subtitle}</p>
 								</div>
-								<button type="button" onClick={handleRefresh} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+								<button type="button" onClick={handleRefresh} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] shadow-2xs transition hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 									<RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
 									Refresh
 								</button>
