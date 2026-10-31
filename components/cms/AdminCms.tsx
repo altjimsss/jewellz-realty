@@ -2105,7 +2105,7 @@ function PropertyImagesManager({
 
 			<div className="mt-4 grid gap-2 md:grid-cols-2">
 				{images.map((image) => (
-					<div key={asText(image.id)} className="rounded-2xl border border-black/10 bg-white p-3">
+					<div key={asText(image.id)} className="min-w-0 overflow-hidden rounded-2xl border border-black/10 bg-white p-3">
 						{image.storage_url ? (
 							<SafeImage
 								src={asText(image.storage_url)}
@@ -2118,7 +2118,7 @@ function PropertyImagesManager({
 							/>
 						) : null}
 						<div className="truncate text-sm font-medium text-[#111111]">{image.caption || image.storage_url}</div>
-						<div className="mt-1 text-xs text-black/45">{image.storage_url}</div>
+						<div className="mt-1 break-all text-xs text-black/45">{image.storage_url}</div>
 						<div className="mt-3 flex items-center justify-between gap-2 text-xs text-black/55">
 							<span>Sort order: {image.sort_order}</span>
 							<span>{image.is_cover ? "Cover" : "Secondary"}</span>
