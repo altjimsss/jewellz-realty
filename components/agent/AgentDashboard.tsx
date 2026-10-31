@@ -704,21 +704,31 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 		setSavingProfile(true);
 		setProfileMessage("Saving updates...");
 		try {
-			const { error } = await supabaseBrowser.from("agents").upsert({
-				id: agent.id,
-				profile_id: agent.profile_id,
+			// Use server-side API route so the update goes through the service-role
+			// key and also keeps profiles.avatar_url in sync with agents.photo_url.
+			const session = (await supabaseBrowser.auth.getSession()).data.session;
+			const payload = {
 				full_name: profileForm.full_name || agent.full_name,
-				license_number: profileForm.license_number || null,
-				specialization: profileForm.specialization || null,
-				bio: profileForm.bio || null,
-				photo_url: profileForm.photo_url || null,
-				facebook_url: profileForm.facebook_url || null,
-				instagram_url: profileForm.instagram_url || null,
-				twitter_url: profileForm.twitter_url || null,
-				linkedin_url: profileForm.linkedin_url || null,
+				license_number: profileForm.license_number ?? null,
+				specialization: profileForm.specialization ?? null,
+				bio: profileForm.bio ?? null,
+				photo_url: profileForm.photo_url ?? null,
+				facebook_url: profileForm.facebook_url ?? null,
+				instagram_url: profileForm.instagram_url ?? null,
+				twitter_url: profileForm.twitter_url ?? null,
+				linkedin_url: profileForm.linkedin_url ?? null,
+			};
+			const res = await fetch("/api/agent/profile", {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+				},
+				body: JSON.stringify(payload),
 			});
-			if (error) {
-				setProfileMessage(`Error: ${error.message}`);
+			const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; agent?: unknown } | null;
+			if (!res.ok || !data?.ok) {
+				setProfileMessage(`Error: ${data?.error ?? "Failed to save profile."}`);
 			} else {
 				setProfileMessage("Profile updated successfully.");
 				setAgent((prev) => (prev ? { ...prev, ...profileForm } : null));

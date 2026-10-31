@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -4198,7 +4198,23 @@ export default function AdminCms({
 			setMessage("Agents need a profile_id linked to auth.users. Use the Register Agent form above to create a new agent.");
 			return;
 		}
-		await saveEntity("agents", payload, currentRow);
+		const savedOk = await saveEntity("agents", payload, currentRow);
+		if (savedOk !== false) {
+			// Sync profiles.avatar_url so the agent portal sidebar and preview reflect the new photo immediately.
+			const targetProfileId = String(payload.profile_id ?? currentRow?.profile_id ?? "");
+			if (targetProfileId) {
+				try {
+					const profileSync: Record<string, unknown> = {};
+					if (payload.full_name) profileSync.full_name = payload.full_name;
+					if ("photo_url" in payload) profileSync.avatar_url = payload.photo_url ?? null;
+					if (Object.keys(profileSync).length > 0) {
+						await supabaseBrowser.from("profiles").update(profileSync).eq("id", targetProfileId);
+					}
+				} catch (err) {
+					console.error("Profile sync for agent photo failed:", err);
+				}
+			}
+		}
 	}
 
 	async function saveGalleryItem(payload: CmsPayload, currentRow: CmsRow | null) {
