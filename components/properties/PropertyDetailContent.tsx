@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyChatAssistant } from "@/components/properties/PropertyChatAssistant";
 import { PropertyGallery } from "@/components/properties/PropertyGallery";
@@ -100,6 +101,21 @@ export function PropertyDetailContent({
 	const videoSrc = property.videoUrl?.trim() ?? "";
 	const isYouTube = videoSrc.includes("youtube.com") || videoSrc.includes("youtu.be");
 	const isVimeo = videoSrc.includes("vimeo.com");
+	const [isVideoOpen, setIsVideoOpen] = useState(false);
+
+	useEffect(() => {
+		if (!isVideoOpen) return;
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setIsVideoOpen(false);
+		};
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.body.style.overflow = previousOverflow;
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [isVideoOpen]);
 
 	return (
 		<section className="mx-auto max-w-[1200px] px-4 py-4 md:py-6">
@@ -107,56 +123,6 @@ export function PropertyDetailContent({
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
 				<div className="space-y-6">
 					<PropertyGallery images={galleryImages} title={property.title} onInteraction={trackPropertyInteraction} />
-
-					{videoSrc ? (
-						<div id="video-walkthrough" className="space-y-3 rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
-							<div className="flex items-center justify-between gap-3">
-								<div className="flex items-center gap-2 text-[#DE141C]">
-									<svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-										<path d="m22 8-6 4 6 4V8Z" />
-										<rect width="14" height="12" x="2" y="6" rx="2" />
-									</svg>
-									<h2 className="text-lg font-bold text-black">Property Walkthrough Video</h2>
-								</div>
-								<span className="rounded-full bg-red-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#DE141C]">
-									Virtual Tour
-								</span>
-							</div>
-
-							<div className="overflow-hidden rounded-2xl border border-black/15 bg-black shadow-inner">
-								{isYouTube ? (
-									<div className="aspect-video w-full">
-										<iframe
-											src={getYouTubeEmbedUrl(videoSrc)}
-											title={`${property.title} Video Tour`}
-											className="h-full w-full"
-											allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-											allowFullScreen
-										/>
-									</div>
-								) : isVimeo ? (
-									<div className="aspect-video w-full">
-										<iframe
-											src={getVimeoEmbedUrl(videoSrc)}
-											title={`${property.title} Video Tour`}
-											className="h-full w-full"
-											allowFullScreen
-										/>
-									</div>
-								) : (
-									<video
-										src={videoSrc}
-										controls
-										playsInline
-										preload="metadata"
-										className="max-h-[480px] w-full object-contain"
-									>
-										Your browser does not support the video tag.
-									</video>
-								)}
-							</div>
-						</div>
-					) : null}
 
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="flex items-center gap-2 text-[#DE141C]">
@@ -247,16 +213,20 @@ export function PropertyDetailContent({
 							</div>
 						) : null}
 
-						{property.videoUrl ? (
-							<a
-								href="#video-walkthrough"
+						{videoSrc ? (
+							<button
+								type="button"
+								onClick={() => {
+									setIsVideoOpen(true);
+									trackPropertyInteraction("video_walkthrough_open");
+								}}
 								className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#DE141C]/30 bg-red-50/70 px-3.5 py-1.5 text-xs font-semibold text-[#DE141C] transition hover:bg-[#DE141C] hover:text-white"
 							>
 								<svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
 									<polygon points="5 3 19 12 5 21 5 3" />
 								</svg>
 								Watch Video Walkthrough
-							</a>
+							</button>
 						) : null}
 
 						<hr className="my-4 border-black/10" />
@@ -312,6 +282,65 @@ export function PropertyDetailContent({
 					<p className="text-right text-xs text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
 				</aside>
 			</div>
+
+			{videoSrc && isVideoOpen ? (
+				<div
+					className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+					role="dialog"
+					aria-modal="true"
+					aria-label={`${property.title} walkthrough video`}
+					onClick={() => setIsVideoOpen(false)}
+				>
+					<div className="relative w-full max-w-5xl" onClick={(event) => event.stopPropagation()}>
+						<div className="mb-3 flex items-center justify-between gap-3">
+							<h2 className="text-sm font-semibold text-white/90">Property Walkthrough Video</h2>
+							<button
+								type="button"
+								onClick={() => setIsVideoOpen(false)}
+								aria-label="Close video"
+								className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+							>
+								<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+									<path d="M18 6 6 18M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+						<div className="overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl">
+							{isYouTube ? (
+								<div className="aspect-video w-full">
+									<iframe
+										src={getYouTubeEmbedUrl(videoSrc)}
+										title={`${property.title} Video Tour`}
+										className="h-full w-full"
+										allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+										allowFullScreen
+									/>
+								</div>
+							) : isVimeo ? (
+								<div className="aspect-video w-full">
+									<iframe
+										src={getVimeoEmbedUrl(videoSrc)}
+										title={`${property.title} Video Tour`}
+										className="h-full w-full"
+										allowFullScreen
+									/>
+								</div>
+							) : (
+								<video
+									src={videoSrc}
+									controls
+									autoPlay
+									playsInline
+									preload="metadata"
+									className="max-h-[80vh] w-full object-contain"
+								>
+									Your browser does not support the video tag.
+								</video>
+							)}
+						</div>
+					</div>
+				</div>
+			) : null}
 		</section>
 	);
 }
