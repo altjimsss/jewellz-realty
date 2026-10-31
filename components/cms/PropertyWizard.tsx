@@ -157,6 +157,49 @@ function buildEmptyPayload(
 	return result;
 }
 
+// The wizard edits every field as raw text. Convert blanks and typed values
+// before saving so Postgres does not receive "" for UUID, numeric, timestamp,
+// or array columns.
+function normalizePayloadForSave(fields: FieldSpec[], payload: CmsPayload): CmsPayload {
+	const result: CmsPayload = {};
+	for (const field of fields) {
+		const value = payload[field.name];
+
+		if (field.type === "checkbox") {
+			result[field.name] = Boolean(value);
+			continue;
+		}
+
+		if (field.type === "number") {
+			const text = asText(value).trim();
+			result[field.name] = text === "" ? null : Number(text);
+			continue;
+		}
+
+		if (field.type === "array") {
+			if (Array.isArray(value)) {
+				result[field.name] = value;
+			} else {
+				result[field.name] = asText(value)
+					.split(/\r?\n|,/)
+					.map((item) => item.trim())
+					.filter(Boolean);
+			}
+			continue;
+		}
+
+		if (field.type === "datetime-local") {
+			const text = asText(value).trim();
+			result[field.name] = text ? new Date(text).toISOString() : null;
+			continue;
+		}
+
+		const text = asText(value).trim();
+		result[field.name] = text === "" ? null : text;
+	}
+	return result;
+}
+
 function getYouTubeEmbedUrl(url: string): string {
 	try {
 		const parsed = new URL(url);
@@ -814,7 +857,7 @@ export function PropertyWizard({
 		}
 		setSaving(true);
 		try {
-			const saved = await onSubmit(payload, selectedRow);
+			const saved = await onSubmit(normalizePayloadForSave(fields, payload), selectedRow);
 			if (saved !== true) return;
 			clearDraft();
 			setWizardOpen(false);
