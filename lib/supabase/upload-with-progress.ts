@@ -72,6 +72,7 @@ export async function uploadFileWithProgress({
 		}
 
 		xhr.open("POST", `${supabaseUrl}/storage/v1/object/${bucket}/${encodedPath}`);
+		xhr.setRequestHeader("apikey", supabaseAnonKey);
 		xhr.setRequestHeader("Authorization", `Bearer ${session?.access_token ?? supabaseAnonKey}`);
 		if (upsert) xhr.setRequestHeader("x-upsert", "true");
 		xhr.setRequestHeader("Content-Type", contentType || file.type || "application/octet-stream");

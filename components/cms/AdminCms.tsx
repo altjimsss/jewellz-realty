@@ -1941,6 +1941,7 @@ function PropertyImagesManager({
 		const readyCount = staged.filter((photo) => photo.status === "done").length;
 		const uploadingCount = staged.filter((photo) => photo.status === "uploading").length;
 		const errorCount = staged.filter((photo) => photo.status === "error").length;
+		const firstError = staged.find((photo) => photo.status === "error")?.error;
 
 		return (
 			<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
@@ -2020,8 +2021,13 @@ function PropertyImagesManager({
 									</span>
 								)}
 								{photo.status === "error" && (
-									<div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-950/70 p-1 text-center text-[10px] font-medium text-white">
-										<span>Upload failed</span>
+									<div
+										className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-950/75 p-1 text-center text-[10px] font-medium text-white"
+										title={photo.error ?? "Upload failed"}
+									>
+										<span className="line-clamp-3 break-words px-1">
+											{photo.error ?? "Upload failed"}
+										</span>
 										<button
 											type="button"
 											onClick={() => onRetryStagedPhoto?.(photo)}
@@ -2052,9 +2058,16 @@ function PropertyImagesManager({
 								Uploading {uploadingCount} photo{uploadingCount === 1 ? "" : "s"}… &ldquo;Create listing&rdquo; unlocks when the upload finishes.
 							</span>
 						) : errorCount > 0 ? (
-							<span className="font-medium text-red-700">
-								{errorCount} photo{errorCount === 1 ? "" : "s"} failed to upload. Retry or remove {errorCount === 1 ? "it" : "them"}, or create the listing without {errorCount === 1 ? "it" : "them"}.
-							</span>
+							<>
+								<span className="block font-medium text-red-700">
+									{errorCount} photo{errorCount === 1 ? "" : "s"} failed to upload. Retry or remove {errorCount === 1 ? "it" : "them"}, or create the listing without {errorCount === 1 ? "it" : "them"}.
+								</span>
+								{firstError && (
+									<span className="mt-1 block break-words text-[11px] font-normal text-red-600">
+										{firstError}
+									</span>
+								)}
+							</>
 						) : (
 							<span className="font-medium text-emerald-700">
 								✓ {readyCount} photo{readyCount === 1 ? "" : "s"} ready and will be attached when you click &ldquo;Create listing&rdquo;.
