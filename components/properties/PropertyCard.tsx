@@ -112,7 +112,7 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 					className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
 				/>
 				{property.featured && (
-					<span className="absolute left-3 top-3 inline-flex items-center rounded-sm bg-[#DE141C] px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-white">
+					<span className="absolute left-3 top-3 inline-flex items-center rounded-sm bg-[#DE141C] px-2.5 py-1 text-[12px] font-semibold tracking-[0.08em] text-white">
 						FEATURED
 					</span>
 				)}
@@ -127,8 +127,8 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 				)}
 			</div>
 
-			<div className="flex flex-col bg-[#F4F4F4] p-3.5">
-				<h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C]">
+			<div className="flex flex-col bg-[#F4F4F4] p-4">
+				<h3 className="line-clamp-2 text-[16px] font-medium leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C]">
 					{property.title}
 				</h3>
 				<p className="mt-1 text-[12px] text-gray-500">{property.location ?? ""}</p>
@@ -142,20 +142,20 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 								title={spec.label}
 							>
 								{renderSpecIcon(spec.label)}
-								<span className="text-[11px] font-semibold text-[#1F2328]">{spec.value}</span>
+								<span className="text-[13px] font-semibold text-[#1F2328]">{spec.value}</span>
 							</span>
 						))}
 					</div>
 					<div className="flex items-center justify-start sm:justify-end">
-						<p className="shrink-0 inline-flex h-7 sm:h-8 items-center bg-[#11141C] px-2.5 sm:px-3 text-[10px] sm:text-[11px] font-bold sm:font-semibold text-white tracking-tight">
-							{displayPrice}
-						</p>
+					<p className="shrink-0 inline-flex h-7 sm:h-8 items-center bg-[#11141C] px-2.5 sm:px-3 text-[14px] font-bold sm:text-[14px] sm:font-bold text-white tracking-tight">
+						{displayPrice}
+					</p>
 					</div>
 				</div>
 
 				{/* AI reason tag */}
 				{aiReason && (
-					<p className="mt-2.5 flex items-start gap-1.5 rounded-md bg-red-50 px-2.5 py-1.5 text-[10px] leading-4 text-[#DE141C]">
+					<p className="mt-2.5 flex items-start gap-1.5 rounded-md bg-red-50 px-2.5 py-1.5 text-[12px] leading-4 text-[#DE141C]">
 						<svg viewBox="0 0 12 12" className="mt-px h-2.5 w-2.5 shrink-0" fill="currentColor" aria-hidden="true">
 							<polygon points="6,1 7.5,4.5 11,5 8.5,7.5 9,11 6,9.5 3,11 3.5,7.5 1,5 4.5,4.5" />
 						</svg>
@@ -167,18 +167,16 @@ export function PropertyCard({ property, priceLabel, href, aiReason, aiConfidenc
 	);
 
 	if (href) {
-		return (
-			<Link
-				href={href}
-				className="block"
+		return (<Link
+			href={href}
+				className="block focus-visible:ring-2 focus-visible:ring-black/20"
 				onClick={(event) => {
 					if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
 						return;
 					}
 
 					setShowPendingDetail(true);
-				}}
-			>
+				}}>
 				{card}
 				{showPendingDetail ? (
 					<div className="skeleton-delayed fixed inset-0 z-[9999] overflow-y-auto bg-white" aria-live="polite" aria-busy="true">

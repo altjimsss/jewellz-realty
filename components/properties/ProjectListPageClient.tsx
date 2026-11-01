@@ -504,12 +504,11 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 								<button
 									key={tab}
 									type="button"
-									onClick={() => setActiveCategory(tab)}
-									className={`h-9 rounded-sm border px-3 text-xs font-semibold transition-colors ${
-										active
-											? "border-[#DE141C] bg-[#DE141C] text-white"
-											: "border-black/10 bg-white text-black hover:bg-black/5"
-									}`}
+									onClick={() => setActiveCategory(tab)}className={`h-9 rounded-md border px-3 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-black/20 ${
+								active
+									? "border-[#DE141C] bg-[#DE141C] text-white"
+									: "border-black/10 bg-white text-black hover:bg-black/5"
+								}`}
 								>
 									{tab}
 								</button>

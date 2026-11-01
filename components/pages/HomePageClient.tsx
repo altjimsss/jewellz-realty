@@ -299,22 +299,22 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               onClick={() => {
                 onPrevHero();
               }}
-              className="grid h-9 w-10 place-items-center bg-[#DE141C] text-2xl leading-none text-white"
+              className="grid h-9 w-10 place-items-center bg-[#DE141C] text-2xl leading-none text-white focus-visible:ring-2 focus-visible:ring-black/20"
             >
               &lsaquo;
             </button>
             <button type="button"
               onClick={onNextHero}
-              className="grid h-9 w-10 place-items-center bg-white text-2xl leading-none text-[#DE141C]"
+              className="grid h-9 w-10 place-items-center bg-white text-2xl leading-none text-[#DE141C] focus-visible:ring-2 focus-visible:ring-black/20"
             >
               &rsaquo;
             </button>
           </div>
-          <div className="bg-black/70 px-3.5 py-2.5 text-white">
+          <div className="bg-black/70 px-4 py-3 text-white">
             <h3 className="text-[28px] leading-tight font-bold">{currentHero.title}</h3>
             <div className="mt-1.5 flex items-center gap-3 text-[12px]">
               <p className="font-semibold">{currentHero.price}</p>
-              <span className="rounded bg-[#DE141C] px-2 py-0.5 text-[10px] font-bold">{currentHero.status}</span>
+              <span className="rounded bg-[#DE141C] px-2 py-0.5 text-[12px] font-bold">{currentHero.status}</span>
               <p className="flex items-center gap-1 text-[11px] text-white/85">
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#DE141C]" fill="none" aria-hidden="true">
                   <path d="M12 21s7-5.8 7-11a7 7 0 10-14 0c0 5.2 7 11 7 11z" stroke="currentColor" strokeWidth="1.8" />
@@ -332,25 +332,25 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <rect x="3" y="14" width="7" height="7" fill="currentColor" />
                 <rect x="14" y="14" width="7" height="7" fill="currentColor" />
               </svg>
-              <div><p className="text-[11px] font-bold">{currentHero.area}</p><p className="text-[10px] text-black/60">Area</p></div>
+              <div><p className="text-[13px] font-bold">{currentHero.area}</p><p className="text-[12px] text-black/60">Area</p></div>
             </div>
             <div className="flex items-center gap-2 border-r border-black/10 px-2">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
                 <path d="M3 18v-7h18v7M3 14h18M6 11V7h6v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div><p className="text-[11px] font-bold">{currentHero.bedroom}</p><p className="text-[10px] text-black/60">Bedroom</p></div>
+              <div><p className="text-[13px] font-bold">{currentHero.bedroom}</p><p className="text-[12px] text-black/60">Bedroom</p></div>
             </div>
             <div className="flex items-center gap-2 border-r border-black/10 px-2">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
                 <path d="M4 13h16v1a5 5 0 01-5 5H9a5 5 0 01-5-5v-1zM7 13V8a2 2 0 114 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div><p className="text-[11px] font-bold">{currentHero.bathroom}</p><p className="text-[10px] text-black/60">Bathroom</p></div>
+              <div><p className="text-[13px] font-bold">{currentHero.bathroom}</p><p className="text-[12px] text-black/60">Bathroom</p></div>
             </div>
             <div className="flex items-center gap-2 pl-2">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#DE141C]" fill="none" aria-hidden="true">
                 <path d="M3 11l9-7 9 7M6 9v11h12V9M10 20v-6h4v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div><p className="text-[11px] font-bold">{currentHero.garage}</p><p className="text-[10px] text-black/60">Garage</p></div>
+              <div><p className="text-[13px] font-bold">{currentHero.garage}</p><p className="text-[12px] text-black/60">Garage</p></div>
             </div>
           </div>
         </div>
@@ -376,7 +376,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.location}
                 onChange={(e) => updateHeroSearchFilter("location", e.target.value)}
-                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">Location</option>
                 <option value="Batangas">Batangas</option>
@@ -397,7 +397,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.subLocation}
                 onChange={(e) => updateHeroSearchFilter("subLocation", e.target.value)}
-                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">Sub-Location</option>
                 <option value="Lipa">Lipa</option>
@@ -418,7 +418,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.baths}
                 onChange={(e) => updateHeroSearchFilter("baths", e.target.value)}
-                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">No. of Bathrooms</option>
                 <option value="1">1</option>
@@ -439,7 +439,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.status}
                 onChange={(e) => updateHeroSearchFilter("status", e.target.value)}
-                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">Status</option>
                 <option value="for-sale">For Sale</option>
@@ -459,7 +459,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.guests}
                 onChange={(e) => updateHeroSearchFilter("guests", e.target.value)}
-                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">No. of Guest</option>
                 <option value="1-2">1-2</option>
@@ -480,7 +480,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.beds}
                 onChange={(e) => updateHeroSearchFilter("beds", e.target.value)}
-                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-3.5 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C]"
+                className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">No. of Bedrooms</option>
                 <option value="1">1</option>
@@ -511,6 +511,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 value={safePriceMax}
                 onChange={(e) => setPriceMax(Math.min(Number(e.target.value) || 0, 850000))}
               />
+              <span className="sr-only">Price range</span>
             </div>
             <div>
               <p className="mb-1 text-[11px] text-[#8B8B8B]">Area (120-{areaMax})</p>
@@ -524,6 +525,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 value={areaMax ?? 120}
                 onChange={(e) => setAreaMax(Number(e.target.value) || 120)}
               />
+              <span className="sr-only">Area range</span>
             </div>
           </div>
           <button type="submit" className="mx-auto mt-5 block h-10 w-[170px] rounded bg-[#DE141C] text-xs font-bold text-white">Search Property</button>
@@ -535,7 +537,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <span className="w-[3px] bg-[#DE141C]" />
               <div className="relative">
                 <div>
-                <p className="text-[10px] font-bold leading-none tracking-[0.08em] text-[#5F5F63]">DISCOVER YOUR</p>
+                <p className="text-[12px] font-bold leading-none tracking-[0.08em] text-[#5F5F63]">DISCOVER YOUR</p>
                 <h1 className="mt-1 text-[40px] font-bold leading-[0.95] text-white">DREAM<br />PROPERTY</h1>
                 </div>
                 <SparkleSvg showExtra className="pointer-events-none absolute -right-[145px] top-1 h-auto w-[132px]" />
@@ -561,7 +563,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <h3 className="text-[24px] font-bold leading-[0.95]">{currentHero.title}</h3>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
                   <p className="font-semibold">{currentHero.price}</p>
-                  <span className="rounded bg-[#DE141C] px-2 py-0.5 text-[10px] font-bold">{currentHero.status}</span>
+                  <span className="rounded bg-[#DE141C] px-2 py-0.5 text-[12px] font-bold">{currentHero.status}</span>
                   <p className="flex items-center gap-1 text-white/85">
                     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#DE141C]" fill="none" aria-hidden="true"><path d="M12 21s7-5.8 7-11a7 7 0 10-14 0c0 5.2 7 11 7 11z" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="10" r="2.2" fill="currentColor" /></svg>
                     {currentHero.location}
@@ -614,7 +616,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.location}
                   onChange={(e) => updateHeroSearchFilter("location", e.target.value)}
-                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                  className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">Location</option>
                   <option value="Batangas">Batangas</option>
@@ -629,7 +631,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.subLocation}
                   onChange={(e) => updateHeroSearchFilter("subLocation", e.target.value)}
-                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                  className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">Sub-Location</option>
                   <option value="Lipa">Lipa</option>
@@ -644,7 +646,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.baths}
                   onChange={(e) => updateHeroSearchFilter("baths", e.target.value)}
-                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                  className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">No. of Bathrooms</option>
                   <option value="1">1</option>
@@ -660,7 +662,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.status}
                   onChange={(e) => updateHeroSearchFilter("status", e.target.value)}
-                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                  className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">Status</option>
                   <option value="for-sale">For Sale</option>
@@ -675,7 +677,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.guests}
                   onChange={(e) => updateHeroSearchFilter("guests", e.target.value)}
-                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                  className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">No. of Guest</option>
                   <option value="1-2">1-2</option>
@@ -691,7 +693,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.beds}
                   onChange={(e) => updateHeroSearchFilter("beds", e.target.value)}
-                  className="h-10 w-full appearance-none rounded-sm border border-white/20 bg-[#2A2A2A]/85 px-2.5 pr-6 text-xs text-[#D0D0D0] outline-none focus:border-[#DE141C]"
+                  className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">No. of Bedrooms</option>
                   <option value="1">1</option>
@@ -706,7 +708,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
             </div>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <div>
-                <p className="mb-1 text-[10px] text-white/60">{priceRangeLabel}</p>
+                <p className="mb-1 text-[12px] text-white/60">{priceRangeLabel}</p>
                 <input
                   aria-label="Maximum price"
                   className="h-1.5 w-full accent-[#DE141C]"
@@ -719,7 +721,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 />
               </div>
               <div>
-                <p className="mb-1 text-[10px] text-white/60">Area (120-{areaMax})</p>
+                <p className="mb-1 text-[12px] text-white/60">Area (120-{areaMax})</p>
                 <input
                   aria-label="Maximum area"
                   className="h-1.5 w-full accent-[#DE141C]"
@@ -732,7 +734,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 />
               </div>
             </div>
-            <button type="submit" className="mt-1 h-10 w-full rounded-sm bg-[#DE141C] text-xs font-semibold text-white">
+            <button type="submit" className="mt-1 h-10 w-full rounded-md bg-[#DE141C] text-xs font-semibold text-white">
               Search Property
             </button>
           </form>
@@ -743,7 +745,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
 
       <div className="grid grid-cols-3 border-y py-4 text-center">
         {displayedStats.slice(0, 3).map((stat) => (
-          <div key={stat.key} className="flex flex-col items-center justify-center"><p className="text-2xl font-semibold sm:text-4xl"><CountUpOnView end={stat.value} /><span className="text-[#DE141C]">{stat.suffix ?? ""}</span></p><p className="text-[11px] sm:text-sm">{stat.label}</p></div>
+          <div key={stat.key} className="flex flex-col items-center justify-center"><p className="text-2xl font-semibold sm:text-4xl"><CountUpOnView end={stat.value} /><span className="text-[#DE141C]">{stat.suffix ?? ""}</span></p><p className="text-[13px] sm:text-sm">{stat.label}</p></div>
         ))}
       </div>
 
@@ -790,7 +792,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
             <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-5 sm:left-5 sm:gap-3">
               <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
               <div className="min-w-0">
-                <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">ACHIEVEMENTS</p>
+                <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">ACHIEVEMENTS</p>
                 <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">SEE OUR MILESTONES</p>
               </div>
             </div>
@@ -802,7 +804,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-5 sm:gap-3">
                 <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">EVENTS</p>
+                  <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">EVENTS</p>
                   <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">MEMORABLE TIMES</p>
                 </div>
               </div>
@@ -814,7 +816,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
                   <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">TRAININGS</p>
+                    <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">TRAININGS</p>
                     <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">ENHANCING OUR SKILLS</p>
                   </div>
                 </div>
@@ -825,7 +827,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
                 <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
                   <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">SERVICE</p>
+                    <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">SERVICE</p>
                     <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">FOR THE PEOPLE</p>
                   </div>
                 </div>

@@ -200,28 +200,28 @@ export function PropertyDetailContent({
 
 				<div className="contents lg:block">
 				<aside className="order-2 min-w-0">
-					<div className="rounded-[12px] bg-white p-4 ">
+					<div className="rounded-md bg-white p-4 ">
 						<div className="flex items-start justify-between gap-3">
 							<div>
 								<h1 className="text-2xl font-semibold leading-tight text-black">{property.title}</h1>
-								<div className="mt-2 inline-flex items-center rounded-full bg-black/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/60">
+								<div className="mt-2 inline-flex items-center rounded-full bg-black/5 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-black/60">
 									{property.category ?? property.type ?? "Listing"}
 								</div>
 							</div>
 							{previewMode ? (
-								<button type="button" disabled className="rounded-full border border-black/10 px-3 py-2 text-xs font-semibold text-black/40">
+								<button type="button" disabled className="rounded-full border border-black/10 px-3 py-2 text-sm font-semibold text-black/40">
 									Back
 								</button>
 							) : (
-								<Link href={backHref} className="rounded-full border border-black/10 px-3 py-2 text-xs font-semibold text-black/60 transition-colors hover:bg-black/5">
+								<Link href={backHref} className="rounded-md border border-black/10 px-3.5 py-2 text-sm font-semibold text-black/60 transition-colors hover:bg-black/5">
 									Back
 								</Link>
 							)}
 						</div>
 
 						<p className="mt-3 text-sm uppercase tracking-[0.12em] text-black/50">Start at</p>
-						<p className="mt-1 text-[30px] font-semibold leading-none text-black">{formatPHPWhole(property.price)}</p>
-						<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
+						<p className="mt-1 text-[32px] font-semibold leading-none text-black">{formatPHPWhole(property.price)}</p>
+						<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-black/45">
 							<span>{property.monthlyAmortization ? `PHP ${Math.round(property.monthlyAmortization).toLocaleString()} / month` : `PHP ${Math.round(property.price / 12).toLocaleString()} / month`}</span>
 							<span aria-hidden="true">|</span>
 							<span>{property.type ?? "Property"}</span>
@@ -237,7 +237,7 @@ export function PropertyDetailContent({
 							<div className="mt-4 grid gap-3">
 								{property.keyFeatures?.length ? (
 									<div>
-										<p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-black/45">Key Features</p>
+										<p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-black/45">Key Features</p>
 										<div className="mt-2 flex flex-wrap gap-2">
 											{property.keyFeatures.map((item) => <span key={item} className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-[#DE141C]">{item}</span>)}
 										</div>
@@ -245,7 +245,7 @@ export function PropertyDetailContent({
 								) : null}
 								{property.amenities?.length ? (
 									<div>
-										<p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-black/45">Amenities</p>
+										<p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-black/45">Amenities</p>
 										<div className="mt-2 flex flex-wrap gap-2">
 											{property.amenities.map((item) => <span key={item} className="rounded-full bg-black/5 px-3 py-1 text-xs font-medium text-black/60">{item}</span>)}
 										</div>
@@ -279,7 +279,7 @@ export function PropertyDetailContent({
 										<ParamIcon type={icon} />
 									</span>
 									<div className="min-w-0">
-										<p className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-black/45">{label}</p>
+										<p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">{label}</p>
 										<p className="truncate text-xs font-semibold text-black">{value}</p>
 									</div>
 								</div>
@@ -324,7 +324,7 @@ export function PropertyDetailContent({
 						<PropertyChatAssistant property={property} previewMode={previewMode} />
 					</div>
 					<InquireCard previewMode={previewMode} property={property} />
-					<p className="text-right text-xs text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
+					<p className="text-right text-sm text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
 				</div>
 				</div>
 			</div>

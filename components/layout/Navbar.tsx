@@ -125,9 +125,9 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 										window.scrollTo({ top: 0, behavior: "smooth" });
 									}
 								}}
-								className={`group relative pb-2 font-medium transition-colors duration-200 ${
-									isActive ? "text-black" : "text-black/70 hover:text-black"
-								}`}
+							className={`group relative pb-2 font-medium transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-black/20 ${
+								isActive ? "text-black" : "text-black/70 hover:text-black"
+							}`}
 								aria-current={isActive ? "page" : undefined}
 							>
 								{link.label}
@@ -180,9 +180,9 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 											window.scrollTo({ top: 0, behavior: "smooth" });
 										}
 									}}
-									className={`rounded-lg px-2.5 py-3 text-sm font-medium transition-colors duration-150 hover:bg-[#DE141C]/10 hover:text-[#DE141C] ${
-										mobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
-									} ${isActive ? "text-black" : "text-black/80"}`}
+							className={`rounded-lg px-2.5 py-3 text-sm font-medium transition-colors duration-150 hover:bg-[#DE141C]/10 hover:text-[#DE141C] focus-visible:ring-2 focus-visible:ring-black/20 ${
+								mobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
+							} ${isActive ? "text-black" : "text-black/80"}`}
 								>
 									{link.label}
 								</Link>
