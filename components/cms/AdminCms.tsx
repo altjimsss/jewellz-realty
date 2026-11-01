@@ -4483,7 +4483,7 @@ export default function AdminCms({
 								</button>
 							) : null}
 						</div>
-						<div className="relative ml-1 flex items-center gap-2 text-black/60">
+						<div className="relative ml-1 flex items-center gap-2 text-zinc-600">
 							{isAdmin ? (
 								<button
 									type="button"
@@ -4502,7 +4502,7 @@ export default function AdminCms({
 										setShowProfileMenu(false);
 										setUnreadNotifCount(0);
 									}}
-									className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-slate-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
+									className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
 									aria-label="Notifications"
 									aria-expanded={showNotifications}
 									title="Notifications & Agent Activity"
@@ -4577,7 +4577,7 @@ export default function AdminCms({
 										setShowProfileMenu((current) => !current);
 										setShowNotifications(false);
 									}}
-								className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-slate-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40"
+								className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
 								aria-label="Profile menu"
 								aria-expanded={showProfileMenu}
 									title={asText(profile?.email ?? profile?.full_name)}
