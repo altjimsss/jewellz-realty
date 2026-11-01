@@ -81,6 +81,42 @@ function getVimeoEmbedUrl(url: string): string {
 	return url;
 }
 
+/** Phone-only: circular chat launcher pinned to the bottom-right, like typical site chat widgets. */
+function PhonePropertyChat({ property, previewMode }: { property: Property; previewMode: boolean }) {
+	const [open, setOpen] = useState(false);
+
+	return (
+		<div className="lg:hidden">
+			{open ? (
+				<div className="fixed inset-x-4 bottom-24 z-[5600] sm:left-auto sm:right-5 sm:w-[380px]">
+					<div className="overflow-hidden rounded-2xl shadow-2xl">
+						<PropertyChatAssistant property={property} previewMode={previewMode} />
+					</div>
+				</div>
+			) : null}
+
+			<button
+				type="button"
+				onClick={() => setOpen((current) => !current)}
+				aria-expanded={open}
+				aria-label={open ? "Close chat" : "Chat with Jewel, our AI guide"}
+				className="fixed bottom-5 right-5 z-[5600] grid h-14 w-14 place-items-center rounded-full bg-[#DE141C] text-white shadow-[0_12px_30px_rgba(222,20,28,0.4)] transition-transform active:scale-95"
+			>
+				{open ? (
+					<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+						<path d="M18 6 6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+					</svg>
+				) : (
+					<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+						<path d="M21 11.5a8.4 8.4 0 01-8.5 8.4c-1.16 0-2.27-.23-3.29-.66L4 21l1.77-4.26A8.3 8.3 0 013 11.5 8.4 8.4 0 0111.5 3 8.4 8.4 0 0121 11.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M8.5 10.5h7M8.5 13.5H13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+					</svg>
+				)}
+			</button>
+		</div>
+	);
+}
+
 export function PropertyDetailContent({
 	property,
 	galleryImages,
@@ -121,9 +157,11 @@ export function PropertyDetailContent({
 		<section className="mx-auto max-w-[1200px] overflow-x-clip px-4 py-4 md:py-6">
 			{previewMode ? null : <PropertyAnalyticsTracker propertyId={property.id} />}
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-				<div className="order-1 min-w-0 space-y-6 lg:order-none lg:row-span-2 lg:row-start-1">
+				<div className="order-1 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
 					<PropertyGallery images={galleryImages} title={property.title} onInteraction={trackPropertyInteraction} />
+				</div>
 
+				<div className="order-3 min-w-0 space-y-6 lg:order-none lg:col-start-1 lg:row-start-2">
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="flex items-center gap-2 text-[#DE141C]">
 							<svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" fill="none" aria-hidden="true">
@@ -278,12 +316,16 @@ export function PropertyDetailContent({
 					</div>
 				</aside>
 
-				<div className="order-3 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-2">
-					<PropertyChatAssistant property={property} previewMode={previewMode} />
+				<div className="order-4 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-2">
+					<div className="hidden lg:block">
+						<PropertyChatAssistant property={property} previewMode={previewMode} />
+					</div>
 					<InquireCard previewMode={previewMode} property={property} />
 					<p className="text-right text-xs text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
 				</div>
 			</div>
+
+			<PhonePropertyChat property={property} previewMode={previewMode} />
 
 			{videoSrc && isVideoOpen ? (
 				<div
