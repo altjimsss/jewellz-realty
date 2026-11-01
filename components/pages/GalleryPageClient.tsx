@@ -271,8 +271,8 @@ export default function GalleryPage() {
 
       {/* ── Gallery Showcase ── */}
       <section className="mx-auto w-full max-w-[1120px] px-6 py-14 lg:px-8">
-        <section className="relative min-h-[620px] overflow-hidden border-r border-zinc-200 bg-white px-0 py-0 text-zinc-900">
-          <div className="absolute top-0 right-0 bottom-0 border-r border-zinc-200 pointer-events-none" />
+        <section className="relative min-h-[620px] overflow-hidden sm:border-r border-zinc-200 bg-white px-0 py-0 text-zinc-900">
+          <div className="hidden sm:block absolute top-0 right-0 bottom-0 border-r border-zinc-200 pointer-events-none" />
 
           <div className="relative z-10 grid min-h-[600px] grid-cols-1 lg:grid-cols-[0.72fr_1.28fr]">
             <div>
@@ -353,6 +353,7 @@ export default function GalleryPage() {
             </div>
 
             <div className="relative min-h-[280px] overflow-hidden sm:min-h-[400px]">
+              <div className="sm:hidden pointer-events-none absolute inset-y-0 right-0 border-r border-zinc-200" />
               <div className="absolute bottom-[-70px] right-[-100px] flex justify-end lg:bottom-[-130px] lg:right-[-410px]">
                 <CardSwap
                   ref={cardSwapRef}
