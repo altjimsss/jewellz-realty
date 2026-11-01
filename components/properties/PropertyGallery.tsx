@@ -46,7 +46,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
 
   return (
     <div className="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)]">
-      <div className="order-2 grid h-28 grid-cols-2 gap-3 md:order-none md:h-80 md:grid-cols-1 md:grid-rows-2 lg:h-96">
+      <div className="order-2 hidden h-28 grid-cols-2 gap-3 md:order-none md:grid md:h-80 md:grid-cols-1 md:grid-rows-2 lg:h-96">
         {previewIndices.map((previewIndex, idx) => {
           const isShowAllTile = idx === 1;
 
@@ -101,6 +101,16 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
           sizes="(min-width: 1024px) 740px, 100vw"
           className="object-cover"
           priority
+        />
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsLightboxOpen(true);
+            onInteraction?.("property_gallery_open", { imageCount });
+          }}
+          className="absolute inset-0 z-[1] cursor-pointer md:hidden"
+          aria-label="Show all images"
         />
 
         <div className="absolute inset-y-0 left-0 flex items-center pl-3">
