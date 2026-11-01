@@ -4426,7 +4426,7 @@ export default function AdminCms({
 				</aside>
 
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="portal-header sticky top-0 z-[60] flex h-12 items-center gap-3 px-4">
+					<header className="portal-header sticky top-0 z-40 flex h-12 items-center gap-3 px-4">
 						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -4502,7 +4502,7 @@ export default function AdminCms({
 										setShowProfileMenu(false);
 										setUnreadNotifCount(0);
 									}}
-									className="relative flex items-center gap-2 rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20}"
+									className="relative rounded-lg border border-black/10 p-1.5 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"
 									aria-label="Notifications"
 									aria-expanded={showNotifications}
 									title="Notifications & Agent Activity"
@@ -4517,7 +4517,7 @@ export default function AdminCms({
 								{showNotifications ? (
 									<>
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
-									<div className="portal-popover absolute right-0 top-12 z-[70] w-80 p-4 text-sm sm:w-96">
+									<div className="portal-popover absolute right-0 top-9 z-[70] w-80 p-4 text-sm sm:w-96">
 											<div className="flex items-center justify-between border-b border-black/10 pb-3">
 												<div>
 											<div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">Notifications</div>
@@ -4577,17 +4577,17 @@ export default function AdminCms({
 										setShowProfileMenu((current) => !current);
 										setShowNotifications(false);
 									}}
-								className="relative flex items-center gap-2 rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color] hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20}"
+								className="relative rounded-lg border border-black/10 p-1.5 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"
 								aria-label="Profile menu"
 								aria-expanded={showProfileMenu}
 									title={asText(profile?.email ?? profile?.full_name)}
 								>
-									<UserCircle className="h-5 w-5" />
+									<UserCircle className="h-4 w-4" />
 								</button>
 								{showProfileMenu ? (
 									<>
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowProfileMenu(false)} />
-									<div className="portal-popover absolute right-0 top-12 z-[70] w-64 p-4 text-sm">
+									<div className="portal-popover absolute right-0 top-9 z-[70] w-64 p-4 text-sm">
 											<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 											<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 											<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
