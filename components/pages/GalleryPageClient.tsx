@@ -352,8 +352,8 @@ export default function GalleryPage() {
                 </div>
             </div>
 
-            <div className="relative min-h-[400px] overflow-hidden lg:min-h-[400px]">
-              <div className="absolute bottom-[-130px] right-[-390px] flex justify-end sm:right-[-370px] lg:right-[-410px]">
+            <div className="relative min-h-[280px] overflow-hidden sm:min-h-[400px]">
+              <div className="absolute bottom-[-36px] right-[-36px] flex justify-end lg:bottom-[-130px] lg:right-[-410px]">
                 <CardSwap
                   ref={cardSwapRef}
                   width={cardWidth || 720}
