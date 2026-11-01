@@ -46,7 +46,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
 
   return (
     <div className="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)]">
-      <div className="grid h-80 grid-rows-2 gap-3 lg:h-96">
+      <div className="order-2 grid h-28 grid-cols-2 gap-3 md:order-none md:h-80 md:grid-cols-1 md:grid-rows-2 lg:h-96">
         {previewIndices.map((previewIndex, idx) => {
           const isShowAllTile = idx === 1;
 
@@ -92,7 +92,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
         })}
       </div>
 
-      <div className="relative overflow-hidden bg-black/5 shadow-sm h-80 lg:h-96">
+      <div className="order-1 relative overflow-hidden bg-black/5 shadow-sm h-80 lg:h-96">
         <SafeImage
           src={mainImage}
           fallbackSrc={FALLBACK_IMAGE}
