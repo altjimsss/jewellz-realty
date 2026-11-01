@@ -118,10 +118,10 @@ export function PropertyDetailContent({
 	}, [isVideoOpen]);
 
 	return (
-		<section className="mx-auto max-w-[1200px] px-4 py-4 md:py-6">
+		<section className="mx-auto max-w-[1200px] overflow-x-clip px-4 py-4 md:py-6">
 			{previewMode ? null : <PropertyAnalyticsTracker propertyId={property.id} />}
-			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-				<div className="order-1 space-y-6 lg:order-none lg:row-span-2 lg:row-start-1">
+			<div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+				<div className="order-1 min-w-0 space-y-6 lg:order-none lg:row-span-2 lg:row-start-1">
 					<PropertyGallery images={galleryImages} title={property.title} onInteraction={trackPropertyInteraction} />
 
 					<div className="flex flex-wrap items-center gap-2">
@@ -158,7 +158,7 @@ export function PropertyDetailContent({
 					</div>
 				</div>
 
-				<aside className="order-2 space-y-4 lg:order-none lg:col-start-2 lg:row-start-1">
+				<aside className="order-2 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-1">
 					<div className="rounded-[12px] bg-white p-4 ">
 						<div className="flex items-start justify-between gap-3">
 							<div>
@@ -278,7 +278,7 @@ export function PropertyDetailContent({
 					</div>
 				</aside>
 
-				<div className="order-3 space-y-4 lg:order-none lg:col-start-2 lg:row-start-2">
+				<div className="order-3 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-2">
 					<PropertyChatAssistant property={property} previewMode={previewMode} />
 					<InquireCard previewMode={previewMode} property={property} />
 					<p className="text-right text-xs text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
