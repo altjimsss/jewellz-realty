@@ -1,9 +1,7 @@
-import { Poppins } from "next/font/google";
+﻿import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { PropertyBanner } from "@/components/layout/PropertyBanner";
-import { RouteScrollOffset } from "@/components/layout/RouteScrollOffset";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
@@ -22,8 +20,6 @@ export default function PropertyDetailLayout({ children }: { children: React.Rea
 			<AnnouncementBar />
 
 			<Navbar links={navLinks} fontClassName={poppins.className} />
-			<RouteScrollOffset offset={290} />
-			<PropertyBanner />
 
 			{children}
 
@@ -31,3 +27,4 @@ export default function PropertyDetailLayout({ children }: { children: React.Rea
 		</main>
 	);
 }
+
