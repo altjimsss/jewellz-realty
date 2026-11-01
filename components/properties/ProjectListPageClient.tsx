@@ -521,8 +521,8 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				{filteredProperties.length > 0 ? (
 					showMapPreview && primaryProperty ? (
 						<div className="mt-7">
-							<div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-								<aside className="order-last overflow-hidden rounded-[18px] border border-black/10 bg-white shadow-sm md:col-span-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1">
+							<div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+								<aside className="order-last col-span-2 overflow-hidden rounded-[18px] border border-black/10 bg-white shadow-sm lg:order-none lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1">
 									<div className="border-b border-black/10 p-4">
 										<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/50">Map Preview</p>
 										<h3 className="mt-1 text-[18px] font-semibold leading-tight text-black">Results</h3>
@@ -547,7 +547,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 
 							{remainingProperties.length > 0 ? (
 								<div className="mt-5">
-									<div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+									<div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
 										{remainingProperties.map((property) => {
 											const ai = aiEnhancedMap.get(property.id);
 											return (
@@ -566,7 +566,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 						</div>
 					) : (
 						<div className="mt-7">
-							<div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+							<div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
 								{filteredProperties.map((property) => {
 									const ai = aiEnhancedMap.get(property.id);
 									return (

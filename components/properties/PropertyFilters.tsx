@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 export type PropertyFiltersState = {
 	keyword: string;
 	lookingFor: string;
@@ -32,6 +34,9 @@ function ChevronIcon() {
 }
 
 export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersProps) {
+	const [showPhoneFilters, setShowPhoneFilters] = useState(false);
+	const activePhoneFilterCount = [value.lookingFor, value.priceMin, value.priceMax, value.status].filter(Boolean).length;
+
 	return (
 		<form
 			onSubmit={(e) => {
@@ -169,7 +174,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 				</div>
 			</div>
 
-			<div className="lg:hidden px-4 py-4">
+			<div className="hidden px-4 py-4 sm:block lg:hidden">
 				<div className="grid gap-3 sm:grid-cols-2">
 					<div>
 						<p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-black">Search</p>
@@ -246,6 +251,103 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 					</svg>
 					Search
 				</button>
+			</div>
+
+			<div className="px-3 py-3 sm:hidden">
+				<div className="flex items-center gap-2">
+					<div className="flex h-10 min-w-0 flex-1 items-center rounded-[8px] border border-black/10 bg-white px-3 shadow-sm">
+						<input
+							value={value.keyword}
+							onChange={(e) => onChange({ ...value, keyword: e.target.value })}
+							aria-label="Enter Keywords"
+							placeholder="Search properties…"
+							className="h-full w-full min-w-0 border-none bg-transparent text-[13px] outline-none placeholder:text-black/35"
+							type="search"
+						/>
+					</div>
+					<button type="submit" aria-label="Search" className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] bg-[#e63232] text-white transition hover:bg-[#c92020]">
+						<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+							<circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.8" />
+							<path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+						</svg>
+					</button>
+				</div>
+
+				<button
+					type="button"
+					onClick={() => setShowPhoneFilters((current) => !current)}
+					aria-expanded={showPhoneFilters}
+					className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-black/10 bg-white px-3 text-[11px] font-semibold text-black/70 transition-colors"
+				>
+					<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" aria-hidden="true">
+						<path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+					</svg>
+					Filters
+					{activePhoneFilterCount > 0 ? (
+						<span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#DE141C] px-1 text-[9px] font-bold text-white">
+							{activePhoneFilterCount}
+						</span>
+					) : null}
+					<svg viewBox="0 0 24 24" className={`h-3 w-3 text-[#bbb] transition-transform ${showPhoneFilters ? "rotate-180" : ""}`} fill="none" aria-hidden="true">
+						<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+					</svg>
+				</button>
+
+				{showPhoneFilters ? (
+					<div className="mt-2 grid grid-cols-2 gap-2">
+						<div className="relative flex h-9 items-center rounded-[8px] border border-black/10 bg-white px-2.5 shadow-sm">
+							<select
+								value={value.lookingFor}
+								onChange={(e) => onChange({ ...value, lookingFor: e.target.value })}
+								className={`h-full w-full appearance-none border-none bg-transparent outline-none text-[12px] ${value.lookingFor ? "text-black" : "text-[#aaa]"}`}
+							>
+								{LOOKING_FOR_OPTIONS.map((opt) => (
+									<option key={opt || "any"} value={opt}>
+										{opt || "Category"}
+									</option>
+								))}
+							</select>
+							<div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+								<ChevronIcon />
+							</div>
+						</div>
+						<div className="relative flex h-9 items-center rounded-[8px] border border-black/10 bg-white px-2.5 shadow-sm">
+							<select
+								value={value.status}
+								onChange={(e) => onChange({ ...value, status: e.target.value })}
+								className={`h-full w-full appearance-none border-none bg-transparent outline-none text-[12px] ${value.status ? "text-black" : "text-[#aaa]"}`}
+							>
+								{STATUS_OPTIONS.map((opt) => (
+									<option key={opt || "any"} value={opt}>
+										{opt || "Status"}
+									</option>
+								))}
+							</select>
+							<div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+								<ChevronIcon />
+							</div>
+						</div>
+						<div className="col-span-2 flex h-9 items-center gap-2 rounded-[8px] border border-black/10 bg-white px-2.5 shadow-sm">
+							<input
+								value={value.priceMin}
+								onChange={(e) => onChange({ ...value, priceMin: e.target.value })}
+								aria-label="Min"
+								placeholder="Min price"
+								inputMode="numeric"
+								className="min-w-0 flex-1 border-none bg-transparent text-[12px] outline-none placeholder:text-black/35"
+							/>
+							<span className="shrink-0 text-[11px] text-black/35">-</span>
+							<input
+								value={value.priceMax}
+								onChange={(e) => onChange({ ...value, priceMax: e.target.value })}
+								aria-label="Max"
+								placeholder="Max price"
+								inputMode="numeric"
+								className="min-w-0 flex-1 border-none bg-transparent text-[12px] outline-none placeholder:text-black/35"
+							/>
+						</div>
+					</div>
+				) : null}
 			</div>
 		</form>
 	);
