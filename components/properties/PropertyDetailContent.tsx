@@ -196,7 +196,7 @@ export function PropertyDetailContent({
 					</div>
 				</div>
 
-				<aside className="order-2 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-1">
+				<aside className="order-2 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-span-2 lg:row-start-1">
 					<div className="rounded-[12px] bg-white p-4 ">
 						<div className="flex items-start justify-between gap-3">
 							<div>
@@ -314,15 +314,12 @@ export function PropertyDetailContent({
 							)}
 						</div>
 					</div>
-				</aside>
-
-				<div className="order-4 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-2">
 					<div className="hidden lg:block">
 						<PropertyChatAssistant property={property} previewMode={previewMode} />
 					</div>
 					<InquireCard previewMode={previewMode} property={property} />
 					<p className="text-right text-xs text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
-				</div>
+				</aside>
 			</div>
 
 			<PhonePropertyChat property={property} previewMode={previewMode} />
