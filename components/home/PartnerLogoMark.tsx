@@ -11,7 +11,7 @@ export function PartnerLogoMark({ name, logoUrl }: { name: string; logoUrl?: str
 
 	if (src && !failed) {
 		return (
-			<div className="flex h-12 w-40 shrink-0 items-center justify-center rounded-md border border-[#EAE7E3] bg-white px-3">
+			<div className="flex h-12 w-40 shrink-0 items-center justify-center bg-transparent px-3">
 				<Image
 					src={src}
 					alt={name}
@@ -26,7 +26,7 @@ export function PartnerLogoMark({ name, logoUrl }: { name: string; logoUrl?: str
 	}
 
 	return (
-		<div className="flex h-12 w-40 shrink-0 items-center justify-center rounded-md border border-[#EAE7E3] bg-white px-3">
+		<div className="flex h-12 w-40 shrink-0 items-center justify-center bg-transparent px-3">
 			<span className="max-w-full truncate text-center text-xs font-semibold uppercase tracking-[0.08em] text-[#181A20]">
 				{name}
 			</span>
