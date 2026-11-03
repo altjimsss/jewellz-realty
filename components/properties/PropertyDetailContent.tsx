@@ -262,8 +262,8 @@ export function PropertyDetailContent({
 							<span className="font-medium text-[#DE141C]">Available</span>
 						</div>
 
-						<details className="group mt-4 border-t border-black/10 pt-3 lg:hidden">
-							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
+						<details className="group border-t border-black/10 py-3 lg:hidden">
+							<summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
 								<span>About this property</span>
 								<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -275,8 +275,8 @@ export function PropertyDetailContent({
 
 						{property.keyFeatures?.length || property.amenities?.length ? (
 							<>
-							<details className="group border-t border-black/10 pt-3 lg:hidden">
-								<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
+							<details className="group border-t border-black/10 py-3 lg:hidden">
+								<summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
 									<span>Features &amp; amenities</span>
 									<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
 										<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -338,8 +338,8 @@ export function PropertyDetailContent({
 							</button>
 						) : null}
 
-						<details className="group mt-4 border-t border-black/10 pt-3 lg:hidden">
-							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
+						<details className="group border-t border-black/10 py-3 lg:hidden">
+							<summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
 								<span>Property details</span>
 								<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
 									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

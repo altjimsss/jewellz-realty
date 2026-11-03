@@ -148,7 +148,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 						return nextOpen;
 					});
 				}}
-				className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#DE141C]/30 bg-[#DE141C]/5 px-3 py-1 text-xs font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/10"
+				className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#DE141C]/25 bg-white px-3 text-[11px] font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/5"
 				aria-expanded={isMapOpen}
 				aria-controls="property-location-map"
 			>
@@ -160,11 +160,11 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 			</button>
 
 			{isMapOpen && (
-				<div id="property-location-map" className="mt-3 w-full overflow-hidden rounded-[10px] border border-black/10">
+				<div id="property-location-map" className="mt-3 w-full overflow-hidden rounded-xl border border-black/10 shadow-sm">
 					<PropertyMapPreview
 						properties={[property]}
 						nearbyPlaces={allNearbyPlaces}
-						mapHeightClassName="h-[400px]"
+						mapHeightClassName="h-[280px] sm:h-[360px] lg:h-[400px]"
 						focusedNearbyPlace={focusedNearbyPlace}
 						onSelectCategory={(category) => {
 							if (category === "All") return;
@@ -178,13 +178,13 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 			)}
 
 			{/* What's Nearby */}
-			<div className="mt-4 w-full pl-6">
-				<p className="mb-3 text-sm font-semibold uppercase tracking-[0.1em] text-black/40">
+			<div className="mt-4 w-full border-t border-black/10 pt-4">
+				<p className="mb-2.5 text-[13px] font-semibold text-black">
 					What&apos;s nearby
 				</p>
 
 				{/* Category tabs */}
-				<div className="flex flex-wrap gap-2">
+				<div className="-mx-4 flex snap-x snap-mandatory flex-nowrap gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
 					{nearbyCategoryTabs.map((tab, index) => {
 						const isActive = activeTab === index;
 						return (
@@ -195,7 +195,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 									setActiveTab(index);
 									setShowAllPlaces(false);
 								}}
-								className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+								className={`inline-flex h-9 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
 									isActive
 										? "border-[#DE141C] bg-[#DE141C] text-white"
 										: "border-black/15 bg-white text-black hover:border-black/30"
@@ -209,9 +209,9 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 				</div>
 
 				{/* Places list */}
-				<div className="mt-3 divide-y divide-black/8 rounded-[12px] border border-black/10">
+				<div className="mt-3 grid grid-cols-2 gap-2">
 					{activePlaces.length === 0 ? (
-						<div className="px-4 py-3 text-sm text-black/50">
+						<div className="col-span-2 rounded-xl border border-black/[0.08] bg-white px-3 py-3 text-xs leading-5 text-black/50">
 							{isMapOpen
 								? `Finding nearby ${active.label.toLowerCase()} places…`
 								: `Open the map to view nearby ${active.label.toLowerCase()} places.`}
@@ -230,18 +230,18 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 									distanceMeters: item.distanceMeters,
 								});
 							}}
-							className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-red-50 ${
-								focusedNearbyPlace?.id === item.id ? "bg-red-50" : ""
+							className={`flex min-h-[60px] w-full flex-col items-start justify-center gap-1 rounded-xl border px-3 py-2 text-left transition hover:border-[#DE141C]/30 hover:bg-red-50 ${
+								focusedNearbyPlace?.id === item.id ? "border-[#DE141C]/30 bg-red-50" : "border-black/[0.08] bg-white"
 							}`}
 						>
-							<span className="min-w-0 truncate text-sm text-black/80">{item.name}</span>
+							<span className="w-full truncate text-xs font-medium text-black/80">{item.name}</span>
 							<div className="flex items-center gap-1.5">
 								<span
 									className="h-2 w-2 rounded-full"
 									style={{ backgroundColor: nearbyDotColor(item.category ?? active.label) }}
 									aria-hidden="true"
 								/>
-								<span className="shrink-0 text-xs font-medium text-black/50">
+								<span className="shrink-0 text-[10px] font-medium text-black/50">
 									{formatDistance(item.distanceMeters)}
 								</span>
 							</div>
@@ -253,7 +253,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 						<button
 							type="button"
 							onClick={() => setShowAllPlaces((prev) => !prev)}
-							className="flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/5"
+							className="col-span-2 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-3 py-2 text-xs font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/5"
 						>
 							<span>{showAllPlaces ? "Show less" : `Show all ${activePlaces.length} places`}</span>
 							<svg

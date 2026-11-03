@@ -189,11 +189,13 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
                 priority
               />
 
-              <div className="absolute bottom-3 right-3 rounded-full bg-black/45 px-3 py-1 text-white backdrop-blur-sm">
-                <span className="text-[11px] font-semibold">
-                  {currentIndex + 1}/{imageCount}
-                </span>
-              </div>
+              {imageCount > 1 ? (
+                <div className="absolute bottom-3 right-3 rounded-full bg-black/45 px-3 py-1 text-white backdrop-blur-sm">
+                  <span className="text-[11px] font-semibold">
+                    {currentIndex + 1}/{imageCount}
+                  </span>
+                </div>
+              ) : null}
 
               <div className="absolute inset-y-0 left-0 flex items-center pl-3">
                 <button
