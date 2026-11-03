@@ -117,11 +117,15 @@ export function AppointmentBooking() {
   const [curMonth, setCurMonth] = useState(() => getInitialMonth(today));
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [unavailableTimes, setUnavailableTimes] = useState<string[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityWarning, setAvailabilityWarning] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [submitStatus, setSubmitStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRescheduled, setIsRescheduled] = useState(false);
   const [calHeight, setCalHeight] = useState<number | undefined>(undefined);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
@@ -145,6 +149,32 @@ export function AppointmentBooking() {
     return () => observer.disconnect();
   }, [step]);
 
+  useEffect(() => {
+    if (!selectedDay) return;
+
+    const controller = new AbortController();
+    const date = `${curYear}-${String(curMonth + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`;
+    const params = new URLSearchParams({ date, propertySlug });
+    void fetch(`/api/appointments/availability?${params.toString()}`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !Array.isArray(data?.availableTimes)) throw new Error(data?.error || "Availability check failed.");
+        const blocked = timeSlots.filter((slot) => !data.availableTimes.includes(slot));
+        setUnavailableTimes(blocked);
+        setSelectedTime((current) => current && blocked.includes(current) ? null : current);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setUnavailableTimes([]);
+        setAvailabilityWarning("Live availability could not be checked. The schedule will be verified when you confirm.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAvailabilityLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [curMonth, curYear, propertySlug, selectedDay]);
+
   const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate();
   const firstDayOfMonth = new Date(curYear, curMonth, 1).getDay();
 
@@ -157,6 +187,10 @@ export function AppointmentBooking() {
     }
 
     setSelectedDay(null);
+    setSelectedTime(null);
+    setUnavailableTimes([]);
+    setAvailabilityWarning("");
+    setAvailabilityLoading(false);
   };
 
   const nextMonth = () => {
@@ -168,6 +202,10 @@ export function AppointmentBooking() {
     }
 
     setSelectedDay(null);
+    setSelectedTime(null);
+    setUnavailableTimes([]);
+    setAvailabilityWarning("");
+    setAvailabilityLoading(false);
   };
 
   const isPast = (day: number) => new Date(curYear, curMonth, day) < minBookDate;
@@ -212,12 +250,13 @@ export function AppointmentBooking() {
       }),
     });
     setIsSubmitting(false);
+    const data = await response.json().catch(() => null);
     if (!response.ok) {
-      const data = await response.json().catch(() => null);
       setSubmitStatus(data?.error || "Unable to save appointment. Please try again.");
       resetCaptcha();
       return;
     }
+    setIsRescheduled(Boolean(data?.rescheduled));
     setSubmitStatus("");
     resetCaptcha();
     setStep(2);
@@ -337,7 +376,14 @@ export function AppointmentBooking() {
                   <button type="button"
                     key={day}
                     disabled={isPast(day)}
-                    onClick={() => setSelectedDay(day)}
+                    onClick={() => {
+                      if (selectedDay !== day) setAvailabilityLoading(true);
+                      setSelectedDay(day);
+                      setSelectedTime(null);
+                      setUnavailableTimes([]);
+                      setAvailabilityWarning("");
+                      setAvailabilityLoading(true);
+                    }}
                     className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[13.5px] leading-none transition-colors ${
                       selectedDay === day
                         ? "bg-[#DE141C] font-semibold text-white"
@@ -356,6 +402,9 @@ export function AppointmentBooking() {
           {step === 1 && (
             <>
               <p className="mb-4 text-[14px] font-medium text-black">Confirm your booking</p>
+              <p className="-mt-2 mb-4 text-[11.5px] leading-5 text-black/45">
+                Unassigned appointments can be rescheduled with the same name and email. Contact your agent after assignment.
+              </p>
 
               <div className="mb-5 flex flex-wrap gap-2">
                 {[
@@ -451,9 +500,11 @@ export function AppointmentBooking() {
                 </svg>
               </div>
 
-              <p className="mb-2 text-[18px] font-semibold text-black">You&apos;re all set!</p>
+              <p className="mb-2 text-[18px] font-semibold text-black">
+                {isRescheduled ? "Appointment updated" : "You&apos;re all set!"}
+              </p>
               <p className="max-w-xs text-[13.5px] leading-[1.7] text-black/50">
-                Your appointment for <span className="font-medium text-black">{propertyLabel}</span> has been booked. A confirmation has been sent to <span className="font-medium text-[#DE141C]">{email}</span>.
+                Your appointment request for <span className="font-medium text-black">{propertyLabel}</span> has been {isRescheduled ? "updated" : "received"}. Our team will follow up using <span className="font-medium text-[#DE141C]">{email}</span>.
               </p>
 
               <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -488,7 +539,7 @@ export function AppointmentBooking() {
                   <path d="M12 7v5l3 3" stroke="#DE141C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <p className="text-[12.5px] leading-[1.65] text-black/50">
-                  Please wait <span className="font-medium text-black">1–2 business days</span> for our agents to confirm your appointment. You will receive an email once it&apos;s confirmed.
+                  {isRescheduled ? "Your updated appointment is pending agent confirmation." : <>Please allow <span className="font-medium text-black">1–2 business days</span> for an agent to review your request. Our team will follow up with you.</>}
                 </p>
               </div>
 
@@ -541,11 +592,16 @@ export function AppointmentBooking() {
             className="self-start flex flex-row flex-wrap gap-2 pt-8 lg:flex-col lg:flex-nowrap lg:gap-2 lg:overflow-y-auto lg:pl-6 lg:pt-0 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
             style={{ maxHeight: calHeight ? `${calHeight}px` : undefined }}
           >
+            <p className="w-full text-[10px] font-medium uppercase tracking-[0.1em] text-black/35">
+              {availabilityLoading ? "Checking availability…" : "Philippine Time · 30-minute slots"}
+            </p>
             {timeSlots.map((slot) => (
               <button type="button"
                 key={slot}
                 onClick={() => setSelectedTime(slot)}
-                className={`rounded-full border px-3 py-2 text-[11.5px] font-medium whitespace-nowrap transition-colors ${
+                disabled={!selectedDay || availabilityLoading || unavailableTimes.includes(slot)}
+                aria-label={`${slot}${unavailableTimes.includes(slot) ? ", unavailable" : ""}`}
+                className={`rounded-full border px-3 py-2 text-[11.5px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
                   selectedTime === slot
                     ? "border-[#DE141C] bg-[#DE141C] text-white"
                     : "border-black/15 bg-white text-black/60 hover:border-black/25 hover:bg-black/4"
@@ -554,6 +610,7 @@ export function AppointmentBooking() {
                 {slot}
               </button>
             ))}
+            {availabilityWarning ? <p className="w-full text-[10px] leading-4 text-amber-700">{availabilityWarning}</p> : null}
           </aside>
         )}
       </div>

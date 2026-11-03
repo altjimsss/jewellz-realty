@@ -25,21 +25,30 @@ function parseScheduledAt(dateText: string, timeText: string) {
 	const minutes = Number(timeMatch[2]);
 	const meridiem = timeMatch[3].toUpperCase();
 
-	if (month === undefined || rawHour < 1 || rawHour > 12 || minutes > 59) return null;
+	if (month === undefined || rawHour < 1 || rawHour > 12 || ![0, 30].includes(minutes)) return null;
 
 	const hour = (rawHour % 12) + (meridiem === "PM" ? 12 : 0);
-	const parseLocal = new Date(year, month, day, hour, minutes, 0, 0);
+	if (hour < 9 || hour > 16 || (hour === 16 && minutes !== 0)) return null;
+
+	const targetDay = new Date(Date.UTC(year, month, day));
 	if (
-		Number.isNaN(parseLocal.getTime()) ||
-		parseLocal.getFullYear() !== year ||
-		parseLocal.getMonth() !== month ||
-		parseLocal.getDate() !== day ||
-		parseLocal.getHours() !== hour
+		targetDay.getUTCFullYear() !== year ||
+		targetDay.getUTCMonth() !== month ||
+		targetDay.getUTCDate() !== day
 	) {
 		return null;
 	}
 
-	return parseLocal.toISOString();
+	// Booking slots use the property's timezone (Philippine Time), regardless of
+	// the server's timezone, so the saved UTC instant is deterministic.
+	const targetDayNumber = Date.UTC(year, month, day);
+	const manilaNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
+	const manilaTodayNumber = Date.UTC(manilaNow.getUTCFullYear(), manilaNow.getUTCMonth(), manilaNow.getUTCDate());
+	if (targetDayNumber < manilaTodayNumber + 3 * 24 * 60 * 60 * 1000) return null;
+
+	const hourText = String(hour).padStart(2, "0");
+	const minuteText = String(minutes).padStart(2, "0");
+	return new Date(`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}T${hourText}:${minuteText}:00+08:00`).toISOString();
 }
 
 async function insertInquiry(payload: {
@@ -113,59 +122,229 @@ export async function POST(request: Request) {
 
 	if (!scheduledAt) {
 		return NextResponse.json(
-			{ error: "That date or time could not be read. Please pick a new slot and try again." },
+			{ error: "Choose a valid date at least 3 days ahead and an available time between 9:00 AM and 4:00 PM." },
 			{ status: 400, headers: rateLimitHeaders(limiter) },
 		);
 	}
 
 	let propertyId: string | null = null;
+	let assignedAgentId: string | null = null;
 	if (propertySlug) {
-		const { data } = await supabaseServer.from("properties").select("id").eq("slug", propertySlug).maybeSingle();
-		propertyId = data?.id ?? null;
+		const propertyResult = await supabaseServer.from("properties").select("id,assigned_agent_id").eq("slug", propertySlug).maybeSingle();
+		if (propertyResult.error?.message.includes("assigned_agent_id")) {
+			const fallbackPropertyResult = await supabaseServer.from("properties").select("id").eq("slug", propertySlug).maybeSingle();
+			if (fallbackPropertyResult.error) {
+				console.error("[appointments property lookup]", fallbackPropertyResult.error);
+				return NextResponse.json({ error: "We couldn't verify this property's schedule. Please try again shortly." }, { status: 503, headers: rateLimitHeaders(limiter) });
+			}
+			propertyId = fallbackPropertyResult.data?.id ?? null;
+		} else if (propertyResult.error) {
+			console.error("[appointments property lookup]", propertyResult.error);
+			return NextResponse.json({ error: "We couldn't verify this property's schedule. Please try again shortly." }, { status: 503, headers: rateLimitHeaders(limiter) });
+		} else {
+			propertyId = propertyResult.data?.id ?? null;
+			assignedAgentId = propertyResult.data?.assigned_agent_id ?? null;
+		}
 	}
 	const appointmentMessage = `Appointment request for ${propertyTitle || propertySlug || "property"} on ${text(body?.date)} at ${text(body?.time)}.`;
-
-	// The dashboard displays inquiries, so also guard against a repeated lead
-	// when an older deployment has appointments without the uniqueness index.
 	const escapedEmail = buyerEmail.replace(/[\\%_]/g, "\\$&");
-	let inquiryRows: Array<{ buyer_email: string | null; buyer_message?: string | null; message?: string | null }> = [];
-	const inquiryConflictResult = await supabaseServer
-		.from("inquiries")
-		.select("id,buyer_email,buyer_message")
+
+	// Reusing the same name, email, and property means the customer is changing
+	// their existing active booking. Update it in place when the slot changes.
+	let existingAppointmentsQuery = supabaseServer
+		.from("appointments")
+		.select("id,inquiry_id,buyer_name,buyer_email,scheduled_at,assigned_agent_id")
+		.in("status", ["requested", "confirmed"])
 		.ilike("buyer_email", escapedEmail);
-	if (!inquiryConflictResult.error) {
-		inquiryRows = inquiryConflictResult.data ?? [];
-	} else if (inquiryConflictResult.error.message.includes("buyer_message")) {
-		const legacyInquiryResult = await supabaseServer
-			.from("inquiries")
-			.select("id,buyer_email,message")
-			.ilike("buyer_email", escapedEmail);
-		if (!legacyInquiryResult.error) {
-			inquiryRows = legacyInquiryResult.data ?? [];
-		} else {
-			console.error("[appointments inquiry conflict check]", legacyInquiryResult.error);
-			return NextResponse.json(
-				{ error: "We couldn't verify this appointment request. Please try again shortly." },
-				{ status: 503, headers: rateLimitHeaders(limiter) },
-			);
-		}
-	} else {
-		console.error("[appointments inquiry conflict check]", inquiryConflictResult.error);
+	existingAppointmentsQuery = propertyId
+		? existingAppointmentsQuery.eq("property_id", propertyId)
+		: existingAppointmentsQuery.is("property_id", null);
+	const { data: existingAppointments, error: existingAppointmentsError } = await existingAppointmentsQuery;
+	if (existingAppointmentsError && existingAppointmentsError.code !== "42P01" && existingAppointmentsError.code !== "PGRST205") {
+		console.error("[appointments existing booking lookup]", existingAppointmentsError);
 		return NextResponse.json(
-			{ error: "We couldn't verify this appointment request. Please try again shortly." },
+			{ error: "We couldn't verify your existing appointment. Please try again shortly." },
 			{ status: 503, headers: rateLimitHeaders(limiter) },
 		);
 	}
-	const duplicateLead = inquiryRows.some((row) => {
-		const rowEmail = text(row.buyer_email).toLowerCase();
-		const rowMessage = text(row.buyer_message ?? row.message).toLowerCase();
-		return rowEmail === buyerEmail && rowMessage === appointmentMessage.toLowerCase();
-	});
-	if (duplicateLead) {
+
+	const sameCustomerBookings = (existingAppointments ?? []).filter((appointment) =>
+		text(appointment.buyer_name).toLowerCase() === buyerName.toLowerCase(),
+	);
+	const existingBooking = sameCustomerBookings[0];
+	let inquiryAssignedAgentId: string | null = null;
+	if (existingBooking?.inquiry_id) {
+		const inquiryAssignment = await supabaseServer
+			.from("inquiries")
+			.select("assigned_agent_id")
+			.eq("id", existingBooking.inquiry_id)
+			.maybeSingle();
+		if (inquiryAssignment.error) {
+			console.error("[appointments inquiry assignment lookup]", inquiryAssignment.error);
+			return NextResponse.json(
+				{ error: "We couldn't verify the assigned agent. Please try again shortly." },
+				{ status: 503, headers: rateLimitHeaders(limiter) },
+			);
+		}
+		inquiryAssignedAgentId = inquiryAssignment.data?.assigned_agent_id ?? null;
+	}
+
+	// A 30-minute booking cannot overlap another active appointment for the same
+	// customer, even when it is for a different property.
+	const { data: customerSchedule, error: customerScheduleError } = await supabaseServer
+		.from("appointments")
+		.select("id,scheduled_at")
+		.in("status", ["requested", "confirmed"])
+		.ilike("buyer_email", escapedEmail);
+	if (customerScheduleError && customerScheduleError.code !== "42P01" && customerScheduleError.code !== "PGRST205") {
+		console.error("[appointments customer schedule lookup]", customerScheduleError);
 		return NextResponse.json(
-			{ error: "You already have an active appointment request for this property at that time.", code: "duplicate_appointment" },
+			{ error: "We couldn't verify your appointment schedule. Please try again shortly." },
+			{ status: 503, headers: rateLimitHeaders(limiter) },
+		);
+	}
+	const bookingDurationMs = 30 * 60 * 1000;
+	const customerOverlap = (customerSchedule ?? []).some((appointment) => {
+		if (existingBooking && appointment.id === existingBooking.id) return false;
+		const existingStart = new Date(appointment.scheduled_at).getTime();
+		const requestedStart = new Date(scheduledAt).getTime();
+		return existingStart < requestedStart + bookingDurationMs && requestedStart < existingStart + bookingDurationMs;
+	});
+	if (customerOverlap) {
+		return NextResponse.json(
+			{ error: "You already have another appointment that overlaps this time. Please choose a time at least 30 minutes apart.", code: "customer_schedule_conflict" },
 			{ status: 409, headers: rateLimitHeaders(limiter) },
 		);
+	}
+	if (assignedAgentId) {
+		const [agentScheduleResult, inheritedPropertiesResult, assignedInquiriesResult] = await Promise.all([
+			supabaseServer
+				.from("appointments")
+				.select("id,property_id,assigned_agent_id,scheduled_at")
+				.eq("assigned_agent_id", assignedAgentId)
+				.in("status", ["requested", "confirmed"]),
+			supabaseServer.from("properties").select("id").eq("assigned_agent_id", assignedAgentId),
+			supabaseServer.from("inquiries").select("id").eq("assigned_agent_id", assignedAgentId),
+		]);
+		const missingAppointmentsTable = agentScheduleResult.error?.code === "42P01" || agentScheduleResult.error?.code === "PGRST205";
+		if (inheritedPropertiesResult.error || assignedInquiriesResult.error || (agentScheduleResult.error && !missingAppointmentsTable)) {
+			console.error("[appointments agent schedule lookup]", agentScheduleResult.error || inheritedPropertiesResult.error || assignedInquiriesResult.error);
+			return NextResponse.json(
+				{ error: "We couldn't verify the assigned agent's schedule. Please try again shortly." },
+				{ status: 503, headers: rateLimitHeaders(limiter) },
+			);
+		}
+		const inheritedPropertyIds = (inheritedPropertiesResult.data ?? []).map((property) => property.id);
+		let inheritedAppointments: Array<{ id: string; scheduled_at: string }> = [];
+		if (!missingAppointmentsTable && inheritedPropertyIds.length > 0) {
+			const inheritedResult = await supabaseServer
+				.from("appointments")
+				.select("id,scheduled_at")
+				.in("property_id", inheritedPropertyIds)
+				.is("assigned_agent_id", null)
+				.in("status", ["requested", "confirmed"]);
+			if (inheritedResult.error) {
+				console.error("[appointments inherited agent schedule lookup]", inheritedResult.error);
+				return NextResponse.json(
+					{ error: "We couldn't verify the assigned agent's schedule. Please try again shortly." },
+					{ status: 503, headers: rateLimitHeaders(limiter) },
+				);
+			}
+			inheritedAppointments = inheritedResult.data ?? [];
+		}
+		let inquiryAppointments: Array<{ id: string; scheduled_at: string }> = [];
+		const assignedInquiryIds = (assignedInquiriesResult.data ?? []).map((inquiry) => inquiry.id);
+		if (!missingAppointmentsTable && assignedInquiryIds.length > 0) {
+			const inquiryAppointmentResult = await supabaseServer
+				.from("appointments")
+				.select("id,scheduled_at")
+				.in("inquiry_id", assignedInquiryIds)
+				.in("status", ["requested", "confirmed"]);
+			if (inquiryAppointmentResult.error) {
+				console.error("[appointments inquiry agent schedule lookup]", inquiryAppointmentResult.error);
+				return NextResponse.json(
+					{ error: "We couldn't verify the assigned agent's schedule. Please try again shortly." },
+					{ status: 503, headers: rateLimitHeaders(limiter) },
+				);
+			}
+			inquiryAppointments = inquiryAppointmentResult.data ?? [];
+		}
+		const agentSchedule = [...(agentScheduleResult.data ?? []), ...inheritedAppointments, ...inquiryAppointments];
+		const agentOverlap = agentSchedule.some((appointment) => {
+			if (existingBooking && appointment.id === existingBooking.id) return false;
+			const existingStart = new Date(appointment.scheduled_at).getTime();
+			const requestedStart = new Date(scheduledAt).getTime();
+			return existingStart < requestedStart + bookingDurationMs && requestedStart < existingStart + bookingDurationMs;
+		});
+		if (agentOverlap) {
+			return NextResponse.json(
+				{ error: "The assigned agent already has another appointment during this time. Please choose another slot.", code: "agent_schedule_conflict" },
+				{ status: 409, headers: rateLimitHeaders(limiter) },
+			);
+		}
+	}
+
+	if (existingBooking) {
+		if (new Date(existingBooking.scheduled_at).getTime() === new Date(scheduledAt).getTime()) {
+			return NextResponse.json(
+				{ error: "This appointment is already booked for that date and time.", code: "appointment_unchanged" },
+				{ status: 409, headers: rateLimitHeaders(limiter) },
+			);
+		}
+		if (existingBooking.assigned_agent_id || inquiryAssignedAgentId || assignedAgentId) {
+			return NextResponse.json(
+				{ error: "This appointment has an agent assigned. Please contact the agent to reschedule it.", code: "agent_assigned_reschedule" },
+				{ status: 409, headers: rateLimitHeaders(limiter) },
+			);
+		}
+
+		const conflictingBooking = sameCustomerBookings.find((appointment) =>
+			appointment.id !== existingBooking.id &&
+			new Date(appointment.scheduled_at).getTime() === new Date(scheduledAt).getTime(),
+		);
+		if (conflictingBooking) {
+			return NextResponse.json(
+				{ error: "You already have an active appointment for this property at that date and time.", code: "duplicate_appointment" },
+				{ status: 409, headers: rateLimitHeaders(limiter) },
+			);
+		}
+
+		const { data: rescheduled, error: rescheduleError } = await supabaseServer.rpc("reschedule_unassigned_appointment", {
+			p_appointment_id: existingBooking.id,
+			p_expected_scheduled_at: existingBooking.scheduled_at,
+			p_buyer_name: buyerName,
+			p_buyer_email: buyerEmail,
+			p_buyer_phone: buyerPhone || null,
+			p_scheduled_at: scheduledAt,
+			p_location: propertyTitle || propertySlug || null,
+			p_notes: text(body?.notes) || null,
+			p_appointment_message: appointmentMessage,
+		});
+		if (rescheduleError) {
+			console.error("[appointments reschedule error]", rescheduleError);
+			const migrationMissing = rescheduleError.code === "PGRST202" || rescheduleError.message.includes("reschedule_unassigned_appointment");
+			const conflictCode = rescheduleError.code === "23505" || rescheduleError.code === "23P01";
+			const message = migrationMissing
+				? "Appointment rescheduling is not enabled in the database yet. Apply the appointment safety migration, then try again."
+				: rescheduleError.message.includes("Assigned agent")
+				? "That agent already has another appointment during this time. Please choose another slot."
+				: rescheduleError.message.includes("Customer already")
+					? "You already have another appointment that overlaps this time. Choose a slot at least 30 minutes apart."
+					: rescheduleError.message.includes("cannot be rescheduled")
+						? "This appointment has an agent assigned or has changed. Contact the agent to reschedule it."
+						: "We couldn't update your appointment. Please try again shortly.";
+			return NextResponse.json(
+				{ error: message, code: conflictCode ? "appointment_schedule_conflict" : "appointment_reschedule_failed" },
+				{ status: conflictCode || rescheduleError.code === "42501" ? 409 : 503, headers: rateLimitHeaders(limiter) },
+			);
+		}
+
+		return NextResponse.json({
+			ok: true,
+			rescheduled: true,
+			appointmentId: rescheduled?.appointment_id,
+			inquiryId: rescheduled?.inquiry_id,
+		}, { headers: rateLimitHeaders(limiter) });
 	}
 
 	// Prevent the same customer from duplicating the same property appointment.
@@ -240,8 +419,13 @@ export async function POST(request: Request) {
 		}
 
 		if (appointmentError.code === "23505" || appointmentError.code === "23P01") {
+			const conflictMessage = appointmentError.message.includes("Customer already")
+				? "You already have another appointment that overlaps this time. Choose a slot at least 30 minutes apart."
+				: appointmentError.message.includes("Assigned agent")
+					? "That agent already has another appointment during this time. Please choose another slot."
+					: "You already have an active appointment request for this property at that time.";
 			return NextResponse.json(
-				{ error: "You already have an active appointment request for this property at that time.", code: "duplicate_appointment" },
+				{ error: conflictMessage, code: "appointment_schedule_conflict" },
 				{ status: 409, headers: rateLimitHeaders(limiter) },
 			);
 		}
