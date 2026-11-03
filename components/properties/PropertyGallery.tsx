@@ -113,6 +113,12 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
           aria-label="Show all images"
         />
 
+        {imageCount > 1 ? (
+          <span className="pointer-events-none absolute bottom-3 right-3 z-10 text-[10px] font-semibold tabular-nums text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]">
+            {currentIndex + 1}/{imageCount}
+          </span>
+        ) : null}
+
         <div className="absolute inset-y-0 left-0 flex items-center pl-3">
           <button
             type="button"
