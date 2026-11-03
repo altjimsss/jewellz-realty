@@ -71,6 +71,24 @@ function normalizeText(value: unknown) {
 	return String(value ?? "").trim().toLowerCase();
 }
 
+function matchesPropertyType(propertyType: unknown, requestedType: string) {
+	const type = normalizeText(propertyType);
+	const requested = normalizeText(requestedType);
+	if (!type || !requested) return false;
+	if (type === requested) return true;
+
+	const aliases: Record<string, string[]> = {
+		condo: ["condo", "condos", "condominium", "condominiums", "apartment", "apartments", "studio", "studios"],
+		house: ["house", "houses", "home", "homes", "townhouse", "townhouses"],
+		lot: ["lot", "lots", "land", "parcel", "parcels"],
+		farm: ["farm", "farms", "farmland", "agricultural"],
+		memorial: ["memorial", "memorials", "cemetery", "grave", "lawn"],
+	};
+	const terms = aliases[requested] ?? [requested];
+	const typeWords = type.split(/[^a-z0-9]+/).filter(Boolean);
+	return terms.some((term) => type === term || typeWords.includes(term));
+}
+
 function isCategoryTab(value: string): value is (typeof CATEGORY_TABS)[number] {
 	return CATEGORY_TABS.includes(value as (typeof CATEGORY_TABS)[number]);
 }
@@ -194,19 +212,19 @@ function getFilteredProperties(properties: Property[], activeCategory: (typeof C
 	const lookingFor = filters.lookingFor.trim().toLowerCase();
 	const location = filters.location.trim().toLowerCase();
 	const subLocation = filters.subLocation.trim().toLowerCase();
-	const inferredCategory = inferCategoryFromSearch(`${filters.keyword} ${filters.lookingFor}`);
+	const inferredCategory = inferCategoryFromSearch(filters.keyword);
 	const keywordTokens = keywordTokensForFiltering(filters.keyword);
 	const priceMin = filters.priceMin === "" ? undefined : Number(filters.priceMin);
 	const priceMax = filters.priceMax === "" ? undefined : Number(filters.priceMax);
 
 	return properties.filter((property) => {
-		const matchesTab = activeCategory === "All" ? true : (property.type ?? "") === activeCategory;
+		const matchesTab = activeCategory === "All" ? true : matchesPropertyType(property.type, activeCategory);
 		const searchableText = propertySearchText(property);
 
 		if (!matchesTab) return false;
-		if (inferredCategory && normalizeText(property.type) !== normalizeText(inferredCategory)) return false;
+		if (inferredCategory && !matchesPropertyType(property.type, inferredCategory)) return false;
 		if (keywordTokens.length > 0 && !keywordTokens.some((token) => searchableText.includes(token))) return false;
-		if (lookingFor && !(property.type ?? "").toLowerCase().includes(lookingFor)) return false;
+		if (lookingFor && !matchesPropertyType(property.type, lookingFor)) return false;
 		if (location && !(property.location ?? "").toLowerCase().includes(location)) return false;
 		if (subLocation && !(property.location ?? "").toLowerCase().includes(subLocation)) return false;
 		if (Number.isFinite(priceMin) && property.price < (priceMin as number)) return false;
@@ -466,7 +484,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 
 			<PropertyBanner />
 
-			<section className="border-b border-[#EAE4DE]">
+			<section className="sticky top-16 z-[4000] border-b border-[#EAE4DE] bg-white md:top-20">
 				<div className="mx-auto max-w-[1320px] px-[clamp(20px,4vw,56px)]">
 					<PropertyFilters
 						value={draftFilters}
@@ -494,12 +512,12 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 
 			<section className="mx-auto max-w-[1200px] px-4 py-10">
 				<div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-					<div>
+					<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<h2 className="text-2xl font-semibold">Properties</h2>
 						<p className="mt-1 text-sm text-black/60">Showing {filteredProperties.length} results</p>
 					</div>
 
-					<div className="-mx-4 flex snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+					<div className="-mx-4 hidden snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
 						{CATEGORY_TABS.map((tab) => {
 							const active = tab === activeCategory;
 							return (

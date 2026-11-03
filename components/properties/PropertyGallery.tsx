@@ -92,7 +92,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
         })}
       </div>
 
-      <div className="order-1 relative overflow-hidden bg-black/5 shadow-sm h-80 lg:h-96">
+      <div className="order-1 relative aspect-[4/3] overflow-hidden bg-black/5 shadow-sm md:aspect-auto md:h-80 lg:h-96">
         <SafeImage
           src={mainImage}
           fallbackSrc={FALLBACK_IMAGE}
@@ -118,7 +118,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
             type="button"
             aria-label="Previous image"
             onClick={() => changeImage(-1)}
-            className="grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/55"
+            className="relative z-10 grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/55"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
               <path d="M14.5 6.5L9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -131,7 +131,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
             type="button"
             aria-label="Next image"
             onClick={() => changeImage(1)}
-            className="grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/55"
+            className="relative z-10 grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/55"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
               <path d="M9.5 6.5L15 12l-5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

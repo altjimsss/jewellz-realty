@@ -101,7 +101,8 @@ export function getNaturalLanguagePropertySearch(query: string, properties: Prop
 	const keyword = sanitizePropertySearchQuery(query);
 	const intent = extractBasicSearchIntent(keyword);
 	const knownLocation = findKnownLocation(keyword, locationCandidatesFromProperties(properties));
-	const locationHint = knownLocation || intent.locationQuery;
+	const hasExplicitLocation = /\b(?:in|at|around|near|nearby)\s+/i.test(keyword);
+	const locationHint = knownLocation || (hasExplicitLocation ? intent.locationQuery : "");
 	const budget = extractBudget(keyword);
 	const firstType = inferTypeFromProperties(keyword, typeCandidatesFromProperties(properties)) || (intent.preferredTypes[0] ?? "");
 
@@ -123,12 +124,9 @@ export function getNaturalLanguagePropertySearch(query: string, properties: Prop
 }
 
 export function mergeNaturalLanguageFilters(filters: PropertyFiltersState, properties: Property[] = []): PropertyFiltersState {
-	const parsed = getNaturalLanguagePropertySearch([
-		filters.keyword,
-		filters.lookingFor,
-		filters.location,
-		filters.subLocation,
-	].filter(Boolean).join(" "), properties);
+	// Only parse free text. Structured filters must never be reinterpreted as
+	// another field (for example, "Condo" as a location).
+	const parsed = getNaturalLanguagePropertySearch(filters.keyword, properties);
 
 	return {
 		...filters,

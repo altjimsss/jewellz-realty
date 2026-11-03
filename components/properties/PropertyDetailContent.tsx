@@ -175,11 +175,11 @@ export function PropertyDetailContent({
 	}, [isVideoOpen]);
 
 	return (
-		<section className="mx-auto max-w-[1200px] overflow-x-clip px-4 py-4 md:py-6">
+		<section className="mx-auto max-w-[1200px] overflow-x-clip px-4 pb-24 pt-4 md:py-6">
 			{previewMode ? null : <PropertyAnalyticsTracker propertyId={property.id} />}
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
 				<div className="contents lg:block">
-				<div className="order-1 min-w-0 lg:mb-6">
+				<div className="order-1 -mx-4 min-w-0 md:mx-0 lg:mb-6">
 					<PropertyGallery images={galleryImages} title={property.title} onInteraction={trackPropertyInteraction} />
 				</div>
 
@@ -233,7 +233,7 @@ export function PropertyDetailContent({
 
 				<div className="contents lg:block">
 				<aside className="order-2 min-w-0">
-					<div className="rounded-md bg-white p-4 ">
+					<div className="rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_8px_28px_-24px_rgba(0,0,0,0.28)] lg:rounded-md lg:border-0 lg:shadow-none">
 						<div className="flex items-start justify-between gap-3">
 							<div>
 								<h1 className="text-2xl font-semibold leading-tight text-black">{property.title}</h1>
