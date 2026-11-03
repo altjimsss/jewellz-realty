@@ -262,7 +262,7 @@ export function PropertyDetailContent({
 							<span className="font-medium text-[#DE141C]">Available</span>
 						</div>
 
-						<details className="group mt-4 border-t border-black/10 pt-3">
+						<details className="group mt-4 border-t border-black/10 pt-3 lg:hidden">
 							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
 								<span>About this property</span>
 								<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
@@ -271,9 +271,11 @@ export function PropertyDetailContent({
 							</summary>
 							<p className="mt-2 text-[13px] leading-5 text-black/65 sm:text-sm sm:leading-6">{computedDescription}</p>
 						</details>
+						<p className="mt-4 hidden text-sm leading-6 text-black/70 lg:block">{computedDescription}</p>
 
 						{property.keyFeatures?.length || property.amenities?.length ? (
-							<details className="group border-t border-black/10 pt-3">
+							<>
+							<details className="group border-t border-black/10 pt-3 lg:hidden">
 								<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
 									<span>Features &amp; amenities</span>
 									<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
@@ -299,6 +301,25 @@ export function PropertyDetailContent({
 									) : null}
 								</div>
 							</details>
+							<div className="mt-4 hidden gap-3 lg:grid">
+								{property.keyFeatures?.length ? (
+									<div>
+									<p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-black/45">Key Features</p>
+									<div className="mt-2 flex flex-wrap gap-2">
+										{property.keyFeatures.map((item) => <span key={item} className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-[#DE141C]">{item}</span>)}
+									</div>
+								</div>
+								) : null}
+								{property.amenities?.length ? (
+									<div>
+									<p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-black/45">Amenities</p>
+									<div className="mt-2 flex flex-wrap gap-2">
+										{property.amenities.map((item) => <span key={item} className="rounded-full bg-black/5 px-3 py-1 text-xs font-medium text-black/60">{item}</span>)}
+									</div>
+								</div>
+								) : null}
+							</div>
+							</>
 						) : null}
 
 						{videoSrc ? (
@@ -317,7 +338,7 @@ export function PropertyDetailContent({
 							</button>
 						) : null}
 
-						<details className="group mt-4 border-t border-black/10 pt-3">
+						<details className="group mt-4 border-t border-black/10 pt-3 lg:hidden">
 							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
 								<span>Property details</span>
 								<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
@@ -338,6 +359,22 @@ export function PropertyDetailContent({
 								))}
 							</div>
 						</details>
+						<div className="mt-4 hidden lg:block">
+							<hr className="mb-4 border-black/10" />
+							<div className="grid grid-cols-2 gap-x-3 gap-y-2">
+								{parameterItems.map(({ label, value, icon }) => (
+									<div key={label} className="flex items-center gap-2 py-1">
+										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[#DE141C]/10">
+											<ParamIcon type={icon} />
+										</span>
+										<div className="min-w-0">
+											<p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">{label}</p>
+											<p className="truncate text-xs font-semibold text-black">{value}</p>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
 
 						<div className="mt-5 border-t border-black/10 pt-4">
 							{previewMode ? (
