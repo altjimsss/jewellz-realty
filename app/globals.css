@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes hero-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.hero-progress-fill {
+  width: 0;
+  animation: hero-progress linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-progress-fill { animation: none; }
+}
+
 :root {
   --portal-canvas: 248 250 252;
   --portal-surface: 255 255 255;

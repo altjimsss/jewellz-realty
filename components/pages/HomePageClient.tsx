@@ -140,7 +140,6 @@ type HeroDisplayProperty = {
 	slug?: string;
 };
 const HERO_DURATION_MS = 5000;
-const HERO_TICK_MS = 250;
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 const navLinks = [
   { label: "Home", href: "/" },
@@ -247,10 +246,9 @@ export default function Page({
     }))
     : developerLogos;
 
-const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
+const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
     heroCount: displayedHeroProperties.length,
     durationMs: HERO_DURATION_MS,
-    tickMs: HERO_TICK_MS,
   });
 
   const updateHeroSearchFilter = (key: keyof HeroSearchFilters, value: string) => {
@@ -300,7 +298,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
         </div>
         <div className="absolute inset-y-0 left-0 hidden w-[34%] bg-gradient-to-r from-black/85 via-black/45 to-transparent md:block" />
         <div className="absolute bottom-0 right-0 hidden h-[5px] w-[70%] overflow-hidden rounded bg-white/25 md:block">
-          <div className="h-full bg-[#DE141C] transition-[width] duration-300 ease-linear" style={{ width: `${heroProgress}%` }} />
+          <div key={`desktop-progress-${heroIndex}`} className="hero-progress-fill h-full bg-[#DE141C]" style={{ animationDuration: `${HERO_DURATION_MS}ms` }} />
         </div>
         <div className="absolute bottom-8 left-[35%] z-20 hidden w-[36%] md:block">
           <div className="mb-0 relative inline-flex overflow-hidden">
@@ -611,7 +609,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </div>
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-[5px] overflow-hidden rounded bg-white/25">
-              <div className="h-full bg-[#DE141C] transition-[width] duration-300 ease-linear" style={{ width: `${heroProgress}%` }} />
+              <div key={`mobile-progress-${heroIndex}`} className="hero-progress-fill h-full bg-[#DE141C]" style={{ animationDuration: `${HERO_DURATION_MS}ms` }} />
             </div>
           </div>
           <form

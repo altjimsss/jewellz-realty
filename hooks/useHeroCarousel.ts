@@ -1,20 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function useHeroCarousel({
   heroCount,
   durationMs,
-  tickMs = 50,
 }: {
   heroCount: number;
   durationMs: number;
-  /** kept for backwards compatibility; new impl uses rAF */
-  tickMs?: number;
 }) {
   const [heroIndex, setHeroIndex] = useState(0);
-  const [heroElapsed, setHeroElapsed] = useState(0);
-  const lastEmittedElapsedRef = useRef(0);
 
   const reducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -27,66 +22,45 @@ export function useHeroCarousel({
 
     let raf = 0;
     let start = performance.now();
-    let lastElapsed = 0;
-
-    lastEmittedElapsedRef.current = 0;
+    let elapsedBeforePause = 0;
+    let lastFrame = start;
 
     const step = (now: number) => {
       // Pause when tab hidden.
       if (document.visibilityState !== "visible") {
-        start = now - lastElapsed;
+        elapsedBeforePause += now - lastFrame;
+        lastFrame = now;
         raf = requestAnimationFrame(step);
         return;
       }
 
-      const elapsed = now - start;
-      lastElapsed = elapsed;
+      const elapsed = now - start - elapsedBeforePause;
       if (elapsed >= durationMs) {
         setHeroIndex((i) => (i + 1) % heroCount);
-        start = now;
-        lastElapsed = 0;
-        lastEmittedElapsedRef.current = 0;
-        setHeroElapsed(0);
-      } else {
-        // Avoid updating state too frequently: only update when elapsed changes by >= tickMs.
-        // Still driven by rAF, but throttled to keep re-renders reasonable.
-        const nextElapsed = elapsed;
-        if (Math.abs(nextElapsed - lastEmittedElapsedRef.current) >= tickMs) {
-          lastEmittedElapsedRef.current = nextElapsed;
-          setHeroElapsed(nextElapsed);
-        }
+        return;
       }
 
+      lastFrame = now;
       raf = requestAnimationFrame(step);
     };
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [durationMs, heroCount, reducedMotion, tickMs]);
-
-  const heroProgress = useMemo(() => {
-    if (!durationMs) return 0;
-    return (heroElapsed / durationMs) * 100;
-  }, [heroElapsed, durationMs]);
+  }, [durationMs, heroCount, reducedMotion]);
 
   const onPrevHero = () => {
     setHeroIndex((i) => (i - 1 + heroCount) % heroCount);
-    setHeroElapsed(0);
   };
 
   const onNextHero = () => {
     setHeroIndex((i) => (i + 1) % heroCount);
-    setHeroElapsed(0);
   };
 
   return {
     heroIndex,
-    heroElapsed,
-    heroProgress,
     onPrevHero,
     onNextHero,
     setHeroIndex,
-    setHeroElapsed,
   };
 }
 
