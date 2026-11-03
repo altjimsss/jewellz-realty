@@ -46,37 +46,6 @@ function DeferredTestimonial() {
 }
 
 
-const developerLogos = [
-  {
-    title: "ECHOMES",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">ECHOMES</span>,
-  },
-  {
-    title: "DMCI",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">DMCI</span>,
-  },
-  {
-    title: "AXEIA",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">AXEIA</span>,
-  },
-  {
-    title: "OVIALAND",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">OVIALAND</span>,
-  },
-  {
-    title: "AboitizLand",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">AboitizLand</span>,
-  },
-  {
-    title: "PHIRST",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">PHIRST</span>,
-  },
-  {
-    title: "NEXTA",
-    node: <span className="rounded border border-black/10 bg-white px-4 py-2 text-base font-semibold text-[#181A20]">NEXTA</span>,
-  },
-];
-
 const heroProperties = [
   {
     image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
@@ -247,13 +216,11 @@ export default function Page({
     { key: "agents", label: "Agents", value: 50, suffix: "+" },
     { key: "provinces", label: "Provinces", value: 10, suffix: "+" },
   ];
-  const displayedLogos = homeContent?.partnerLogos?.length
-    ? homeContent.partnerLogos.map((logo) => ({
+  const displayedLogos = (homeContent?.partnerLogos ?? []).map((logo) => ({
       title: logo.name,
       href: logo.websiteUrl,
       node: <PartnerLogoMark name={logo.name} logoUrl={logo.logoUrl} />,
-    }))
-    : developerLogos;
+    }));
 
 const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
     heroCount: displayedHeroProperties.length,
@@ -762,20 +729,22 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
         ))}
       </div>
 
-      <section className="border-b py-10">
-        <LogoLoop
-          logos={displayedLogos}
-          speed={80}
-          direction="left"
-          logoHeight={36}
-          gap={20}
-          hoverSpeed={0}
-          scaleOnHover
-          fadeOut
-          fadeOutColor="#ffffff"
-          ariaLabel="Developer partners"
-        />
-      </section>
+      {displayedLogos.length > 0 ? (
+        <section className="border-b py-10">
+          <LogoLoop
+            logos={displayedLogos}
+            speed={80}
+            direction="left"
+            logoHeight={36}
+            gap={20}
+            hoverSpeed={0}
+            scaleOnHover
+            fadeOut
+            fadeOutColor="#ffffff"
+            ariaLabel="Developer partners"
+          />
+        </section>
+      ) : null}
 
       <HomeDiscoverySection
         hotPicks={featuredProperties}
