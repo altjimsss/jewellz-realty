@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyChatAssistant } from "@/components/properties/PropertyChatAssistant";
 import { PropertyGallery } from "@/components/properties/PropertyGallery";
@@ -126,6 +126,22 @@ export function PropertyDetailContent({
 	developerName = "APECHOMES",
 	previewMode = false,
 }: PropertyDetailContentProps) {
+	const recommendationsScrollRef = useRef<HTMLDivElement>(null);
+	const [recommendationsScroll, setRecommendationsScroll] = useState({ thumb: 100, position: 0, overflow: false });
+	const updateRecommendationsScroll = () => {
+		const element = recommendationsScrollRef.current;
+		if (!element) return;
+		const maxScroll = element.scrollWidth - element.clientWidth;
+		const thumb = maxScroll > 0 ? (element.clientWidth / element.scrollWidth) * 100 : 100;
+		const position = maxScroll > 0 ? (element.scrollLeft / maxScroll) * (100 - thumb) : 0;
+		setRecommendationsScroll({ thumb, position, overflow: maxScroll > 1 });
+	};
+	useEffect(() => {
+		updateRecommendationsScroll();
+		window.addEventListener("resize", updateRecommendationsScroll);
+		return () => window.removeEventListener("resize", updateRecommendationsScroll);
+	}, [relatedProperties.length]);
+
 	useEffect(() => {
 		const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
 		return () => window.cancelAnimationFrame(frame);
@@ -190,7 +206,11 @@ export function PropertyDetailContent({
 							</svg>
 							<h2 className="text-xl font-semibold text-black">Recommendations</h2>
 						</div>
-						<div className="-mx-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+						<div
+							ref={recommendationsScrollRef}
+							onScroll={updateRecommendationsScroll}
+							className="recommendation-scrollbar -mx-1 overflow-x-auto py-2"
+						>
 							<div className="flex gap-3 px-1">
 								{relatedProperties.map((relatedProperty) => (
 									<div key={relatedProperty.id} className="w-[300px] shrink-0">
@@ -199,6 +219,14 @@ export function PropertyDetailContent({
 								))}
 							</div>
 						</div>
+						{recommendationsScroll.overflow ? (
+							<div className="mx-0.5 mt-1 h-1.5 overflow-hidden rounded-full bg-[#F4DADB]" aria-hidden="true">
+								<div
+									className="h-full rounded-full bg-[#DE141C] transition-[left] duration-100"
+									style={{ width: `${recommendationsScroll.thumb}%`, marginLeft: `${recommendationsScroll.position}%` }}
+								/>
+							</div>
+						) : null}
 					</div>
 				</div>
 				</div>

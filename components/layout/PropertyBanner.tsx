@@ -53,7 +53,7 @@ function BannerSvgOne() {
         alt="House banner"
         width={520}
         height={420}
-        className="absolute right-[-30px] top-[46%] z-20 h-[260px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[360px]"
+        className="absolute right-[-30px] top-[46%] z-10 h-[260px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[360px]"
         style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
       />
     </div>
@@ -98,7 +98,7 @@ function BannerSvgTwo() {
         alt="Listings and selling banner"
         width={460}
         height={360}
-        className="absolute right-[-40px] top-[40%] z-20 h-[220px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[300px]"
+        className="absolute right-[-40px] top-[47%] z-10 h-[220px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[300px]"
         style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
       />
     </div>
@@ -143,7 +143,7 @@ function BannerSvgThree() {
         alt="Investment consultation banner"
         width={460}
         height={360}
-        className="absolute right-[-40px] top-[40%] z-20 h-[220px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[300px]"
+        className="absolute right-[-40px] top-[47%] z-10 h-[220px] w-auto max-w-none -translate-y-1/2 object-contain md:h-[300px]"
         style={{ animation: "banner-fade-in 0.6s ease-out both", animationDelay: "0.5s" }}
       />
     </div>
