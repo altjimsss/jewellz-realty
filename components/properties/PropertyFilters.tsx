@@ -364,7 +364,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 
 			<div className="py-[clamp(10px,1.4vw,14px)] sm:hidden">
 				<div className="flex items-stretch gap-2">
-					<div className="flex h-11 min-w-0 flex-1 items-center border border-[#EAE4DE] bg-[#FAF8F5] px-4">
+					<div className="flex h-11 min-w-0 flex-1 items-center border border-[#EAE4DE] bg-[#FAF8F5] px-3">
 						<input
 							value={value.keyword}
 							onChange={(e) => onChange({ ...value, keyword: e.target.value })}
@@ -381,27 +381,20 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 					>
 						<SearchIcon className="h-4 w-4" />
 					</button>
+					<button
+						type="button"
+						onClick={() => setShowPhoneFilters((current) => !current)}
+						aria-expanded={showPhoneFilters}
+						className="inline-flex h-11 shrink-0 items-center gap-1.5 border border-[#EAE4DE] bg-white px-3 text-[10px] font-semibold text-[#514C47] transition-colors hover:border-black/25"
+					>
+						<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+							<path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+						</svg>
+						Filters
+						{activePhoneFilterCount > 0 ? <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#DE141C] px-1 text-[9px] font-bold text-white">{activePhoneFilterCount}</span> : null}
+						<span className={`transition-transform duration-200 ${showPhoneFilters ? "rotate-180" : ""}`}><ChevronIcon /></span>
+					</button>
 				</div>
-
-				<button
-					type="button"
-					onClick={() => setShowPhoneFilters((current) => !current)}
-					aria-expanded={showPhoneFilters}
-					className="mt-2.5 inline-flex h-9 items-center gap-2 border border-[#EAE4DE] bg-[#FAF8F5] px-4 text-[10px] font-bold uppercase tracking-[0.16em] text-black/60 transition-colors duration-200 hover:border-black/25 hover:text-[#161311]"
-				>
-					<svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" aria-hidden="true">
-						<path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-					</svg>
-					Filters
-					{activePhoneFilterCount > 0 ? (
-						<span className="inline-flex h-4 min-w-[16px] items-center justify-center bg-[#DE141C] px-1 text-[9px] font-bold text-white">
-							{activePhoneFilterCount}
-						</span>
-					) : null}
-					<span className={`transition-transform duration-200 ${showPhoneFilters ? "rotate-180" : ""}`}>
-						<ChevronIcon />
-					</span>
-				</button>
 
 				{showPhoneFilters ? (
 					<div className="mt-2.5 grid grid-cols-2 gap-px border border-[#EAE4DE] bg-[#EAE4DE]">

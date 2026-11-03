@@ -173,6 +173,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 								<Link
 									key={link.href}
 									href={link.href}
+									prefetch={link.href === "/project-list" ? false : undefined}
 									onClick={(e) => {
 										setMobileMenuOpen(false);
 										if (link.href === "/" && pathname === "/") {

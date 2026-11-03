@@ -493,24 +493,25 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 			</section>
 
 			<section className="mx-auto max-w-[1200px] px-4 py-10">
-				<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+				<div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
 					<div>
 						<h2 className="text-2xl font-semibold">Properties</h2>
 						<p className="mt-1 text-sm text-black/60">Showing {filteredProperties.length} results</p>
 					</div>
 
-					<div className="flex flex-wrap items-center gap-2">
+					<div className="-mx-4 flex snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
 						{CATEGORY_TABS.map((tab) => {
 							const active = tab === activeCategory;
 							return (
 								<button
 									key={tab}
 									type="button"
-									onClick={() => setActiveCategory(tab)}className={`h-9 rounded-md border px-3 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-black/20 ${
-								active
-									? "border-[#DE141C] bg-[#DE141C] text-white"
-									: "border-black/10 bg-white text-black hover:bg-black/5"
-								}`}
+									onClick={() => setActiveCategory(tab)}
+									className={`h-9 shrink-0 snap-start rounded-full border px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-black/20 md:rounded-md md:px-3 ${
+										active
+										? "border-[#DE141C] bg-[#DE141C] text-white"
+										: "border-black/10 bg-white text-black hover:bg-black/5"
+									}`}
 								>
 									{tab}
 								</button>
