@@ -139,6 +139,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 
 	return (
 		<>
+			<div className="flex w-full justify-center lg:w-auto lg:justify-start">
 			<button
 				type="button"
 				onClick={() => {
@@ -158,6 +159,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 				</svg>
 				{isMapOpen ? "Close map" : "Open map"}
 			</button>
+			</div>
 
 			{isMapOpen && (
 				<div id="property-location-map" className="mt-3 w-full overflow-hidden rounded-xl border border-black/10 shadow-sm">
@@ -191,18 +193,19 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 							<button
 								key={tab.label}
 								type="button"
+								aria-label={tab.label}
 								onClick={() => {
 									setActiveTab(index);
 									setShowAllPlaces(false);
 								}}
-								className={`inline-flex h-9 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
+								className={`inline-flex h-9 shrink-0 snap-start items-center gap-1.5 rounded-full border text-xs font-semibold transition-colors ${
 									isActive
-										? "border-[#DE141C] bg-[#DE141C] text-white"
-										: "border-black/15 bg-white text-black hover:border-black/30"
+										? "border-[#DE141C] bg-[#DE141C] px-3 text-white"
+										: "w-9 justify-center border-black/15 bg-white px-0 text-black hover:border-black/30 sm:w-auto sm:justify-normal sm:px-3"
 								}`}
 							>
 								{tab.icon}
-								{tab.label}
+								<span className={isActive ? "" : "hidden sm:inline"}>{tab.label}</span>
 							</button>
 						);
 					})}
@@ -217,7 +220,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 								: `Open the map to view nearby ${active.label.toLowerCase()} places.`}
 						</div>
 					) : null}
-					{(showAllPlaces ? activePlaces : activePlaces.slice(0, 3)).map((item) => (
+					{(showAllPlaces ? activePlaces : activePlaces.slice(0, 4)).map((item) => (
 						<button
 							key={item.id}
 							type="button"
@@ -249,7 +252,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 					))}
 
 					{/* Show All dropdown toggle */}
-					{activePlaces.length > 3 && (
+					{activePlaces.length > 4 && (
 						<button
 							type="button"
 							onClick={() => setShowAllPlaces((prev) => !prev)}
