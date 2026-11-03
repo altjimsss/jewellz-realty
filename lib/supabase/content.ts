@@ -91,10 +91,9 @@ function mergeSiteStats(cmsStats: PublicSiteStat[], liveStats: PublicSiteStat[])
 }
 
 export async function getPublicHomeContent() {
-	const [heroResult, statsResult, logosResult, testimonialsResult, agentsResult, agentProfilesResult, developerPartnersResult] = await Promise.all([
+	const [heroResult, statsResult, testimonialsResult, agentsResult, agentProfilesResult, developerPartnersResult] = await Promise.all([
 		supabaseServer.from("hero_banners").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("site_stats").select("*").order("sort_order", { ascending: true }),
-		supabaseServer.from("partner_logos").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("testimonials").select("*").eq("is_published", true).order("sort_order", { ascending: true }),
 		supabaseServer.from("agents").select("*").eq("is_active", true).order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
 		supabaseServer.from("profiles").select("id, email"),
@@ -118,16 +117,7 @@ export async function getPublicHomeContent() {
 		websiteUrl: dp.website_url ? String(dp.website_url) : undefined,
 	}));
 
-	const seenCompanyNames = new Set(devPartnerLogos.map((d) => d.name.toLowerCase().trim()));
-	const staticPartnerLogos: PublicPartnerLogo[] = (logosResult.data ?? [])
-		.map((row): PublicPartnerLogo => ({
-			name: String(row.name ?? ""),
-			logoUrl: normalizeImageUrl(row.logo_url) ?? undefined,
-			websiteUrl: row.website_url ? String(row.website_url) : undefined,
-		}))
-		.filter((item) => item.name && !seenCompanyNames.has(item.name.toLowerCase().trim()));
-
-	const marqueeLogos = [...devPartnerLogos, ...staticPartnerLogos];
+	const marqueeLogos = devPartnerLogos;
 	const cmsStats: PublicSiteStat[] = (statsResult.data ?? []).map((row): PublicSiteStat => ({
 		key: String(row.key ?? row.label ?? ""),
 		label: String(row.label ?? ""),
