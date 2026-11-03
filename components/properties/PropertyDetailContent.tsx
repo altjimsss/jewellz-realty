@@ -126,6 +126,11 @@ export function PropertyDetailContent({
 	developerName = "APECHOMES",
 	previewMode = false,
 }: PropertyDetailContentProps) {
+	useEffect(() => {
+		const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+		return () => window.cancelAnimationFrame(frame);
+	}, [property.id]);
+
 	const computedDescription = getComputedDescription(property);
 	const parameterItems = getParameterItems(property);
 	const { track } = useAnalytics();
