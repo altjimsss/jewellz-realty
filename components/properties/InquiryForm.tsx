@@ -1,1 +1,0 @@
-export function InquiryForm() { return <div>InquiryForm</div>; }

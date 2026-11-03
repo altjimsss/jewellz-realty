@@ -1996,6 +1996,8 @@ function PropertyImagesManager({
 								key={photo.id}
 								className="group relative aspect-square overflow-hidden rounded-lg border border-black/10 bg-white"
 							>
+								{/* Local object URLs are generated for staged files before upload; Next Image cannot optimize them. */}
+								{/* eslint-disable-next-line @next/next/no-img-element */}
 								<img
 									src={photo.previewUrl}
 									alt={photo.file.name}
@@ -2851,6 +2853,7 @@ export default function AdminCms({
 	const [message, setMessage] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [sessionUser, setSessionUser] = useState<User | null>(cachedSnapshot?.sessionUser ?? null);
+	const sessionUserId = sessionUser?.id ?? null;
 	const [profile, setProfile] = useState<CmsRow | null>(cachedSnapshot?.profile ?? null);
 	const [agentProfile, setAgentProfile] = useState<CmsRow | null>(cachedSnapshot?.agentProfile ?? null);
 	const [developerProfile, setDeveloperProfile] = useState<CmsRow | null>(cachedSnapshot?.developerProfile ?? null);
@@ -2894,7 +2897,7 @@ export default function AdminCms({
 
 	// Live subscription for Admin: listen for agent progress (inquiry_timeline) and incoming leads (inquiries)
 	useEffect(() => {
-		if (!sessionUser) return;
+		if (!sessionUserId) return;
 		let mounted = true;
 
 		const channel = supabaseBrowser
@@ -3017,7 +3020,7 @@ export default function AdminCms({
 			mounted = false;
 			void supabaseBrowser.removeChannel(channel);
 		};
-	}, [sessionUser?.id]);
+	}, [sessionUserId]);
 
 	function handleOpenAdminNotification(notif: AdminLiveNotification) {
 		if (notif.inquiryId) {
@@ -3033,7 +3036,7 @@ export default function AdminCms({
 	useEffect(() => {
 		let cancelled = false;
 		void (async () => {
-			const stored = loadAnalyticsChatMessages(sessionUser?.id ?? null);
+			const stored = loadAnalyticsChatMessages(sessionUserId);
 			const nextMessages = stored && stored.length > 0 ? stored : [createAnalyticsChatWelcomeMessage()];
 			if (cancelled) return;
 			setAnalyticsChatMessages((current) => {
@@ -3045,7 +3048,7 @@ export default function AdminCms({
 		return () => {
 			cancelled = true;
 		};
-	}, [sessionUser?.id]);
+	}, [sessionUserId]);
 
 	useEffect(() => {
 		saveAnalyticsChatMessages(analyticsChatMessages, sessionUser?.id ?? null);
@@ -3552,7 +3555,7 @@ export default function AdminCms({
 		return () => {
 			active = false;
 		};
-	}, []);
+	}, [router]);
 
 	// Browser back/forward walks through the section history entries without
 	// remounting the CMS, so apply the URL's section to the local state.
@@ -3571,7 +3574,7 @@ export default function AdminCms({
 
 	// Real-time synchronization for Admin Inquiry Pipeline
 	useEffect(() => {
-		if (!sessionUser) return;
+		if (!sessionUserId) return;
 		let mounted = true;
 
 		// 1. Supabase Realtime channel for live inquiry pipeline updates
@@ -3640,7 +3643,7 @@ export default function AdminCms({
 			void supabaseBrowser.removeChannel(channel);
 			clearInterval(syncInterval);
 		};
-	}, [sessionUser?.id]);
+	}, [sessionUserId]);
 
 	const activityCountsByDate = useMemo(() => {
 		const map: Record<string, { inquiries: number; events: number; logs: number }> = {};

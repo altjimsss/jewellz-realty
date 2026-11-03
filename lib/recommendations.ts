@@ -1,1 +1,0 @@
-export function cosineSimilarity(a: number[], b: number[]) { const dot = a.reduce((s, v, i) => s + v * (b[i] ?? 0), 0); return dot; }

@@ -76,9 +76,19 @@ type PropertyLocationMapProps = {
 
 export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: PropertyLocationMapProps) {
 	const [isMapOpen, setIsMapOpen] = useState(false);
+	const [isMobile, setIsMobile] = useState(false);
 	const [activeTab, setActiveTab] = useState(0);
 	const [showAllPlaces, setShowAllPlaces] = useState(false);
 	const [focusedNearbyPlace, setFocusedNearbyPlace] = useState<NearbyPlaceGroup["places"][number] | null>(null);
+	const mapVisible = isMapOpen || isMobile;
+
+	useEffect(() => {
+		const mediaQuery = window.matchMedia("(max-width: 1023px)");
+		const updateViewport = () => setIsMobile(mediaQuery.matches);
+		updateViewport();
+		mediaQuery.addEventListener("change", updateViewport);
+		return () => mediaQuery.removeEventListener("change", updateViewport);
+	}, []);
 
 	// Live groups discovered from Stadia Places API (used when cache is empty)
 	const hasCachedPlaces = nearbyGroups.some((g) => g.places.length > 0);
@@ -139,7 +149,6 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 
 	return (
 		<>
-			<div className="flex w-full justify-center lg:w-auto lg:justify-start">
 			<button
 				type="button"
 				onClick={() => {
@@ -149,7 +158,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 						return nextOpen;
 					});
 				}}
-				className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#DE141C]/25 bg-white px-3 text-[11px] font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/5"
+				className="hidden h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#DE141C]/25 bg-white px-3 text-[11px] font-semibold text-[#DE141C] transition-colors hover:bg-[#DE141C]/5 lg:inline-flex"
 				aria-expanded={isMapOpen}
 				aria-controls="property-location-map"
 			>
@@ -159,9 +168,8 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 				</svg>
 				{isMapOpen ? "Close map" : "Open map"}
 			</button>
-			</div>
 
-			{isMapOpen && (
+			{mapVisible && (
 				<div id="property-location-map" className="mt-3 w-full overflow-hidden rounded-xl border border-black/10 shadow-sm">
 					<PropertyMapPreview
 						properties={[property]}
@@ -215,7 +223,7 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 				<div className="mt-3 grid grid-cols-2 gap-2">
 					{activePlaces.length === 0 ? (
 						<div className="col-span-2 rounded-xl border border-black/[0.08] bg-white px-3 py-3 text-xs leading-5 text-black/50">
-							{isMapOpen
+							{mapVisible
 								? `Finding nearby ${active.label.toLowerCase()} places…`
 								: `Open the map to view nearby ${active.label.toLowerCase()} places.`}
 						</div>

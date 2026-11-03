@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 	}
 
 	const buyerName = text(body?.buyerName);
-	const buyerEmail = text(body?.buyerEmail);
+	const buyerEmail = text(body?.buyerEmail).toLowerCase();
 	const buyerPhone = text(body?.buyerPhone);
 	const propertySlug = text(body?.propertySlug);
 	const propertyTitle = text(body?.propertyTitle);
@@ -118,32 +118,41 @@ export async function POST(request: Request) {
 		);
 	}
 
-	// Prevent duplicate slots before creating an inquiry, so a rejected booking
-	// never leaves an orphaned lead behind.
-	const { data: conflicts, error: conflictError } = await supabaseServer
-		.from("appointments")
-		.select("id, buyer_email, scheduled_at, status")
-		.eq("scheduled_at", scheduledAt)
-		.in("status", ["requested", "confirmed"])
-		.limit(1);
-
-	if (conflictError) {
-		// A missing appointments table is handled by the insert below with a
-		// clearer message; do not block a booking because of a lookup error.
-		if (conflictError.code !== "42P01" && conflictError.code !== "PGRST205") {
-			console.error("[appointments conflict check]", conflictError);
-		}
-	} else if (conflicts && conflicts.length > 0) {
-		return NextResponse.json(
-			{ error: "That date and time is already booked. Please choose another time slot or another day.", code: "slot_taken" },
-			{ status: 409, headers: rateLimitHeaders(limiter) },
-		);
-	}
-
 	let propertyId: string | null = null;
 	if (propertySlug) {
 		const { data } = await supabaseServer.from("properties").select("id").eq("slug", propertySlug).maybeSingle();
 		propertyId = data?.id ?? null;
+	}
+
+	// Prevent the same customer from duplicating the same property appointment.
+	// Different customers and different properties may use the same time slot.
+	let conflictQuery = supabaseServer
+		.from("appointments")
+		.select("id,buyer_email")
+		.eq("scheduled_at", scheduledAt)
+		.in("status", ["requested", "confirmed"]);
+	conflictQuery = propertyId
+		? conflictQuery.eq("property_id", propertyId)
+		: conflictQuery.is("property_id", null);
+	const { data: conflicts, error: conflictError } = await conflictQuery;
+
+	if (conflictError) {
+		// If the table is unavailable, the insert below returns a setup message.
+		// Other lookup failures must fail closed so the slot is not double-booked.
+		if (conflictError.code === "42P01" || conflictError.code === "PGRST205") {
+			console.error("[appointments conflict check] appointment table is missing", conflictError.message);
+		} else {
+			console.error("[appointments conflict check]", conflictError);
+			return NextResponse.json(
+				{ error: "We couldn't verify that time slot. Please try again shortly." },
+				{ status: 503, headers: rateLimitHeaders(limiter) },
+			);
+		}
+	} else if (conflicts?.some((appointment) => text(appointment.buyer_email).toLowerCase() === buyerEmail)) {
+		return NextResponse.json(
+			{ error: "You already have an active appointment request for this property at that time.", code: "duplicate_appointment" },
+			{ status: 409, headers: rateLimitHeaders(limiter) },
+		);
 	}
 
 	const { inquiry, error: inquiryError } = await insertInquiry({
@@ -179,6 +188,20 @@ export async function POST(request: Request) {
 
 	if (appointmentError) {
 		console.error("[appointments POST appointment error]", appointmentError);
+		// The lead is created first so we can preserve its details for the appointment.
+		// Roll it back if booking fails so the pipeline does not receive a false lead.
+		const { error: cleanupError } = await supabaseServer.from("inquiries").delete().eq("id", inquiry.id);
+		if (cleanupError) {
+			console.error("[appointments POST inquiry rollback error]", cleanupError);
+		}
+
+		if (appointmentError.code === "23505" || appointmentError.code === "23P01") {
+			return NextResponse.json(
+				{ error: "You already have an active appointment request for this property at that time.", code: "duplicate_appointment" },
+				{ status: 409, headers: rateLimitHeaders(limiter) },
+			);
+		}
+
 		return NextResponse.json(
 			{
 				error: appointmentError.code === "42P01" || appointmentError.code === "PGRST205"

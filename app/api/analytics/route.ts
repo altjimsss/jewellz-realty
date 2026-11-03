@@ -88,7 +88,28 @@ async function upsertSessionWithSchemaFallback(payload: Record<string, unknown>)
 	return supabaseServer.from("sessions").upsert(nextPayload);
 }
 
-export async function GET() {
+
+async function requireAdmin(request: Request) {
+	const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+	if (!token) return { error: "Unauthorized.", status: 401 as const };
+
+	const { data: userResult, error: authError } = await supabaseServer.auth.getUser(token);
+	if (authError || !userResult.user) return { error: "Unauthorized.", status: 401 as const };
+
+	const { data: profile, error } = await supabaseServer
+		.from("profiles")
+		.select("role, is_active")
+		.eq("id", userResult.user.id)
+		.maybeSingle();
+	if (error) return { error: "Unable to verify account access.", status: 500 as const };
+	if (profile?.role !== "admin" || !profile.is_active) return { error: "Admin access is required.", status: 403 as const };
+	return null;
+}
+
+export async function GET(request: Request) {
+	const auth = await requireAdmin(request);
+	if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
 	const [properties, inquiries, listingPerformance, trafficSources] = await Promise.all([
 		supabaseServer.from("properties").select("id", { count: "exact", head: true }),
 		supabaseServer.from("inquiries").select("id", { count: "exact", head: true }),
@@ -147,14 +168,16 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 	const utmSource = text(body?.utmSource);
 	const source = sourceFromPayload(text(body?.source), utmSource, referrer);
 
+	const failures: string[] = [];
 	if (sessionId) {
-		const { data: existingSession } = await supabaseServer
+		const { data: existingSession, error: sessionReadError } = await supabaseServer
 			.from("sessions")
 			.select("id, page_view_count")
 			.eq("id", sessionId)
 			.maybeSingle();
+		if (sessionReadError) failures.push(`sessions lookup: ${sessionReadError.message}`);
 
-		await upsertSessionWithSchemaFallback({
+		const sessionWrite = await upsertSessionWithSchemaFallback({
 			id: sessionId,
 			anonymous_visitor_id: text(body?.anonymousVisitorId) || sessionId,
 			source,
@@ -172,6 +195,7 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 				? Number(existingSession?.page_view_count ?? 0) + 1
 				: Number(existingSession?.page_view_count ?? 0),
 		});
+		if (sessionWrite.error) failures.push(`sessions write: ${sessionWrite.error.message}`);
 	}
 
 	const { error } = await insertWithSchemaFallback("analytics_events", {
@@ -183,8 +207,10 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 		metadata: body && typeof body === "object" ? body : {},
 	});
 
+	if (error) failures.push(`analytics_events write: ${error.message}`);
+
 	if (propertyId) {
-		await insertWithSchemaFallback("property_analytics", {
+		const propertyWrite = await insertWithSchemaFallback("property_analytics", {
 			property_id: propertyId,
 			event_type: eventType,
 			session_id: sessionId || null,
@@ -192,15 +218,17 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 			page_path: path || null,
 			metadata: body && typeof body === "object" ? body : {},
 		});
+		if (propertyWrite.error) failures.push(`property_analytics write: ${propertyWrite.error.message}`);
 	}
 
 	const recommendationId = text(body?.recommendationId);
 	if (eventType === "recommendation_click" && recommendationId) {
-		await supabaseServer
+		const recommendationUpdate = await supabaseServer
 			.from("recommendations")
 			.update({ was_clicked: true, clicked_at: new Date().toISOString() })
 			.eq("id", recommendationId);
+		if (recommendationUpdate.error) failures.push(`recommendation update: ${recommendationUpdate.error.message}`);
 	}
 
-	return { tracked: !error, error: error?.message };
+	return { tracked: failures.length === 0, error: failures.length ? failures.join("; ") : undefined };
 }

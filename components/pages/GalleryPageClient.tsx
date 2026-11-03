@@ -226,6 +226,8 @@ export default function GalleryPage() {
 
   useEffect(() => {
     const section = new URLSearchParams(window.location.search).get("section") ?? "";
+    // Sync the initial deep-link selection after hydration; the URL is unavailable during SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRequestedSection(normalizeSection(section));
   }, []);
 
@@ -235,6 +237,8 @@ export default function GalleryPage() {
     const requestedIndex = galleryOptions.findIndex((option) => normalizeSection(option.title) === requestedSection);
     if (requestedIndex < 0) return;
 
+    // Keep the interactive card stack aligned with the requested gallery section.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(requestedIndex);
     setActivePhotoIndex(0);
   }, [galleryOptions, requestedSection]);

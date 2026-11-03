@@ -13,6 +13,8 @@ export default [
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",
+      // Bundled MapLibre worker is generated third-party code, not lintable app source.
+      "public/maplibre-gl-worker.mjs",
     ],
   },
   {

@@ -17,9 +17,7 @@ export function PortalSessionTimeout() {
 	const [showWarning, setShowWarning] = useState(false);
 	const [secondsRemaining, setSecondsRemaining] = useState(120);
 
-	const lastActivityRef = useRef<number>(Date.now());
-	const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
-	const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+	const lastActivityRef = useRef<number>(0);
 	const lastRecordedActivityRef = useRef<number>(0);
 
 	const handleSignOut = useCallback(async () => {
@@ -114,8 +112,6 @@ export function PortalSessionTimeout() {
 			});
 			window.removeEventListener("storage", handleStorageChange);
 			clearInterval(checkInterval);
-			if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-			if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
 		};
 	}, [handleSignOut, recordActivity]);
 

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
-import { extractPropertyChatContent } from "@/lib/property-chat";
 import { supabaseServer } from "@/lib/supabase/server";
 import { hasAiConfigured, runAiChatCompletion } from "@/lib/ai/client";
 
@@ -96,7 +95,6 @@ async function buildAnalyticsContext() {
 		inquiries,
 		listingPerformance,
 		trafficSources,
-		dailyInquiryVolume,
 		agentPerformance,
 		recommendations,
 		events,
@@ -106,7 +104,6 @@ async function buildAnalyticsContext() {
 		supabaseServer.from("inquiries").select("id, status, priority, lead_score, property_id, created_at", { count: "exact" }).gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(300),
 		supabaseServer.from("mv_listing_performance").select("*").limit(20),
 		supabaseServer.from("mv_traffic_sources").select("*").limit(10),
-		supabaseServer.from("mv_daily_inquiry_volume").select("*").limit(30),
 		supabaseServer.from("mv_agent_performance").select("*").limit(10),
 		supabaseServer.from("recommendations").select("was_clicked, is_fallback, generated_at", { count: "exact" }).gte("generated_at", since.toISOString()).limit(300),
 		supabaseServer.from("analytics_events").select("event_type, property_id, created_at", { count: "exact" }).gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(500),
@@ -148,12 +145,6 @@ async function buildAnalyticsContext() {
 		acc[status] = (acc[status] ?? 0) + 1;
 		return acc;
 	}, {});
-	const eventCounts = eventRows.reduce<Record<string, number>>((acc, row) => {
-		const eventType = text(row.event_type) || "unknown";
-		acc[eventType] = (acc[eventType] ?? 0) + 1;
-		return acc;
-	}, {});
-
 	return {
 		timeWindow: "latest 30 days",
 		calendarContext: {
@@ -260,20 +251,6 @@ function fallbackAnalyticsReply(context: Awaited<ReturnType<typeof buildAnalytic
 	}
 
 	return `I'm monitoring your operations in real time. We currently have **${context.portfolioOverview.totalInquiries} inquiries**, **${context.leadHealth.highPriority} high-priority leads**, and **${context.portfolioOverview.totalProperties} properties** in your active catalog.\n\n[ACTION:navigate_inquiries|Go to Inquiries Pipeline]`;
-}
-
-function getAnalyticsChatModels() {
-	const configuredModels = (process.env.OPENROUTER_ANALYTICS_MODEL ?? process.env.OPENROUTER_RECOMMENDATION_MODEL ?? "")
-		.split(",")
-		.map((model) => model.trim())
-		.filter(Boolean);
-
-	return [
-		...configuredModels,
-		"z-ai/glm-4.5-air:free",
-		"openai/gpt-oss-120b:free",
-		"nvidia/nemotron-3-super-120b-a12b:free",
-	].filter((model, index, models) => models.indexOf(model) === index);
 }
 
 export async function POST(request: Request) {

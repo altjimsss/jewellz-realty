@@ -155,6 +155,7 @@ export function PropertyMapPreview({
 	useEffect(() => {
 		if (!mapElRef.current) return;
 		let destroyed = false;
+		const markersMap = markersMapRef.current;
 
 		import("leaflet").then((L) => {
 			if (destroyed || !mapElRef.current || mapRef.current) return;
@@ -201,7 +202,7 @@ export function PropertyMapPreview({
 			destroyed = true;
 			markersRef.current.forEach((m) => m.remove());
 			markersRef.current = [];
-			markersMapRef.current.clear();
+			markersMap.clear();
 			if (mapRef.current) {
 				mapRef.current.remove();
 				mapRef.current = null;

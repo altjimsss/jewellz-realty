@@ -158,7 +158,7 @@ function LoginForm() {
 			.catch(async () => {
 				await supabaseBrowser.auth.signOut({ scope: "local" }).catch(() => undefined);
 			});
-	}, [nextParam, router]);
+	}, [activeRole, isExpired, nextParam, router]);
 
 	async function handlePasswordSignIn(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();

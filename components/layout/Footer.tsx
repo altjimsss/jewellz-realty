@@ -146,9 +146,9 @@ export function Footer() {
 				<div className="flex flex-col gap-2 text-center text-[11px] text-white/55 sm:gap-3 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
 					<p>© {new Date().getFullYear()} Jewellz Realty. All rights reserved. Licensed Real Estate Brokerage.</p>
 					<div className="flex items-center justify-center gap-4 text-white/50 md:justify-start">
-						<span>Privacy Policy</span>
+						<Link href="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link>
 						<span className="text-white/20">•</span>
-						<span>Terms & Conditions</span>
+						<Link href="/terms" className="transition-colors hover:text-white">Terms &amp; Conditions</Link>
 					</div>
 				</div>
 			</div>

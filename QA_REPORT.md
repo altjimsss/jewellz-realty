@@ -1,12 +1,12 @@
 # Portal, Triage, and Analytics QA Report
 
-**Run date:** 2026-11-03  
+**Run date:** 2026-11-04 (follow-up pass)
 **Scope:** Admin, Agent, Developer Partner portals; inquiry triage; lead scoring; behavioral tracking; analytics.  
 **Environment:** Local source review only. The configured Supabase host belongs to the deployed Jewellz Realty project and appears production. No Supabase data was read or written, and no portal E2E tests were run.
 
 ## Executive summary
 
-The local baseline passes typecheck and production build. Lint fails with 35 errors and 8 warnings. `npm install` completed and reported 29 dependency vulnerabilities (1 low, 16 moderate, 10 high, 2 critical). Six isolated lead-scoring tests pass after a local fix for non-finite/negative inputs.
+Current local checks pass typecheck, production build, full lint (0 errors, 0 warnings), and six isolated lead-scoring tests. The earlier npm audit reported 29 dependency vulnerabilities (1 low, 16 moderate, 10 high, 2 critical); dependency upgrades were not made in this pass.
 
 Database-backed behavior is **BLOCKED** pending a staging/test Supabase target. This includes role/RLS isolation, portal CRUD, inquiry persistence, analytics aliases on the deployed enum, dashboard metric accuracy, and data cleanup. No test accounts, QA rows, screenshots, or cleanup work were created.
 
@@ -29,7 +29,7 @@ Database-backed behavior is **BLOCKED** pending a staging/test Supabase target. 
 |---|---|---|
 | `npm install` | PASS with warnings | Exit 0; 560 packages audited; 29 vulnerabilities reported. Peer dependency warnings include ESLint 10 versus plugin peer range up to 9. |
 | `npm run typecheck` | PASS | Exit 0. |
-| `npm run lint` | FAIL | 35 errors, 8 warnings. Includes application errors in admin analytics chat, portal session timeout, gallery, project list, and property filters; generated `public/maplibre-gl-worker.mjs` accounts for 25 errors. |
+| `npm run lint` | PASS (follow-up) | Current run: 0 errors and 0 warnings. The generated third-party MapLibre worker is excluded from application lint. |
 | `npm run build` | PASS | Next production build completed, TypeScript passed, 41 static pages generated. |
 | `npm run test:unit` | PASS | 6 lead-scoring tests pass. |
 | `npm run test:e2e` | BLOCKED | Not run: existing specs can create/update Auth users and insert inquiry/analytics rows; configured DB appears production. |
@@ -41,7 +41,7 @@ Database-backed behavior is **BLOCKED** pending a staging/test Supabase target. 
 | ENV-01 | Supabase target safety | BLOCKED | Local env metadata points to a deployed Supabase project. No database calls were made. Need a staging project configured locally. |
 | ENV-02 | Test data and cleanup | BLOCKED | No QA data created. Requires staging Auth/DB credentials. |
 | BASE-01 | Typecheck | PASS | `npm run typecheck` exit 0. |
-| BASE-02 | Lint | FAIL | `npm run lint`: 35 errors, 8 warnings. |
+| BASE-02 | Lint | PASS (follow-up) | Current `npm run lint`: 0 errors, 0 warnings. |
 | BASE-03 | Build | PASS | `npm run build` exit 0. |
 | AUTH-01 | Portal login, logout, reset, timeout | BLOCKED | Requires role test accounts and browser session checks. |
 | AUTH-02 | Route role matrix and API authorization | PARTIAL | `proxy.ts` enforces page role redirects; relevant admin/profile handlers contain authorization checks. API-by-API token matrix not exercised. |
@@ -106,3 +106,22 @@ No test users or database rows were created. No cleanup was required. No `.env*`
 1. Configure a dedicated staging/test Supabase project in the local environment (do not paste keys into chat).
 2. Confirm it is safe to create and delete QA-prefixed users/rows there.
 3. Run the existing E2E tests only against that staging target; extend them with isolated role, pipeline, analytics, and direct DB assertions. Record and remove all `QA-` fixtures afterward.
+
+## Follow-up implementation (2026-11-04)
+
+The original findings above describe the initial static pass. These code changes supersede the applicable proposed fixes:
+
+| Finding | Follow-up |
+|---|---|
+| Profile self-escalation | Added a guard trigger and `WITH CHECK` policy in `supabase/rbac-policies.sql` and `supabase/production-safety-fixes.sql`. **Not applied to the live database**; staging migration and direct JWT test remain required. |
+| Duplicate appointment requests | `app/api/appointments/route.ts` rejects an active duplicate with the same normalized email, property, and time, and rolls back the inquiry on insert failure. The staging migration adds a matching unique index to protect concurrent requests. Different customers or properties can share a time slot. Database behavior remains unverified until the migration is applied. |
+| Silent analytics write failures | `app/api/analytics/route.ts` now includes session, event, property analytics, and recommendation update failures in its `tracked` result. `lib/analytics.ts` now checks that result instead of trusting HTTP 2xx alone. |
+| Public analytics summary GET | `/api/analytics` GET now requires an active admin bearer token; no in-repo UI depended on this endpoint. |
+| Embedding secret in URL | `app/api/admin/property-embeddings/route.ts` accepts the configured secret only in `x-admin-secret`. Rotate any prior secret if it was used in a URL. |
+| Lint errors and warnings | Fixed application lint findings and excluded the generated MapLibre worker from app lint. Current full lint passes with 0 errors and 0 warnings. |
+| Lead scoring non-finite inputs | Prior local fix remains covered by six passing tests. |
+| Customer accounts/shortlists | Explicitly out of scope per product direction. No buyer accounts or saved-property feature is required; a temporary local shortlist implementation was removed. |
+
+Review of the supplied `assessment.md` claims: the contact form already submits through `/api/inquiries`; `PropertyAnalyticsTracker` is mounted in `PropertyDetailContent`; the Admin CMS renders the inquiry volume chart and lead score badges; and the RBAC SQL includes session read/write policies. Those specific assessment points were already implemented or are not evidence of a missing feature. They still need runtime verification against staging where they touch Supabase.
+
+Privacy and terms pages are now linked from the footer and available at `/privacy` and `/terms`. Their copy is a functional draft; confirm actual vendors, retention practices, and legal requirements before treating it as final policy.

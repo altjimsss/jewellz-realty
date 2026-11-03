@@ -83,10 +83,6 @@ function FilterSelect({ value, options, placeholder, onChange, ariaLabel, compac
 		return () => document.removeEventListener("mousedown", handlePointerDown);
 	}, [open]);
 
-	useEffect(() => {
-		if (open) setHighlightIndex(Math.max(0, options.indexOf(value)));
-	}, [open, options, value]);
-
 	function moveHighlight(delta: number) {
 		setHighlightIndex((index) => {
 			const next = index + delta;
@@ -103,7 +99,10 @@ function FilterSelect({ value, options, placeholder, onChange, ariaLabel, compac
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				aria-label={ariaLabel}
-				onClick={() => setOpen((current) => !current)}
+				onClick={() => {
+					if (!open) setHighlightIndex(Math.max(0, options.indexOf(value)));
+					setOpen((current) => !current);
+				}}
 				onKeyDown={(event) => {
 					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();

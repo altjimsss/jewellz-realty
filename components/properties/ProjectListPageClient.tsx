@@ -10,7 +10,6 @@ import { RecommendationPanel, type AiRecommendedProperty } from "@/components/ai
 import { extractBasicSearchIntent } from "@/lib/ai/search-intent";
 import { getOrCreateSessionId } from "@/lib/session";
 import { PropertyFilters, type PropertyFiltersState } from "@/components/properties/PropertyFilters";
-import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import dynamic from "next/dynamic";
 
 const PropertyMapPreview = dynamic(
@@ -380,6 +379,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 		const hasResults = filteredProperties.length > 0;
 
 		// Reset previous AI state
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- reset derived request state before starting the next search.
 		setAiEnhancedMap(new Map());
 		setAiSuggestions([]);
 		if (!hasResults) {

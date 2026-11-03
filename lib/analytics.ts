@@ -104,7 +104,9 @@ async function postAnalyticsBatch(items: QueuedEvent[]) {
 			body: JSON.stringify(events.length === 1 ? events[0] : { events }),
 			keepalive: true,
 		});
-		for (const item of items) item.resolve({ event: item.body.event, payload: item.body, ok: response.ok });
+		const result = await response.json().catch(() => null) as { tracked?: boolean } | null;
+		const ok = response.ok && result?.tracked !== false;
+		for (const item of items) item.resolve({ event: item.body.event, payload: item.body, ok });
 	} catch {
 		for (const item of items) item.resolve({ event: item.body.event, payload: item.body, ok: false });
 	}

@@ -52,8 +52,38 @@ DROP POLICY IF EXISTS "profiles_self_update"    ON public.profiles;
 DROP POLICY IF EXISTS "profiles_admin_all"      ON public.profiles;
 CREATE POLICY "profiles_self_read"      ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "profiles_admin_read_all" ON public.profiles FOR SELECT USING (public.is_admin());
-CREATE POLICY "profiles_self_update"    ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "profiles_self_update"    ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_admin_all"      ON public.profiles FOR ALL    USING (public.is_admin());
+
+-- RLS scopes the row, while this trigger restricts which account fields a user
+-- may change on their own profile. Admin/service-role account maintenance remains available.
+CREATE OR REPLACE FUNCTION public.prevent_profile_privilege_escalation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL
+     AND auth.uid() = OLD.id
+     AND NOT public.is_admin()
+     AND (
+       NEW.role IS DISTINCT FROM OLD.role
+       OR NEW.is_active IS DISTINCT FROM OLD.is_active
+     ) THEN
+    RAISE EXCEPTION 'Users cannot change their own role or active status.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS profiles_prevent_self_privilege_escalation ON public.profiles;
+CREATE TRIGGER profiles_prevent_self_privilege_escalation
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_profile_privilege_escalation();
 
 -- ---------------------------------------------------------------------------
 -- agents  [CORE - always exists]

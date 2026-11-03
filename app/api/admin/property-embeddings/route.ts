@@ -18,8 +18,7 @@ function isAuthorized(request: Request) {
 		return process.env.NODE_ENV !== "production";
 	}
 
-	const url = new URL(request.url);
-	return request.headers.get("x-admin-secret") === secret || url.searchParams.get("secret") === secret;
+	return request.headers.get("x-admin-secret") === secret;
 }
 
 async function getLimit(request: Request) {
