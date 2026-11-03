@@ -293,7 +293,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 
 			<div className="hidden items-stretch sm:block lg:hidden">
 				<div className="grid grid-cols-2 gap-px border border-[#EAE4DE] bg-[#EAE4DE]">
-					<div className="bg-[#FAF8F5] p-4">
+					<div className="bg-white p-4">
 						<p className={LABEL_CLASS}>Search</p>
 						<input
 							value={value.keyword}
@@ -304,7 +304,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							type="search"
 						/>
 					</div>
-					<div className="bg-[#FAF8F5] p-4">
+					<div className="bg-white p-4">
 						<p className={LABEL_CLASS}>Looking for</p>
 						<div className="mt-1">
 							<FilterSelect
@@ -317,7 +317,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							/>
 						</div>
 					</div>
-					<div className="bg-[#FAF8F5] p-4">
+					<div className="bg-white p-4">
 						<p className={LABEL_CLASS}>Price</p>
 						<div className="mt-1 flex items-center gap-2">
 							<input
@@ -339,7 +339,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							/>
 						</div>
 					</div>
-					<div className="bg-[#FAF8F5] p-4">
+					<div className="bg-white p-4">
 						<p className={LABEL_CLASS}>Status</p>
 						<div className="mt-1">
 							<FilterSelect
@@ -364,7 +364,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 
 			<div className="py-[clamp(10px,1.4vw,14px)] sm:hidden">
 				<div className="flex items-stretch gap-2">
-					<div className="flex h-11 min-w-0 flex-1 items-center border border-[#EAE4DE] bg-[#FAF8F5] px-3">
+					<div className="flex h-11 min-w-0 flex-1 items-center border border-[#EAE4DE] bg-white px-3">
 						<input
 							value={value.keyword}
 							onChange={(e) => onChange({ ...value, keyword: e.target.value })}
@@ -398,7 +398,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 
 				{showPhoneFilters ? (
 					<div className="mt-2.5 grid grid-cols-2 gap-px border border-[#EAE4DE] bg-[#EAE4DE]">
-						<div className="bg-[#FAF8F5] p-3">
+						<div className="bg-white p-3">
 							<p className={LABEL_CLASS}>Looking for</p>
 							<div className="mt-1">
 								<FilterSelect
@@ -411,7 +411,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 								/>
 							</div>
 						</div>
-						<div className="bg-[#FAF8F5] p-3">
+						<div className="bg-white p-3">
 							<p className={LABEL_CLASS}>Status</p>
 							<div className="mt-1">
 								<FilterSelect
@@ -424,7 +424,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 								/>
 							</div>
 						</div>
-						<div className="col-span-2 bg-[#FAF8F5] p-3">
+						<div className="col-span-2 bg-white p-3">
 							<p className={LABEL_CLASS}>Price</p>
 							<div className="mt-1 flex items-center gap-2">
 								<input

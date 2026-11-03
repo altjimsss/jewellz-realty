@@ -234,27 +234,25 @@ export function PropertyDetailContent({
 				<div className="contents lg:block">
 				<aside className="order-2 min-w-0">
 					<div className="rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_8px_28px_-24px_rgba(0,0,0,0.28)] lg:rounded-md lg:border-0 lg:shadow-none">
-						<div className="flex items-start justify-between gap-3">
-							<div>
-								<h1 className="text-2xl font-semibold leading-tight text-black">{property.title}</h1>
-								<div className="mt-2 inline-flex items-center rounded-full bg-black/5 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-black/60">
-									{property.category ?? property.type ?? "Listing"}
-								</div>
-							</div>
+						<div className="flex items-center justify-between gap-3">
+							<span className="inline-flex items-center rounded-full border border-[#DE141C]/15 bg-[#DE141C]/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#B8101A]">
+								{property.category ?? property.type ?? "Listing"}
+							</span>
 							{previewMode ? (
-								<button type="button" disabled className="rounded-full border border-black/10 px-3 py-2 text-sm font-semibold text-black/40">
+								<button type="button" disabled className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/40">
 									Back
 								</button>
 							) : (
-								<Link href={backHref} className="rounded-md border border-black/10 px-3.5 py-2 text-sm font-semibold text-black/60 transition-colors hover:bg-black/5">
+								<Link href={backHref} className="rounded-full border border-black/10 px-3.5 py-1.5 text-xs font-semibold text-black/60 transition-colors hover:bg-black/5">
 									Back
 								</Link>
 							)}
 						</div>
+						<h1 className="mt-2 text-[21px] font-semibold leading-tight text-black sm:text-2xl">{property.title}</h1>
 
-						<p className="mt-3 text-sm uppercase tracking-[0.12em] text-black/50">Start at</p>
-						<p className="mt-1 text-[32px] font-semibold leading-none text-black">{formatPHPWhole(property.price)}</p>
-						<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-black/45">
+						<p className="mt-3 text-[11px] font-medium uppercase tracking-[0.1em] text-black/45">Start at</p>
+						<p className="mt-1 text-[28px] font-semibold leading-none tracking-[-0.03em] text-black sm:text-[32px]">{formatPHPWhole(property.price)}</p>
+						<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-black/50 sm:text-sm">
 							<span>{property.monthlyAmortization ? `PHP ${Math.round(property.monthlyAmortization).toLocaleString()} / month` : `PHP ${Math.round(property.price / 12).toLocaleString()} / month`}</span>
 							<span aria-hidden="true">|</span>
 							<span>{property.type ?? "Property"}</span>
@@ -264,27 +262,43 @@ export function PropertyDetailContent({
 							<span className="font-medium text-[#DE141C]">Available</span>
 						</div>
 
-						<p className="mt-4 text-sm leading-6 text-black/70">{computedDescription}</p>
+						<details className="group mt-4 border-t border-black/10 pt-3">
+							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
+								<span>About this property</span>
+								<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
+									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+								</svg>
+							</summary>
+							<p className="mt-2 text-[13px] leading-5 text-black/65 sm:text-sm sm:leading-6">{computedDescription}</p>
+						</details>
 
 						{property.keyFeatures?.length || property.amenities?.length ? (
-							<div className="mt-4 grid gap-3">
-								{property.keyFeatures?.length ? (
-									<div>
-										<p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-black/45">Key Features</p>
-										<div className="mt-2 flex flex-wrap gap-2">
-											{property.keyFeatures.map((item) => <span key={item} className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-[#DE141C]">{item}</span>)}
+							<details className="group border-t border-black/10 pt-3">
+								<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
+									<span>Features &amp; amenities</span>
+									<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
+										<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
+								</summary>
+								<div className="mt-3 grid gap-3">
+									{property.keyFeatures?.length ? (
+										<div>
+											<p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-black/45">Key Features</p>
+											<div className="mt-2 flex flex-wrap gap-1.5">
+												{property.keyFeatures.map((item) => <span key={item} className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-medium text-[#DE141C]">{item}</span>)}
+											</div>
 										</div>
-									</div>
-								) : null}
-								{property.amenities?.length ? (
-									<div>
-										<p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-black/45">Amenities</p>
-										<div className="mt-2 flex flex-wrap gap-2">
-											{property.amenities.map((item) => <span key={item} className="rounded-full bg-black/5 px-3 py-1 text-xs font-medium text-black/60">{item}</span>)}
+									) : null}
+									{property.amenities?.length ? (
+										<div>
+											<p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-black/45">Amenities</p>
+											<div className="mt-2 flex flex-wrap gap-1.5">
+												{property.amenities.map((item) => <span key={item} className="rounded-full bg-black/5 px-2.5 py-1 text-[11px] font-medium text-black/60">{item}</span>)}
+											</div>
 										</div>
-									</div>
-								) : null}
-							</div>
+									) : null}
+								</div>
+							</details>
 						) : null}
 
 						{videoSrc ? (
@@ -303,21 +317,27 @@ export function PropertyDetailContent({
 							</button>
 						) : null}
 
-						<hr className="my-4 border-black/10" />
-
-						<div className="grid grid-cols-2 gap-x-3 gap-y-2">
-							{parameterItems.map(({ label, value, icon }) => (
-								<div key={label} className="flex items-center gap-2 py-1">
-									<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[#DE141C]/10">
-										<ParamIcon type={icon} />
-									</span>
-									<div className="min-w-0">
-										<p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">{label}</p>
-										<p className="truncate text-xs font-semibold text-black">{value}</p>
+						<details className="group mt-4 border-t border-black/10 pt-3">
+							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
+								<span>Property details</span>
+								<svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-black/40 transition-transform group-open:rotate-180" fill="none" aria-hidden="true">
+									<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+								</svg>
+							</summary>
+							<div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
+								{parameterItems.map(({ label, value, icon }) => (
+									<div key={label} className="flex items-center gap-2 py-1">
+										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[#DE141C]/10">
+											<ParamIcon type={icon} />
+										</span>
+										<div className="min-w-0">
+											<p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-black/45">{label}</p>
+											<p className="truncate text-xs font-semibold text-black">{value}</p>
+										</div>
 									</div>
-								</div>
-							))}
-						</div>
+								))}
+							</div>
+						</details>
 
 						<div className="mt-5 border-t border-black/10 pt-4">
 							{previewMode ? (

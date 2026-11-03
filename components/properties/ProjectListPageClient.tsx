@@ -510,11 +510,11 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				</div>
 			</section>
 
-			<section className="mx-auto max-w-[1200px] px-4 py-10">
+			<section className="mx-auto max-w-[1200px] px-4 py-7 sm:py-10">
 				<div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-					<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+					<div className="flex w-full items-baseline justify-between gap-3 border-b border-[#EAE7E3] pb-3 sm:w-auto sm:justify-start sm:border-0 sm:pb-0">
 						<h2 className="text-2xl font-semibold">Properties</h2>
-						<p className="mt-1 text-sm text-black/60">Showing {filteredProperties.length} results</p>
+						<p className="shrink-0 border-l border-[#EAE7E3] pl-3 text-xs text-black/55 sm:text-sm">Showing {filteredProperties.length} results</p>
 					</div>
 
 					<div className="-mx-4 hidden snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
