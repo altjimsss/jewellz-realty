@@ -9,7 +9,7 @@ type PropertyGalleryProps = {
   onInteraction?: (event: string, metadata?: Record<string, unknown>) => void;
 };
 
-const FALLBACK_IMAGE = "/assets/housebanner1.png";
+const FALLBACK_IMAGE = "/assets/housebanner1.webp";
 
 export function PropertyGallery({ images, title, onInteraction }: PropertyGalleryProps) {
   const availableImages = images.filter(Boolean);

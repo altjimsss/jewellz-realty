@@ -1,10 +1,10 @@
 "use client";
 
-import { SafeImage } from "@/components/ui/SafeImage";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatPHPWhole } from "@/lib/currency";
 import type { Property } from "@/types/property";
+import { ProjectListCard } from "@/components/properties/ProjectListCard";
 
 const categories = [
   {
@@ -163,9 +163,9 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
           <div className="mb-8 flex flex-wrap items-center justify-between gap-6">
             <div className="flex flex-wrap items-center gap-3 sm:gap-10">
               <div>
-                <p className="text-xs font-bold tracking-wide text-gray-500">TODAY&apos;S</p>
-                <h2 className="text-3xl font-bold leading-none sm:text-4xl">HOT PICKS</h2>
-                <div className="mt-2 h-[3px] w-16 bg-[#DE141C]" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">TODAY&apos;S</p>
+                <h2 className="mt-1 text-2xl font-semibold leading-none tracking-[-0.035em] text-[#1C1B19] sm:text-3xl">Hot picks</h2>
+                <div className="mt-3 h-[2px] w-10 bg-[#DE141C]" />
               </div>
               <div className="hidden items-end gap-5 lg:flex">
                 <div><p className="text-[10px] font-semibold uppercase text-black/70">Days</p><p className="text-3xl font-bold leading-none">{days}</p></div>
@@ -188,19 +188,15 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-5 md:grid-cols-3">
             {hotPicksLoading ? Array.from({ length: hotPicksPerPage }).map((_, index) => (
-              <article key={`hotpick-skeleton-${index}`} className="flex flex-col overflow-hidden bg-white shadow-sm">
-                <div className="h-28 animate-pulse bg-[#E7E7E7] sm:h-44" />
-                <div className="flex flex-1 flex-col justify-between bg-[#F4F4F4] p-2 sm:p-3.5">
-                  <div>
-                    <div className="h-3.5 w-[88%] animate-pulse rounded bg-[#DFDFDF] sm:h-5" />
-                    <div className="mt-1 h-3 w-[62%] animate-pulse rounded bg-[#E5E5E5]" />
-                  </div>
-                  <div className="mt-2 pt-1.5 border-t border-black/5 sm:border-0 sm:pt-0">
-                    <div className="h-3 w-20 animate-pulse rounded bg-[#DCDCDC] sm:w-28" />
-                    <div className="mt-1.5 h-6 w-16 animate-pulse rounded bg-[#CFCFCF] sm:h-9 sm:w-24" />
-                  </div>
+              <article key={`hotpick-skeleton-${index}`} className="overflow-hidden bg-white">
+                <div className="aspect-[4/3] animate-pulse bg-[#E7E7E7]" />
+                <div className="border-b border-[#EAE7E3] px-1 pb-3 pt-3.5">
+                  <div className="h-4 w-[78%] animate-pulse bg-[#E5E5E5]" />
+                  <div className="mt-2 h-3 w-[55%] animate-pulse bg-[#F0EEEB]" />
+                  <div className="mt-4 h-4 w-24 animate-pulse bg-[#F0EEEB]" />
+                  <div className="mt-3 h-5 w-28 animate-pulse bg-[#E5E5E5]" />
                 </div>
               </article>
             )) : visibleHotPicks.map((pick) => {
@@ -208,71 +204,40 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
               const image = propertyPick
                 ? pick.image?.trim() || pick.images?.[0] || "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1200&q=80"
                 : `https://images.unsplash.com/photo-${pick.imageId}?w=700&q=80`;
-              const location = pick.location ?? "Jewellz Realty";
-              const beds = pick.beds ?? 0;
-              const baths = pick.baths ?? 0;
-              const area = propertyPick ? (pick.areaSqm ?? 0) : pick.area;
               const price = propertyPick ? formatPHPWhole(pick.price) : pick.price;
               const href = propertyPick ? `/project-list/${pick.slug}` : "/project-list";
+              const property: Property = propertyPick
+                ? { ...pick, image }
+                : {
+                    id: pick.title,
+                    slug: pick.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+                    title: pick.title,
+                    price: Number(String(pick.price).replace(/[^0-9.]/g, "")) || 0,
+                    location: pick.location,
+                    beds: pick.beds,
+                    baths: pick.baths,
+                    areaSqm: pick.area,
+                    image,
+                  };
 
-              return (
-                <Link href={href} key={pick.title} className="group flex flex-col overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-                  <div className="relative h-28 overflow-hidden bg-[#E7E7E7] sm:h-44">
-                    <SafeImage src={image} fallbackSrc="/assets/housebanner1.png" alt={pick.title} fill sizes="(min-width: 768px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                  </div>
-                  <div className="flex flex-1 flex-col justify-between bg-[#F4F4F4] p-2 sm:p-3.5">
-                    <div>
-                      <h3 className="line-clamp-2 min-h-[30px] sm:min-h-[44px] text-[12px] sm:text-[18px] font-semibold leading-snug sm:leading-tight text-[#181A20] transition-colors duration-300 group-hover:text-[#DE141C]">{pick.title}</h3>
-                      <p className="mt-0.5 sm:mt-1 truncate text-[10px] sm:text-[13px] text-gray-500">{location}</p>
-                    </div>
-                    <div className="mt-2 pt-1.5 border-t border-black/5 sm:border-0 sm:pt-0">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-[13px] text-[#1F2328]">
-                        <span className="flex items-center gap-1">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black/75" fill="none" aria-hidden="true">
-                            <path d="M3 18v-7h18v7M3 14h18M6 11V7h6v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          {beds}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black/75" fill="none" aria-hidden="true">
-                            <path d="M4 13h16v1a5 5 0 01-5 5H9a5 5 0 01-5-5v-1zM7 13V8a2 2 0 114 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          {baths}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black/75" fill="none" aria-hidden="true">
-                            <rect x="3.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-                            <rect x="13.5" y="3.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-                            <rect x="3.5" y="13.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-                            <rect x="13.5" y="13.5" width="7" height="7" stroke="currentColor" strokeWidth="1.6" />
-                          </svg>
-                          {area}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex items-center justify-start sm:mt-auto sm:justify-end">
-                        <p className="inline-flex h-6 sm:h-9 shrink-0 items-center bg-[#11141C] px-2 sm:px-4 text-[10px] sm:text-[15px] font-bold sm:font-semibold text-white tracking-tight">{price}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
+              return <ProjectListCard key={pick.title} property={property} priceLabel={price} href={href} />;
             })}
           </div>
         </div>
       </section>
 
-      <section className="border-y px-4 py-12 sm:px-6 sm:py-16 lg:px-28">
-        <p className="text-center text-sm font-bold text-gray-500">FIND YOUR WAY EASIER</p>
-        <h2 className="text-center text-3xl font-bold sm:text-4xl">BROWSE CATEGORIES</h2>
-        <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
+      <section className="border-y border-[#EAE7E3] px-4 py-12 sm:px-6 sm:py-16 lg:px-28">
+        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">FIND YOUR WAY EASIER</p>
+        <h2 className="mt-1 text-center text-2xl font-semibold tracking-[-0.035em] text-[#1C1B19] sm:text-3xl">Browse categories</h2>
+        <div className="mx-auto mt-3 h-[2px] w-10 bg-[#DE141C]" />
         <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 md:grid-cols-5">
           {categories.map((category) => (
             <Link
               key={category.label}
               href={`/project-list?category=${encodeURIComponent(category.label)}`}
-              className={`group flex h-24 flex-col items-center justify-center gap-1.5 rounded border transition-all duration-200 sm:h-36 sm:gap-2 ${
+              className={`group flex h-24 flex-col items-center justify-center gap-1.5 border border-[#EAE7E3] transition-colors duration-200 sm:h-36 sm:gap-2 ${
                 category.label === "Memorial" ? "col-span-2 mx-auto w-[48%] sm:col-span-1 sm:w-full" : ""
-              } border-black/10 bg-white text-black hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white`}
+              } bg-white text-[#1C1B19] hover:border-[#DE141C] hover:bg-[#F7F6F4] hover:text-[#DE141C]`}
             >
               <span className="scale-90 sm:scale-100">{category.icon}</span>
               <span className="text-xs font-semibold sm:text-sm">{category.label}</span>

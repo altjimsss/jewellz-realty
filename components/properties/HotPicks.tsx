@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { PropertyCard } from "@/components/properties/PropertyCard";
+import { ProjectListCard } from "@/components/properties/ProjectListCard";
 import type { Property } from "@/types/property";
 
 type HotPick = {
@@ -105,15 +105,14 @@ export function HotPicks({
 					? Array.from({ length: hotPicksSkeletonCount }).map((_, idx) => (
 							<article
 								key={`hotpick-skeleton-${idx}`}
-								className="overflow-hidden bg-white shadow-sm"
+								className="overflow-hidden bg-white"
 							>
-								<div className="h-32 animate-pulse bg-[#E7E7E7] sm:h-44" />
-								<div className="flex h-[118px] flex-col bg-[#F4F4F4] p-2.5 sm:h-[158px] sm:p-3.5">
-									<div className="h-4 w-[88%] animate-pulse rounded bg-[#DFDFDF] sm:h-5" />
-									<div className="mt-1 h-4 w-[62%] animate-pulse rounded bg-[#E5E5E5]" />
-									<div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-4 sm:pt-3">
-										<div className="h-4 w-20 animate-pulse rounded bg-[#DCDCDC] sm:w-28" />
-										<div className="h-6 w-12 animate-pulse rounded bg-[#CFCFCF] sm:h-9 sm:w-20" />
+								<div className="aspect-[4/3] animate-pulse bg-[#E7E7E7]" />
+								<div className="border-b border-[#EAE7E3] px-1 pb-3 pt-3.5">
+									<div className="h-4 w-[78%] animate-pulse bg-[#E5E5E5]" />
+									<div className="mt-2 h-3 w-[55%] animate-pulse bg-[#F0EEEB]" />
+									<div className="mt-4 h-4 w-24 animate-pulse bg-[#F0EEEB]" />
+									<div className="mt-3 h-5 w-28 animate-pulse bg-[#E5E5E5]">
 									</div>
 								</div>
 							</article>
@@ -132,7 +131,7 @@ export function HotPicks({
 								image: `https://images.unsplash.com/photo-${pick.imageId}?w=1200&q=80`,
 							};
 
-							return <PropertyCard key={pick.title} property={property} priceLabel={pick.price} />;
+							return <ProjectListCard key={pick.title} property={property} priceLabel={pick.price} />;
 						})}
 			</div>
 		</section>

@@ -90,9 +90,9 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 5000 }: Meet
 
 	return (
 		<section className="px-4 py-12 sm:px-6 sm:py-16 lg:px-24">
-			<p className="text-center text-sm font-bold text-gray-500">WE HAVE PROFESSIONAL AGENTS</p>
-			<h2 className="text-center text-3xl font-bold sm:text-4xl">MEET OUR AGENTS</h2>
-			<div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
+			<p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">WE HAVE PROFESSIONAL AGENTS</p>
+			<h2 className="mt-1 text-center text-2xl font-semibold tracking-[-0.035em] text-[#1C1B19] sm:text-3xl">Meet our agents</h2>
+			<div className="mx-auto mt-3 h-[2px] w-10 bg-[#DE141C]" />
 			<div className="relative mt-10">
 				<button
 					type="button"

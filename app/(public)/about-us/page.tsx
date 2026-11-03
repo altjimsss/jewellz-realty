@@ -125,7 +125,7 @@ export default function AboutUsPage() {
             <div className="relative">
               <div className="overflow-hidden rounded-[18px] bg-white">
                 <Image
-                  src="/assets/housebanner1.png"
+                  src="/assets/housebanner1.webp"
                   alt="Jewellz Realty property showcase"
                   width={1100}
                   height={820}

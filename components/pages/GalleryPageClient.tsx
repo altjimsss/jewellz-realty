@@ -368,7 +368,7 @@ export default function GalleryPage() {
                   {activePhotos.map((photo) => (
                     <Card key={photo.src} customClass="relative">
                       <div className="relative h-full w-full overflow-hidden rounded-[20px] bg-zinc-100">
-                        <SafeImage src={photo.src} fallbackSrc="/assets/housebanner1.png" alt={photo.label} fill loading="eager" className="object-cover" sizes="(max-width: 768px) 100vw, 760px" />
+                        <SafeImage src={photo.src} fallbackSrc="/assets/housebanner1.webp" alt={photo.label} fill loading="lazy" className="object-cover" sizes="(max-width: 768px) 100vw, 760px" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                       </div>
                     </Card>

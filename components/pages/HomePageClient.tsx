@@ -1,15 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { PartnerLogoMark } from "@/components/home/PartnerLogoMark";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Testimonial } from "@/components/ui/design-testimonial";
 import { SparkleSvg } from "@/components/ui/SparkleSvg";
 import { CountUpOnView } from "@/components/ui/CountUpOnView";
 import { formatPHPWhole } from "@/lib/currency";
@@ -22,6 +22,28 @@ const LogoLoop = dynamic(() => import("@/components/home/LogoLoop"), { ssr: fals
 const MeetAgents = dynamic(() => import("@/components/home/MeetAgents").then((module) => module.MeetAgents), {
   ssr: false,
 });
+const Testimonial = dynamic(() => import("@/components/ui/design-testimonial").then((module) => module.Testimonial), {
+  ssr: false,
+});
+
+function DeferredTestimonial() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || shouldLoad) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setShouldLoad(true);
+      observer.disconnect();
+    }, { rootMargin: "400px 0px" });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [shouldLoad]);
+
+  return <div ref={sectionRef} className="min-h-[280px] sm:min-h-[320px]">{shouldLoad ? <Testimonial /> : null}</div>;
+}
 
 
 const developerLogos = [
@@ -118,7 +140,7 @@ type HeroDisplayProperty = {
 	slug?: string;
 };
 const HERO_DURATION_MS = 5000;
-const HERO_TICK_MS = 50;
+const HERO_TICK_MS = 250;
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 const navLinks = [
   { label: "Home", href: "/" },
@@ -172,6 +194,8 @@ export default function Page({
   const [areaMax, setAreaMax] = useState(170);
 
   useEffect(() => {
+    if (initialHomeContent) return;
+
     let isMounted = true;
     async function loadFreshHomeContent() {
       try {
@@ -189,7 +213,7 @@ export default function Page({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialHomeContent]);
   const [heroSearchFilters, setHeroSearchFilters] = useState<HeroSearchFilters>(defaultHeroSearchFilters);
 
   const safePriceMax = Math.min(Math.max(priceMax, 0), 850000);
@@ -259,27 +283,6 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
     }
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    void fetch("/api/content/home")
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (active && data) setHomeContent(data);
-      })
-      .catch(() => undefined);
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void refreshFeaturedProperties();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [refreshFeaturedProperties]);
-
   const currentHero = displayedHeroProperties[heroIndex % displayedHeroProperties.length];
 
   return (
@@ -287,11 +290,17 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
       <AnnouncementBar />
       <Navbar links={navLinks} fontClassName={poppins.className} />
 
-      <section className="relative overflow-hidden bg-black md:h-[520px]">
-        <div className="absolute right-0 top-0 hidden h-full w-[70%] z-0 bg-cover bg-center transition-all duration-700 md:block" style={{ backgroundImage: `url('${currentHero.image}')` }} />
+      <section className="customer-hero relative overflow-hidden bg-black md:h-[520px]">
+        <div className="absolute right-0 top-0 z-0 hidden h-full w-[70%] overflow-hidden transition-all duration-700 md:block">
+          {displayedHeroProperties.map((hero, idx) => (
+            <div key={`desktop-hero-${hero.title}`} className={`absolute inset-0 transition-all duration-700 ease-out ${idx === heroIndex ? "scale-100 opacity-100" : "scale-105 opacity-0"}`}>
+              <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt="" fill sizes="100vw" priority={idx === 0} quality={70} className="object-cover object-center" />
+            </div>
+          ))}
+        </div>
         <div className="absolute inset-y-0 left-0 hidden w-[34%] bg-gradient-to-r from-black/85 via-black/45 to-transparent md:block" />
         <div className="absolute bottom-0 right-0 hidden h-[5px] w-[70%] overflow-hidden rounded bg-white/25 md:block">
-          <div className="h-full bg-[#DE141C] transition-[width] duration-75 ease-linear" style={{ width: `${heroProgress}%` }} />
+          <div className="h-full bg-[#DE141C] transition-[width] duration-300 ease-linear" style={{ width: `${heroProgress}%` }} />
         </div>
         <div className="absolute bottom-8 left-[35%] z-20 hidden w-[36%] md:block">
           <div className="mb-0 relative inline-flex overflow-hidden">
@@ -548,11 +557,12 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
             {displayedHeroProperties.map((hero, idx) => (
               <div
                 key={`mobile-hero-${hero.title}`}
-                className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out ${
+                className={`absolute inset-0 transition-all duration-700 ease-out ${
                   idx === heroIndex ? "scale-100 opacity-100" : "scale-105 opacity-0"
                 }`}
-                style={{ backgroundImage: `url('${hero.image}')` }}
-              />
+              >
+                <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt="" fill sizes="100vw" priority={idx === 0} quality={70} className="object-cover object-center" />
+              </div>
             ))}
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="relative inline-flex overflow-hidden">
@@ -601,7 +611,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
               </div>
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-[5px] overflow-hidden rounded bg-white/25">
-              <div className="h-full bg-[#DE141C] transition-[width] duration-75 ease-linear" style={{ width: `${heroProgress}%` }} />
+              <div className="h-full bg-[#DE141C] transition-[width] duration-300 ease-linear" style={{ width: `${heroProgress}%` }} />
             </div>
           </div>
           <form
@@ -777,7 +787,7 @@ const { heroIndex, heroProgress, onPrevHero, onNextHero } = useHeroCarousel({
         <h2 className="text-3xl font-bold sm:text-4xl">TESTIMONIALS</h2>
         <div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
         <div className="mt-8">
-          <Testimonial />
+          <DeferredTestimonial />
         </div>
       </section>
 

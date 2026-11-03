@@ -1,5 +1,5 @@
 import { ProjectListPageClient } from "@/components/properties/ProjectListPageClient";
-import { getPublishedProperties } from "@/lib/supabase/properties";
+import { getPublishedPropertiesForList } from "@/lib/supabase/properties";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function Page({ searchParams }: PageProps) {
 		baths: getSearchValue(resolvedSearchParams?.baths),
 		category: getSearchValue(resolvedSearchParams?.category),
 	};
-	const properties = await getPublishedProperties();
+	const properties = await getPublishedPropertiesForList();
 
 	return <ProjectListPageClient key={JSON.stringify(initialFilters)} properties={properties} initialFilters={initialFilters} />;
 }

@@ -198,6 +198,50 @@ body {
   @apply bg-jewellz-neutral text-jewellz-dark;
 }
 
+/* Shared visual foundation for the customer website. */
+.customer-site {
+  --customer-ink: #1c1b19;
+  --customer-muted: #6f6a64;
+  --customer-border: #eae7e3;
+  --customer-soft: #f7f6f4;
+  --customer-accent: #de141c;
+  color: var(--customer-ink);
+  background: #fff;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.customer-site h1:not(.customer-hero *),
+.customer-site h2:not(.customer-hero *),
+.customer-site h3:not(.customer-hero *) {
+  letter-spacing: -0.025em;
+}
+
+.customer-site input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.customer-hero *),
+.customer-site select:not(.customer-hero *),
+.customer-site textarea:not(.customer-hero *) {
+  border-color: var(--customer-border);
+  background-color: #fff;
+  color: var(--customer-ink);
+  box-shadow: none;
+}
+
+.customer-site input[type="range"] {
+  background-color: transparent;
+}
+
+.customer-site input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.customer-hero *):focus,
+.customer-site select:not(.customer-hero *):focus,
+.customer-site textarea:not(.customer-hero *):focus {
+  border-color: rgb(222 20 28 / 0.55);
+  box-shadow: 0 0 0 3px rgb(222 20 28 / 0.08);
+}
+
+.customer-site a,
+.customer-site button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 @layer base {
   .theme {
 

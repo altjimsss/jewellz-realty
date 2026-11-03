@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function BrowseGallery() {
 	return (
@@ -8,7 +9,7 @@ export function BrowseGallery() {
 			<div className="mx-auto mt-2 h-[3px] w-24 bg-[#DE141C]" />
 			<div className="mt-8 grid grid-cols-3 gap-2">
 				<Link href="/gallery?section=achievements" className="group relative block h-[22rem] overflow-hidden sm:h-[26rem] lg:h-[30rem] focus-visible:ring-2 focus-visible:ring-black/20" aria-label="Open gallery achievements">
-					<div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1544531585-9847b68c8c86?w=800&q=80')" }} />
+					<Image src="https://images.unsplash.com/photo-1544531585-9847b68c8c86?w=800&q=80" alt="" fill sizes="33vw" loading="lazy" className="object-cover transition-transform duration-500 group-hover:scale-110" />
 					<div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
 					<div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-5 sm:left-5 sm:gap-3">
 						<span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
@@ -20,7 +21,7 @@ export function BrowseGallery() {
 				</Link>
 				<div className="col-span-2 space-y-2">
 					<Link href="/gallery?section=events" className="group relative block h-[10.75rem] overflow-hidden sm:h-[12.5rem] lg:h-[14.75rem] focus-visible:ring-2 focus-visible:ring-black/20" aria-label="Open gallery events">
-						<div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80')" }} />
+						<Image src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80" alt="" fill sizes="(min-width: 1024px) 65vw, 66vw" loading="lazy" className="object-cover transition-transform duration-500 group-hover:scale-110" />
 						<div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
 						<div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-5 sm:gap-3">
 							<span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
@@ -32,7 +33,7 @@ export function BrowseGallery() {
 					</Link>
 					<div className="grid grid-cols-2 gap-2">
 						<Link href="/gallery?section=trainings" className="group relative block h-[10.75rem] overflow-hidden sm:h-[12.5rem] lg:h-[14.75rem] focus-visible:ring-2 focus-visible:ring-black/20" aria-label="Open gallery trainings">
-							<div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=500&q=80')" }} />
+							<Image src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=500&q=80" alt="" fill sizes="(min-width: 1024px) 32vw, 33vw" loading="lazy" className="object-cover transition-transform duration-500 group-hover:scale-110" />
 							<div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
 							<div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
 								<span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
@@ -43,7 +44,7 @@ export function BrowseGallery() {
 							</div>
 						</Link>
 						<Link href="/gallery?section=service" className="group relative block h-[10.75rem] overflow-hidden sm:h-[12.5rem] lg:h-[14.75rem] focus-visible:ring-2 focus-visible:ring-black/20" aria-label="Open gallery service">
-							<div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=500&q=80')" }} />
+							<Image src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=500&q=80" alt="" fill sizes="(min-width: 1024px) 32vw, 33vw" loading="lazy" className="object-cover transition-transform duration-500 group-hover:scale-110" />
 							<div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
 							<div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
 								<span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />

@@ -1,4 +1,4 @@
-import { PropertyCard } from "@/components/properties/PropertyCard";
+import { ProjectListCard } from "@/components/properties/ProjectListCard";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import type { Property } from "@/types/property";
 
@@ -61,7 +61,7 @@ export function RecommendationPanel({ recommendations, status, variant = "altern
 				</div>
 			</div>
 
-			<div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+			<div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-5 md:grid-cols-2 lg:grid-cols-3">
 				{recommendations.map(({ property, reason, confidence, recommendationId, source }) => (
 					<div
 						key={property.id}
@@ -75,7 +75,7 @@ export function RecommendationPanel({ recommendations, status, variant = "altern
 							}
 						}}
 					>
-						<PropertyCard
+						<ProjectListCard
 							property={property}
 							href={`/project-list/${property.slug}`}
 							aiReason={reason}

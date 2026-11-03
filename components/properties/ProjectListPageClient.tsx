@@ -24,7 +24,7 @@ const PropertyMapPreview = dynamic(
 		),
 	},
 );
-import { PropertyCard } from "@/components/properties/PropertyCard";
+import { ProjectListCard } from "@/components/properties/ProjectListCard";
 import { mergeNaturalLanguageFilters } from "@/lib/property-search";
 import type { Property } from "@/types/property";
 
@@ -466,28 +466,30 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 
 			<PropertyBanner />
 
-			<section className="mx-auto mt-6 max-w-[1200px] px-4">
-				<PropertyFilters
-					value={draftFilters}
-					onChange={setDraftFilters}
-					onSubmit={() => {
-						const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);
-						const isEmptySearch = Object.values(enrichedFilters).every((value) => !value.trim());
+			<section className="border-b border-[#EAE4DE]">
+				<div className="mx-auto max-w-[1320px] px-[clamp(20px,4vw,56px)]">
+					<PropertyFilters
+						value={draftFilters}
+						onChange={setDraftFilters}
+						onSubmit={() => {
+							const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);
+							const isEmptySearch = Object.values(enrichedFilters).every((value) => !value.trim());
 
-						if (isEmptySearch) {
-							setActiveCategory("All");
-							setAiSuggestions([]);
-							setAiRecommendedProperties([]);
-							setAiRecommendationStatus("idle");
-							setHasSearched(false);
-						} else {
-							setHasSearched(true);
-						}
+							if (isEmptySearch) {
+								setActiveCategory("All");
+								setAiSuggestions([]);
+								setAiRecommendedProperties([]);
+								setAiRecommendationStatus("idle");
+								setHasSearched(false);
+							} else {
+								setHasSearched(true);
+							}
 
-						setDraftFilters(enrichedFilters);
-						setAppliedFilters(enrichedFilters);
-					}}
-				/>
+							setDraftFilters(enrichedFilters);
+							setAppliedFilters(enrichedFilters);
+						}}
+					/>
+				</div>
 			</section>
 
 			<section className="mx-auto max-w-[1200px] px-4 py-10">
@@ -520,7 +522,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				{filteredProperties.length > 0 ? (
 					showMapPreview && primaryProperty ? (
 						<div className="mt-7">
-							<div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+							<div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-5 md:grid-cols-2 lg:grid-cols-3">
 								<aside className="order-last col-span-2 overflow-hidden rounded-[18px] border border-black/10 bg-white shadow-sm lg:order-none lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1">
 									<div className="border-b border-black/10 p-4">
 										<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/50">Map Preview</p>
@@ -533,7 +535,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 								{leadProperties.map((property) => {
 									const ai = aiEnhancedMap.get(property.id);
 									return (
-										<PropertyCard
+										<ProjectListCard
 											key={property.id}
 											property={property}
 											href={`/project-list/${property.slug}`}
@@ -546,11 +548,11 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 
 							{remainingProperties.length > 0 ? (
 								<div className="mt-5">
-									<div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+									<div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-5 md:grid-cols-2 lg:grid-cols-3">
 										{remainingProperties.map((property) => {
 											const ai = aiEnhancedMap.get(property.id);
 											return (
-												<PropertyCard
+												<ProjectListCard
 													key={property.id}
 													property={property}
 													href={`/project-list/${property.slug}`}
@@ -565,11 +567,11 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 						</div>
 					) : (
 						<div className="mt-7">
-							<div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+							<div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-5 md:grid-cols-2 lg:grid-cols-3">
 								{filteredProperties.map((property) => {
 									const ai = aiEnhancedMap.get(property.id);
 									return (
-										<PropertyCard
+										<ProjectListCard
 											key={property.id}
 											property={property}
 											href={`/project-list/${property.slug}`}

@@ -49,7 +49,7 @@ function BannerSvgOne() {
       </div>
 
       <Image
-        src="/assets/housebanner1.png"
+          src="/assets/housebanner1.webp"
         alt="House banner"
         width={520}
         height={420}
@@ -182,7 +182,7 @@ export function PropertyBanner() {
     <>
       <section className="relative isolate overflow-hidden bg-black">
         <Image
-          src="/assets/Gradient V25.svg"
+          src="/assets/Gradient V25.webp"
           alt=""
           aria-hidden="true"
           width={544}

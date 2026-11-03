@@ -72,5 +72,5 @@ export function fallbackImageUrl(...candidates: unknown[]): string {
 		const normalized = normalizeImageUrl(candidate);
 		if (normalized) return normalized;
 	}
-	return "/assets/housebanner1.png";
+	return "/assets/housebanner1.webp";
 }

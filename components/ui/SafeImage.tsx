@@ -12,6 +12,16 @@ type SafeImageProps = Omit<ImageProps, "src" | "onError"> & {
 	onImageError?: () => void;
 };
 
+function canOptimizeImage(src: string) {
+	if (src.startsWith("/")) return true;
+	try {
+		const hostname = new URL(src).hostname;
+		return hostname === "images.unsplash.com" || hostname.endsWith(".supabase.co");
+	} catch {
+		return false;
+	}
+}
+
 /**
  * next/image with two safety nets used across the public site and CMS:
  *  - pasted links are normalized (Drive/Dropbox/page links handled)
@@ -23,7 +33,7 @@ export function SafeImage({
 	fallbackContent = null,
 	onImageError,
 	alt,
-	unoptimized = true,
+	unoptimized,
 	...props
 }: SafeImageProps) {
 	const normalized = normalizeImageUrl(src);
@@ -32,6 +42,7 @@ export function SafeImage({
 
 	const failed = normalized != null && failedSource === normalized;
 	const displaySrc = failed ? normalizedFallback : normalized;
+	const shouldSkipOptimization = unoptimized ?? !canOptimizeImage(displaySrc ?? "");
 
 	if (!displaySrc) {
 		return <>{fallbackContent}</>;
@@ -42,7 +53,7 @@ export function SafeImage({
 			{...props}
 			src={displaySrc}
 			alt={alt}
-			unoptimized={unoptimized}
+			unoptimized={shouldSkipOptimization}
 			onError={() => {
 				if (normalized) setFailedSource(normalized);
 				onImageError?.();

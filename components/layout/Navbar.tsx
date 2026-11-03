@@ -42,11 +42,11 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 	}
 
 	return (
-		<nav className="sticky inset-x-0 top-0 z-[5000] border-b border-black/10 bg-white px-4 py-3 md:px-6 lg:px-12">
+		<nav className="sticky inset-x-0 top-0 z-[5000] border-b border-[#EAE7E3] bg-white/95 px-4 py-3 backdrop-blur-md md:px-6 lg:px-12">
 			<div className="mx-auto flex max-w-[1200px] items-center">
 				<Link href="/" className="hidden min-w-[170px] items-center md:flex" aria-label="Jewellz Realty Home">
 					<Image
-						src="/assets/jewellz-logo.png"
+						src="/assets/jewellz-logo.webp"
 						alt="Jewellz Realty Logo"
 						width={220}
 						height={56}
@@ -57,7 +57,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 				<div className="flex w-full items-center gap-2 md:hidden">
 					<Link href="/" className="-ml-4 shrink-0 sm:w-[180px]" aria-label="Jewellz Realty Home">
 						<Image
-							src="/assets/jewellz-logo.png"
+							src="/assets/jewellz-logo.webp"
 							alt="Jewellz Realty Logo"
 							width={180}
 							height={40}
@@ -71,7 +71,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 							placeholder="What are you looking for?"
 							value={searchQuery}
 							onChange={(event) => setSearchQuery(event.target.value)}
-							className="h-9 w-full rounded-sm border border-black/10 bg-white pl-4 pr-9 text-xs text-black placeholder:text-black/40 outline-none"
+							className="h-9 w-full border border-[#EAE7E3] bg-white pl-4 pr-9 text-xs text-[#1C1B19] placeholder:text-black/40 outline-none transition-colors focus:border-[#DE141C]/50"
 						/>
 						<button type="submit" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-black/60" aria-label="Search properties">
 							<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -147,7 +147,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 							placeholder="What are you looking for?"
 							value={searchQuery}
 							onChange={(event) => setSearchQuery(event.target.value)}
-							className="h-9 w-[280px] rounded-sm border border-black/10 bg-white pl-4 pr-9 text-xs text-black placeholder:text-black/40 outline-none lg:w-[320px]"
+							className="h-9 w-[280px] border border-[#EAE7E3] bg-white pl-4 pr-9 text-xs text-[#1C1B19] placeholder:text-black/40 outline-none transition-colors focus:border-[#DE141C]/50 lg:w-[320px]"
 						/>
 						<button type="submit" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-black/60" aria-label="Search properties">
 							<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -165,7 +165,7 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 						: "pointer-events-none -translate-y-3 opacity-0 ease-in"
 				}`}
 			>
-				<div className="relative mx-4 mt-2 overflow-hidden rounded-[20px] border border-black/10 bg-white/95 shadow-lg backdrop-blur-md">
+				<div className="relative mx-4 mt-2 overflow-hidden border border-[#EAE7E3] bg-white shadow-[0_12px_36px_-20px_rgba(0,0,0,0.28)] backdrop-blur-md">
 					<div className="flex flex-col p-1.5">
 						{links.map((link) => {
 							const isActive = isLinkActive(link.href);

@@ -31,7 +31,7 @@ type PropertyRow = {
 	monthly_amortization: number | null;
 	is_price_negotiable: boolean | null;
 	property_images?: Array<{ storage_url: string | null; sort_order: number | null; is_cover: boolean | null }>;
-	developer_partners?: { company_name: string | null } | null;
+	developer_partners?: { company_name: string | null } | Array<{ company_name: string | null }> | null;
 };
 
 export type HomepageFeaturedProperty = Property & {
@@ -120,7 +120,7 @@ function mapPropertyRow(row: PropertyRow): Property {
 		pricePerSqm: toNumber(row.price_per_sqm),
 		monthlyAmortization: toNumber(row.monthly_amortization),
 		isPriceNegotiable: Boolean(row.is_price_negotiable),
-		developerName: row.developer_partners?.company_name ?? undefined,
+		developerName: (Array.isArray(row.developer_partners) ? row.developer_partners[0]?.company_name : row.developer_partners?.company_name) ?? undefined,
 		specs: [
 			{ label: "Beds", value: String(row.bedrooms ?? 0) },
 			{ label: "Baths", value: String(row.bathrooms ?? 0) },
@@ -144,6 +144,22 @@ export async function getPublishedProperties() {
 	}
 
 	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
+}
+
+/** Fetch only the fields used by public listing cards and client-side search. */
+export async function getPublishedPropertiesForList() {
+	const { data, error } = await supabaseServer
+		.from("properties")
+		.select("id,slug,title,category,status,badge,address,city,province,latitude,longitude,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,floor_count,parking_slots,price,description,key_features,amenities,nearby_landmarks,cover_image_url,price_per_sqm,monthly_amortization,is_price_negotiable")
+		.eq("status", "published")
+		.order("created_at", { ascending: false });
+
+	if (error) {
+		console.error("Failed to load published listing cards", error.message);
+		return [];
+	}
+
+	return (data ?? []).map((row) => mapPropertyRow(row as unknown as PropertyRow));
 }
 
 function scoreListing(row: ListingPerformanceRow) {
@@ -181,10 +197,22 @@ function scoreListing(row: ListingPerformanceRow) {
 
 export async function getHomepageFeaturedProperties(limit = 12): Promise<HomepageFeaturedProperty[]> {
 	const [publishedProperties, performanceResult] = await Promise.all([
-		getPublishedProperties(),
-		supabaseServer.from("mv_listing_performance").select("*").limit(250),
+		supabaseServer
+			.from("properties")
+			.select("id,slug,title,category,status,badge,address,city,province,latitude,longitude,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,floor_count,parking_slots,price,description,key_features,amenities,nearby_landmarks,cover_image_url,video_url,price_per_sqm,monthly_amortization,is_price_negotiable,property_images(storage_url,sort_order,is_cover),developer_partners(company_name)")
+			.eq("status", "published")
+			.eq("badge", "featured")
+			.order("created_at", { ascending: false }),
+		supabaseServer
+			.from("mv_listing_performance")
+			.select("property_id,total_views,total_inquiries,total_interactions,detail_opens,avg_dwell_seconds")
+			.limit(250),
 	]);
-	const properties = publishedProperties.filter((property) => property.featured);
+	if (publishedProperties.error) {
+		console.error("Failed to load featured homepage properties", publishedProperties.error.message);
+		return [];
+	}
+	const properties = (publishedProperties.data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
 
 	const performanceByProperty = new Map<string, ReturnType<typeof scoreListing>>();
 	if (performanceResult.error) {
