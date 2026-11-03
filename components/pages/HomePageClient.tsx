@@ -178,12 +178,14 @@ type HomePageClientProps = {
   initialFeaturedProperties?: Property[];
   initialFeaturedRefreshesAt?: string | null;
   initialHomeContent?: HomeContent | null;
+  locationOptions?: Array<{ province: string; municipality: string }>;
 };
 
 export default function Page({
   initialFeaturedProperties = [],
   initialFeaturedRefreshesAt = null,
   initialHomeContent = null,
+  locationOptions = [],
 }: HomePageClientProps) {
   const router = useRouter();
   const [homeContent, setHomeContent] = useState<HomeContent | null>(initialHomeContent);
@@ -214,6 +216,13 @@ export default function Page({
     };
   }, [initialHomeContent]);
   const [heroSearchFilters, setHeroSearchFilters] = useState<HeroSearchFilters>(defaultHeroSearchFilters);
+  const provinceOptions = [...new Map(locationOptions.map((item) => [item.province.trim().toLocaleLowerCase(), item.province.trim()])).values()]
+    .sort((first, second) => first.localeCompare(second));
+  const municipalityOptions = [...new Map(
+    locationOptions
+      .filter((item) => item.province.trim().toLocaleLowerCase() === heroSearchFilters.location.trim().toLocaleLowerCase())
+      .map((item) => [item.municipality.trim().toLocaleLowerCase(), item.municipality.trim()]),
+  ).values()].sort((first, second) => first.localeCompare(second));
 
   const safePriceMax = Math.min(Math.max(priceMax, 0), 850000);
   const priceRangeLabel = `Price (${formatPHPWhole(0)}-${formatPHPWhole(safePriceMax)})`;
@@ -252,7 +261,11 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
   });
 
   const updateHeroSearchFilter = (key: keyof HeroSearchFilters, value: string) => {
-    setHeroSearchFilters((current) => ({ ...current, [key]: value }));
+		setHeroSearchFilters((current) => ({
+			...current,
+			[key]: value,
+			...(key === "location" ? { subLocation: "" } : {}),
+		}));
   };
 
   const submitHeroSearch = () => {
@@ -386,10 +399,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
                 className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
                 <option value="">Location</option>
-                <option value="Batangas">Batangas</option>
-                <option value="Cavite">Cavite</option>
-                <option value="Laguna">Laguna</option>
-                <option value="Quezon City">Quezon City</option>
+                {provinceOptions.map((province) => <option key={province} value={province}>{province}</option>)}
               </select>
               <svg
                 aria-hidden="true"
@@ -404,13 +414,11 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               <select
                 value={heroSearchFilters.subLocation}
                 onChange={(e) => updateHeroSearchFilter("subLocation", e.target.value)}
+                disabled={!heroSearchFilters.location}
                 className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-9 text-xs text-[#D0D0D0] outline-none transition-colors focus:border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
               >
-                <option value="">Sub-Location</option>
-                <option value="Lipa">Lipa</option>
-                <option value="Nuvali">Nuvali</option>
-                <option value="Tagaytay">Tagaytay</option>
-                <option value="Alabang">Alabang</option>
+                <option value="">{heroSearchFilters.location ? "All municipalities" : "Select province first"}</option>
+                {municipalityOptions.map((municipality) => <option key={municipality} value={municipality}>{municipality}</option>)}
               </select>
               <svg
                 aria-hidden="true"
@@ -627,9 +635,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
                   className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
                   <option value="">Location</option>
-                  <option value="Batangas">Batangas</option>
-                  <option value="Cavite">Cavite</option>
-                  <option value="Laguna">Laguna</option>
+                  {provinceOptions.map((province) => <option key={province} value={province}>{province}</option>)}
                 </select>
                 <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -639,12 +645,11 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
                 <select
                   value={heroSearchFilters.subLocation}
                   onChange={(e) => updateHeroSearchFilter("subLocation", e.target.value)}
+                  disabled={!heroSearchFilters.location}
                   className="h-10 w-full appearance-none rounded-md border border-white/20 bg-[#2A2A2A]/85 px-4 pr-6 text-xs text-[#D0D0D0] outline-none focus-border-[#DE141C] focus-visible:ring-2 focus-visible:ring-[#DE141C]"
                 >
-                  <option value="">Sub-Location</option>
-                  <option value="Lipa">Lipa</option>
-                  <option value="Nuvali">Nuvali</option>
-                  <option value="Tagaytay">Tagaytay</option>
+                  <option value="">{heroSearchFilters.location ? "All municipalities" : "Select province first"}</option>
+                  {municipalityOptions.map((municipality) => <option key={municipality} value={municipality}>{municipality}</option>)}
                 </select>
                 <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/80" fill="none" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

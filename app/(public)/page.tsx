@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import HomePageClient from "@/components/pages/HomePageClient";
-import { getHomepageFeaturedProperties } from "@/lib/supabase/properties";
+import { getHomepageFeaturedProperties, getPublishedPropertyLocations } from "@/lib/supabase/properties";
 import { getPublicHomeContent } from "@/lib/supabase/content";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +27,11 @@ function getNextManilaMidnight(now = new Date()) {
 }
 
 export default async function HomePage() {
-	const [featuredProperties, refreshesAt, homeContent] = await Promise.all([
+	const [featuredProperties, refreshesAt, homeContent, locationOptions] = await Promise.all([
 		getHomepageFeaturedProperties(12),
 		Promise.resolve(getNextManilaMidnight().toISOString()),
 		getPublicHomeContent().catch(() => null),
+		getPublishedPropertyLocations(),
 	]);
 
 	return (
@@ -38,6 +39,7 @@ export default async function HomePage() {
 			initialFeaturedProperties={featuredProperties}
 			initialFeaturedRefreshesAt={refreshesAt}
 			initialHomeContent={homeContent}
+			locationOptions={locationOptions}
 		/>
 	);
 }

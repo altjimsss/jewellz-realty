@@ -49,6 +49,11 @@ export type HomepageFeaturedProperty = Property & {
 	};
 };
 
+export type PublicPropertyLocation = {
+	province: string;
+	municipality: string;
+};
+
 type ListingPerformanceRow = {
 	property_id: string | null;
 	total_views?: number | string | null;
@@ -160,6 +165,34 @@ export async function getPublishedPropertiesForList() {
 	}
 
 	return (data ?? []).map((row) => mapPropertyRow(row as unknown as PropertyRow));
+}
+
+export async function getPublishedPropertyLocations(): Promise<PublicPropertyLocation[]> {
+	const { data, error } = await supabaseServer
+		.from("properties")
+		.select("city,province")
+		.eq("status", "published")
+		.not("city", "is", null)
+		.not("province", "is", null)
+		.limit(5000);
+
+	if (error) {
+		console.error("Failed to load published property locations", error.message);
+		return [];
+	}
+
+	const locations = new Map<string, PublicPropertyLocation>();
+	for (const row of data ?? []) {
+		const province = String(row.province ?? "").trim();
+		const municipality = String(row.city ?? "").trim();
+		if (!province || !municipality) continue;
+		const key = `${province.toLocaleLowerCase()}|${municipality.toLocaleLowerCase()}`;
+		if (!locations.has(key)) locations.set(key, { province, municipality });
+	}
+
+	return [...locations.values()].sort((first, second) =>
+		first.province.localeCompare(second.province) || first.municipality.localeCompare(second.municipality),
+	);
 }
 
 function scoreListing(row: ListingPerformanceRow) {
