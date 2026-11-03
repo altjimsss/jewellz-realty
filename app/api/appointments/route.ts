@@ -8,6 +8,10 @@ function text(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
 }
 
+function missingColumn(error: { code?: string; message?: string } | null | undefined, column: string) {
+	return Boolean(error && (error.code === "42703" || error.code === "PGRST204" || error.message?.includes(column)));
+}
+
 const MONTH_INDEX: Record<string, number> = {
 	jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
 	jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
@@ -159,7 +163,33 @@ export async function POST(request: Request) {
 	existingAppointmentsQuery = propertyId
 		? existingAppointmentsQuery.eq("property_id", propertyId)
 		: existingAppointmentsQuery.is("property_id", null);
-	const { data: existingAppointments, error: existingAppointmentsError } = await existingAppointmentsQuery;
+	type ExistingAppointment = {
+		id: string;
+		inquiry_id: string | null;
+		buyer_name: string;
+		buyer_email: string;
+		scheduled_at: string;
+		assigned_agent_id?: string | null;
+	};
+	let existingAppointments: ExistingAppointment[] = [];
+	let existingAppointmentsError: { code?: string; message?: string } | null = null;
+	const existingAppointmentsResult = await existingAppointmentsQuery;
+	if (missingColumn(existingAppointmentsResult.error, "assigned_agent_id")) {
+		let legacyAppointmentsQuery = supabaseServer
+			.from("appointments")
+			.select("id,inquiry_id,buyer_name,buyer_email,scheduled_at")
+			.in("status", ["requested", "confirmed"])
+			.ilike("buyer_email", escapedEmail);
+		legacyAppointmentsQuery = propertyId
+			? legacyAppointmentsQuery.eq("property_id", propertyId)
+			: legacyAppointmentsQuery.is("property_id", null);
+		const legacyResult = await legacyAppointmentsQuery;
+		existingAppointmentsError = legacyResult.error;
+		existingAppointments = legacyResult.data ?? [];
+	} else {
+		existingAppointmentsError = existingAppointmentsResult.error;
+		existingAppointments = existingAppointmentsResult.data ?? [];
+	}
 	if (existingAppointmentsError && existingAppointmentsError.code !== "42P01" && existingAppointmentsError.code !== "PGRST205") {
 		console.error("[appointments existing booking lookup]", existingAppointmentsError);
 		return NextResponse.json(
@@ -227,7 +257,8 @@ export async function POST(request: Request) {
 			supabaseServer.from("inquiries").select("id").eq("assigned_agent_id", assignedAgentId),
 		]);
 		const missingAppointmentsTable = agentScheduleResult.error?.code === "42P01" || agentScheduleResult.error?.code === "PGRST205";
-		if (inheritedPropertiesResult.error || assignedInquiriesResult.error || (agentScheduleResult.error && !missingAppointmentsTable)) {
+		const missingAppointmentAgentColumn = missingColumn(agentScheduleResult.error, "assigned_agent_id");
+		if (inheritedPropertiesResult.error || assignedInquiriesResult.error || (agentScheduleResult.error && !missingAppointmentsTable && !missingAppointmentAgentColumn)) {
 			console.error("[appointments agent schedule lookup]", agentScheduleResult.error || inheritedPropertiesResult.error || assignedInquiriesResult.error);
 			return NextResponse.json(
 				{ error: "We couldn't verify the assigned agent's schedule. Please try again shortly." },
@@ -237,12 +268,13 @@ export async function POST(request: Request) {
 		const inheritedPropertyIds = (inheritedPropertiesResult.data ?? []).map((property) => property.id);
 		let inheritedAppointments: Array<{ id: string; scheduled_at: string }> = [];
 		if (!missingAppointmentsTable && inheritedPropertyIds.length > 0) {
-			const inheritedResult = await supabaseServer
+			let inheritedQuery = supabaseServer
 				.from("appointments")
 				.select("id,scheduled_at")
 				.in("property_id", inheritedPropertyIds)
-				.is("assigned_agent_id", null)
 				.in("status", ["requested", "confirmed"]);
+			if (!missingAppointmentAgentColumn) inheritedQuery = inheritedQuery.is("assigned_agent_id", null);
+			const inheritedResult = await inheritedQuery;
 			if (inheritedResult.error) {
 				console.error("[appointments inherited agent schedule lookup]", inheritedResult.error);
 				return NextResponse.json(
@@ -269,7 +301,8 @@ export async function POST(request: Request) {
 			}
 			inquiryAppointments = inquiryAppointmentResult.data ?? [];
 		}
-		const agentSchedule = [...(agentScheduleResult.data ?? []), ...inheritedAppointments, ...inquiryAppointments];
+		const directAppointments = missingAppointmentAgentColumn ? [] : agentScheduleResult.data ?? [];
+		const agentSchedule = [...directAppointments, ...inheritedAppointments, ...inquiryAppointments];
 		const agentOverlap = agentSchedule.some((appointment) => {
 			if (existingBooking && appointment.id === existingBooking.id) return false;
 			const existingStart = new Date(appointment.scheduled_at).getTime();

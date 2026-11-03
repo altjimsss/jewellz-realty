@@ -33,6 +33,6 @@
 
 ## Deployment and data checks
 
-The application changes alone do not install database triggers. Apply `supabase/production-safety-fixes.sql` to staging, review existing conflicts with `supabase/appointment-conflict-audit.sql`, resolve them, and then promote the migration. The migration intentionally stops if it finds existing overlapping active appointments; it does not silently cancel or delete bookings.
+The current appointments table may not yet contain `assigned_agent_id`; the safety migration adds it if missing. The application also supports the existing schema before that migration is applied. Apply `supabase/production-safety-fixes.sql` to staging, review existing conflicts with `supabase/appointment-conflict-audit.sql`, resolve them, and then promote the migration. The migration intentionally stops if it finds existing overlapping active appointments; it does not silently cancel or delete bookings.
 
 Customer rescheduling currently matches the submitted name and email because customer accounts are not used. Those fields identify a booking but do not prove email ownership. A verified email link or one-time code would be needed to prevent someone who knows both values from changing another person's unassigned booking.

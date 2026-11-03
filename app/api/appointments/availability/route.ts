@@ -9,6 +9,10 @@ const TIME_SLOTS = [
 ];
 const SLOT_DURATION_MS = 30 * 60 * 1000;
 
+function missingColumn(error: { code?: string; message?: string } | null | undefined, column: string) {
+	return Boolean(error && (error.code === "42703" || error.code === "PGRST204" || error.message?.includes(column)));
+}
+
 function slotInstant(date: string, slot: string) {
 	const match = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
 	if (!match) return NaN;
@@ -70,37 +74,43 @@ export async function GET(request: Request) {
 		supabaseServer.from("inquiries").select("id").eq("assigned_agent_id", assignedAgentId),
 	]);
 
-	if (assignedAgentResult.error || inheritedPropertyResult.error || assignedInquiriesResult.error) {
+	const missingAppointmentsTable = assignedAgentResult.error?.code === "42P01" || assignedAgentResult.error?.code === "PGRST205";
+	const missingAppointmentAgentColumn = missingColumn(assignedAgentResult.error, "assigned_agent_id");
+	if (inheritedPropertyResult.error || assignedInquiriesResult.error || (assignedAgentResult.error && !missingAppointmentsTable && !missingAppointmentAgentColumn)) {
 		const missingTable = [assignedAgentResult.error, inheritedPropertyResult.error, assignedInquiriesResult.error]
 			.some((error) => error?.code === "42P01" || error?.code === "PGRST205");
 		if (!missingTable) {
 			console.error("[appointment availability lookup]", assignedAgentResult.error || inheritedPropertyResult.error);
 			return NextResponse.json({ error: "Availability could not be checked." }, { status: 503, headers: rateLimitHeaders(limiter) });
 		}
+		if (missingTable) return NextResponse.json({ availableTimes: TIME_SLOTS }, { headers: rateLimitHeaders(limiter) });
+	}
+	if (missingAppointmentsTable) {
 		return NextResponse.json({ availableTimes: TIME_SLOTS }, { headers: rateLimitHeaders(limiter) });
 	}
 
 	const inheritedPropertyIds = (inheritedPropertyResult.data ?? []).map((property) => property.id);
-	let inheritedAppointments: Array<{ id: string; property_id: string | null; assigned_agent_id: string | null; scheduled_at: string }> = [];
+	let inheritedAppointments: Array<{ id: string; property_id: string | null; scheduled_at: string }> = [];
 	if (inheritedPropertyIds.length > 0) {
-		const result = await supabaseServer
+		let inheritedQuery = supabaseServer
 			.from("appointments")
-			.select("id,property_id,assigned_agent_id,scheduled_at")
+			.select("id,property_id,scheduled_at")
 			.in("property_id", inheritedPropertyIds)
-			.is("assigned_agent_id", null)
 			.in("status", ["requested", "confirmed"]);
+		if (!missingAppointmentAgentColumn) inheritedQuery = inheritedQuery.is("assigned_agent_id", null);
+		const result = await inheritedQuery;
 		if (result.error) {
 			console.error("[appointment inherited schedule lookup]", result.error);
 			return NextResponse.json({ error: "Availability could not be checked." }, { status: 503, headers: rateLimitHeaders(limiter) });
 		}
 		inheritedAppointments = result.data ?? [];
 	}
-	let inquiryAppointments: Array<{ id: string; property_id: string | null; assigned_agent_id: string | null; scheduled_at: string }> = [];
+	let inquiryAppointments: Array<{ id: string; property_id: string | null; scheduled_at: string }> = [];
 	const assignedInquiryIds = (assignedInquiriesResult.data ?? []).map((inquiry) => inquiry.id);
 	if (assignedInquiryIds.length > 0) {
 		const result = await supabaseServer
 			.from("appointments")
-			.select("id,property_id,assigned_agent_id,scheduled_at")
+			.select("id,property_id,scheduled_at")
 			.in("inquiry_id", assignedInquiryIds)
 			.in("status", ["requested", "confirmed"]);
 		if (result.error) {
@@ -110,7 +120,8 @@ export async function GET(request: Request) {
 		inquiryAppointments = result.data ?? [];
 	}
 
-	const schedule = [...(assignedAgentResult.data ?? []), ...inheritedAppointments, ...inquiryAppointments];
+	const directAppointments = missingAppointmentAgentColumn ? [] : assignedAgentResult.data ?? [];
+	const schedule = [...directAppointments, ...inheritedAppointments, ...inquiryAppointments];
 	const availableTimes = TIME_SLOTS.filter((slot) => {
 		const requestedStart = slotInstant(date, slot);
 		return !schedule.some((appointment) => {

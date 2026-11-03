@@ -40,6 +40,12 @@ CREATE POLICY "profiles_self_update" ON public.profiles
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
+-- Some existing deployments created appointments before the agent assignment
+-- column was added to the newer schema.
+ALTER TABLE public.appointments
+  ADD COLUMN IF NOT EXISTS assigned_agent_id UUID
+  REFERENCES public.agents(id) ON DELETE SET NULL;
+
 -- Appointment slots last 30 minutes. Check existing customer/agent overlaps
 -- before installing the conflict trigger so any old conflicts can be resolved.
 DO $$
