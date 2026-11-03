@@ -17,13 +17,16 @@ function sigmoid(value: number) {
 
 export function computeLeadScore(input: LeadScoreInput | number[]) {
 	if (Array.isArray(input)) {
-		return sigmoid(input.reduce((total, value) => total + value, 0));
+		const finiteValues = input.filter(Number.isFinite);
+		return sigmoid(finiteValues.reduce((total, value) => total + value, 0));
 	}
 
-	const views = Math.min(input.propertyViewCount ?? 0, 8);
-	const interactions = Math.min(input.propertyInteractionCount ?? 0, 12);
-	const maxDwellSeconds = Math.max(0, input.maxDwellSeconds ?? 0);
-	const totalDwellSeconds = Math.max(0, input.totalDwellSeconds ?? 0);
+	const nonNegativeFinite = (value: number | undefined) =>
+		typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+	const views = Math.min(nonNegativeFinite(input.propertyViewCount), 8);
+	const interactions = Math.min(nonNegativeFinite(input.propertyInteractionCount), 12);
+	const maxDwellSeconds = nonNegativeFinite(input.maxDwellSeconds);
+	const totalDwellSeconds = nonNegativeFinite(input.totalDwellSeconds);
 	const priority = input.priority?.toLowerCase();
 	const source = input.source?.toLowerCase();
 	let rawScore = -2;

@@ -10,6 +10,7 @@
     "start": "next start",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:unit": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs",
     "load:k6": "k6 run load-tests/k6-public.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
