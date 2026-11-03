@@ -123,6 +123,50 @@ export async function POST(request: Request) {
 		const { data } = await supabaseServer.from("properties").select("id").eq("slug", propertySlug).maybeSingle();
 		propertyId = data?.id ?? null;
 	}
+	const appointmentMessage = `Appointment request for ${propertyTitle || propertySlug || "property"} on ${text(body?.date)} at ${text(body?.time)}.`;
+
+	// The dashboard displays inquiries, so also guard against a repeated lead
+	// when an older deployment has appointments without the uniqueness index.
+	const escapedEmail = buyerEmail.replace(/[\\%_]/g, "\\$&");
+	let inquiryRows: Array<{ buyer_email: string | null; buyer_message?: string | null; message?: string | null }> = [];
+	const inquiryConflictResult = await supabaseServer
+		.from("inquiries")
+		.select("id,buyer_email,buyer_message")
+		.ilike("buyer_email", escapedEmail);
+	if (!inquiryConflictResult.error) {
+		inquiryRows = inquiryConflictResult.data ?? [];
+	} else if (inquiryConflictResult.error.message.includes("buyer_message")) {
+		const legacyInquiryResult = await supabaseServer
+			.from("inquiries")
+			.select("id,buyer_email,message")
+			.ilike("buyer_email", escapedEmail);
+		if (!legacyInquiryResult.error) {
+			inquiryRows = legacyInquiryResult.data ?? [];
+		} else {
+			console.error("[appointments inquiry conflict check]", legacyInquiryResult.error);
+			return NextResponse.json(
+				{ error: "We couldn't verify this appointment request. Please try again shortly." },
+				{ status: 503, headers: rateLimitHeaders(limiter) },
+			);
+		}
+	} else {
+		console.error("[appointments inquiry conflict check]", inquiryConflictResult.error);
+		return NextResponse.json(
+			{ error: "We couldn't verify this appointment request. Please try again shortly." },
+			{ status: 503, headers: rateLimitHeaders(limiter) },
+		);
+	}
+	const duplicateLead = inquiryRows.some((row) => {
+		const rowEmail = text(row.buyer_email).toLowerCase();
+		const rowMessage = text(row.buyer_message ?? row.message).toLowerCase();
+		return rowEmail === buyerEmail && rowMessage === appointmentMessage.toLowerCase();
+	});
+	if (duplicateLead) {
+		return NextResponse.json(
+			{ error: "You already have an active appointment request for this property at that time.", code: "duplicate_appointment" },
+			{ status: 409, headers: rateLimitHeaders(limiter) },
+		);
+	}
 
 	// Prevent the same customer from duplicating the same property appointment.
 	// Different customers and different properties may use the same time slot.
@@ -160,7 +204,7 @@ export async function POST(request: Request) {
 		buyerName,
 		buyerEmail,
 		buyerPhone,
-		message: `Appointment request for ${propertyTitle || propertySlug || "property"} on ${text(body?.date)} at ${text(body?.time)}.`,
+		message: appointmentMessage,
 	});
 
 	if (inquiryError || !inquiry) {
