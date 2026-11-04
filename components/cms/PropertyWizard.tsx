@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { compressVideo, VIDEO_COMPRESS_THRESHOLD_BYTES, VIDEO_MAX_UPLOAD_BYTES } from "@/lib/media/compress-video";
 import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
 import type { ReactNode } from "react";
@@ -735,16 +736,78 @@ export function PropertyWizard({
 		buildEmptyPayload(fields, defaultValues, selectedRow),
 	);
 	const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(selectedRow));
+	const [sourceDescription, setSourceDescription] = useState("");
+	const [contentGenerationStatus, setContentGenerationStatus] = useState("");
+	const [isGeneratingContent, setIsGeneratingContent] = useState(false);
 	const [isGeocoding, setIsGeocoding] = useState(false);
 	const [geocodeFeedback, setGeocodeFeedback] = useState<string | null>(null);
 	const [videoUploading, setVideoUploading] = useState(false);
 
-	const saveIsBlocked = saveBlocked || videoUploading;
+	const saveIsBlocked = saveBlocked || videoUploading || isGeneratingContent;
 	const saveBlockedLabel = saveBlocked
 		? saveBlockedMessage
 		: videoUploading
 			? "Wait for the video upload to finish before saving."
+			: isGeneratingContent
+				? "Wait for AI to finish preparing the description, features, and amenities."
 			: undefined;
+
+	useEffect(() => {
+		const source = sourceDescription.trim();
+		if (source.length < 25) {
+			setContentGenerationStatus(source ? "Add a little more detail to generate the listing copy." : "");
+			setIsGeneratingContent(false);
+			return;
+		}
+
+		const controller = new AbortController();
+		setContentGenerationStatus("Generating description, key features, and amenities…");
+		const timeout = window.setTimeout(() => {
+			void (async () => {
+				setIsGeneratingContent(true);
+				try {
+					const { data: sessionData } = await supabaseBrowser.auth.getSession();
+					const token = sessionData.session?.access_token;
+					const response = await fetch("/api/admin/generate-property-copy", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							...(token ? { Authorization: `Bearer ${token}` } : {}),
+						},
+						credentials: "same-origin",
+						body: JSON.stringify({ source }),
+						signal: controller.signal,
+					});
+					const result = await response.json().catch(() => null) as {
+						description?: string;
+						key_features?: string[];
+						amenities?: string[];
+						error?: string;
+					} | null;
+					if (!response.ok || !result?.description) throw new Error(result?.error || "Could not generate listing copy.");
+					if (controller.signal.aborted) return;
+					setPayload((previous) => ({
+						...previous,
+						description: result.description ?? "",
+						key_features: result.key_features ?? [],
+						amenities: result.amenities ?? [],
+					}));
+					setContentGenerationStatus("Generated from your paragraph. Review or edit the description and lists before saving.");
+				} catch (error) {
+					if (!controller.signal.aborted) {
+						setContentGenerationStatus(error instanceof Error ? error.message : "Could not generate listing copy.");
+					}
+				} finally {
+					if (!controller.signal.aborted) setIsGeneratingContent(false);
+				}
+			})();
+		}, 1100);
+
+		return () => {
+			window.clearTimeout(timeout);
+			controller.abort();
+		};
+	}, [sourceDescription, selectedId]);
 
 	async function reverseGeocodeLocation(latitude: number, longitude: number) {
 		try {
@@ -826,6 +889,9 @@ export function PropertyWizard({
 		if (prevSelectedIdRef.current !== selectedId) {
 			prevSelectedIdRef.current = selectedId;
 			setSlugManuallyEdited(Boolean(selectedRow));
+			setSourceDescription("");
+			setContentGenerationStatus("");
+			setIsGeneratingContent(false);
 			let initialData = buildEmptyPayload(fields, defaultValues, selectedRow);
 			try {
 				const draftKey = selectedId === "__new__" || !selectedId
@@ -1107,6 +1173,24 @@ export function PropertyWizard({
 								onSubmit={(e) => e.preventDefault()}
 							>
 								<div className="grid gap-5 sm:grid-cols-2">
+					{step.id === "content" ? (
+						<div className="sm:col-span-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
+							<label className="block">
+								<span className="text-xs font-bold uppercase tracking-[0.16em] text-violet-950">Paste source property description</span>
+								<textarea
+									value={sourceDescription}
+									onChange={(event) => setSourceDescription(event.target.value)}
+									rows={4}
+									maxLength={6000}
+									placeholder="Paste the property details here. AI will create a clear description and extract only the features and amenities stated in your paragraph."
+									className="mt-2 w-full rounded-xl border border-violet-200 bg-white px-3.5 py-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+								/>
+							</label>
+							<div aria-live="polite" className={`mt-2 text-xs ${contentGenerationStatus.toLowerCase().includes("could not") || contentGenerationStatus.toLowerCase().includes("error") ? "text-red-700" : "text-violet-900/75"}`}>
+								{contentGenerationStatus || "After you paste or edit the paragraph, AI will fill Description, Key Features, and Amenities. Review the results before saving."}
+							</div>
+						</div>
+					) : null}
 									{step.id === "location" && (
 										<div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-4">
 											<div>
