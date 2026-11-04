@@ -19,6 +19,7 @@ export type FieldSpec = {
 	options?: FieldOption[];
 	dependsOn?: string;
 	optionParentKey?: string;
+	autoSlugFrom?: string;
 	help?: string;
 };
 

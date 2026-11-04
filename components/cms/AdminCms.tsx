@@ -4234,10 +4234,35 @@ export default function AdminCms({
 	}
 
 	async function saveProject(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.developer_id || !payload.project_name || !payload.slug) {
-			setMessage("Projects need a Developer Partner, Project Name, and Slug.");
+		const projectName = asText(payload.project_name).trim();
+		if (!payload.developer_id || !projectName) {
+			setMessage("Projects need a Developer Partner and Project Name.");
 			return;
 		}
+
+		const baseSlug = asText(payload.slug).trim()
+			|| projectName.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+		if (!baseSlug) {
+			setMessage("Enter a project name that can be used to create a URL slug.");
+			return;
+		}
+
+		let candidateSlug = baseSlug;
+		let suffix = 2;
+		while (true) {
+			let slugQuery = supabaseBrowser.from("projects").select("id").eq("slug", candidateSlug);
+			if (currentRow?.id) slugQuery = slugQuery.neq("id", asText(currentRow.id));
+			const { data: matchingProject, error } = await slugQuery.maybeSingle();
+			if (error) {
+				setMessage(`Could not check project slug availability: ${error.message}`);
+				return;
+			}
+			if (!matchingProject) break;
+			candidateSlug = `${baseSlug}-${suffix}`;
+			suffix += 1;
+		}
+
+		payload.slug = candidateSlug;
 		await saveEntity("projects", payload, currentRow);
 	}
 

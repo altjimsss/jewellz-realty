@@ -133,7 +133,7 @@ export const propertyFields: FieldSpec[] = [
 export const projectFields: FieldSpec[] = [
 	{ name: "developer_id", label: "Developer Partner", type: "select", help: "Choose the developer/company that owns this project." },
 	{ name: "project_name", label: "Project Name", type: "text" },
-	{ name: "slug", label: "Slug", type: "text" },
+	{ name: "slug", label: "Slug", type: "text", autoSlugFrom: "project_name", help: "Generated from the Project Name. Edit it if you need a custom URL." },
 	{ name: "tagline", label: "Tagline", type: "text" },
 	{ name: "description", label: "Description", type: "textarea", rows: 5 },
 	{ name: "location_city", label: "City", type: "text" },
