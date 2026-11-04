@@ -43,9 +43,14 @@ function getComputedDescription(property: Property) {
 }
 
 function getParameterItems(property: Property) {
+	const floorArea = property.specs?.find((spec) => /floor area/i.test(spec.label))?.value
+		?? (property.type !== "Lot" && property.areaSqm ? `+/- ${property.areaSqm} sqm` : "N/A");
+	const lotArea = property.specs?.find((spec) => /lot area/i.test(spec.label))?.value
+		?? (property.type === "Lot" && property.areaSqm ? `${property.areaSqm} sqm` : "N/A");
+
 	return [
-		{ label: "Floor Area", value: property.areaSqm ? `+/- ${property.areaSqm} sqm` : "N/A", icon: "area" },
-		{ label: "Lot Area", value: property.specs?.find((spec) => /lot/i.test(spec.label))?.value ?? "N/A", icon: "grid" },
+		{ label: "Floor Area", value: floorArea, icon: "area" },
+		{ label: "Lot Area", value: lotArea, icon: "grid" },
 		{ label: "Levels", value: property.specs?.find((spec) => /level/i.test(spec.label))?.value ?? "2", icon: "levels" },
 		{ label: "Bedroom", value: String(property.beds ?? 0), icon: "bed" },
 		{ label: "Bathroom", value: String(property.baths ?? 0), icon: "bath" },

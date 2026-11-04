@@ -129,7 +129,8 @@ function mapPropertyRow(row: PropertyRow): Property {
 		specs: [
 			{ label: "Beds", value: String(row.bedrooms ?? 0) },
 			{ label: "Baths", value: String(row.bathrooms ?? 0) },
-			{ label: lotArea && !floorArea ? "Lot Area" : "Area", value: `${displayArea ?? 0} sqm` },
+			floorArea != null ? { label: "Floor Area", value: `${floorArea} sqm` } : null,
+			lotArea != null ? { label: "Lot Area", value: `${lotArea} sqm` } : null,
 			floorCount ? { label: "Levels", value: String(floorCount) } : null,
 			parkingSlots != null ? { label: "Garage", value: String(parkingSlots) } : null,
 		].filter((item): item is { label: string; value: string } => Boolean(item)),
