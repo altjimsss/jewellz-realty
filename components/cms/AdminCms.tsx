@@ -2066,6 +2066,7 @@ function PropertyImagesManager({
 				)}
 				{staged.length > 0 && (
 					<p className="mt-2 text-xs">
+						{uploadingCount > 0 ? (
 							<span className="font-medium text-amber-700">
 								Uploading {uploadingCount} photo{uploadingCount === 1 ? "" : "s"}… &ldquo;Create listing&rdquo; unlocks when the upload finishes.
 							</span>
