@@ -28,6 +28,7 @@ import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOpti
 import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
 import { PropertyWizard } from "./PropertyWizard";
+import { DeveloperLogoCropDialog } from "./DeveloperLogoCropDialog";
 import { InquiryWorkflowManager } from "./InquiryWorkflowManager";
 import { categoryFromParam, primaryForSection, sectionFromParam } from "./routing";
 
@@ -1811,6 +1812,9 @@ function PropertyImagesManager({
 }) {
 	const [images, setImages] = useState<CmsRow[]>([]);
 	const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+	const [pendingCropFiles, setPendingCropFiles] = useState<File[]>([]);
+	const [cropIndex, setCropIndex] = useState(0);
+	const [croppedFiles, setCroppedFiles] = useState<File[]>([]);
 	const [uploadMessage, setUploadMessage] = useState("");
 	const [saving, setSaving] = useState(false);
 
@@ -1825,8 +1829,43 @@ function PropertyImagesManager({
 	}
 
 	function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
-		setSelectedFiles(Array.from(event.target.files ?? []));
+		const files = Array.from(event.target.files ?? []);
+		event.target.value = "";
+		if (!files.length) return;
+		setSelectedFiles([]);
+		setPendingCropFiles(files);
+		setCroppedFiles([]);
+		setCropIndex(0);
 		setUploadMessage("");
+	}
+
+	function finishCurrentCrop(blob: Blob) {
+		const originalFile = pendingCropFiles[cropIndex];
+		if (!originalFile) return;
+		const fileName = originalFile.name.replace(/\.[^.]+$/, "") || "property-photo";
+		const nextFiles = [...croppedFiles, new File([blob], `${fileName}.png`, { type: "image/png" })];
+		if (cropIndex + 1 < pendingCropFiles.length) {
+			setCroppedFiles(nextFiles);
+			setCropIndex((current) => current + 1);
+			return;
+		}
+
+		setPendingCropFiles([]);
+		setCroppedFiles([]);
+		setCropIndex(0);
+		if (!propertyId) {
+			onAddStagedPhotos?.(nextFiles);
+			setUploadMessage(`Cropped ${nextFiles.length} photo${nextFiles.length === 1 ? "" : "s"}. Uploading…`);
+		} else {
+			setSelectedFiles(nextFiles);
+			setUploadMessage(`Cropped ${nextFiles.length} photo${nextFiles.length === 1 ? "" : "s"}. Ready to upload.`);
+		}
+	}
+
+	function cancelCropQueue() {
+		setPendingCropFiles([]);
+		setCroppedFiles([]);
+		setCropIndex(0);
 	}
 
 	async function uploadSelectedImages() {
@@ -1945,11 +1984,21 @@ function PropertyImagesManager({
 
 		return (
 			<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
+				{pendingCropFiles[cropIndex] ? <DeveloperLogoCropDialog
+					key={`${pendingCropFiles[cropIndex].name}-${cropIndex}`}
+					file={pendingCropFiles[cropIndex]}
+					companyName={pendingCropFiles[cropIndex].name}
+					aspectRatio={4 / 3}
+					outputWidth={1200}
+					title={`Crop property photo ${cropIndex + 1} of ${pendingCropFiles.length}`}
+					onCancel={cancelCropQueue}
+					onSave={finishCurrentCrop}
+				/> : null}
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<div>
 						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Photo Uploads</div>
 						<div className="mt-1 text-sm text-black/60">
-							Photos upload immediately as you select them. They are attached automatically when you create the listing.
+							Crop each photo before upload. They are attached automatically when you create the listing.
 						</div>
 					</div>
 					{staged.length > 0 && (
@@ -1975,7 +2024,7 @@ function PropertyImagesManager({
 				{canEdit && (
 					<label className="mt-4 flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-black/15 bg-white p-4 text-sm text-black/50 transition hover:border-black/25 hover:bg-zinc-50">
 						<UploadCloud className="h-4 w-4 shrink-0 text-black/40" />
-						<span>{staged.length > 0 ? "Add more photos…" : "Click to select photos…"}</span>
+						<span>{staged.length > 0 ? "Add more photos…" : "Select photos to crop…"}</span>
 						<input
 							type="file"
 							accept="image/jpeg,image/png,image/webp,image/gif"
@@ -2083,10 +2132,20 @@ function PropertyImagesManager({
 
 	return (
 		<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
+			{pendingCropFiles[cropIndex] ? <DeveloperLogoCropDialog
+				key={`${pendingCropFiles[cropIndex].name}-${cropIndex}`}
+				file={pendingCropFiles[cropIndex]}
+				companyName={pendingCropFiles[cropIndex].name}
+				aspectRatio={4 / 3}
+				outputWidth={1200}
+				title={`Crop property photo ${cropIndex + 1} of ${pendingCropFiles.length}`}
+				onCancel={cancelCropQueue}
+				onSave={finishCurrentCrop}
+			/> : null}
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Photo Uploads</div>
-					<div className="mt-1 text-sm text-black/60">Choose one or more photos, then upload them in one action. The first uploaded photo becomes the cover if no cover exists yet.</div>
+					<div className="mt-1 text-sm text-black/60">Crop each photo before upload. The first uploaded photo becomes the cover if no cover exists yet.</div>
 				</div>
 				<div className="text-xs text-black/45">{images.length} images</div>
 			</div>
