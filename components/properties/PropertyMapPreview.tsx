@@ -385,7 +385,7 @@ export function PropertyMapPreview({
 	const statusMessage = hasPins
 		? nearbyPlaces.length > 0
 			? "Property and all nearby essentials are pinned. Click any marker for details."
-			: "Property pinned. Nearby places will appear once the map finishes loading."
+			: "Click a property pin to view its details."
 		: "No properties with coordinates found.";
 
 	return (

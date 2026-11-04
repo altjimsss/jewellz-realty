@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Poppins } from "next/font/google";
+import Link from "next/link";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -24,6 +25,8 @@ const PropertyMapPreview = dynamic(
 	},
 );
 import { ProjectListCard } from "@/components/properties/ProjectListCard";
+import { SafeImage } from "@/components/ui/SafeImage";
+import { formatPHPWhole } from "@/lib/currency";
 import { mergeNaturalLanguageFilters } from "@/lib/property-search";
 import type { Property } from "@/types/property";
 
@@ -65,6 +68,46 @@ const SEARCH_STOP_WORDS = new Set([
 	"to",
 	"want",
 ]);
+
+function TopMapListings({ properties }: { properties: Property[] }) {
+	const topListings = properties.filter((property) => Boolean(property.coordinates)).slice(0, 3);
+	if (topListings.length === 0) return null;
+
+	return (
+		<section className="border-t border-black/10 bg-white px-4 py-3.5" aria-label="Top listings on this map">
+			<div className="flex items-center justify-between gap-3">
+				<h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-black/55">Top listings on this map</h4>
+				<span className="shrink-0 text-[11px] text-black/40">{topListings.length} of {properties.filter((property) => Boolean(property.coordinates)).length} pinned</span>
+			</div>
+			<div className="mt-2.5 space-y-2">
+				{topListings.map((property) => (
+					<Link
+						key={property.id}
+						href={`/project-list/${property.slug}`}
+						className="group flex min-w-0 items-center gap-3 rounded-xl border border-black/8 p-2 transition-colors hover:border-[#DE141C]/30 hover:bg-[#FFF9F8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#DE141C]"
+					>
+						<div className="relative h-14 w-[68px] shrink-0 overflow-hidden rounded-lg bg-stone-100">
+							<SafeImage
+								src={property.image || "/assets/housebanner1.webp"}
+								fallbackSrc="/assets/housebanner1.webp"
+								alt={property.title}
+								fill
+								sizes="68px"
+								className="object-cover"
+							/>
+						</div>
+						<div className="min-w-0 flex-1">
+							<p className="truncate text-sm font-semibold text-[#1C1B19] group-hover:text-[#B8101A]">{property.title}</p>
+							<p className="mt-0.5 truncate text-[11px] text-black/50">{[property.location, property.type].filter(Boolean).join(" · ")}</p>
+							<p className="mt-1 text-xs font-semibold text-[#DE141C]">{formatPHPWhole(property.price)}</p>
+						</div>
+						<span aria-hidden="true" className="shrink-0 text-sm text-black/30 transition group-hover:translate-x-0.5 group-hover:text-[#DE141C]">↗</span>
+					</Link>
+				))}
+			</div>
+		</section>
+	);
+}
 
 function normalizeText(value: unknown) {
 	return String(value ?? "").trim().toLowerCase();
@@ -549,6 +592,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 										<p className="mt-1 text-sm text-black/55">{filteredProperties.length} matched properties</p>
 									</div>
 									<PropertyMapPreview properties={filteredProperties} mapHeightClassName="h-[320px]" />
+									<TopMapListings properties={filteredProperties} />
 								</aside>
 
 								{leadProperties.map((property) => {

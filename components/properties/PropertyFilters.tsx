@@ -174,7 +174,7 @@ function FilterSelect({ value, options, placeholder, onChange, ariaLabel, compac
 
 export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersProps) {
 	const [showPhoneFilters, setShowPhoneFilters] = useState(false);
-	const activePhoneFilterCount = [value.lookingFor, value.priceMin, value.priceMax, value.status].filter(Boolean).length;
+	const activePhoneFilterCount = [value.lookingFor, value.location, value.subLocation, value.priceMin, value.priceMax, value.status].filter(Boolean).length;
 
 	return (
 		<form
@@ -317,6 +317,32 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 						</div>
 					</div>
 					<div className="bg-white p-4">
+						<p className={LABEL_CLASS}>Location</p>
+						<div className="mt-1">
+							<FilterSelect
+								value={value.location}
+								options={LOCATION_OPTIONS}
+								placeholder="Any province"
+								ariaLabel="Location"
+								compact
+								onChange={(next) => onChange({ ...value, location: next })}
+							/>
+						</div>
+					</div>
+					<div className="bg-white p-4">
+						<p className={LABEL_CLASS}>Sub-location</p>
+						<div className="mt-1">
+							<FilterSelect
+								value={value.subLocation}
+								options={SUBLOCATION_OPTIONS}
+								placeholder="Any area"
+								ariaLabel="Sub-location"
+								compact
+								onChange={(next) => onChange({ ...value, subLocation: next })}
+							/>
+						</div>
+					</div>
+					<div className="bg-white p-4">
 						<p className={LABEL_CLASS}>Price</p>
 						<div className="mt-1 flex items-center gap-2">
 							<input
@@ -407,6 +433,32 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 									ariaLabel="Looking for"
 									compact
 									onChange={(next) => onChange({ ...value, lookingFor: next })}
+								/>
+							</div>
+						</div>
+						<div className="bg-white p-3">
+							<p className={LABEL_CLASS}>Location</p>
+							<div className="mt-1">
+								<FilterSelect
+									value={value.location}
+									options={LOCATION_OPTIONS}
+									placeholder="Any province"
+									ariaLabel="Location"
+									compact
+									onChange={(next) => onChange({ ...value, location: next })}
+								/>
+							</div>
+						</div>
+						<div className="bg-white p-3">
+							<p className={LABEL_CLASS}>Sub-location</p>
+							<div className="mt-1">
+								<FilterSelect
+									value={value.subLocation}
+									options={SUBLOCATION_OPTIONS}
+									placeholder="Any area"
+									ariaLabel="Sub-location"
+									compact
+									onChange={(next) => onChange({ ...value, subLocation: next })}
 								/>
 							</div>
 						</div>
