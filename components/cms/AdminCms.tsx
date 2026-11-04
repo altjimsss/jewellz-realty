@@ -2886,6 +2886,7 @@ export default function AdminCms({
 	const [saving, setSaving] = useState(false);
 	const [savingProject, setSavingProject] = useState(false);
 	const projectSaveInFlight = useRef(false);
+	const analyticsSessionsLoadedForUser = useRef<string | null>(null);
 	const [sessionUser, setSessionUser] = useState<User | null>(cachedSnapshot?.sessionUser ?? null);
 	const sessionUserId = sessionUser?.id ?? null;
 	const [profile, setProfile] = useState<CmsRow | null>(cachedSnapshot?.profile ?? null);
@@ -3092,6 +3093,32 @@ export default function AdminCms({
 	const role = asRole(profile?.role);
 	const isAdmin = role === "admin";
 	const isAgent = role === "agent";
+	const analyticsSectionOpen = activeSection === "analytics"
+		|| analyticsChildSections.has(activeSection)
+		|| activeSection === "traffic"
+		|| activeSection === "agentPerformance"
+		|| activeSection === "developerPortfolio";
+
+	useEffect(() => {
+		if (!isAdmin || !sessionUserId || !analyticsSectionOpen) return;
+		if (!isRefreshingWorkspace && analyticsSessionsLoadedForUser.current === sessionUserId) return;
+
+		let active = true;
+		void supabaseBrowser
+			.from("sessions")
+			.select("id, anonymous_visitor_id, page_view_count, started_at, last_seen_at")
+			.order("last_seen_at", { ascending: false })
+			.limit(2000)
+			.then(({ data, error }) => {
+				if (!active || error) return;
+				analyticsSessionsLoadedForUser.current = sessionUserId;
+				setWorkspace((previous) => ({ ...previous, sessions: data ?? [] }));
+			});
+
+		return () => {
+			active = false;
+		};
+	}, [analyticsSectionOpen, isAdmin, isRefreshingWorkspace, sessionUserId]);
 	const isDeveloper = role === "developer_partner";
 	const canEditCatalog = isAdmin;
 	const canEditContent = isAdmin;
@@ -3417,7 +3444,6 @@ export default function AdminCms({
 				developerPortfolioResult,
 				recommendationsResult,
 				engagementEventsResult,
-				sessionsResult,
 				profilesResult,
 				activityLogsResult,
 			] = await Promise.all([
@@ -3436,7 +3462,6 @@ export default function AdminCms({
 				supabaseBrowser.from("mv_developer_portfolio").select("*"),
 				supabaseBrowser.from("recommendations").select("id, was_clicked, is_fallback, clicked_at, generated_at"),
 				supabaseBrowser.from("analytics_events").select("id, event_type, session_id, created_at").order("created_at", { ascending: false }).limit(1000),
-				supabaseBrowser.from("sessions").select("id, anonymous_visitor_id, page_view_count, started_at, last_seen_at").order("last_seen_at", { ascending: false }).limit(2000),
 				supabaseBrowser.from("profiles").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100),
 			]);
@@ -3456,7 +3481,6 @@ export default function AdminCms({
 			nextWorkspace.developerPortfolio = developerPortfolioResult.data ?? [];
 			nextWorkspace.recommendations = recommendationsResult.data ?? [];
 			nextWorkspace.engagementEvents = engagementEventsResult.data ?? [];
-			nextWorkspace.sessions = sessionsResult.data ?? [];
 			nextWorkspace.profiles = profilesResult.data ?? [];
 			nextWorkspace.activityLogs = activityLogsResult.data ?? [];
 		} else if (activeIsDeveloper && developerId) {
@@ -3648,30 +3672,42 @@ export default function AdminCms({
 			)
 			.subscribe();
 
-		// 2. Periodic background polling every 15s to keep all admin views synchronized
+		// Realtime is primary; sync only the most recent inquiries occasionally
+		// to recover missed events without re-downloading the full table.
+		let syncInFlight = false;
 		const syncInterval = setInterval(async () => {
-			if (!mounted) return;
-			const { data: latestInquiries } = await supabaseBrowser
-				.from("inquiries")
-				.select("*")
-				.order("created_at", { ascending: false });
+			if (!mounted || syncInFlight || document.visibilityState !== "visible") return;
+			syncInFlight = true;
+			try {
+				const { data: latestInquiries } = await supabaseBrowser
+					.from("inquiries")
+					.select("id, buyer_name, buyer_email, buyer_phone, property_id, assigned_agent_id, status, priority, lead_score, buyer_message, created_at, last_activity_at, first_contacted_at, closed_at, updated_at")
+					.order("created_at", { ascending: false })
+					.limit(100);
 
-			if (latestInquiries && Array.isArray(latestInquiries) && mounted) {
-				setWorkspace((prev) => {
-					const currentSignature = prev.inquiries
-						.map((i) => `${asText(i.id)}_${asText(i.status)}_${asText(i.assigned_agent_id)}_${asText(i.last_activity_at)}`)
-						.join(",");
-					const newSignature = latestInquiries
-						.map((i) => `${asText(i.id)}_${asText(i.status)}_${asText(i.assigned_agent_id)}_${asText(i.last_activity_at)}`)
-						.join(",");
-					if (currentSignature === newSignature) return prev;
-					return {
-						...prev,
-						inquiries: latestInquiries as CmsRow[],
-					};
-				});
+				if (latestInquiries && Array.isArray(latestInquiries) && mounted) {
+					setWorkspace((prev) => {
+						const latestRows = latestInquiries as CmsRow[];
+						const latestById = new Map(latestRows.map((row) => [asText(row.id), row]));
+						const currentIds = new Set(prev.inquiries.map((row) => asText(row.id)));
+						const newRows = latestRows.filter((row) => !currentIds.has(asText(row.id)));
+						const mergedRows = prev.inquiries.map((row) => {
+							const latest = latestById.get(asText(row.id));
+							if (!latest) return row;
+							const sameSyncFields = asText(row.status) === asText(latest.status)
+								&& asText(row.assigned_agent_id) === asText(latest.assigned_agent_id)
+								&& asText(row.last_activity_at) === asText(latest.last_activity_at)
+								&& asText(row.updated_at) === asText(latest.updated_at);
+							return sameSyncFields ? row : { ...row, ...latest };
+						});
+						if (newRows.length === 0 && mergedRows.every((row, index) => row === prev.inquiries[index])) return prev;
+						return { ...prev, inquiries: [...newRows, ...mergedRows] };
+					});
+				}
+			} finally {
+				syncInFlight = false;
 			}
-		}, 15000);
+		}, 60000);
 
 		return () => {
 			mounted = false;

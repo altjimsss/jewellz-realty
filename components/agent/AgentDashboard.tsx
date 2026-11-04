@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -43,7 +44,13 @@ import {
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { SafeImage } from "@/components/ui/SafeImage";
-import { AgentBarChart, AgentDonut, AgentFunnel, AgentTrendChart, type AgentChartRow } from "./AgentCharts";
+import type { AgentChartRow } from "./AgentCharts";
+
+const AgentChartLoading = () => <div className="h-56 animate-pulse rounded-lg bg-zinc-100" aria-hidden="true" />;
+const AgentBarChart = dynamic(() => import("./AgentCharts").then((module) => module.AgentBarChart), { ssr: false, loading: AgentChartLoading });
+const AgentDonut = dynamic(() => import("./AgentCharts").then((module) => module.AgentDonut), { ssr: false, loading: AgentChartLoading });
+const AgentFunnel = dynamic(() => import("./AgentCharts").then((module) => module.AgentFunnel), { ssr: false, loading: AgentChartLoading });
+const AgentTrendChart = dynamic(() => import("./AgentCharts").then((module) => module.AgentTrendChart), { ssr: false, loading: AgentChartLoading });
 
 type SectionId =
 	| "overview"
@@ -340,7 +347,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 				const { data: agentRow } = await supabaseBrowser
 					.from("agents")
-					.select("*")
+					.select("id, profile_id, full_name, license_number, specialization, bio, photo_url, phone, facebook_url, instagram_url, twitter_url, linkedin_url, is_top_agent")
 					.eq("profile_id", user.id)
 					.maybeSingle();
 
@@ -372,12 +379,12 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				const [{ data: inquiryData }, { data: propertyData }] = await Promise.all([
 					supabaseBrowser
 						.from("inquiries")
-						.select("*, properties(title, slug, price, city)")
+						.select("id, buyer_name, buyer_email, buyer_phone, property_id, assigned_agent_id, status, priority, lead_score, buyer_message, created_at, last_activity_at, first_contacted_at, closed_at, properties(title, slug, price, city)")
 						.eq("assigned_agent_id", currentAgent.id)
 						.order("created_at", { ascending: false }),
 					supabaseBrowser
 						.from("properties")
-						.select("*")
+						.select("id, title, slug, category, status, price, city, province, bedrooms, bathrooms, lot_area_sqm, floor_area_sqm, featured_image_url, images, created_at")
 						.eq("assigned_agent_id", currentAgent.id)
 						.order("created_at", { ascending: false }),
 				]);
@@ -387,17 +394,6 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				const inqList = (inquiryData as InquiryRow[]) ?? [];
 				setInquiries(inqList);
 				setProperties((propertyData as PropertyRow[]) ?? []);
-
-				const inquiryIds = inqList.map((item) => item.id);
-				if (inquiryIds.length) {
-					const { data: timelineData } = await supabaseBrowser
-						.from("inquiry_timeline")
-						.select("id, inquiry_id, old_status, new_status, note, created_at")
-						.in("inquiry_id", inquiryIds)
-						.order("created_at", { ascending: false })
-						.limit(120);
-					if (isMounted) setTimeline((timelineData as TimelineRow[]) ?? []);
-				}
 
 				const readKey = `agent_read_inquiries_${currentAgent.id}`;
 				let readIds: string[] = [];
@@ -423,6 +419,19 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				setNotifications(initialNotifs);
 
 				setLoading(false);
+
+				// Timeline is only needed in the Activity section; don't block the
+				// first interactive workspace on this secondary query.
+				const inquiryIds = inqList.map((item) => item.id);
+				if (inquiryIds.length) {
+					const { data: timelineData } = await supabaseBrowser
+						.from("inquiry_timeline")
+						.select("id, inquiry_id, old_status, new_status, note, created_at")
+						.in("inquiry_id", inquiryIds)
+						.order("created_at", { ascending: false })
+						.limit(120);
+					if (isMounted) setTimeline((timelineData as TimelineRow[]) ?? []);
+				}
 			} catch (error) {
 				console.error("Error loading agent dashboard:", error);
 				if (isMounted) setLoading(false);
@@ -519,16 +528,17 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			)
 			.subscribe();
 
-		// Poll every 30 s as a fallback for missed realtime events.
+		// Poll a small recent window as a fallback for missed realtime events.
 		// ONLY notify if a genuinely brand-new lead appears that wasn't
 		// present when the page loaded or known previously.
 		const pollInterval = setInterval(async () => {
-			if (!mounted) return;
+			if (!mounted || document.visibilityState !== "visible") return;
 			const { data: latestData } = await supabaseBrowser
 				.from("inquiries")
-				.select("*, properties(title, slug, price, city)")
+				.select("id, buyer_name, buyer_email, buyer_phone, property_id, assigned_agent_id, status, priority, lead_score, buyer_message, created_at, last_activity_at, first_contacted_at, closed_at, properties(title, slug, price, city)")
 				.eq("assigned_agent_id", agent.id)
-				.order("created_at", { ascending: false });
+				.order("created_at", { ascending: false })
+				.limit(100);
 
 			if (!latestData || !Array.isArray(latestData) || !mounted) return;
 
@@ -571,7 +581,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 					.map((item) => (latestById.has(item.id) ? { ...item, ...latestById.get(item.id) } : item))
 					.concat(brandNew);
 			});
-		}, 30000);
+		}, 60000);
 
 		return () => {
 			mounted = false;
