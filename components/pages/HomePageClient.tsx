@@ -46,44 +46,6 @@ function DeferredTestimonial() {
 }
 
 
-const heroProperties = [
-  {
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
-    title: "PREMIUM HOMES MOUNTAIN VILLA",
-    price: 2000000000,
-    status: "Sale",
-    location: "San Pascual, Batangas",
-    area: "3200 SQ FT.",
-    bedroom: 8,
-    bathroom: 3,
-    garage: 2,
-    slug: "premium-homes-mountain-villa",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80",
-    title: "SKYPER POOL APARTMENT",
-    price: 1350000000,
-    status: "Featured",
-    location: "Tagaytay, Cavite",
-    area: "2400 SQ FT.",
-    bedroom: 6,
-    bathroom: 4,
-    garage: 2,
-    slug: "skyper-pool-apartment",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",
-    title: "DIAMOND MANOR ESTATE",
-    price: 980000000,
-    status: "New",
-    location: "Nuvali, Laguna",
-    area: "2800 SQ FT.",
-    bedroom: 5,
-    bathroom: 3,
-    garage: 3,
-    slug: "diamond-manor-estate",
-  },
-];
 type HomeContent = {
 	heroBanners?: Array<{ headline: string; subheadline?: string; imageUrl: string; ctaLabel?: string; ctaUrl?: string }>;
 	siteStats?: Array<{ key: string; label: string; value: number; suffix?: string }>;
@@ -103,9 +65,9 @@ type HeroDisplayProperty = {
 	status: string;
 	location: string;
 	area: string;
-	bedroom: number;
-	bathroom: number;
-	garage: number;
+	bedroom: number | string;
+	bathroom: number | string;
+	garage: number | string;
 	slug?: string;
 };
 const HERO_DURATION_MS = 5000;
@@ -210,7 +172,17 @@ export default function Page({
   }));
   const displayedHeroProperties: HeroDisplayProperty[] = propertyHeroProperties.length
     ? propertyHeroProperties
-    : heroProperties.map((property) => ({ ...property, price: formatPHPWhole(property.price) }));
+    : [{
+        image: "/assets/housebanner1.webp",
+        title: "Find your next property",
+        price: "",
+        status: "",
+        location: "",
+        area: "—",
+        bedroom: "—",
+        bathroom: "—",
+        garage: "—",
+      }];
   const displayedStats = homeContent?.siteStats?.length ? homeContent.siteStats : [
     { key: "properties", label: "Properties", value: 500, suffix: "+" },
     { key: "agents", label: "Agents", value: 50, suffix: "+" },
@@ -257,7 +229,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
       setFeaturedProperties(Array.isArray(data.properties) ? data.properties : []);
       setFeaturedRefreshesAt(data.refreshesAt ?? null);
     } catch {
-      // Keep the current fallback content if analytics or database reads fail.
+      // Keep the current content if the database read fails.
     }
   }, []);
 

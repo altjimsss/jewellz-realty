@@ -52,23 +52,6 @@ const categories = [
   },
 ] as const;
 
-const fallbackHotPicks = [
-  { title: "Luxury Family Home", location: "151 Tompkins Ave", beds: 4, baths: 1, area: 200, price: "$2,850", imageId: "1600596542815-ffad4c1539a9" },
-  { title: "Skyper Pool Apartment", location: "88 Lakeview Dr", beds: 3, baths: 2, area: 180, price: "$2,650", imageId: "1512917774080-9991f1c4c750" },
-  { title: "House on the Hollywood", location: "42 Sunset Blvd", beds: 5, baths: 3, area: 260, price: "$3,450", imageId: "1600607687939-ce8a6c25118c" },
-  { title: "Gorgeous Villa Bay", location: "15 Shoreline Rd", beds: 4, baths: 3, area: 240, price: "$3,150", imageId: "1600566752355-35792bedcfea" },
-  { title: "Diamond Manor Apartment", location: "11 Sapphire St", beds: 2, baths: 1, area: 120, price: "$1,950", imageId: "1600047509807-ba8f99d2cdde" },
-  { title: "Comfortable Villa Green", location: "73 Garden Way", beds: 4, baths: 2, area: 210, price: "$2,980", imageId: "1505691938895-1758d7feb511" },
-  { title: "Modern Loft Residence", location: "27 Midtown Ave", beds: 2, baths: 2, area: 135, price: "$2,150", imageId: "1494526585095-c41746248156" },
-  { title: "Serenity Hills House", location: "9 Pinecrest Rd", beds: 3, baths: 2, area: 170, price: "$2,420", imageId: "1449844908441-8829872d2607" },
-  { title: "Coastal Breeze Condo", location: "101 Seaside Blvd", beds: 2, baths: 1, area: 110, price: "$1,780", imageId: "1493809842364-78817add7ffb" },
-  { title: "Prime City Penthouse", location: "66 Grand Tower", beds: 3, baths: 2, area: 190, price: "$3,980", imageId: "1464890100898-a385f744067f" },
-  { title: "Elegant Mountain Home", location: "5 Summit Pass", beds: 5, baths: 4, area: 320, price: "$4,550", imageId: "1430285561322-7808604715df" },
-  { title: "Parkview Starter Home", location: "230 Maple Lane", beds: 3, baths: 2, area: 145, price: "$2,090", imageId: "1513694203232-719a280e022f" },
-];
-
-type FallbackHotPick = (typeof fallbackHotPicks)[number];
-
 type HomeDiscoverySectionProps = {
   hotPicks?: Property[];
   refreshesAt?: string | null;
@@ -80,10 +63,6 @@ function secondsUntilRefresh(refreshesAt?: string | null) {
   const refreshTime = new Date(refreshesAt).getTime();
   if (!Number.isFinite(refreshTime)) return 86400;
   return Math.max(0, Math.floor((refreshTime - Date.now()) / 1000));
-}
-
-function isProperty(pick: Property | FallbackHotPick): pick is Property {
-  return "slug" in pick;
 }
 
 export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRefresh }: HomeDiscoverySectionProps) {
@@ -125,8 +104,7 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
   const seconds = String(total % 60).padStart(2, "0");
 
   const hotPicksPerPage = 6;
-  const databaseHotPicks = hotPicks.length > 0;
-  const activeHotPicks: Array<Property | FallbackHotPick> = databaseHotPicks ? hotPicks : fallbackHotPicks;
+  const activeHotPicks = hotPicks;
   const hotPicksPageCount = Math.max(1, Math.ceil(activeHotPicks.length / hotPicksPerPage));
   const currentHotPicksPage = Math.min(hotPicksPage, hotPicksPageCount - 1);
   const visibleHotPicks = activeHotPicks.slice(currentHotPicksPage * hotPicksPerPage, currentHotPicksPage * hotPicksPerPage + hotPicksPerPage);
@@ -199,29 +177,19 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
                   <div className="mt-3 h-5 w-28 animate-pulse bg-[#E5E5E5]" />
                 </div>
               </article>
-            )) : visibleHotPicks.map((pick) => {
-              const propertyPick = isProperty(pick);
-              const image = propertyPick
-                ? pick.image?.trim() || pick.images?.[0] || "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1200&q=80"
-                : `https://images.unsplash.com/photo-${pick.imageId}?w=700&q=80`;
-              const price = propertyPick ? formatPHPWhole(pick.price) : pick.price;
-              const href = propertyPick ? `/project-list/${pick.slug}` : "/project-list";
-              const property: Property = propertyPick
-                ? { ...pick, image }
-                : {
-                    id: pick.title,
-                    slug: pick.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
-                    title: pick.title,
-                    price: Number(String(pick.price).replace(/[^0-9.]/g, "")) || 0,
-                    location: pick.location,
-                    beds: pick.beds,
-                    baths: pick.baths,
-                    areaSqm: pick.area,
-                    image,
-                  };
-
-              return <ProjectListCard key={pick.title} property={property} priceLabel={price} href={href} />;
-            })}
+            )) : visibleHotPicks.map((pick) => (
+              <ProjectListCard
+                key={pick.id}
+                property={pick}
+                priceLabel={formatPHPWhole(pick.price)}
+                href={`/project-list/${pick.slug}`}
+              />
+            ))}
+            {!hotPicksLoading && hotPicks.length === 0 ? (
+              <p className="col-span-full py-10 text-center text-sm text-black/55">
+                No properties are available yet. Check back soon.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
