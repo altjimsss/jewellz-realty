@@ -138,6 +138,15 @@ function stepFields(step: StepDef, allFields: FieldSpec[]): FieldSpec[] {
 	return allFields.filter((f) => f.section?.startsWith(step.sectionPrefix));
 }
 
+function slugify(value: string) {
+	return value
+		.normalize("NFKD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "");
+}
+
 function stepIsComplete(step: StepDef, payload: CmsPayload): boolean {
 	return step.required.every((name) => {
 		const v = payload[name];
@@ -701,6 +710,7 @@ export function PropertyWizard({
 	const [payload, setPayload] = useState<CmsPayload>(() =>
 		buildEmptyPayload(fields, defaultValues, selectedRow),
 	);
+	const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(selectedRow));
 	const [isGeocoding, setIsGeocoding] = useState(false);
 	const [geocodeFeedback, setGeocodeFeedback] = useState<string | null>(null);
 	const [videoUploading, setVideoUploading] = useState(false);
@@ -750,6 +760,7 @@ export function PropertyWizard({
 	useEffect(() => {
 		if (prevSelectedIdRef.current !== selectedId) {
 			prevSelectedIdRef.current = selectedId;
+			setSlugManuallyEdited(Boolean(selectedRow));
 			let initialData = buildEmptyPayload(fields, defaultValues, selectedRow);
 			try {
 				const draftKey = selectedId === "__new__" || !selectedId
@@ -802,12 +813,24 @@ export function PropertyWizard({
 	}, [rows, search, rowLabel, rowMeta]);
 
 	const handleFieldChange = useCallback((name: string, val: string | boolean) => {
+		if (name === "slug") setSlugManuallyEdited(true);
 		setPayload((prev) => {
 			const next = { ...prev, [name]: val };
 			if (name === "developer_id") next["project_id"] = "";
+
+			const slugField = fields.find((field) => field.autoSlugFrom && (field.autoSlugFrom === name || name === "project_id" || name === "developer_id"));
+			if (slugField && !selectedRow && !slugManuallyEdited) {
+				const title = name === "title" ? asText(val) : asText(next.title);
+				const projectId = name === "project_id" ? asText(val) : name === "developer_id" ? "" : asText(next.project_id);
+				const projectSlug = fields
+					.find((field) => field.name === "project_id")
+					?.options?.find((option) => option.value === projectId)?.meta?.project_slug;
+				const titleSlug = slugify(title);
+				next[slugField.name] = [projectSlug ? slugify(projectSlug) : "", titleSlug].filter(Boolean).join("-");
+			}
 			return next;
 		});
-	}, []);
+	}, [fields, selectedRow, slugManuallyEdited]);
 
 	function handleNext() {
 		const step = STEPS[currentStep];

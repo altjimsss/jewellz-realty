@@ -100,7 +100,7 @@ export const propertyFields: FieldSpec[] = [
 	{ section: "Step 1 · Ownership", name: "project_id", label: "Project / Subdivision", type: "select", dependsOn: "developer_id", optionParentKey: "developer_id", help: "Optional. Only projects owned by the selected Developer Partner are shown." },
 	{ section: "Step 1 · Ownership", name: "assigned_agent_id", label: "Assigned Agent", type: "select", help: "Optional. Pick the agent responsible for inquiries and follow-ups." },
 	{ section: "Step 2 · Basic Listing", name: "title", label: "Title", type: "text", placeholder: "Palm Village Unit 12" },
-	{ section: "Step 2 · Basic Listing", name: "slug", label: "Slug", type: "text", placeholder: "palm-village-unit-12", help: "Used in the public URL. Keep it lowercase with hyphens." },
+	{ section: "Step 2 · Basic Listing", name: "slug", label: "Slug", type: "text", autoSlugFrom: "title", placeholder: "project-name-property-title", help: "Generated from the selected project and property title. Edit it if you need a custom URL." },
 	{ section: "Step 2 · Basic Listing", name: "category", label: "Category", type: "select", options: propertyCategoryOptions },
 	{ section: "Step 2 · Basic Listing", name: "status", label: "Status", type: "select", options: listingStatusOptions },
 	{ section: "Step 2 · Basic Listing", name: "badge", label: "Badge", type: "select", options: listingBadgeOptions },

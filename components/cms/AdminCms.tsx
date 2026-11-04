@@ -3362,7 +3362,7 @@ export default function AdminCms({
 		[workspace.developers],
 	);
 	const projectOptions = useMemo(
-		() => workspace.projects.map((project) => optionFromRow(project, `${asText(project.project_name ?? project.slug)}${project.location_city ? ` · ${project.location_city}` : ""}`, "Unnamed project", { developer_id: asText(project.developer_id) })),
+		() => workspace.projects.map((project) => optionFromRow(project, `${asText(project.project_name ?? project.slug)}${project.location_city ? ` · ${project.location_city}` : ""}`, "Unnamed project", { developer_id: asText(project.developer_id), project_slug: asText(project.slug) })),
 		[workspace.projects],
 	);
 	const agentOptions = useMemo(
@@ -4088,6 +4088,23 @@ export default function AdminCms({
 			setMessage("Property records need title, slug, address, city, and province.");
 			return false;
 		}
+
+		const baseSlug = asText(payload.slug).trim();
+		let candidateSlug = baseSlug;
+		let slugSuffix = 2;
+		while (true) {
+			let slugQuery = supabaseBrowser.from("properties").select("id").eq("slug", candidateSlug);
+			if (currentRow?.id) slugQuery = slugQuery.neq("id", asText(currentRow.id));
+			const { data: matchingProperty, error: slugError } = await slugQuery.maybeSingle();
+			if (slugError) {
+				setMessage(`Could not check property slug availability: ${slugError.message}`);
+				return false;
+			}
+			if (!matchingProperty) break;
+			candidateSlug = `${baseSlug}-${slugSuffix}`;
+			slugSuffix += 1;
+		}
+		payload.slug = candidateSlug;
 
 		// Auto-resolve coordinates from address if not manually set
 		let lat = Number(payload.latitude);
