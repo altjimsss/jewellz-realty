@@ -1796,7 +1796,9 @@ function PropertyImagesManager({
 	onChanged,
 	onRequestDelete,
 	stagedPhotos,
+	selectedCoverStagedPhotoId,
 	onAddStagedPhotos,
+	onSelectStagedCover,
 	onRemoveStagedPhoto,
 	onRetryStagedPhoto,
 }: {
@@ -1805,7 +1807,9 @@ function PropertyImagesManager({
 	onChanged: () => Promise<void> | void;
 	onRequestDelete: (action: DestructiveAction) => void;
 	stagedPhotos?: StagedPhoto[];
+	selectedCoverStagedPhotoId?: string | null;
 	onAddStagedPhotos?: (files: File[]) => void;
+	onSelectStagedCover?: (id: string) => void;
 	onRemoveStagedPhoto?: (photo: StagedPhoto) => void;
 	onRetryStagedPhoto?: (photo: StagedPhoto) => void;
 }) {
@@ -1951,7 +1955,7 @@ function PropertyImagesManager({
 					<div>
 						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Photo Uploads</div>
 						<div className="mt-1 text-sm text-black/60">
-							Photos upload as selected, without cropping. They are attached automatically when you create the listing.
+							Choose the listing thumbnail below. The first photo is selected by default; you can choose another.
 						</div>
 					</div>
 					{staged.length > 0 && (
@@ -2005,6 +2009,11 @@ function PropertyImagesManager({
 									alt={photo.file.name}
 									className={`h-full w-full object-cover ${photo.status === "error" ? "opacity-60" : ""}`}
 								/>
+								{selectedCoverStagedPhotoId === photo.id ? (
+									<span className="absolute left-1 top-1 rounded-full bg-[#DE141C] px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow">Thumbnail</span>
+								) : canEdit ? (
+									<button type="button" onClick={() => onSelectStagedCover?.(photo.id)} className="absolute left-1 top-1 rounded-full bg-white/95 px-2 py-1 text-[9px] font-semibold text-black shadow hover:bg-white">Use as thumbnail</button>
+								) : null}
 								{photo.status === "uploading" && (
 									<div className="absolute inset-x-0 bottom-0 bg-black/65 p-1.5 text-[10px] font-semibold text-white">
 										<div className="flex items-center justify-between gap-1">
@@ -2020,7 +2029,7 @@ function PropertyImagesManager({
 									</div>
 								)}
 								{photo.status === "done" && (
-									<span className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+					<span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
 										<CheckCircle2 className="h-3.5 w-3.5" />
 									</span>
 								)}
@@ -2057,7 +2066,6 @@ function PropertyImagesManager({
 				)}
 				{staged.length > 0 && (
 					<p className="mt-2 text-xs">
-						{uploadingCount > 0 ? (
 							<span className="font-medium text-amber-700">
 								Uploading {uploadingCount} photo{uploadingCount === 1 ? "" : "s"}… &ldquo;Create listing&rdquo; unlocks when the upload finishes.
 							</span>
@@ -2088,7 +2096,7 @@ function PropertyImagesManager({
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Photo Uploads</div>
-					<div className="mt-1 text-sm text-black/60">Photos upload as selected, without cropping. The first uploaded photo becomes the cover if no cover exists yet.</div>
+					<div className="mt-1 text-sm text-black/60">Choose which uploaded photo becomes the listing thumbnail. The first photo is selected by default.</div>
 				</div>
 				<div className="text-xs text-black/45">{images.length} images</div>
 			</div>
@@ -2125,11 +2133,11 @@ function PropertyImagesManager({
 						<div className="mt-1 break-all text-xs text-black/45">{image.storage_url}</div>
 						<div className="mt-3 flex items-center justify-between gap-2 text-xs text-black/55">
 							<span>Sort order: {image.sort_order}</span>
-							<span>{image.is_cover ? "Cover" : "Secondary"}</span>
+							<span>{image.is_cover ? "Listing thumbnail" : "Gallery photo"}</span>
 						</div>
 						{canEdit ? (
 							<div className="mt-3 flex flex-wrap gap-2">
-								<button type="button" onClick={() => setCoverImage(image)} disabled={saving || Boolean(image.is_cover)} className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-black/65 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">Set cover</button>
+								<button type="button" onClick={() => setCoverImage(image)} disabled={saving || Boolean(image.is_cover)} className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-black/65 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50">{image.is_cover ? "Thumbnail selected" : "Use as thumbnail"}</button>
 								<button type="button" onClick={() => deleteImage(asText(image.id))} className="rounded-full border border-black/15 px-3 py-1 text-xs font-medium text-[#111111] transition hover:bg-zinc-100">Delete</button>
 							</div>
 						) : null}
@@ -2862,6 +2870,7 @@ export default function AdminCms({
 	const [workspace, setWorkspace] = useState<Workspace>(cachedSnapshot?.workspace ?? emptyWorkspace);
 	const [selectedPropertyImages, setSelectedPropertyImages] = useState<CmsRow[]>([]);
 	const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
+	const [selectedCoverStagedPhotoId, setSelectedCoverStagedPhotoId] = useState<string | null>(null);
 	const stagedUploadControllers = useRef<Record<string, AbortController>>({});
 	const [destructiveAction, setDestructiveAction] = useState<DestructiveAction | null>(null);
 	const [destructivePassword, setDestructivePassword] = useState("");
@@ -3929,6 +3938,7 @@ export default function AdminCms({
 			storagePath: null,
 		}));
 		setStagedPhotos((previous) => [...previous, ...photos]);
+		setSelectedCoverStagedPhotoId((previous) => previous ?? photos[0]?.id ?? null);
 		for (const photo of photos) void uploadStagedPhoto(photo);
 	}
 
@@ -3940,6 +3950,9 @@ export default function AdminCms({
 			void supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).remove([photo.storagePath]);
 		}
 		setStagedPhotos((previous) => previous.filter((item) => item.id !== photo.id));
+		setSelectedCoverStagedPhotoId((previous) => previous === photo.id
+			? stagedPhotos.find((item) => item.id !== photo.id)?.id ?? null
+			: previous);
 	}
 
 	function clearStagedPhotos() {
@@ -3953,6 +3966,7 @@ export default function AdminCms({
 		}
 		stagedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
 		setStagedPhotos([]);
+		setSelectedCoverStagedPhotoId(null);
 	}
 
 	async function saveProperty(payload: CmsPayload, currentRow: CmsRow | null) {
@@ -4041,6 +4055,9 @@ export default function AdminCms({
 			const photosToAttach = stagedPhotos.filter(
 				(photo) => photo.status === "done" && photo.storageUrl,
 			);
+			const coverPhotoId = photosToAttach.some((photo) => photo.id === selectedCoverStagedPhotoId)
+				? selectedCoverStagedPhotoId
+				: photosToAttach[0]?.id;
 
 			if (photosToAttach.length > 0) {
 				setMessage(`Attaching ${photosToAttach.length} uploaded photo${photosToAttach.length === 1 ? "" : "s"}...`);
@@ -4065,7 +4082,7 @@ export default function AdminCms({
 					}
 				}
 
-				const isCover = attachedCount === 0;
+				const isCover = photo.id === coverPhotoId;
 				const { error: insertError } = await supabaseBrowser.from("property_images").insert({
 					property_id: pid,
 					storage_url: publicUrl,
@@ -4085,6 +4102,7 @@ export default function AdminCms({
 
 			stagedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
 			setStagedPhotos([]);
+			setSelectedCoverStagedPhotoId(null);
 			await reloadWorkspace();
 		}
 
@@ -4850,7 +4868,9 @@ export default function AdminCms({
 												canEdit={canEditCatalog}
 												onRequestDelete={requestDestructiveAction}
 												stagedPhotos={selectedProperty ? undefined : stagedPhotos}
+								selectedCoverStagedPhotoId={selectedProperty ? null : selectedCoverStagedPhotoId}
 												onAddStagedPhotos={selectedProperty ? undefined : addStagedPhotos}
+								onSelectStagedCover={selectedProperty ? undefined : setSelectedCoverStagedPhotoId}
 												onRemoveStagedPhoto={selectedProperty ? undefined : removeStagedPhoto}
 												onRetryStagedPhoto={selectedProperty ? undefined : uploadStagedPhoto}
 												onChanged={async () => {
