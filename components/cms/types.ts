@@ -13,6 +13,7 @@ export type FieldSpec = {
 	name: string;
 	label: string;
 	type: FieldType;
+	step?: number | "any";
 	section?: string;
 	placeholder?: string;
 	rows?: number;

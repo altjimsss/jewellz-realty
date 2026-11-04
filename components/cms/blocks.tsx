@@ -222,7 +222,7 @@ export function EntityEditor({
 													<span>{field.help ?? "Enabled"}</span>
 												</label>
 											) : (
-												<input type={field.type} name={field.name} defaultValue={displayValue(field, value)} placeholder={field.placeholder} disabled={!canEdit} className={commonInputClass} />
+								<input type={field.type} name={field.name} step={field.step} defaultValue={displayValue(field, value)} placeholder={field.placeholder} disabled={!canEdit} className={commonInputClass} />
 											)}
 											{field.help ? <p className="mt-1 text-[11px] leading-5 text-black/45">{field.help}</p> : null}
 										</label>
