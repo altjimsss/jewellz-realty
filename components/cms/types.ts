@@ -38,6 +38,7 @@ export type EditorProps = {
 	fields: FieldSpec[];
 	defaultValues?: CmsPayload;
 	canEdit: boolean;
+	isSaving?: boolean;
 	canCreate?: boolean;
 	rowLabel: (row: CmsRow) => string;
 	rowMeta?: (row: CmsRow) => string;

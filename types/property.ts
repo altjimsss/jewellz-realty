@@ -38,6 +38,7 @@ export type Property = {
 	beds?: number;
 	baths?: number;
 	areaSqm?: number;
+	lotAreaSqm?: number;
 	specs?: PropertySpec[];
 	type?: PropertyType;
 	category?: PropertyCategory;

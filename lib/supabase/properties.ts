@@ -116,6 +116,7 @@ function mapPropertyRow(row: PropertyRow): Property {
 		beds: row.bedrooms ?? undefined,
 		baths: row.bathrooms ?? undefined,
 		areaSqm: displayArea,
+		lotAreaSqm: lotArea,
 		type: titleCase(row.category),
 		category: row.status === "published" ? "For Sale" : titleCase(row.status),
 		featured: row.badge === "featured",

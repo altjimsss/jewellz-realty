@@ -2862,6 +2862,8 @@ export default function AdminCms({
 	const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
 	const [message, setMessage] = useState("");
 	const [saving, setSaving] = useState(false);
+	const [savingProject, setSavingProject] = useState(false);
+	const projectSaveInFlight = useRef(false);
 	const [sessionUser, setSessionUser] = useState<User | null>(cachedSnapshot?.sessionUser ?? null);
 	const sessionUserId = sessionUser?.id ?? null;
 	const [profile, setProfile] = useState<CmsRow | null>(cachedSnapshot?.profile ?? null);
@@ -4145,36 +4147,67 @@ export default function AdminCms({
 	}
 
 	async function saveProject(payload: CmsPayload, currentRow: CmsRow | null) {
-		const projectName = asText(payload.project_name).trim();
-		if (!payload.developer_id || !projectName) {
-			setMessage("Projects need a Developer Partner and Project Name.");
-			return;
-		}
-
-		const baseSlug = asText(payload.slug).trim()
-			|| projectName.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-		if (!baseSlug) {
-			setMessage("Enter a project name that can be used to create a URL slug.");
-			return;
-		}
-
-		let candidateSlug = baseSlug;
-		let suffix = 2;
-		while (true) {
-			let slugQuery = supabaseBrowser.from("projects").select("id").eq("slug", candidateSlug);
-			if (currentRow?.id) slugQuery = slugQuery.neq("id", asText(currentRow.id));
-			const { data: matchingProject, error } = await slugQuery.maybeSingle();
-			if (error) {
-				setMessage(`Could not check project slug availability: ${error.message}`);
+		// The ref closes the gap before React has rendered the disabled button.
+		if (projectSaveInFlight.current) return;
+		projectSaveInFlight.current = true;
+		setSavingProject(true);
+		try {
+			const projectName = asText(payload.project_name).trim();
+			const developerId = asText(payload.developer_id).trim();
+			if (!developerId || !projectName) {
+				setMessage("Projects need a Developer Partner and Project Name.");
 				return;
 			}
-			if (!matchingProject) break;
-			candidateSlug = `${baseSlug}-${suffix}`;
-			suffix += 1;
-		}
 
-		payload.slug = candidateSlug;
-		await saveEntity("projects", payload, currentRow);
+			// Treat case and repeated whitespace as equivalent so retrying a save
+			// cannot create a second project under a slightly different spelling.
+			const normalizedName = projectName.normalize("NFKC").replace(/\s+/g, " ").toLowerCase();
+			const { data: developerProjects, error: duplicateCheckError } = await supabaseBrowser
+				.from("projects")
+				.select("id, project_name")
+				.eq("developer_id", developerId);
+			if (duplicateCheckError) {
+				setMessage(`Could not check for an existing project: ${duplicateCheckError.message}`);
+				return;
+			}
+			const duplicate = (developerProjects ?? []).find((project) =>
+				asText(project.project_name).trim().normalize("NFKC").replace(/\s+/g, " ").toLowerCase() === normalizedName
+				&& asText(project.id) !== asText(currentRow?.id),
+			);
+			if (duplicate) {
+				setMessage("This developer already has a project with that name. Open the existing project instead of creating a duplicate.");
+				return;
+			}
+
+			const baseSlug = asText(payload.slug).trim()
+				|| projectName.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+			if (!baseSlug) {
+				setMessage("Enter a project name that can be used to create a URL slug.");
+				return;
+			}
+
+			let candidateSlug = baseSlug;
+			let suffix = 2;
+			while (true) {
+				let slugQuery = supabaseBrowser.from("projects").select("id").eq("slug", candidateSlug);
+				if (currentRow?.id) slugQuery = slugQuery.neq("id", asText(currentRow.id));
+				const { data: matchingProject, error } = await slugQuery.maybeSingle();
+				if (error) {
+					setMessage(`Could not check project slug availability: ${error.message}`);
+					return;
+				}
+				if (!matchingProject) break;
+				candidateSlug = `${baseSlug}-${suffix}`;
+				suffix += 1;
+			}
+
+			payload.project_name = projectName;
+			payload.slug = candidateSlug;
+			await saveEntity("projects", payload, currentRow);
+		} finally {
+			projectSaveInFlight.current = false;
+			setSavingProject(false);
+		}
 	}
 
 	async function saveDeveloper(payload: CmsPayload, currentRow: CmsRow | null) {
@@ -4932,7 +4965,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "projects" && isAdmin ? (
-							<EntityEditor title="Projects" description="Developer project portfolios. Choose the developer by company name; the CMS stores the ID automatically." rows={workspace.projects} selectedId={selectedProjectId} fields={projectEditorFields} canEdit={isAdmin} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />
+							<EntityEditor title="Projects" description="Developer project portfolios. Choose the developer by company name; the CMS stores the ID automatically." rows={workspace.projects} selectedId={selectedProjectId} fields={projectEditorFields} canEdit={isAdmin} isSaving={savingProject} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />
 						) : null}
 
 						{currentSection === "agents" && isAdmin ? (

@@ -52,6 +52,7 @@ export function EntityEditor({
 	fields,
 	defaultValues,
 	canEdit,
+	isSaving = false,
 	rowLabel,
 	rowMeta,
 	onSelect,
@@ -242,8 +243,8 @@ export function EntityEditor({
 								Preview property
 							</button>
 						) : (
-							<button form={formId} type="submit" disabled={!canEdit} className="inline-flex h-10 items-center justify-center rounded-lg bg-[#111111] px-5 text-sm font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
-									{selectedRow ? "Save changes" : saveLabel ?? "Save property"}
+							<button form={formId} type="submit" disabled={!canEdit || isSaving} className="inline-flex h-10 items-center justify-center rounded-lg bg-[#111111] px-5 text-sm font-medium text-white shadow-2xs transition-all duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
+									{isSaving ? "Saving…" : selectedRow ? "Save changes" : saveLabel ?? "Save property"}
 							</button>
 						)}
 					</div>
@@ -272,8 +273,8 @@ export function EntityEditor({
 								<button type="button" onClick={() => setPreviewPayload(null)} className="rounded-md border border-black/10 px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-zinc-50">
 									Back to edit
 								</button>
-								<button form={formId} type="submit" disabled={!canEdit} className="rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
-								{selectedRow ? "Save changes" : saveLabel ?? "Save property"}
+								<button form={formId} type="submit" disabled={!canEdit || isSaving} className="rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
+								{isSaving ? "Saving…" : selectedRow ? "Save changes" : saveLabel ?? "Save property"}
 								</button>
 							</div>
 						</div>
