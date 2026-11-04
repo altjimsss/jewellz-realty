@@ -198,11 +198,14 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 	const [saving, setSaving] = useState(false);
 	const [uploading, setUploading] = useState(false);
 	const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+	const [currentLogoCropFile, setCurrentLogoCropFile] = useState<File | null>(null);
+	const [loadingLogoForCrop, setLoadingLogoForCrop] = useState(false);
 	const [status, setStatus] = useState("");
 	const [logoError, setLogoError] = useState("");
 
 	const companyName = form.company_name.trim();
 	const displayName = companyName || "New developer partner";
+	const cropFile = pendingLogoFile ?? currentLogoCropFile;
 	const canSave = canEdit && Boolean(companyName) && !saving;
 
 	function update<K extends keyof typeof form>(field: K, value: (typeof form)[K]) {
@@ -216,6 +219,24 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 		if (!file) return;
 		setLogoError("");
 		setPendingLogoFile(file);
+	}
+
+	async function cropCurrentLogo() {
+		const sourceUrl = form.logo_url.trim();
+		if (!sourceUrl) return;
+		setLoadingLogoForCrop(true);
+		setLogoError("");
+		try {
+			const response = await fetch(sourceUrl);
+			if (!response.ok) throw new Error("Could not load the saved logo. Check its URL and try again.");
+			const blob = await response.blob();
+			const contentType = blob.type.startsWith("image/") ? blob.type : "image/png";
+			setCurrentLogoCropFile(new File([blob], `${companyName || "developer-logo"}.png`, { type: contentType }));
+		} catch (error) {
+			setLogoError(error instanceof Error ? error.message : "Could not load the saved logo for cropping.");
+		} finally {
+			setLoadingLogoForCrop(false);
+		}
 	}
 
 	async function uploadCroppedLogo(blob: Blob) {
@@ -237,13 +258,16 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 			if (!response.ok || !data?.url) {
 				setLogoError(data?.error || "Failed to upload logo.");
 				setPendingLogoFile(null);
+				setCurrentLogoCropFile(null);
 				return;
 			}
 			update("logo_url", data.url);
 			setPendingLogoFile(null);
+			setCurrentLogoCropFile(null);
 		} catch {
 			setLogoError("Network error while uploading logo.");
 			setPendingLogoFile(null);
+			setCurrentLogoCropFile(null);
 		} finally {
 			setUploading(false);
 		}
@@ -281,11 +305,12 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 
 	return (
 		<div className="space-y-5">
-			{pendingLogoFile ? <DeveloperLogoCropDialog
-				file={pendingLogoFile}
+			{cropFile ? <DeveloperLogoCropDialog
+				key={cropFile.name}
+				file={cropFile}
 				companyName={displayName}
-				onCancel={() => setPendingLogoFile(null)}
-				onSave={(blob) => { void uploadCroppedLogo(blob); }}
+				onCancel={() => { setPendingLogoFile(null); setCurrentLogoCropFile(null); }}
+				onSave={uploadCroppedLogo}
 			/> : null}
 			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
 				<div className="flex items-center gap-3">
@@ -372,15 +397,25 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 						<p className="text-xs text-black/50">Shown in the homepage partner loop. Partners without a logo use a text badge instead.</p>
 					</div>
 					{form.logo_url.trim() ? (
-						<button
-							type="button"
-							onClick={() => update("logo_url", "")}
-							disabled={!canEdit || uploading}
-							className="inline-flex items-center gap-1 text-xs font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50"
-						>
-							<Trash2 className="h-3 w-3" />
-							Remove logo
-						</button>
+						<div className="flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								onClick={() => void cropCurrentLogo()}
+								disabled={!canEdit || uploading || loadingLogoForCrop}
+								className="inline-flex items-center gap-1 text-xs font-medium text-[#111111] transition hover:text-black/60 disabled:opacity-50"
+							>
+								{loadingLogoForCrop ? "Loading logo…" : "Crop current logo"}
+							</button>
+							<button
+								type="button"
+								onClick={() => update("logo_url", "")}
+								disabled={!canEdit || uploading || loadingLogoForCrop}
+								className="inline-flex items-center gap-1 text-xs font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50"
+							>
+								<Trash2 className="h-3 w-3" />
+								Remove logo
+							</button>
+						</div>
 					) : null}
 				</div>
 				<div className="mt-3 flex flex-wrap items-center gap-4">
