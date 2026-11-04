@@ -147,6 +147,29 @@ function slugify(value: string) {
 		.replace(/^-|-$/g, "");
 }
 
+function parseMapCoordinates(value: string): { latitude: number; longitude: number } | null {
+	const candidates = [value, (() => {
+		try { return decodeURIComponent(value); } catch { return value; }
+	})()];
+	const patterns = [
+		/@(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/,
+		/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/,
+		/[?&](?:q|query|ll|center)=(-?\d{1,2}(?:\.\d+)?)(?:%2C|,|%20|\s)+(-?\d{1,3}(?:\.\d+)?)/i,
+	];
+	for (const candidate of candidates) {
+		for (const pattern of patterns) {
+			const match = candidate.match(pattern);
+			if (!match) continue;
+			const latitude = Number(match[1]);
+			const longitude = Number(match[2]);
+			if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+				return { latitude, longitude };
+			}
+		}
+	}
+	return null;
+}
+
 function stepIsComplete(step: StepDef, payload: CmsPayload): boolean {
 	return step.required.every((name) => {
 		const v = payload[name];
@@ -665,6 +688,7 @@ function FieldInput({
 		<input
 			type={field.type}
 			name={field.name}
+				step={field.step}
 			value={displayValue(field, value)}
 			placeholder={field.placeholder}
 			disabled={!canEdit}
@@ -722,7 +746,46 @@ export function PropertyWizard({
 			? "Wait for the video upload to finish before saving."
 			: undefined;
 
+	async function reverseGeocodeLocation(latitude: number, longitude: number) {
+		try {
+			const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${latitude}&lon=${longitude}`);
+			if (!response.ok) return;
+			const result = (await response.json()) as { display_name?: string; address?: Record<string, string> };
+			const address = result.address ?? {};
+			const city = address.city || address.town || address.village || address.municipality || address.county || "";
+			const province = address.state || address.province || "";
+			const region = address.region || address.state_district || "";
+			const street = [address.house_number, address.road || address.residential || address.pedestrian].filter(Boolean).join(" ");
+			setPayload((previous) => {
+				const next = { ...previous };
+				const fillIfBlank = (field: string, value: string) => {
+					if (!asText(previous[field]).trim() && value) next[field] = value;
+				};
+				fillIfBlank("address", street || result.display_name || "");
+				fillIfBlank("city", city);
+				fillIfBlank("province", province);
+				fillIfBlank("region", region);
+				fillIfBlank("zip_code", address.postcode || "");
+				return next;
+			});
+		} catch {
+			// Coordinates still remain usable when reverse geocoding is unavailable.
+		}
+	}
+
 	async function handleAutoGeocode() {
+		const mapsCoordinates = parseMapCoordinates(asText(payload.google_maps_url));
+		if (mapsCoordinates) {
+			const latitude = Number(mapsCoordinates.latitude.toFixed(7));
+			const longitude = Number(mapsCoordinates.longitude.toFixed(7));
+			setPayload((previous) => ({ ...previous, latitude, longitude }));
+			setIsGeocoding(true);
+			setGeocodeFeedback(`Coordinates detected: ${latitude}, ${longitude}. Filling blank address fields…`);
+			await reverseGeocodeLocation(latitude, longitude);
+			setGeocodeFeedback("Map coordinates detected; available blank address fields were filled.");
+			setIsGeocoding(false);
+			return;
+		}
 		const address = asText(payload.address);
 		const city = asText(payload.city);
 		const province = asText(payload.province);
@@ -743,7 +806,9 @@ export function PropertyWizard({
 					const lat = Number(Number(data[0].lat).toFixed(6));
 					const lng = Number(Number(data[0].lon).toFixed(6));
 					setPayload((prev) => ({ ...prev, latitude: lat, longitude: lng }));
-					setGeocodeFeedback("Coordinates detected: " + lat + ", " + lng);
+					setGeocodeFeedback("Coordinates detected: " + lat + ", " + lng + ". Filling blank address fields…");
+					await reverseGeocodeLocation(lat, lng);
+					setGeocodeFeedback("Coordinates detected; available blank address fields were filled.");
 				} else {
 					setGeocodeFeedback("Could not locate exact coordinates. Please check city and province.");
 				}
@@ -814,6 +879,20 @@ export function PropertyWizard({
 
 	const handleFieldChange = useCallback((name: string, val: string | boolean) => {
 		if (name === "slug") setSlugManuallyEdited(true);
+		if (name === "google_maps_url" && typeof val === "string") {
+			const coordinates = parseMapCoordinates(val);
+			if (coordinates) {
+				const latitude = Number(coordinates.latitude.toFixed(7));
+				const longitude = Number(coordinates.longitude.toFixed(7));
+				setPayload((previous) => ({ ...previous, google_maps_url: val, latitude, longitude }));
+				setGeocodeFeedback(`Coordinates detected: ${latitude}, ${longitude}. Filling blank address fields…`);
+				setIsGeocoding(true);
+				void reverseGeocodeLocation(latitude, longitude).then(() => {
+					setGeocodeFeedback("Map coordinates detected; available blank address fields were filled.");
+				}).finally(() => setIsGeocoding(false));
+				return;
+			}
+		}
 		setPayload((prev) => {
 			const next = { ...prev, [name]: val };
 			if (name === "developer_id") next["project_id"] = "";
@@ -1045,7 +1124,7 @@ export function PropertyWizard({
 												disabled={isGeocoding}
 												className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
 											>
-												{isGeocoding ? "Detecting coordinates…" : "Auto-detect coordinates"}
+												{isGeocoding ? "Filling location…" : "Auto-fill from Maps or address"}
 											</button>
 										</div>
 									)}
