@@ -9,6 +9,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, P
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
+import { convertHeicToJpeg } from "@/lib/media/convert-heic";
 import { AgentPerformanceTable } from "@/components/dashboard/AgentPerformanceTable";
 import { InquiryVolumeChart } from "@/components/dashboard/InquiryVolumeChart";
 import { LeadScoreBadge } from "@/components/dashboard/LeadScoreBadge";
@@ -1984,7 +1985,7 @@ function PropertyImagesManager({
 						<span>{staged.length > 0 ? "Add more photos…" : "Select photos…"}</span>
 						<input
 							type="file"
-							accept="image/jpeg,image/png,image/webp,image/gif"
+							accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
 							multiple
 							className="sr-only"
 							onChange={(event) => {
@@ -3889,15 +3890,24 @@ export default function AdminCms({
 		updateStagedPhoto(photo.id, { status: "uploading", progress: 0, error: undefined });
 
 		try {
-			const extension = photo.file.name.includes(".") ? photo.file.name.split(".").pop() : "jpg";
-			const baseName = sanitizeFileName(photo.file.name.replace(/\.[^.]+$/, "")) || "property-image";
+			const uploadFile = await convertHeicToJpeg(photo.file);
+			if (controller.signal.aborted) return;
+			if (uploadFile !== photo.file) {
+				const previewUrl = URL.createObjectURL(uploadFile);
+				URL.revokeObjectURL(photo.previewUrl);
+				photo = { ...photo, file: uploadFile, previewUrl };
+				updateStagedPhoto(photo.id, { file: uploadFile, previewUrl });
+			}
+
+			const extension = uploadFile.name.includes(".") ? uploadFile.name.split(".").pop() : "jpg";
+			const baseName = sanitizeFileName(uploadFile.name.replace(/\.[^.]+$/, "")) || "property-image";
 			const storagePath = `staged/${photo.id}-${baseName}.${extension}`;
 
 			const result = await uploadFileWithProgress({
 				bucket: PROPERTY_IMAGE_BUCKET,
 				path: storagePath,
-				file: photo.file,
-				contentType: photo.file.type || "image/jpeg",
+				file: uploadFile,
+				contentType: uploadFile.type || "image/jpeg",
 				signal: controller.signal,
 				onProgress: ({ percent }) => updateStagedPhoto(photo.id, { progress: percent }),
 			});

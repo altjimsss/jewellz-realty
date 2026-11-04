@@ -31,6 +31,7 @@ export async function uploadFileWithProgress({
 	bucket,
 	path,
 	file,
+	contentType,
 	upsert = true,
 	signal,
 	onProgress,
@@ -98,6 +99,7 @@ export async function uploadFileWithProgress({
 		xhr.open("PUT", signedUrl);
 		xhr.setRequestHeader("apikey", supabaseAnonKey);
 		xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+		if (contentType || file.type) xhr.setRequestHeader("Content-Type", contentType || file.type);
 		if (upsert) xhr.setRequestHeader("x-upsert", "true");
 
 		xhr.upload.addEventListener("progress", (event) => {
