@@ -153,9 +153,10 @@ function parseMapCoordinates(value: string): { latitude: number; longitude: numb
 		try { return decodeURIComponent(value); } catch { return value; }
 	})()];
 	const patterns = [
-		/@(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/,
 		/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/,
 		/[?&](?:q|query|ll|center)=(-?\d{1,2}(?:\.\d+)?)(?:%2C|,|%20|\s)+(-?\d{1,3}(?:\.\d+)?)/i,
+		// @ coordinates often mark the map's camera position, not the place itself.
+		/@(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/,
 	];
 	for (const candidate of candidates) {
 		for (const pattern of patterns) {
@@ -820,6 +821,9 @@ export function PropertyWizard({
 			const region = address.region || address.state_district || "";
 			const street = [address.house_number, address.road || address.residential || address.pedestrian].filter(Boolean).join(" ");
 			setPayload((previous) => {
+				// A slower response for an older pasted URL must not fill fields for
+				// the newer coordinates now shown in the form.
+				if (Number(previous.latitude) !== latitude || Number(previous.longitude) !== longitude) return previous;
 				const next = { ...previous };
 				const fillIfBlank = (field: string, value: string) => {
 					if (!asText(previous[field]).trim() && value) next[field] = value;
