@@ -1682,12 +1682,22 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 		setSavingImage(true);
 		setUploadMessage("Uploading gallery photo...");
 
-		const extension = selectedFile.name.includes(".") ? selectedFile.name.split(".").pop() : "jpg";
-		const baseName = sanitizeFileName(selectedFile.name.replace(/\.[^.]+$/, "")) || "gallery-photo";
+		let uploadFile: File;
+		try {
+			uploadFile = await convertHeicToJpeg(selectedFile);
+		} catch (error) {
+			setUploadMessage(error instanceof Error ? error.message : "Could not prepare the gallery image.");
+			setSavingImage(false);
+			return;
+		}
+
+		const extension = uploadFile.name.includes(".") ? uploadFile.name.split(".").pop() : "jpg";
+		const baseName = sanitizeFileName(uploadFile.name.replace(/\.[^.]+$/, "")) || "gallery-photo";
 		const filePath = `${GALLERY_IMAGE_FOLDER}/${galleryItemId}/${Date.now()}-${baseName}.${extension}`;
 
-		const { error: uploadError } = await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).upload(filePath, selectedFile, {
+		const { error: uploadError } = await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).upload(filePath, uploadFile, {
 			cacheControl: "3600",
+			contentType: uploadFile.type || "application/octet-stream",
 			upsert: false,
 		});
 
@@ -1846,12 +1856,22 @@ function PropertyImagesManager({
 		const existingCover = images.some((image) => Boolean(image.is_cover));
 
 		for (const [index, file] of selectedFiles.entries()) {
-			const extension = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
-			const baseName = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "property-image";
+			let uploadFile: File;
+			try {
+				uploadFile = await convertHeicToJpeg(file);
+			} catch (error) {
+				setUploadMessage(error instanceof Error ? error.message : `Could not prepare ${file.name}.`);
+				setSaving(false);
+				return;
+			}
+
+			const extension = uploadFile.name.includes(".") ? uploadFile.name.split(".").pop() : "jpg";
+			const baseName = sanitizeFileName(uploadFile.name.replace(/\.[^.]+$/, "")) || "property-image";
 			const filePath = `${propertyId}/${Date.now()}-${index}-${baseName}.${extension}`;
 
-			const { error: uploadError } = await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).upload(filePath, file, {
+			const { error: uploadError } = await supabaseBrowser.storage.from(PROPERTY_IMAGE_BUCKET).upload(filePath, uploadFile, {
 				cacheControl: "3600",
+				contentType: uploadFile.type || "application/octet-stream",
 				upsert: false,
 			});
 
