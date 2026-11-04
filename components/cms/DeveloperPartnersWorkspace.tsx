@@ -6,6 +6,7 @@ import { AlertCircle, Building2, CheckCircle2, Globe, Plus, RefreshCw, Shield, T
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow } from "./types";
 import { asText } from "./utils";
+import { DeveloperLogoCropDialog } from "./DeveloperLogoCropDialog";
 
 const inputClass =
 	"mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30 disabled:bg-zinc-50 disabled:text-black/45";
@@ -196,6 +197,7 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 	}));
 	const [saving, setSaving] = useState(false);
 	const [uploading, setUploading] = useState(false);
+	const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
 	const [status, setStatus] = useState("");
 	const [logoError, setLogoError] = useState("");
 
@@ -212,12 +214,16 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 		const file = event.target.files?.[0];
 		event.target.value = "";
 		if (!file) return;
+		setLogoError("");
+		setPendingLogoFile(file);
+	}
 
+	async function uploadCroppedLogo(blob: Blob) {
 		setUploading(true);
 		setLogoError("");
 		try {
 			const formData = new FormData();
-			formData.append("file", file);
+			formData.append("file", new File([blob], `${companyName || "developer-logo"}.png`, { type: "image/png" }));
 			formData.append("folder", "developer-logos");
 
 			const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
@@ -230,11 +236,14 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 			const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
 			if (!response.ok || !data?.url) {
 				setLogoError(data?.error || "Failed to upload logo.");
+				setPendingLogoFile(null);
 				return;
 			}
 			update("logo_url", data.url);
+			setPendingLogoFile(null);
 		} catch {
 			setLogoError("Network error while uploading logo.");
+			setPendingLogoFile(null);
 		} finally {
 			setUploading(false);
 		}
@@ -272,6 +281,12 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 
 	return (
 		<div className="space-y-5">
+			{pendingLogoFile ? <DeveloperLogoCropDialog
+				file={pendingLogoFile}
+				companyName={displayName}
+				onCancel={() => setPendingLogoFile(null)}
+				onSave={(blob) => { void uploadCroppedLogo(blob); }}
+			/> : null}
 			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 pb-4">
 				<div className="flex items-center gap-3">
 					<LogoBadge src={form.logo_url} name={displayName} size="lg" />
@@ -379,7 +394,7 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 					<div className="flex-1 space-y-2">
 						<label className={`${subtleButton} cursor-pointer justify-center`}>
 							<Upload className="h-3.5 w-3.5" />
-							<span>{uploading ? "Uploading..." : "Upload image"}</span>
+							<span>{uploading ? "Uploading..." : "Upload and crop image"}</span>
 							<input
 								type="file"
 								accept="image/png,image/jpeg,image/svg+xml,image/webp"
