@@ -9,7 +9,7 @@ type DeveloperLogoCropDialogProps = {
 	outputWidth?: number;
 	title?: string;
 	onCancel: () => void;
-	onSave: (cropped: Blob) => void;
+	onSave: (cropped: Blob) => void | Promise<void>;
 };
 
 export function DeveloperLogoCropDialog({ file, companyName, aspectRatio = 2, outputWidth = 600, title = "Crop developer logo", onCancel, onSave }: DeveloperLogoCropDialogProps) {
@@ -57,7 +57,8 @@ export function DeveloperLogoCropDialog({ file, companyName, aspectRatio = 2, ou
 			const blob = await new Promise<Blob>((resolve, reject) => {
 				canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Could not export the cropped image.")), "image/png");
 			});
-			onSave(blob);
+			await onSave(blob);
+			setSaving(false);
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : "Could not crop this image.");
 			setSaving(false);
