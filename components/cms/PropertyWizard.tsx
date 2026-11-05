@@ -29,6 +29,7 @@ import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upl
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
+import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 import type { ReactNode } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -1419,19 +1420,25 @@ export function PropertyWizard({
 										};
 										const statusClass = statusColors[status] ?? statusColors["draft"];
 										const CategoryIcon = propertyCategoryIcon(asText(row.category));
+										const cardImage = asText(row.cover_image_url).trim() || getPropertyPlaceholderImage(asText(row.category));
 
 										return (
 											<div
 												key={id}
 												onClick={() => openWizardForRow(row)}
-												className={`group relative cursor-pointer rounded-2xl border p-4 transition-all hover:shadow-md ${isActive ? "border-black/30 bg-zinc-50 shadow-sm" : "border-black/10 bg-white hover:border-black/20"}`}
+												className={`group relative isolate cursor-pointer overflow-hidden rounded-2xl border p-4 transition-all hover:shadow-md ${isActive ? "border-black/30 shadow-sm" : "border-black/10 hover:border-black/20"}`}
 											>
+											<div
+												aria-hidden="true"
+												className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center"
+												style={{ backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.34) 28%, rgba(255,255,255,0.9) 62%, #fff 82%), url("${cardImage.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}")` }}
+											/>
 												{badge && badge !== "none" && (
-													<span className="absolute right-3 top-3 rounded-full bg-[#111111] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+													<span className="absolute right-3 top-3 rounded-full bg-[#111111]/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
 														{badge}
 													</span>
 												)}
-												<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
+												<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/80 shadow-sm backdrop-blur-sm">
 													<CategoryIcon className="h-5 w-5 text-black/40" />
 												</div>
 												<div className="truncate text-sm font-semibold text-[#111111]">

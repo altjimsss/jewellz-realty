@@ -16,6 +16,7 @@ import { LeadScoreBadge } from "@/components/dashboard/LeadScoreBadge";
 import { ListingPerformanceChart } from "@/components/dashboard/ListingPerformanceChart";
 import { TrafficSourceChart } from "@/components/dashboard/TrafficSourceChart";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
+import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 import { SafeImage } from "@/components/ui/SafeImage";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
@@ -1461,7 +1462,7 @@ function PropertyPublicPreview({ payload, currentRow, imageUrls }: { payload: Cm
 	const price = Number(payload.price || currentRow?.price || 0);
 	const latitude = toNumberValue(payload.latitude || currentRow?.latitude);
 	const longitude = toNumberValue(payload.longitude || currentRow?.longitude);
-	const galleryImages = imageUrls.length ? imageUrls : image ? [image] : [];
+	const galleryImages = imageUrls.length ? imageUrls : image ? [image] : [getPropertyPlaceholderImage(type)];
 	const property: Property = {
 		id: asText(currentRow?.id || "preview-property"),
 		slug: asText(payload.slug || currentRow?.slug || "preview-property"),
@@ -4961,7 +4962,15 @@ export default function AdminCms({
 										onSubmit={saveProperty}
 										saveBlocked={!selectedProperty && stagedPhotos.some((photo) => photo.status === "uploading")}
 										saveBlockedMessage="Wait for the selected photos to finish uploading before creating the listing."
-										renderPreview={(payload, currentRow) => <PropertyPublicPreview payload={payload} currentRow={currentRow} imageUrls={selectedPropertyImageUrls} />}
+									renderPreview={(payload, currentRow) => {
+										const previewImageUrls = selectedProperty
+											? selectedPropertyImageUrls
+											: [
+												...stagedPhotos.filter((photo) => photo.id === selectedCoverStagedPhotoId),
+												...stagedPhotos.filter((photo) => photo.id !== selectedCoverStagedPhotoId),
+											].map((photo) => photo.previewUrl);
+										return <PropertyPublicPreview payload={payload} currentRow={currentRow} imageUrls={previewImageUrls} />;
+									}}
 										extra={
 											<PropertyImagesManager
 												propertyId={selectedProperty ? asText(selectedProperty.id) : null}
