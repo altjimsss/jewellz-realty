@@ -963,7 +963,7 @@ function AnalyticsVisualSuite({
 					</div>
 				</div>
 				{selectedProperty ? (
-					<div className="mb-5 rounded-xl bg-base-100 p-4 sm:p-5">
+					<div className="mb-5 rounded-2xl border border-[#DE141C]/15 bg-gradient-to-br from-[#DE141C]/[0.035] via-white to-white p-4 sm:p-5">
 						<div className="flex flex-wrap items-start justify-between gap-3">
 							<div className="min-w-0">
 								<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Dedicated property analytics</div>
@@ -4586,7 +4586,7 @@ export default function AdminCms({
 	}
 
 	return (
-		<main data-theme="jewellz" className="portal-canvas min-h-screen bg-base-200 text-base-content selection:bg-primary/15">
+		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				<aside className="portal-sidebar hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
@@ -4727,7 +4727,7 @@ export default function AdminCms({
 					</div>
 				</aside>
 
-				<section className="flex min-w-0 flex-col bg-base-200">
+				<section className="flex min-w-0 flex-col bg-transparent">
 					<header className="portal-header sticky top-0 z-40 flex h-12 items-center gap-3 px-4">
 						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
@@ -4901,7 +4901,7 @@ export default function AdminCms({
 						</div>
 					</header>
 
-					<div className="flex-1 overflow-auto bg-base-200 px-4 py-6 sm:px-6 lg:px-8">
+					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-4 lg:px-5">
 						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
 							{loading || !authChecked ? (
 								<AdminContentSkeleton section={currentSection} />
@@ -4909,8 +4909,8 @@ export default function AdminCms({
 							<>
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
-									<h1 className="text-2xl font-semibold tracking-tight text-base-content">
-										{currentSection === "overview" ? `Welcome back, ${asText(profile?.full_name).split(" ")[0] || "Admin"}` : activeNavItem?.label ?? "Admin"}
+									<h1 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
+										Welcome back, {asText(profile?.full_name).split(" ")[0] || "Admin"}
 									</h1>
 								</div>
 								<div className="flex items-center gap-2">
