@@ -133,9 +133,9 @@ export async function uploadFileWithProgress({
 		xhr.addEventListener("abort", () => finish(() => reject(uploadCancelledError())));
 
 		signal?.addEventListener("abort", handleAbort, { once: true });
-		const formData = new FormData();
-		formData.append("cacheControl", "3600");
-		formData.append("", file);
-		xhr.send(formData);
+		// Signed Supabase Storage upload URLs expect the raw object bytes. Sending
+		// FormData here stores the multipart boundary and headers as part of the
+		// object, so image uploads return success but cannot be decoded afterward.
+		xhr.send(file);
 	});
 }
