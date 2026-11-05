@@ -1580,6 +1580,7 @@ function compactChartLabel(value: string) {
 function PropertyPublicPreview({ payload, currentRow, imageUrls }: { payload: CmsPayload; currentRow: CmsRow | null; imageUrls: string[] }) {
 	const title = asText(payload.title || currentRow?.title || "Untitled Property");
 	const type = displayCategory(payload.category || currentRow?.category);
+	const subtype = displayCategory(payload.property_subtype || currentRow?.property_subtype);
 	const location = [payload.city, payload.province].filter(Boolean).join(", ") || [currentRow?.city, currentRow?.province].filter(Boolean).join(", ") || "Location not specified";
 	const description = asText(payload.description || currentRow?.description || "Add a clear buyer-friendly description so visitors understand what makes this property worth viewing.");
 	const image = asText(currentRow?.cover_image_url).trim() || undefined;
@@ -1602,6 +1603,7 @@ function PropertyPublicPreview({ payload, currentRow, imageUrls }: { payload: Cm
 		baths: Number(payload.bathrooms || currentRow?.bathrooms || 0),
 		areaSqm: Number(payload.floor_area_sqm || payload.lot_area_sqm || currentRow?.floor_area_sqm || currentRow?.lot_area_sqm || 0),
 		type,
+		subtype: type.toLowerCase() === "house" && subtype ? subtype : undefined,
 		category: payload.status === "published" || currentRow?.status === "published" ? "For Sale" : displayCategory(payload.status || currentRow?.status || "Draft"),
 		specs: [
 			{ label: "Lot Area", value: payload.lot_area_sqm || currentRow?.lot_area_sqm ? `${payload.lot_area_sqm || currentRow?.lot_area_sqm} sqm` : "N/A" },

@@ -266,6 +266,7 @@ export function PropertyDetailContent({
 							<span className="inline-flex items-center rounded-full border border-[#DE141C]/15 bg-[#DE141C]/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#B8101A]">
 								{property.category ?? property.type ?? "Listing"}
 							</span>
+							{property.subtype ? <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold text-zinc-700">{property.subtype}</span> : null}
 							{previewMode ? (
 								<button type="button" disabled className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/40">
 									Back

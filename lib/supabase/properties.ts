@@ -7,6 +7,7 @@ type PropertyRow = {
 	slug: string;
 	title: string;
 	category: string | null;
+	property_subtype?: string | null;
 	status: string | null;
 	badge: string | null;
 	address: string | null;
@@ -92,6 +93,18 @@ function metric(value: number | string | null | undefined) {
 	return toNumber(value) ?? 0;
 }
 
+const HOUSE_SUBTYPES = new Set(["house_and_lot", "single_attached", "single_detached", "duplex", "townhouse"]);
+
+function getPropertyType(category: string | null, propertySubtype?: string | null) {
+	const normalizedCategory = category?.toLowerCase() ?? "";
+	const isLegacyHouseSubtype = HOUSE_SUBTYPES.has(normalizedCategory);
+	const subtype = propertySubtype || (isLegacyHouseSubtype ? normalizedCategory : undefined);
+	return {
+		type: normalizedCategory === "house" || isLegacyHouseSubtype ? "House" : titleCase(category),
+		subtype: subtype ? titleCase(subtype) : undefined,
+	};
+}
+
 function mapPropertyRow(row: PropertyRow): Property {
 	const latitude = toNumber(row.latitude);
 	const longitude = toNumber(row.longitude);
@@ -109,6 +122,7 @@ function mapPropertyRow(row: PropertyRow): Property {
 		.filter((item): item is string => Boolean(item));
 	const allImages = [...new Set([...(image ? [image] : []), ...images])];
 	const displayArea = floorArea ?? lotArea;
+	const propertyType = getPropertyType(row.category, row.property_subtype);
 
 	return {
 		id: row.id,
@@ -124,7 +138,8 @@ function mapPropertyRow(row: PropertyRow): Property {
 		baths: row.bathrooms ?? undefined,
 		areaSqm: displayArea,
 		lotAreaSqm: lotArea,
-		type: titleCase(row.category),
+		type: propertyType.type,
+		subtype: propertyType.subtype,
 		category: row.status === "published" ? "For Sale" : titleCase(row.status),
 		featured: row.badge === "featured",
 		amenities: row.amenities ?? undefined,
@@ -164,7 +179,7 @@ export async function getPublishedProperties() {
 export async function getComparablePublishedProperties(): Promise<Property[]> {
 	const { data, error } = await supabaseServer
 		.from("properties")
-		.select("id,slug,title,category,status,city,province,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,price,description")
+		.select("id,slug,title,category,property_subtype,status,city,province,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,price,description")
 		.eq("status", "published")
 		.order("created_at", { ascending: false });
 
@@ -184,7 +199,7 @@ export async function getComparablePublishedProperties(): Promise<Property[]> {
 			price: toNumber(row.price) ?? 0,
 			description: row.description ?? undefined,
 			location,
-			type: titleCase(row.category),
+			...getPropertyType(row.category, row.property_subtype),
 			beds: row.bedrooms ?? undefined,
 			baths: row.bathrooms ?? undefined,
 			areaSqm: floorArea ?? lotArea,
@@ -197,7 +212,7 @@ export async function getComparablePublishedProperties(): Promise<Property[]> {
 export async function getPublishedPropertiesForList() {
 	const { data, error } = await supabaseServer
 		.from("properties")
-		.select("id,slug,title,category,status,badge,address,city,province,latitude,longitude,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,floor_count,parking_slots,price,description,key_features,amenities,nearby_landmarks,cover_image_url,price_per_sqm,monthly_amortization,is_price_negotiable")
+		.select("id,slug,title,category,property_subtype,status,badge,address,city,province,latitude,longitude,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,floor_count,parking_slots,price,description,key_features,amenities,nearby_landmarks,cover_image_url,price_per_sqm,monthly_amortization,is_price_negotiable")
 		.eq("status", "published")
 		.order("created_at", { ascending: false });
 

@@ -114,8 +114,8 @@ function normalizeText(value: unknown) {
 	return String(value ?? "").trim().toLowerCase();
 }
 
-function matchesPropertyType(propertyType: unknown, requestedType: string) {
-	const type = normalizeText(propertyType).replace(/[_-]+/g, " ");
+function matchesPropertyType(propertyType: unknown, requestedType: string, subtype?: string) {
+	const type = normalizeText([propertyType, subtype].filter(Boolean).join(" ")).replace(/[_-]+/g, " ");
 	const requested = normalizeText(requestedType);
 	if (!type || !requested) return false;
 	if (type === requested) return true;
@@ -174,6 +174,7 @@ function propertySearchText(property: Property) {
 	return normalizeText([
 		property.title,
 		property.type,
+		property.subtype,
 		property.category,
 		property.location,
 		property.description,
@@ -261,13 +262,13 @@ function getFilteredProperties(properties: Property[], activeCategory: (typeof C
 	const priceMax = filters.priceMax === "" ? undefined : Number(filters.priceMax);
 
 	return properties.filter((property) => {
-		const matchesTab = activeCategory === "All" ? true : matchesPropertyType(property.type, activeCategory);
+		const matchesTab = activeCategory === "All" ? true : matchesPropertyType(property.type, activeCategory, property.subtype);
 		const searchableText = propertySearchText(property);
 
 		if (!matchesTab) return false;
-		if (inferredCategory && !matchesPropertyType(property.type, inferredCategory)) return false;
+		if (inferredCategory && !matchesPropertyType(property.type, inferredCategory, property.subtype)) return false;
 		if (keywordTokens.length > 0 && !keywordTokens.some((token) => searchableText.includes(token))) return false;
-		if (lookingFor && !matchesPropertyType(property.type, lookingFor)) return false;
+		if (lookingFor && !matchesPropertyType(property.type, lookingFor, property.subtype)) return false;
 		if (location && !(property.location ?? "").toLowerCase().includes(location)) return false;
 		if (subLocation && !(property.location ?? "").toLowerCase().includes(subLocation)) return false;
 		if (Number.isFinite(priceMin) && property.price < (priceMin as number)) return false;

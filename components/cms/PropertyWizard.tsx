@@ -982,6 +982,7 @@ export function PropertyWizard({
 			const next = { ...prev, [name]: val };
 			if (name === "developer_id") next["project_id"] = "";
 			if (name === "category" && isFarmCategory(val) && !next.developer_id) next.developer_id = PRIVATE_OWNER_VALUE;
+			if (name === "category" && asText(val).trim().toLowerCase() !== "house") next.property_subtype = "";
 
 			const slugField = fields.find((field) => field.autoSlugFrom && (field.autoSlugFrom === name || name === "project_id" || name === "developer_id"));
 			if (slugField && !selectedRow && !slugManuallyEdited) {
@@ -1242,7 +1243,7 @@ export function PropertyWizard({
 											{geocodeFeedback}
 										</div>
 									)}
-									{stepFieldList.map((field) => {
+					{stepFieldList.filter((field) => field.name !== "property_subtype" || asText(payload.category).trim().toLowerCase() === "house").map((field) => {
 										const val = payload[field.name] ?? "";
 										const isWide =
 											field.type === "textarea" ||

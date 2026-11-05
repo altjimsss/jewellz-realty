@@ -89,6 +89,7 @@ export function ProjectListCard({ property, priceLabel, href, aiReason, aiConfid
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
 						<h3 className="line-clamp-1 text-[14px] font-semibold leading-snug text-[#1C1B19] transition-colors group-hover:text-[#B8101A] sm:text-[16px]">{property.title}</h3>
+						{property.subtype ? <span className="mt-2 inline-flex rounded-full border border-[#DE141C]/15 bg-[#DE141C]/[0.05] px-2 py-0.5 text-[9px] font-semibold text-[#B8101A]">{property.subtype}</span> : null}
 						<p className="mt-1 truncate text-[11px] text-black/50">{[property.location, property.type].filter(Boolean).join(" · ")}</p>
 					</div>
 					<span className="shrink-0 pt-0.5 text-[12px] text-[#DE141C]" aria-hidden="true">↗</span>

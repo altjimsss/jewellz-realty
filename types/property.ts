@@ -41,6 +41,8 @@ export type Property = {
 	lotAreaSqm?: number;
 	specs?: PropertySpec[];
 	type?: PropertyType;
+	/** More specific form of a house, such as townhouse or duplex. */
+	subtype?: string;
 	category?: PropertyCategory;
 	featured?: boolean;
 	amenities?: string[];

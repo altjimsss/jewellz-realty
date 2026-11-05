@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS public.properties (
   slug                TEXT NOT NULL UNIQUE,
   description         TEXT,
   category            public.property_category,
+  property_subtype    TEXT,
   status              public.listing_status NOT NULL DEFAULT 'draft',
   badge               public.listing_badge NOT NULL DEFAULT 'none',
   price               NUMERIC(15,2),
