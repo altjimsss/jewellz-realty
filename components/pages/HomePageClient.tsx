@@ -569,35 +569,37 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               aria-expanded={isMobileHeroFiltersOpen}
               aria-controls="mobile-hero-property-filters"
               onClick={() => setIsMobileHeroFiltersOpen((open) => !open)}
-              className="flex min-h-12 w-full items-center justify-between rounded-xl border border-white/15 bg-[#191919] px-4 text-left text-white transition-colors hover:bg-[#222] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]"
+              className="group flex min-h-[54px] w-full items-center justify-between rounded-md border border-white/15 bg-[#222222] px-3.5 text-left text-white transition-colors hover:border-white/25 hover:bg-[#292929] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]"
             >
-              <span className="flex items-center gap-3">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#DE141C]" fill="none" aria-hidden="true">
-                  <path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded bg-[#DE141C] shadow-sm shadow-[#DE141C]/20">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="none" aria-hidden="true">
+                    <path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </span>
                 <span>
-                  <span className="block text-xs font-semibold">Refine search</span>
-                  <span className="mt-0.5 block text-[10px] text-white/55">
-                    {mobileHeroActiveFilterCount ? `${mobileHeroActiveFilterCount} filter${mobileHeroActiveFilterCount === 1 ? "" : "s"} selected` : "Location, price and property details"}
+                  <span className="block text-xs font-semibold tracking-[0.01em]">Filter properties</span>
+                  <span className="mt-0.5 block truncate text-[10px] text-white/55">
+                    {mobileHeroActiveFilterCount ? `${mobileHeroActiveFilterCount} filter${mobileHeroActiveFilterCount === 1 ? "" : "s"} selected` : "Set location, price and property details"}
                   </span>
                 </span>
               </span>
-              <svg viewBox="0 0 24 24" className={`h-4 w-4 text-white/60 transition-transform duration-200 ${isMobileHeroFiltersOpen ? "rotate-180" : ""}`} fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className={`ml-3 h-4 w-4 shrink-0 text-white/55 transition-transform duration-200 group-hover:text-white/80 ${isMobileHeroFiltersOpen ? "rotate-180" : ""}`} fill="none" aria-hidden="true">
                 <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <div
               id="mobile-hero-property-filters"
               aria-hidden={!isMobileHeroFiltersOpen}
-              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${isMobileHeroFiltersOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+              className={`grid transition-[grid-template-rows,opacity,visibility] duration-300 ease-out ${isMobileHeroFiltersOpen ? "visible grid-rows-[1fr] opacity-100" : "invisible grid-rows-[0fr] opacity-0"}`}
             >
-              <div className="min-h-0 overflow-hidden">
+              <div className="min-h-0 overflow-hidden border-l border-white/10 pl-3.5">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               submitHeroSearch();
             }}
-            className="space-y-2 pt-4"
+            className="space-y-2 pt-3"
           >
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
