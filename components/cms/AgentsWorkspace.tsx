@@ -9,7 +9,7 @@ import { asText } from "./utils";
 
 const inputClass =
 	"mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30 disabled:bg-zinc-50 disabled:text-black/45";
-const labelClass = "text-xs font-semibold uppercase tracking-[0.18em] text-black/50";
+const labelClass = "text-sm font-medium text-[#111111]";
 const primaryButton =
 	"inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20";
 

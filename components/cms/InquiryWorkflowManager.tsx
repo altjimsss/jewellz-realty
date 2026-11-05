@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-	AlertCircle,
 	ArrowRight,
 	Calendar,
-	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
 	Clock,
@@ -17,7 +15,6 @@ import {
 	Search,
 	Sparkles,
 	User,
-	UserPlus,
 	X,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -553,73 +550,58 @@ export function InquiryWorkflowManager({
 			) : null}
 
 			{/* KPI Summary Strip */}
-			<div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-				<div
+			<div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+				<button
+					type="button"
 					onClick={() => {
 						setQuickFilter("all");
 						setStatusFilter("all");
 					}}
-					className="cursor-pointer rounded-xl border border-black/10 bg-white p-3 transition hover:border-black/25 hover:shadow-sm"
+					className="portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
 				>
-					<div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">Total Leads</div>
-					<div className="mt-1 text-2xl font-bold tracking-tight text-[#111111]">{summaryStats.total}</div>
-				</div>
+					<div className="portal-stat-label">Total leads</div>
+					<div className="portal-stat-value">{summaryStats.total}</div>
+				</button>
 
-				<div
+				<button
+					type="button"
 					onClick={() => setQuickFilter("high_intent")}
-					className={`cursor-pointer rounded-xl border p-3 transition ${
-						quickFilter === "high_intent"
-							? "border-[#DE141C] bg-red-50/50 shadow-sm"
-							: "border-black/10 bg-white hover:border-black/25 hover:shadow-sm"
-					}`}
+					aria-pressed={quickFilter === "high_intent"}
+					className={`portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "high_intent" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">
-						<span>High Intent</span>
-						<Sparkles className="h-3.5 w-3.5" />
-					</div>
-					<div className="mt-1 text-2xl font-bold tracking-tight text-[#DE141C]">{summaryStats.highIntent}</div>
-				</div>
+					<div className="portal-stat-label">High intent</div>
+					<div className="portal-stat-value">{summaryStats.highIntent}</div>
+				</button>
 
-				<div
+				<button
+					type="button"
 					onClick={() => setQuickFilter("unassigned")}
-					className={`cursor-pointer rounded-xl border p-3 transition ${
-						quickFilter === "unassigned"
-							? "border-amber-500 bg-amber-50/50 shadow-sm"
-							: "border-black/10 bg-white hover:border-black/25 hover:shadow-sm"
-					}`}
+					aria-pressed={quickFilter === "unassigned"}
+					className={`portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "unassigned" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-						<span>Unassigned</span>
-						<UserPlus className="h-3.5 w-3.5" />
-					</div>
-					<div className="mt-1 text-2xl font-bold tracking-tight text-amber-800">{summaryStats.unassigned}</div>
-				</div>
+					<div className="portal-stat-label">Unassigned</div>
+					<div className="portal-stat-value">{summaryStats.unassigned}</div>
+				</button>
 
-				<div
+				<button
+					type="button"
 					onClick={() => setQuickFilter("stale")}
-					className={`cursor-pointer rounded-xl border p-3 transition ${
-						quickFilter === "stale"
-							? "border-red-600 bg-red-50/50 shadow-sm"
-							: "border-black/10 bg-white hover:border-black/25 hover:shadow-sm"
-					}`}
+					aria-pressed={quickFilter === "stale"}
+					className={`portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "stale" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-red-600">
-						<span>Overdue (&gt;24h)</span>
-						<AlertCircle className="h-3.5 w-3.5" />
-					</div>
-					<div className="mt-1 text-2xl font-bold tracking-tight text-red-700">{summaryStats.overdue}</div>
-				</div>
+					<div className="portal-stat-label">Overdue (&gt;24h)</div>
+					<div className="portal-stat-value">{summaryStats.overdue}</div>
+				</button>
 
-				<div
+				<button
+					type="button"
 					onClick={() => setStatusFilter("closed_won")}
-					className="cursor-pointer rounded-xl border border-black/10 bg-white p-3 transition hover:border-black/25 hover:shadow-sm"
+					aria-pressed={statusFilter === "closed_won"}
+					className="portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
 				>
-					<div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-						<span>Won / Reserved</span>
-						<CheckCircle2 className="h-3.5 w-3.5" />
-					</div>
-					<div className="mt-1 text-2xl font-bold tracking-tight text-emerald-800">{summaryStats.won}</div>
-				</div>
+					<div className="portal-stat-label">Won / reserved</div>
+					<div className="portal-stat-value">{summaryStats.won}</div>
+				</button>
 			</div>
 
 			{/* ========================================================================= */}

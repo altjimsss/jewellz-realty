@@ -76,7 +76,7 @@ export function DeveloperLogoCropDialog({ file, companyName, aspectRatio = 2, ou
 					<button type="button" onClick={onCancel} disabled={saving} className="text-sm text-black/55 hover:text-black">Cancel</button>
 				</div>
 
-				<div style={{ aspectRatio }} className="relative mx-auto mt-5 w-full max-w-[480px] overflow-hidden rounded-lg border border-dashed border-black/25 bg-[linear-gradient(45deg,#f2f2f2_25%,transparent_25%),linear-gradient(-45deg,#f2f2f2_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f2f2f2_75%),linear-gradient(-45deg,transparent_75%,#f2f2f2_75%)] bg-[length:16px_16px] bg-[position:0_0,0_8px,8px_-8px,-8px_0px]">
+				<div style={{ aspectRatio }} className="relative mx-auto mt-5 w-full max-w-[480px] overflow-hidden rounded-lg border border-dashed border-black/25 bg-zinc-100">
 					{image && crop ? <img
 						src={sourceUrl}
 						alt={`${companyName} crop preview`}

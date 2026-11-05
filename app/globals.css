@@ -49,16 +49,37 @@
     border-radius: 0.75rem;
     background-color: rgb(var(--portal-surface));
     padding: 1rem;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
-    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+    box-shadow: none;
+    transition: background-color 150ms ease, border-color 150ms ease;
   }
 
   .portal-stat-card:hover {
     border-color: rgb(203 213 225);
-    box-shadow: 0 3px 8px rgb(15 23 42 / 0.08);
+    background-color: rgb(248 250 252);
   }
 
-  .portal-stat-card:active { transform: scale(0.99); }
+  .portal-stat-label {
+    color: rgb(var(--portal-muted));
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1rem;
+  }
+
+  .portal-stat-value {
+    margin-top: 0.5rem;
+    color: rgb(var(--portal-ink));
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-stat-hint {
+    margin-top: 0.25rem;
+    color: rgb(var(--portal-muted));
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
 
   .portal-popover {
     border: 1px solid rgb(var(--portal-border));

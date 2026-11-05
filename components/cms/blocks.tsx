@@ -15,7 +15,7 @@ function slugify(value: string) {
 export function SectionShell({ title, description, children }: SectionProps) {
 	return (
 		<section className="overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
-			<div className="border-b border-black/[0.07] bg-gradient-to-r from-zinc-50/90 via-white to-white px-5 py-5 sm:px-6">
+			<div className="border-b border-black/[0.07] bg-zinc-50 px-5 py-5 sm:px-6">
 				<div className="flex flex-col gap-1.5">
 					<h2 className="text-base font-semibold tracking-tight text-[#111111]">{title}</h2>
 					<p className="max-w-3xl text-sm leading-5 text-black/50">{description}</p>
@@ -30,17 +30,10 @@ export function InfoCard({ label, value, hint }: { label: string; value: string 
 	const text = String(value);
 	const isLong = text.length > 14;
 	return (
-		<div className="group rounded-xl border border-black/10 bg-white p-4 shadow-xs transition-all duration-150 hover:border-black/20 hover:shadow-sm">
-			<div className="flex items-start justify-between gap-3">
-				<div className="min-w-0 flex-1">
-					<div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
-					<div className={`mt-2 break-all font-semibold tabular-nums leading-tight text-[#111111] ${isLong ? "text-base md:text-lg" : "text-2xl tracking-tight"}`}>{value}</div>
-				</div>
-				<span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600 ring-1 ring-zinc-200">Live</span>
-			</div>
-			<div className="mt-3 flex items-center justify-between border-t border-black/5 pt-2">
-				{hint ? <div className="truncate text-[11px] text-zinc-500">{hint}</div> : <span />}
-			</div>
+		<div className="portal-stat-card min-w-0">
+			<div className="portal-stat-label truncate">{label}</div>
+			<div className={`portal-stat-value break-all leading-tight ${isLong ? "text-lg" : ""}`}>{value}</div>
+			{hint ? <div className="portal-stat-hint line-clamp-2">{hint}</div> : null}
 		</div>
 	);
 }
@@ -212,7 +205,7 @@ export function EntityEditor({
 										) : null}
 										<div className={field.type === "textarea" || field.type === "array" ? "md:col-span-2" : ""}>
 										<label>
-											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">{field.label}</div>
+						<div className="text-sm font-medium text-[#111111]">{field.label}</div>
 											{field.type === "textarea" || field.type === "array" ? (
 												<textarea name={field.name} rows={field.rows ?? 4} defaultValue={displayValue(field, value)} placeholder={field.placeholder} disabled={!canEdit} className={`${commonInputClass} min-h-[110px] py-3`} />
 											) : field.type === "select" ? (

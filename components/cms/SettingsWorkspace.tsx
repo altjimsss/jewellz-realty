@@ -7,7 +7,7 @@ import { asText } from "./utils";
 
 const inputClass =
 "mt-2 w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-[#DE141C]/50 focus:ring-4 focus:ring-[#DE141C]/10 disabled:bg-zinc-50 disabled:text-black/45";
-const labelClass = "text-xs font-semibold uppercase tracking-[0.14em] text-black/55";
+const labelClass = "text-sm font-medium text-[#111111]";
 const primaryButton =
 	"inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#DE141C] px-4 text-sm font-semibold text-white shadow-sm shadow-red-900/10 transition hover:bg-[#bf1018] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#DE141C]/20 disabled:cursor-not-allowed disabled:bg-black/20";
 
@@ -62,7 +62,7 @@ export function SettingsWorkspace({ rows, selectedId, canEdit, onSelect, onCreat
 
 	return (
 		<section className="overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
-			<div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/[0.07] bg-gradient-to-r from-zinc-50/90 via-white to-white px-5 py-5 sm:px-6">
+			<div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/[0.07] bg-zinc-50 px-5 py-5 sm:px-6">
 				<div className="flex min-w-0 items-start gap-3.5">
 					<div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#DE141C]/[0.08] text-[#DE141C] ring-1 ring-inset ring-[#DE141C]/10">
 						<SettingsIcon className="h-5 w-5" />

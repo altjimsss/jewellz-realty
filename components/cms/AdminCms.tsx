@@ -963,7 +963,7 @@ function AnalyticsVisualSuite({
 					</div>
 				</div>
 				{selectedProperty ? (
-					<div className="mb-5 rounded-2xl border border-[#DE141C]/15 bg-gradient-to-br from-[#DE141C]/[0.035] via-white to-white p-4 sm:p-5">
+					<div className="mb-5 rounded-xl border border-black/10 bg-white p-4 sm:p-5">
 						<div className="flex flex-wrap items-start justify-between gap-3">
 							<div className="min-w-0">
 								<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Dedicated property analytics</div>
@@ -4586,7 +4586,7 @@ export default function AdminCms({
 	}
 
 	return (
-		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
+		<main className="portal-canvas min-h-screen text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				<aside className="portal-sidebar hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
@@ -4901,8 +4901,8 @@ export default function AdminCms({
 						</div>
 					</header>
 
-					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-4 lg:px-5">
-						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${assistantContentOffset}`}>
+					<div className="flex-1 overflow-auto bg-transparent px-4 py-6 sm:px-6 lg:px-8">
+						<div className={`mx-auto flex max-w-7xl flex-col gap-4 transition-[padding] duration-200 ${assistantContentOffset}`}>
 							{loading || !authChecked ? (
 								<AdminContentSkeleton section={currentSection} />
 							) : (
@@ -4946,26 +4946,26 @@ export default function AdminCms({
 						{currentSection === "overview" ? (
 							<>
 								<div className="grid gap-3">
-									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+									<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Needs attention</div>
-											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{urgentLeads.length}</div>
-											<p className="mt-1 text-xs text-slate-600">High-intent or overdue leads.</p>
+										<div className="portal-stat-label">Needs attention</div>
+										<div className="portal-stat-value">{urgentLeads.length}</div>
+										<p className="portal-stat-hint">High-intent or overdue leads.</p>
 										</button>
 										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Unassigned leads</div>
-											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{unassignedLeads.length}</div>
-											<p className="mt-1 text-xs text-slate-600">Assign these before follow-up slips.</p>
+										<div className="portal-stat-label">Unassigned leads</div>
+										<div className="portal-stat-value">{unassignedLeads.length}</div>
+										<p className="portal-stat-hint">Assign these before follow-up slips.</p>
 										</button>
 										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Draft listings</div>
-											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{draftListings.length}</div>
-											<p className="mt-1 text-xs text-slate-600">Listings not yet public.</p>
+										<div className="portal-stat-label">Draft listings</div>
+										<div className="portal-stat-value">{draftListings.length}</div>
+										<p className="portal-stat-hint">Listings not yet public.</p>
 										</button>
 										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-											<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Low inquiry listings</div>
-											<div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-[#111111]">{lowPerformingListings.length}</div>
-											<p className="mt-1 text-xs text-slate-600">Viewed listings below target rate.</p>
+										<div className="portal-stat-label">Low inquiry listings</div>
+										<div className="portal-stat-value">{lowPerformingListings.length}</div>
+										<p className="portal-stat-hint">Viewed listings below target rate.</p>
 										</button>
 									</div>
 
