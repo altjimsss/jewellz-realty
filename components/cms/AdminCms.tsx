@@ -615,6 +615,11 @@ function AnalyticsVisualSuite({
 	trafficRows,
 	sessions,
 	events,
+	selectedProperty,
+	selectedPropertyPerformance,
+	selectedPropertyChartRows,
+	selectedPropertyInquiries,
+	onSelectPortfolioProperty,
 }: {
 	category: AnalyticsCategory;
 	properties: CmsRow[];
@@ -624,6 +629,11 @@ function AnalyticsVisualSuite({
 	trafficRows: Array<{ source: string; session_count: number; total_page_views: number; share_pct: number }>;
 	sessions: CmsRow[];
 	events: CmsRow[];
+	selectedProperty: CmsRow | null;
+	selectedPropertyPerformance: { total_views: number; detail_opens: number; total_interactions: number; total_inquiries: number; inquiry_rate_pct: number; avg_dwell_seconds: number } | null;
+	selectedPropertyChartRows: Array<{ label: string; value: number }>;
+	selectedPropertyInquiries: CmsRow[];
+	onSelectPortfolioProperty: (id: string | null) => void;
 }) {
 	const visitorsOverTime = dailyEngagementRows(events);
 	const visitorsAreLive = hasMeaningfulChartValue(visitorsOverTime, ["sessions", "visitors"]);
@@ -887,6 +897,54 @@ function AnalyticsVisualSuite({
 			</div> : null}
 
 			{category === "propertyPerformance" ? <div>
+				{selectedProperty ? (
+					<div className="mb-5 rounded-2xl border border-[#DE141C]/15 bg-gradient-to-br from-[#DE141C]/[0.035] via-white to-white p-4 sm:p-5">
+						<div className="flex flex-wrap items-start justify-between gap-3">
+							<div className="min-w-0">
+								<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Dedicated property analytics</div>
+								<h3 className="mt-1 truncate text-lg font-semibold text-[#111111]">{selectedProperty.title}</h3>
+								<p className="mt-1 text-sm text-black/50">{[selectedProperty.city, selectedProperty.province].filter(Boolean).join(", ") || "Location not set"} · All-time listing performance</p>
+							</div>
+							<button type="button" onClick={() => onSelectPortfolioProperty(null)} className="inline-flex h-9 items-center rounded-xl border border-black/10 bg-white px-3.5 text-xs font-semibold text-black/65 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/25">Back to all properties</button>
+						</div>
+						<div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+							<InfoCard label="Views" value={selectedPropertyPerformance?.total_views ?? 0} hint="Recorded property views" />
+							<InfoCard label="Interactions" value={selectedPropertyPerformance?.total_interactions ?? selectedPropertyPerformance?.detail_opens ?? 0} hint="Detail, gallery, map and other actions" />
+							<InfoCard label="Inquiries" value={selectedPropertyPerformance?.total_inquiries ?? selectedPropertyInquiries.length} hint="Leads linked to this property" />
+							<InfoCard label="Average browse time" value={`${Math.round(selectedPropertyPerformance?.avg_dwell_seconds ?? 0)}s`} hint="Recorded time on listing" />
+							<InfoCard label="Inquiry rate" value={`${selectedPropertyPerformance?.inquiry_rate_pct ?? 0}%`} hint="Inquiries relative to views" />
+						</div>
+						<div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+							<div className="rounded-2xl border border-black/[0.08] bg-white p-4">
+								<div className="text-sm font-semibold text-[#111111]">Performance breakdown</div>
+								<div className="mt-3 h-56">
+									<ResponsiveContainer width="100%" height="100%">
+										<BarChart data={selectedPropertyChartRows} margin={{ top: 8, right: 8, left: -22, bottom: 18 }}>
+											<CartesianGrid vertical={false} stroke="#ececec" />
+											<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
+											<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+											<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+											<Bar dataKey="value" name="Count" fill="#DE141C" radius={[6, 6, 0, 0]} maxBarSize={42} />
+										</BarChart>
+									</ResponsiveContainer>
+								</div>
+							</div>
+							<div className="rounded-2xl border border-black/[0.08] bg-white p-4">
+								<div className="text-sm font-semibold text-[#111111]">Recent inquiries</div>
+								<p className="mt-1 text-xs text-black/45">Latest leads associated with this listing.</p>
+								<div className="mt-3 space-y-2">
+									{selectedPropertyInquiries.slice(0, 5).map((inquiry) => (
+										<div key={asText(inquiry.id)} className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-3 py-2.5">
+											<span className="min-w-0 truncate text-sm font-medium text-[#111111]">{inquiry.buyer_name ?? inquiry.buyer_email ?? "New inquiry"}</span>
+											<span className="shrink-0 text-xs text-black/45">{relativeAge(inquiry.created_at)}</span>
+										</div>
+									))}
+									{selectedPropertyInquiries.length === 0 ? <p className="rounded-xl bg-zinc-50 px-3 py-5 text-center text-sm text-black/45">No inquiries for this property yet.</p> : null}
+								</div>
+							</div>
+						</div>
+					</div>
+				) : null}
 				<div className="grid gap-4 xl:grid-cols-2">
 					<AnalyticsChartCard title="Average asking price by listing month" description="Monthly average of recorded listing prices, not synthetic price points." isLive={priceTrendIsLive}>
 						{priceTrendIsLive ? <ResponsiveContainer width="100%" height="100%">
@@ -2492,6 +2550,11 @@ function AnalyticsPanel({
 						trafficRows={trafficChartRows}
 						sessions={sessions}
 						events={engagementEvents}
+						selectedProperty={selectedPortfolioProperty}
+						selectedPropertyPerformance={selectedPropertyPerformance}
+						selectedPropertyChartRows={selectedPropertyChartRows}
+						selectedPropertyInquiries={selectedPropertyInquiries}
+						onSelectPortfolioProperty={onSelectPortfolioProperty}
 					/>
 				</div>
 			) : null}
@@ -3371,6 +3434,14 @@ export default function AdminCms({
 		setPropertyCategoryFilter("all");
 		setSelection((current) => ({ ...current, properties: propertyId }));
 		syncAdminUrl("/admin/listings");
+	}
+
+	function openPropertyAnalytics(propertyId: string) {
+		setSelectedPortfolioDeveloperId(null);
+		setSelectedPortfolioPropertyId(propertyId);
+		setActivePrimary("analytics");
+		setActiveSection("propertyPerformance");
+		syncAdminUrl(routeForSection("propertyPerformance"));
 	}
 
 	function handleAnalyticsChatAction(actionId: string) {
@@ -4962,6 +5033,7 @@ export default function AdminCms({
 										fields={propertyEditorFields}
 										defaultValues={DEFAULT_PROPERTY_VALUES}
 										canEdit={canEditCatalog}
+										onViewAnalytics={isAdmin ? openPropertyAnalytics : undefined}
 										rowLabel={labelForRow}
 										rowMeta={(row) => `${row.city ?? ""} ${row.province ?? ""} • ${row.status ?? "draft"}`}
 										onSelect={(row) => { setSelection((current) => ({ ...current, properties: row ? asText(row.id) : null })); clearStagedPhotos(); }}
