@@ -8,10 +8,10 @@ import type { CmsPayload, CmsRow } from "./types";
 import { asText } from "./utils";
 
 const inputClass =
-	"mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30 disabled:bg-zinc-50 disabled:text-black/45";
-const labelClass = "text-xs font-semibold uppercase tracking-[0.18em] text-black/50";
+	"input input-bordered input-sm mt-1 w-full bg-base-100 text-base-content placeholder:text-base-content/40 disabled:bg-base-200";
+const labelClass = "text-sm font-medium text-base-content";
 const primaryButton =
-	"inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20";
+	"btn btn-primary btn-sm gap-2 disabled:cursor-not-allowed";
 
 type Tone = "emerald" | "amber" | "zinc" | "blue";
 
@@ -83,7 +83,7 @@ export function AgentsWorkspace({ rows, selectedId, canEdit, rowMeta, emailForRo
 	});
 
 	return (
-		<section className="overflow-hidden rounded-lg border border-black/10 bg-white">
+		<section className="card bg-base-100 overflow-hidden">
 			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 px-4 py-3">
 				<div>
 					<h2 className="text-sm font-semibold text-[#111111]">Agents</h2>
@@ -116,7 +116,7 @@ export function AgentsWorkspace({ rows, selectedId, canEdit, rowMeta, emailForRo
 				) : null}
 
 				<div className="grid gap-4 xl:grid-cols-[300px_1fr]">
-					<aside className="rounded-lg border border-black/10 bg-white p-3">
+					<aside className="bg-base-200 p-3">
 						<div className="flex items-center justify-between gap-2 px-1 pb-3">
 							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Agents</div>
 							<span className="text-xs text-black/40">{rows.length}</span>
@@ -161,7 +161,7 @@ export function AgentsWorkspace({ rows, selectedId, canEdit, rowMeta, emailForRo
 						</div>
 					</aside>
 
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="bg-base-100 p-4">
 						{selectedRow ? (
 							<AgentEditor
 								key={asText(selectedRow.id)}

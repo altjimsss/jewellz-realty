@@ -15,7 +15,7 @@ function slugify(value: string) {
 export function SectionShell({ title, description, children }: SectionProps) {
 	return (
 		<section className="overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
-			<div className="border-b border-black/[0.07] bg-gradient-to-r from-zinc-50/90 via-white to-white px-5 py-5 sm:px-6">
+			<div className="border-b border-base-300 bg-base-200 px-5 py-5 sm:px-6">
 				<div className="flex flex-col gap-1.5">
 					<h2 className="text-base font-semibold tracking-tight text-[#111111]">{title}</h2>
 					<p className="max-w-3xl text-sm leading-5 text-black/50">{description}</p>

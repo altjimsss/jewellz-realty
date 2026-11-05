@@ -26,7 +26,7 @@ export function AdminContentSkeleton({ section }: { section?: string }) {
 	return (
 		<div className="skeleton-delayed">
 			<div className="fixed left-0 right-0 top-0 z-50 h-[2px] overflow-hidden bg-black/5">
-				<div className="h-full w-full animate-pulse bg-gradient-to-r from-transparent via-[#DE141C] to-transparent" />
+				<div className="h-full w-full animate-pulse bg-base-300" />
 			</div>
 
 			<div className="space-y-3">

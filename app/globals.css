@@ -27,35 +27,30 @@
 
 @layer components {
   .portal-canvas {
-    background-color: rgb(var(--portal-canvas));
-    color: rgb(var(--portal-ink));
+    background-color: hsl(var(--b2));
+    color: hsl(var(--bc));
   }
 
   .portal-sidebar {
-    border-color: rgb(var(--portal-border) / 0.8);
-    background-color: rgb(var(--portal-surface) / 0.96);
-    backdrop-filter: blur(12px);
+    border-color: hsl(var(--b3));
+    background-color: hsl(var(--b1));
   }
 
   .portal-header {
-    border-color: rgb(var(--portal-border) / 0.85);
-    background-color: rgb(var(--portal-surface) / 0.94);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+    border-color: hsl(var(--b3));
+    background-color: hsl(var(--b1));
   }
 
   .portal-stat-card {
-    border: 1px solid rgb(var(--portal-border));
+    border: 0;
     border-radius: 0.75rem;
-    background-color: rgb(var(--portal-surface));
+    background-color: hsl(var(--b1));
     padding: 1rem;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
-    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+    transition: background-color 150ms ease, transform 150ms ease;
   }
 
   .portal-stat-card:hover {
-    border-color: rgb(203 213 225);
-    box-shadow: 0 3px 8px rgb(15 23 42 / 0.08);
+    background-color: hsl(var(--b2));
   }
 
   .portal-stat-card:active { transform: scale(0.99); }
@@ -64,7 +59,7 @@
     border: 1px solid rgb(var(--portal-border));
     border-radius: 0.875rem;
     background-color: rgb(var(--portal-surface));
-    box-shadow: 0 16px 36px -12px rgb(15 23 42 / 0.22), 0 4px 12px rgb(15 23 42 / 0.08);
+    box-shadow: none;
   }
 
   .portal-live-toast {
@@ -80,7 +75,7 @@
     border-radius: 1rem;
     background-color: rgb(var(--portal-surface));
     padding: 1rem;
-    box-shadow: 0 16px 36px -12px rgb(15 23 42 / 0.22), 0 4px 12px rgb(15 23 42 / 0.08);
+    box-shadow: none;
     animation: portal-toast-enter 180ms ease-out both;
   }
 
@@ -94,7 +89,7 @@
     border-radius: 1rem;
     background-color: rgb(var(--portal-surface));
     padding: 1rem;
-    box-shadow: 0 16px 36px -12px rgb(15 23 42 / 0.22), 0 4px 12px rgb(15 23 42 / 0.08);
+    box-shadow: none;
     animation: portal-toast-enter 180ms ease-out both;
   }
 
@@ -425,24 +420,9 @@ body {
   display: none;
 }
 
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 .skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.04) 25%,
-    rgba(0, 0, 0, 0.09) 37%,
-    rgba(0, 0, 0, 0.04) 63%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  background-color: rgb(0 0 0 / 0.05);
+  animation: pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes skeleton-fade-in {
