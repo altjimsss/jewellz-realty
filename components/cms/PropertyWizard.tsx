@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
 import {
 	Building2,
-	BarChart3,
 	MapPin,
 	Home,
 	DollarSign,
@@ -43,7 +42,6 @@ export type PropertyWizardProps = {
 	rowLabel: (row: CmsRow) => string;
 	rowMeta?: (row: CmsRow) => string;
 	onSelect: (row: CmsRow | null) => void;
-	onViewAnalytics?: (propertyId: string) => void;
 	onCreateNew: () => void;
 	onDelete?: (row: CmsRow) => Promise<void>;
 	onSubmit: (payload: CmsPayload, currentRow: CmsRow | null) => Promise<boolean | void>;
@@ -718,7 +716,6 @@ export function PropertyWizard({
 	rowLabel,
 	rowMeta,
 	onSelect,
-	onViewAnalytics,
 	onCreateNew,
 	onDelete,
 	onSubmit,
@@ -1367,7 +1364,7 @@ export function PropertyWizard({
 							<div>
 								<h2 className="text-sm font-semibold text-[#111111]">Properties</h2>
 								<p className="mt-0.5 text-xs text-black/45">
-									{rows.length} listing{rows.length !== 1 ? "s" : ""} · open a card to edit{onViewAnalytics ? " or view its analytics" : ""}
+									{rows.length} listing{rows.length !== 1 ? "s" : ""} · click any card to edit
 								</p>
 							</div>
 							{canEdit && (
@@ -1468,20 +1465,7 @@ export function PropertyWizard({
 														</span>
 													)}
 												</div>
-								<div className="mt-3 flex items-center justify-between gap-2">
-									{canEdit ? <span className="text-[11px] text-black/35">Click card to edit</span> : <span />}
-									{onViewAnalytics ? (
-										<button
-											type="button"
-											onClick={(event) => { event.stopPropagation(); onViewAnalytics(id); }}
-											aria-label={`View analytics for ${rowLabel(row)}`}
-											className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#DE141C]/20 bg-white px-2.5 text-xs font-semibold text-[#DE141C] transition hover:border-[#DE141C]/40 hover:bg-[#DE141C]/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
-										>
-											<BarChart3 className="h-3.5 w-3.5" />
-											Analytics
-										</button>
-									) : canEdit ? <Pencil className="h-3.5 w-3.5 text-black/35" /> : null}
-								</div>
+								{canEdit && <div className="absolute right-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100"><Pencil className="h-3.5 w-3.5 text-black/35" /></div>}
 											</div>
 										);
 									})}

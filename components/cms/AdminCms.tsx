@@ -339,6 +339,14 @@ function AnalyticsChartCard({ title, description, isLive = true, children }: { t
 	);
 }
 
+function titleCase(value: string) {
+	return value
+		.split(/[_\s-]+/)
+		.filter(Boolean)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
+
 function ChartEmptyState({ message }: { message: string }) {
 	return (
 		<div className="flex h-full items-center justify-center rounded-lg border border-dashed border-black/10 bg-zinc-50 px-4 text-center">
@@ -624,7 +632,7 @@ function AnalyticsVisualSuite({
 	category: AnalyticsCategory;
 	properties: CmsRow[];
 	inquiries: CmsRow[];
-	listingRows: Array<{ title: string; total_views: number; detail_opens: number; total_interactions: number; total_inquiries: number; inquiry_rate_pct: number; avg_dwell_seconds: number }>;
+	listingRows: Array<{ property_id: string; title: string; total_views: number; detail_opens: number; total_interactions: number; total_inquiries: number; inquiry_rate_pct: number; avg_dwell_seconds: number }>;
 	inquiryVolumeRows: Array<{ inquiry_date: string; total_inquiries: number }>;
 	trafficRows: Array<{ source: string; session_count: number; total_page_views: number; share_pct: number }>;
 	sessions: CmsRow[];
@@ -635,6 +643,26 @@ function AnalyticsVisualSuite({
 	selectedPropertyInquiries: CmsRow[];
 	onSelectPortfolioProperty: (id: string | null) => void;
 }) {
+	const [propertySearch, setPropertySearch] = useState("");
+	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState("all");
+	const [propertyStatusFilter, setPropertyStatusFilter] = useState("all");
+	const propertyCategories = useMemo(() => Array.from(new Set(properties.map((property) => asText(property.category).trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [properties]);
+	const propertyAnalyticsRows = useMemo(() => {
+		const query = propertySearch.trim().toLowerCase();
+		return properties
+			.map((property) => {
+				const id = asText(property.id);
+				const performance = listingRows.find((row) => row.property_id === id);
+				return { property, id, performance, title: asText(property.title) || "Untitled property", category: asText(property.category), status: asText(property.status || property.publish_status || property.listing_status || "draft").toLowerCase(), location: [property.city, property.province].map(asText).filter(Boolean).join(", ") };
+			})
+			.filter((row) => {
+				const searchMatches = !query || [row.title, row.location, row.category, row.status].join(" ").toLowerCase().includes(query);
+				const categoryMatches = propertyCategoryFilter === "all" || row.category === propertyCategoryFilter;
+				const statusMatches = propertyStatusFilter === "all" || row.status === propertyStatusFilter;
+				return searchMatches && categoryMatches && statusMatches;
+			})
+			.sort((a, b) => (b.performance?.total_views ?? 0) - (a.performance?.total_views ?? 0) || a.title.localeCompare(b.title));
+	}, [listingRows, properties, propertySearch, propertyCategoryFilter, propertyStatusFilter]);
 	const visitorsOverTime = dailyEngagementRows(events);
 	const visitorsAreLive = hasMeaningfulChartValue(visitorsOverTime, ["sessions", "visitors"]);
 	const trafficPieIsLive = hasMeaningfulChartValue(trafficRows, ["session_count"]);
@@ -897,6 +925,43 @@ function AnalyticsVisualSuite({
 			</div> : null}
 
 			{category === "propertyPerformance" ? <div>
+				<div className="mb-5 overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
+					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/[0.07] bg-zinc-50/65 px-4 py-4 sm:px-5">
+						<div>
+							<h3 className="text-sm font-semibold text-[#111111]">Website properties</h3>
+							<p className="mt-1 text-xs text-black/50">Search or filter the catalog, then select a property to open its dedicated analytics.</p>
+						</div>
+						<span className="rounded-full border border-black/[0.07] bg-white px-2.5 py-1 text-xs font-semibold tabular-nums text-black/55">{propertyAnalyticsRows.length} of {properties.length}</span>
+					</div>
+					<div className="grid gap-3 border-b border-black/[0.07] p-4 sm:grid-cols-[minmax(220px,1fr)_180px_160px] sm:items-end sm:px-5">
+						<label className="block">
+							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Search properties</span>
+							<div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" /><input type="search" value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} placeholder="Name, city, category..." className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-9 pr-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]" /></div>
+						</label>
+						<label className="block">
+							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Category</span>
+							<select value={propertyCategoryFilter} onChange={(event) => setPropertyCategoryFilter(event.target.value)} className="h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]"><option value="all">All categories</option>{propertyCategories.map((categoryName) => <option key={categoryName} value={categoryName}>{titleCase(categoryName)}</option>)}</select>
+						</label>
+						<label className="block">
+							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Status</span>
+							<select value={propertyStatusFilter} onChange={(event) => setPropertyStatusFilter(event.target.value)} className="h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]"><option value="all">All statuses</option>{Array.from(new Set(properties.map((property) => asText(property.status || property.publish_status || property.listing_status || "draft").toLowerCase()))).sort().map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}</select>
+						</label>
+					</div>
+					<div className="max-h-[460px] overflow-y-auto p-3 sm:p-4">
+						{propertyAnalyticsRows.length === 0 ? <div className="rounded-xl border border-dashed border-black/10 bg-zinc-50 px-4 py-8 text-center text-sm text-black/45">No properties match those filters.</div> : (
+							<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+								{propertyAnalyticsRows.map(({ id, performance, title, category: propertyType, status, location }) => {
+									const isSelected = selectedProperty?.id === id;
+									return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-pressed={isSelected} className={`rounded-xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
+										<div className="flex items-start justify-between gap-3"><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-black/55">{status}</span></div>
+										<div className="mt-1 truncate text-xs text-black/45">{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div>
+										<div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-2.5 text-xs"><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span><span className="font-semibold text-[#DE141C]">View report →</span></div>
+									</button>;
+								})}
+							</div>
+						)}
+					</div>
+				</div>
 				{selectedProperty ? (
 					<div className="mb-5 rounded-2xl border border-[#DE141C]/15 bg-gradient-to-br from-[#DE141C]/[0.035] via-white to-white p-4 sm:p-5">
 						<div className="flex flex-wrap items-start justify-between gap-3">
@@ -3436,14 +3501,6 @@ export default function AdminCms({
 		syncAdminUrl("/admin/listings");
 	}
 
-	function openPropertyAnalytics(propertyId: string) {
-		setSelectedPortfolioDeveloperId(null);
-		setSelectedPortfolioPropertyId(propertyId);
-		setActivePrimary("analytics");
-		setActiveSection("propertyPerformance");
-		syncAdminUrl(routeForSection("propertyPerformance"));
-	}
-
 	function handleAnalyticsChatAction(actionId: string) {
 		switch (actionId) {
 			case "navigate_high_priority":
@@ -5033,7 +5090,6 @@ export default function AdminCms({
 										fields={propertyEditorFields}
 										defaultValues={DEFAULT_PROPERTY_VALUES}
 										canEdit={canEditCatalog}
-										onViewAnalytics={isAdmin ? openPropertyAnalytics : undefined}
 										rowLabel={labelForRow}
 										rowMeta={(row) => `${row.city ?? ""} ${row.province ?? ""} • ${row.status ?? "draft"}`}
 										onSelect={(row) => { setSelection((current) => ({ ...current, properties: row ? asText(row.id) : null })); clearStagedPhotos(); }}
