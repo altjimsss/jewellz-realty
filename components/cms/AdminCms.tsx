@@ -4176,8 +4176,9 @@ export default function AdminCms({
 	}
 
 	async function saveProperty(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.developer_id) {
-			setMessage("Choose a Developer Partner first. If none exists, create one under People → Developer Partners.");
+		const isPrivateFarm = asText(payload.category).trim().toLowerCase() === "farm" && !payload.developer_id;
+		if (!payload.developer_id && !isPrivateFarm) {
+			setMessage("Choose a Developer Partner for this property. Private Owner is available for farm listings.");
 			return false;
 		}
 		if (!payload.title || !payload.slug || !payload.address || !payload.city || !payload.province) {

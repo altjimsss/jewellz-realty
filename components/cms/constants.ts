@@ -101,7 +101,7 @@ const gallerySectionOptions: FieldOption[] = [
 ];
 
 export const propertyFields: FieldSpec[] = [
-	{ section: "Step 1 · Ownership", name: "developer_id", label: "Developer Partner", type: "select", help: "Choose the company or developer who owns this listing. Create one under People → Developer Partners if it is missing." },
+	{ section: "Step 1 · Ownership", name: "developer_id", label: "Owner / Developer", type: "select", help: "Choose a developer partner, or select Private Owner for a privately owned farm." },
 	{ section: "Step 1 · Ownership", name: "project_id", label: "Project / Subdivision", type: "select", dependsOn: "developer_id", optionParentKey: "developer_id", help: "Optional. Only projects owned by the selected Developer Partner are shown." },
 	{ section: "Step 1 · Ownership", name: "assigned_agent_id", label: "Assigned Agent", type: "select", help: "Optional. Pick the agent responsible for inquiries and follow-ups." },
 	{ section: "Step 2 · Basic Listing", name: "title", label: "Title", type: "text", placeholder: "Palm Village Unit 12" },

@@ -31,6 +31,12 @@ import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
 import type { ReactNode } from "react";
 
+const PRIVATE_OWNER_VALUE = "__private_owner__";
+
+function isFarmCategory(value: unknown) {
+	return asText(value).trim().toLowerCase() === "farm";
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type PropertyWizardProps = {
@@ -83,10 +89,10 @@ const STEPS: StepDef[] = [
 	{
 		id: "ownership",
 		label: "Ownership",
-		description: "Link the listing to a developer, project, and agent.",
+		description: "Link this listing to a developer or mark it as privately owned.",
 		icon: Building2,
 		sectionPrefix: "Step 1",
-		required: ["developer_id"],
+		required: [],
 	},
 	{
 		id: "listing",
@@ -192,6 +198,9 @@ function buildEmptyPayload(
 	const result: CmsPayload = {};
 	for (const field of fields) {
 		result[field.name] = row ? row[field.name] : (defaultValues?.[field.name] ?? "");
+	}
+	if (isFarmCategory(result.category) && !result.developer_id) {
+		result.developer_id = PRIVATE_OWNER_VALUE;
 	}
 	return result;
 }
@@ -646,7 +655,7 @@ function FieldInput({
 
 	if (field.type === "select") {
 		const dependsOnValue = field.dependsOn ? asText(payload[field.dependsOn]) : undefined;
-		const isDisabled = !canEdit || Boolean(field.dependsOn && !dependsOnValue);
+		const isDisabled = !canEdit || Boolean(field.dependsOn && (!dependsOnValue || dependsOnValue === PRIVATE_OWNER_VALUE));
 		const filteredOptions =
 			field.dependsOn && field.optionParentKey
 				? field.options?.filter(
@@ -666,6 +675,7 @@ function FieldInput({
 				<option value="">
 					{isDisabled ? "Select Developer Partner first" : "— Select —"}
 				</option>
+				{field.name === "developer_id" ? <option value={PRIVATE_OWNER_VALUE}>Private Owner (no developer)</option> : null}
 				{filteredOptions?.map((opt) => (
 					<option key={opt.value} value={opt.value}>
 						{opt.label}
@@ -971,6 +981,7 @@ export function PropertyWizard({
 		setPayload((prev) => {
 			const next = { ...prev, [name]: val };
 			if (name === "developer_id") next["project_id"] = "";
+			if (name === "category" && isFarmCategory(val) && !next.developer_id) next.developer_id = PRIVATE_OWNER_VALUE;
 
 			const slugField = fields.find((field) => field.autoSlugFrom && (field.autoSlugFrom === name || name === "project_id" || name === "developer_id"));
 			if (slugField && !selectedRow && !slugManuallyEdited) {
@@ -1026,6 +1037,9 @@ export function PropertyWizard({
 				errors[step.id] = `Missing: ${missing.map((n) => n.replace(/_/g, " ")).join(", ")}`;
 			}
 		}
+		if (!isFarmCategory(payload.category) && (!asText(payload.developer_id).trim() || asText(payload.developer_id) === PRIVATE_OWNER_VALUE)) {
+			errors.ownership = "Choose a Developer Partner for this property. Private Owner is available for farm listings.";
+		}
 		if (Object.keys(errors).length > 0) {
 			setStepErrors(errors);
 			const firstBadIdx = STEPS.findIndex((s) => errors[s.id]);
@@ -1034,7 +1048,9 @@ export function PropertyWizard({
 		}
 		setSaving(true);
 		try {
-			const saved = await onSubmit(normalizePayloadForSave(fields, payload), selectedRow);
+			const normalizedPayload = normalizePayloadForSave(fields, payload);
+			if (normalizedPayload.developer_id === PRIVATE_OWNER_VALUE) normalizedPayload.developer_id = null;
+			const saved = await onSubmit(normalizedPayload, selectedRow);
 			if (saved !== true) return;
 			clearDraft();
 			setWizardOpen(false);
