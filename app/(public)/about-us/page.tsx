@@ -88,41 +88,32 @@ export default function AboutUsPage() {
       <AnnouncementBar />
       <Navbar links={navLinks} fontClassName={poppins.className} />
 
-      <section className="mx-auto w-full max-w-[1120px] px-6 py-14 lg:px-8">
+      <section className="mx-auto w-full max-w-[1120px] px-4 pb-10 pt-8 sm:px-6 sm:py-14 lg:px-8">
         <div className="rounded-[24px] bg-white px-0 py-0">
-          <div className="grid items-start gap-8 lg:grid-cols-[1fr_0.98fr] lg:gap-12">
+          <div className="grid items-start gap-6 lg:grid-cols-[1fr_0.98fr] lg:gap-x-12 lg:gap-y-6">
             <div>
               <SectionHeader title={"About Us"} subtitle={"Redefining the way people discover property."} />
 
-              <h1 className="mt-4 max-w-xl text-[clamp(2.05rem,3.7vw,3.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-[#111111]">
+              <h1 className="mt-3 max-w-xl text-[clamp(1.75rem,3.7vw,3.2rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-[#111111]">
                 Discover Jewellz Realty
               </h1>
 
-              <p className="mt-4 max-w-[430px] text-[14px] leading-7 text-black/55">
+              <p className="mt-3 max-w-[430px] text-[13px] leading-6 text-black/55 sm:mt-4 sm:text-[14px] sm:leading-7">
                 Jewellz Realty helps buyers and investors find the right property with less friction and more confidence.
                 We combine curated listings, responsive support, and thoughtful presentation so every step feels clear and professional.
               </p>
 
-              <div className="mt-6">
+              <div className="mt-5">
                 <Link
                   href="/contact"
-                  className="inline-flex items-center rounded-full bg-[#DE141C] px-5 py-3 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-[#c01018]"
+                  className="inline-flex min-h-10 items-center rounded-full bg-[#DE141C] px-5 py-2.5 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-[#c01018]"
                 >
                   Contact Us
                 </Link>
               </div>
-
-              <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 sm:gap-x-8">
-                {stats.map((item, index) => (
-                  <div key={item.label} className={`min-w-0 ${index < 3 ? "sm:border-r sm:border-black/8 sm:pr-6" : ""}`}>
-                    <div className="text-[18px] font-semibold tracking-[-0.03em] text-[#DE141C] sm:text-[20px]">{item.value}</div>
-                    <div className="mt-1 text-[13px] text-black/55">{item.label}</div>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            <div className="relative">
+            <div className="relative lg:col-start-2 lg:row-span-2 lg:row-start-1">
               <div className="overflow-hidden rounded-[18px] bg-white">
                 <Image
                   src="/assets/housebanner1.webp"
@@ -134,20 +125,29 @@ export default function AboutUsPage() {
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#EAE7E3] pt-4 sm:grid-cols-4 sm:gap-x-8 lg:col-start-1 lg:row-start-2 lg:border-0 lg:pt-0">
+              {stats.map((item, index) => (
+                <div key={item.label} className={`min-w-0 ${index < 3 ? "sm:border-r sm:border-black/8 sm:pr-6" : ""}`}>
+                  <div className="text-[17px] font-semibold tracking-[-0.03em] text-[#DE141C] sm:text-[20px]">{item.value}</div>
+                  <div className="mt-0.5 text-xs text-black/55 sm:mt-1 sm:text-[13px]">{item.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="px-4 pb-12 sm:px-6 lg:px-8 lg:pb-16">
+      <section className="px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
         <div className="mx-auto max-w-[1120px]">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
             {highlights.map((item) => (
-              <article key={item.title} className="rounded-[16px] border border-black/10 bg-white px-5 py-5 shadow-[0_6px_18px_rgba(0,0,0,0.04)]">
+              <article key={item.title} className="rounded-xl border border-black/10 bg-white px-4 py-4 shadow-[0_6px_18px_rgba(0,0,0,0.04)] sm:rounded-[16px] sm:px-5 sm:py-5">
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-[#DE141C]">
                   {item.icon}
                 </div>
-                <h2 className="text-[14px] font-semibold text-black">{item.title}</h2>
-                <p className="mt-2 text-[12.5px] leading-6 text-black/55">{item.description}</p>
+                <h2 className="text-[13px] font-semibold text-black sm:text-[14px]">{item.title}</h2>
+                <p className="mt-1.5 text-xs leading-5 text-black/55 sm:mt-2 sm:text-[12.5px] sm:leading-6">{item.description}</p>
               </article>
             ))}
           </div>
@@ -159,7 +159,7 @@ export default function AboutUsPage() {
           <div className="mb-6 flex items-start gap-3">
             <span className="mt-1.5 h-[2.2em] w-[3px] shrink-0 rounded-full bg-[#DE141C]" aria-hidden="true" />
             <div>
-              <h2 className="font-semibold leading-tight text-zinc-900" style={{ fontFamily: "'Poppins', sans-serif", fontSize: "22px" }}>
+              <h2 className="font-semibold leading-tight text-zinc-900" style={{ fontFamily: "'Poppins', sans-serif", fontSize: "clamp(18px, 5vw, 22px)" }}>
                 Our Leadership
               </h2>
               <p className="mt-[2px] font-normal leading-tight text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif", fontSize: "11px" }}>
@@ -168,10 +168,10 @@ export default function AboutUsPage() {
             </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
-            {teamMembers.map((member) => (
-              <article key={member.name} className="bg-white">
-                <div className="relative aspect-[1.08] overflow-hidden rounded-[6px] bg-zinc-100">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
+            {teamMembers.map((member, index) => (
+              <article key={member.name} className={`bg-white ${index === 2 ? "col-span-2 mx-auto w-1/2 md:col-span-1 md:w-full" : ""}`}>
+                <div className="relative aspect-[1.08] overflow-hidden rounded-md bg-zinc-100">
                   <Image
                     src={member.image}
                     alt={member.name}
@@ -182,8 +182,8 @@ export default function AboutUsPage() {
                 </div>
 
                 <div className="pt-3">
-                  <h3 className="text-[19px] font-medium leading-tight text-zinc-900">{member.name}</h3>
-                  <p className="mt-1 text-[11px] leading-tight text-zinc-500">{member.role}</p>
+                  <h3 className="text-[15px] font-medium leading-tight text-zinc-900 sm:text-[19px]">{member.name}</h3>
+                  <p className="mt-1 text-[10px] leading-tight text-zinc-500 sm:text-[11px]">{member.role}</p>
 
                   <div className="mt-3 flex items-center gap-4 text-zinc-700">
                     <span className="text-[13px] leading-none">𝕏</span>

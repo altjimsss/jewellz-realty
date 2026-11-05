@@ -130,13 +130,7 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
 
   return (
     <>
-      <section className="grid gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-28">
-        <div className="md:hidden">
-          <h2 className="mb-2 text-2xl font-semibold">Welcome to <span className="text-[#DE141C]">Jewellz Realty</span></h2>
-          <p className="text-sm leading-7">
-            We help buyers, sellers, and investors make confident decisions with reliable market guidance and end-to-end support.
-          </p>
-        </div>
+      <section className="px-4 pb-8 pt-6 sm:px-6 sm:py-16 lg:px-28">
         <div className="relative lg:col-span-2">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-6">
             <div className="flex flex-wrap items-center gap-3 sm:gap-10">
