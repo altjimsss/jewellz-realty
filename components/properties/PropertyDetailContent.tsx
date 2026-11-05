@@ -46,20 +46,16 @@ function getComputedDescription(property: Property) {
 
 function getParameterItems(property: Property) {
 	if (property.type === "Farm") {
-		const farmArea = property.lotAreaSqm ?? property.areaSqm;
-		const farmSpecs = property.specs ?? [];
+		const specs = property.specs ?? [];
+		const bedroomCount = property.beds;
+		const bathroomCount = property.baths;
 		return [
-			{ label: "Lot Area", value: farmArea ? `${farmArea.toLocaleString()} sqm` : farmSpecs.find((spec) => /lot area|area|sqm/i.test(spec.label))?.value ?? "Ask for details", icon: "grid" },
-			...[
-				{ label: "Road Access", pattern: /road access/i },
-				{ label: "Water Source", pattern: /water source/i },
-				{ label: "Terrain", pattern: /terrain/i },
-				{ label: "Current Use", pattern: /current use/i },
-			].map(({ label, pattern }) => ({
-				label,
-				value: farmSpecs.find((spec) => pattern.test(spec.label))?.value ?? "Ask for details",
-				icon: "area",
-			})),
+			{ label: "Floor Area", value: specs.find((spec) => /floor area/i.test(spec.label))?.value ?? "N/A", icon: "area" },
+			{ label: "Lot Area", value: property.lotAreaSqm != null ? `${property.lotAreaSqm} sqm` : specs.find((spec) => /lot area|^sqm$/i.test(spec.label))?.value ?? (property.areaSqm ? `${property.areaSqm} sqm` : "N/A"), icon: "grid" },
+			{ label: "Levels", value: specs.find((spec) => /level/i.test(spec.label))?.value ?? "N/A", icon: "levels" },
+			{ label: "Bedroom", value: bedroomCount ? String(bedroomCount) : "N/A", icon: "bed" },
+			{ label: "Bathroom", value: bathroomCount ? String(bathroomCount) : "N/A", icon: "bath" },
+			{ label: "Garage", value: specs.find((spec) => /garage/i.test(spec.label))?.value ?? "N/A", icon: "garage" },
 		];
 	}
 	const floorArea = property.specs?.find((spec) => /floor area/i.test(spec.label))?.value
