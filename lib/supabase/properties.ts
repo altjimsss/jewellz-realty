@@ -54,6 +54,13 @@ export type PublicPropertyLocation = {
 	municipality: string;
 };
 
+export type PublicPropertyAnalytics = {
+	totalViews: number;
+	detailOpens: number;
+	totalInteractions: number;
+	avgDwellSeconds: number;
+};
+
 type ListingPerformanceRow = {
 	property_id: string | null;
 	total_views?: number | string | null;
@@ -153,15 +160,13 @@ export async function getPublishedProperties() {
 	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
 }
 
-/** Small, bounded candidate set used to prepare property-chat comparisons. */
-export async function getComparablePublishedProperties(limit = 100): Promise<Property[]> {
-	const safeLimit = Math.max(1, Math.min(Math.floor(limit), 100));
+/** Lightweight full published catalog used to prepare property-chat comparisons. */
+export async function getComparablePublishedProperties(): Promise<Property[]> {
 	const { data, error } = await supabaseServer
 		.from("properties")
-		.select("id,slug,title,category,status,city,province,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,price")
+		.select("id,slug,title,category,status,city,province,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,price,description")
 		.eq("status", "published")
-		.order("created_at", { ascending: false })
-		.limit(safeLimit);
+		.order("created_at", { ascending: false });
 
 	if (error) {
 		console.error("Failed to load property-chat comparison candidates", error.message);
@@ -177,6 +182,7 @@ export async function getComparablePublishedProperties(limit = 100): Promise<Pro
 			slug: row.slug,
 			title: row.title,
 			price: toNumber(row.price) ?? 0,
+			description: row.description ?? undefined,
 			location,
 			type: titleCase(row.category),
 			beds: row.bedrooms ?? undefined,
@@ -357,6 +363,32 @@ export async function getPublishedPropertyBySlug(slug: string) {
 	}
 
 	return data ? mapPropertyRow(data as PropertyRow) : null;
+}
+
+/** Read only coarse, per-listing engagement metrics for the public chatbot. */
+export async function getPublicPropertyAnalytics(propertyId: string): Promise<PublicPropertyAnalytics | null> {
+	const { data, error } = await supabaseServer
+		.from("mv_listing_performance")
+		.select("property_id,total_views,detail_opens,total_interactions,avg_dwell_seconds")
+		.eq("property_id", propertyId)
+		.maybeSingle();
+
+	if (error || !data || data.property_id !== propertyId) {
+		if (error) console.error("Failed to load public property engagement summary", error.message);
+		return null;
+	}
+
+	const safeMetric = (value: unknown, max = Number.MAX_SAFE_INTEGER) => {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? Math.min(max, Math.max(0, parsed)) : 0;
+	};
+
+	return {
+		totalViews: safeMetric(data.total_views),
+		detailOpens: safeMetric(data.detail_opens),
+		totalInteractions: safeMetric(data.total_interactions),
+		avgDwellSeconds: safeMetric(data.avg_dwell_seconds, 3600),
+	};
 }
 
 function toDbCategory(category: string | null | undefined) {

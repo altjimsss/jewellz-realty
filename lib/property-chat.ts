@@ -1,6 +1,6 @@
 import type { Property } from "@/types/property";
 import { getPropertyBySlug } from "@/lib/sample-properties";
-import { getComparablePublishedProperties, getPublishedPropertyBySlug } from "@/lib/supabase/properties";
+import { getComparablePublishedProperties, getPublicPropertyAnalytics, getPublishedPropertyBySlug, type PublicPropertyAnalytics } from "@/lib/supabase/properties";
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
 import { formatDistance, fetchNearbyPlacesFromStadia, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
@@ -28,6 +28,7 @@ export type PropertyChatContext = {
 	summary: string;
 	comparisonSummary: string;
 	nearbyContext: string;
+	analyticsContext: string;
 };
 
 function normalizeText(value: unknown) {
@@ -111,7 +112,8 @@ function buildComparisonSummary(property: Property, properties: Property[]) {
 				`beds: ${item.beds ?? "N/A"}`,
 				`baths: ${item.baths ?? "N/A"}`,
 				`area: ${item.areaSqm ? `${item.areaSqm} sqm` : "N/A"}`,
-			].join(" | "),
+				item.description ? `description: ${item.description.replace(/\s+/g, " ").trim().slice(0, 500)}` : null,
+			].filter(Boolean).join(" | "),
 		);
 
 	return comparableProperties.length ? comparableProperties.join("\n") : "No comparable published listings are available.";
@@ -165,15 +167,17 @@ async function buildNearbyContext(property: Property): Promise<string> {
 }
 
 export async function buildPropertyChatContext(slug: string): Promise<PropertyChatContext | null> {
-	const property = await getPublishedPropertyBySlug(slug) ?? getPropertyBySlug(slug);
+	const publishedProperty = await getPublishedPropertyBySlug(slug);
+	const property = publishedProperty ?? getPropertyBySlug(slug);
 
 	if (!property) {
 		return null;
 	}
 
-	const [publishedProperties, nearbyContext] = await Promise.all([
+	const [publishedProperties, nearbyContext, analytics] = await Promise.all([
 		getComparablePublishedProperties(),
 		buildNearbyContext(property),
+		publishedProperty ? getPublicPropertyAnalytics(publishedProperty.id) : Promise.resolve(null),
 	]);
 
 	return {
@@ -181,7 +185,18 @@ export async function buildPropertyChatContext(slug: string): Promise<PropertyCh
 		summary: propertyToSummary(property),
 		comparisonSummary: buildComparisonSummary(property, publishedProperties),
 		nearbyContext,
+		analyticsContext: buildAnalyticsSummary(analytics),
 	};
+}
+
+function buildAnalyticsSummary(analytics: PublicPropertyAnalytics | null) {
+	if (!analytics) return "No aggregated listing activity data is available.";
+	return [
+		`Views: ${Math.round(analytics.totalViews)}`,
+		`Detail opens: ${Math.round(analytics.detailOpens)}`,
+		`Interactions: ${Math.round(analytics.totalInteractions)}`,
+		`Average time on listing: ${Math.round(analytics.avgDwellSeconds)} seconds`,
+	].join("; ");
 }
 
 export function buildPropertyChatConversation(history: PropertyChatMessage[]) {
@@ -208,6 +223,9 @@ export function buildPropertyChatPrompt(context: PropertyChatContext, message: s
 		"",
 		"NEARBY PLACES (sourced from OpenStreetMap / Stadia Maps)",
 		context.nearbyContext,
+		"",
+		"AGGREGATED LISTING ACTIVITY (property-level totals only; no visitor or inquiry records)",
+		context.analyticsContext,
 		"",
 		"COMPARABLE LISTINGS",
 		context.comparisonSummary,
