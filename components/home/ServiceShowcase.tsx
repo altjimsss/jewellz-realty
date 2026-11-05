@@ -63,12 +63,12 @@ export function ServiceShowcase() {
   const activeVisual = serviceVisuals[activeIndex];
 
   return (
-    <section className="grid gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-28">
+    <section className="grid gap-5 px-4 pb-8 pt-6 sm:gap-8 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-28">
       <div className="md:hidden">
-        <h2 className="mb-2 text-2xl font-semibold">
+        <h2 className="mb-2 text-[22px] font-semibold leading-tight tracking-[-0.025em]">
           Welcome to <span className="text-[#DE141C]">Jewellz Realty</span>
         </h2>
-        <p className="text-sm leading-7">
+        <p className="max-w-[38ch] text-[13px] leading-[1.6] text-[#4B4B4B]">
           We help buyers, sellers, and investors make confident decisions with reliable market guidance and end-to-end support.
         </p>
       </div>
@@ -91,8 +91,8 @@ export function ServiceShowcase() {
             </div>
           ))}
         </div>
-        <div className="pointer-events-none absolute bottom-4 left-4 right-24 text-white">
-          <p className="text-lg font-semibold">
+        <div className="pointer-events-none absolute bottom-3 left-3 right-12 text-white sm:bottom-4 sm:left-4 sm:right-24">
+          <p className="text-base font-semibold leading-snug sm:text-lg">
             {activeVisual.title === "CONSULTATION & GROWTH" ? (
               <>
                 CONSULTATION
@@ -103,7 +103,7 @@ export function ServiceShowcase() {
               activeVisual.title
             )}
           </p>
-          <p className="mt-1 text-sm text-white/85">{activeVisual.subtitle}</p>
+          <p className="mt-1 max-w-[38ch] text-xs leading-relaxed text-white/85 sm:text-sm">{activeVisual.subtitle}</p>
         </div>
       </div>
       <div>
@@ -145,21 +145,21 @@ export function ServiceShowcase() {
             ),
           },
         ].map((item, index) => (
-          <div key={item.title} className="mb-5 flex items-start gap-4">
+          <div key={item.title} className="mb-4 flex items-start gap-3 sm:mb-5 sm:gap-4">
             <div
-              className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border text-white transition-all duration-500 ${
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border text-white transition-all duration-500 sm:h-12 sm:w-12 ${
                 activeIndex === index
                   ? "-translate-y-0.5 scale-110 border-[#DE141C] bg-[#DE141C] shadow-[0_8px_20px_-10px_rgba(222,20,28,0.9)]"
                   : "border-black bg-black"
               }`}
             >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" aria-hidden="true">
                 {item.icon}
               </svg>
             </div>
-            <div>
-              <h3 className="font-semibold">{item.title}</h3>
-              <p className="text-sm leading-6">{item.description}</p>
+            <div className="min-w-0 pt-0.5">
+              <h3 className="text-[13px] font-semibold leading-snug sm:text-base">{item.title}</h3>
+              <p className="mt-1 text-xs leading-[1.55] text-[#4B4B4B] sm:text-sm sm:leading-6">{item.description}</p>
             </div>
           </div>
         ))}

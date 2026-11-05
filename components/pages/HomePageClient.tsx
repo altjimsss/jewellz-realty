@@ -593,7 +593,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               aria-hidden={!isMobileHeroFiltersOpen}
               className={`grid transition-[grid-template-rows,opacity,visibility] duration-300 ease-out ${isMobileHeroFiltersOpen ? "visible grid-rows-[1fr] opacity-100" : "invisible grid-rows-[0fr] opacity-0"}`}
             >
-              <div className="min-h-0 overflow-hidden border-l border-white/10 pl-3.5">
+              <div className="min-h-0 overflow-hidden">
           <form
             onSubmit={(e) => {
               e.preventDefault();
