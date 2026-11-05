@@ -115,21 +115,21 @@ function normalizeText(value: unknown) {
 }
 
 function matchesPropertyType(propertyType: unknown, requestedType: string) {
-	const type = normalizeText(propertyType);
+	const type = normalizeText(propertyType).replace(/[_-]+/g, " ");
 	const requested = normalizeText(requestedType);
 	if (!type || !requested) return false;
 	if (type === requested) return true;
 
 	const aliases: Record<string, string[]> = {
 		condo: ["condo", "condos", "condominium", "condominiums", "apartment", "apartments", "studio", "studios"],
-		house: ["house", "houses", "home", "homes", "townhouse", "townhouses"],
+		house: ["house", "houses", "home", "homes", "townhouse", "townhouses", "duplex", "single attached", "single detached"],
 		lot: ["lot", "lots", "land", "parcel", "parcels"],
 		farm: ["farm", "farms", "farmland", "agricultural"],
 		memorial: ["memorial", "memorials", "cemetery", "grave", "lawn"],
 	};
 	const terms = aliases[requested] ?? [requested];
 	const typeWords = type.split(/[^a-z0-9]+/).filter(Boolean);
-	return terms.some((term) => type === term || typeWords.includes(term));
+	return terms.some((term) => type === term || typeWords.includes(term) || type.includes(term));
 }
 
 function isCategoryTab(value: string): value is (typeof CATEGORY_TABS)[number] {

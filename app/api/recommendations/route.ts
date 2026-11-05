@@ -626,7 +626,7 @@ async function getVectorRecommendations(category: string, filters: Recommendatio
 			const candidate = candidateById.get(item.id);
 			const normalizedType = candidate?.type?.toLowerCase() ?? "";
 			const typeMatches = intent.preferredTypes.some((type) => normalizedType === type.toLowerCase());
-			const isResidentialMatch = intent.propertyIntent === "residential" && ["house", "condo", "apartment", "townhouse"].includes(normalizedType);
+			const isResidentialMatch = intent.propertyIntent === "residential" && ["house", "house_and_lot", "condo", "apartment", "townhouse", "duplex", "single_attached", "single_detached"].includes(normalizedType);
 			const isNonResidentialPenalty = intent.propertyIntent === "residential" && ["lot", "farm", "memorial"].includes(normalizedType);
 			const nearbyMatches = nearbyRows.filter((row) => row.property_id === item.id && row.category === intent.nearbyNeed);
 			const closestNearby = nearbyMatches[0]?.distance_meters;

@@ -41,6 +41,11 @@ export const emptySelection: SelectionState = {
 export const propertyCategoryOptions: FieldOption[] = [
 	{ label: "Condo", value: "condo" },
 	{ label: "House", value: "house" },
+	{ label: "House and Lot", value: "house_and_lot" },
+	{ label: "Townhouse", value: "townhouse" },
+	{ label: "Duplex", value: "duplex" },
+	{ label: "Single Attached", value: "single_attached" },
+	{ label: "Single Detached", value: "single_detached" },
 	{ label: "Lot", value: "lot" },
 	{ label: "Farm", value: "farm" },
 	{ label: "Memorial", value: "memorial" },

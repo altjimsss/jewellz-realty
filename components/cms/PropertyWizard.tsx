@@ -56,6 +56,11 @@ export type PropertyWizardProps = {
 const PROPERTY_CATEGORY_ICONS: Record<string, typeof Building2> = {
 	condo: Building2,
 	house: Home,
+	house_and_lot: Home,
+	townhouse: Home,
+	duplex: Home,
+	single_attached: Home,
+	single_detached: Home,
 	lot: LandPlot,
 	farm: Tractor,
 	memorial: Flower2,

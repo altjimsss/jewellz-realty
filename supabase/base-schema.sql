@@ -23,7 +23,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE public.property_category AS ENUM ('condo','house','house_and_lot','townhouse','lot','farm','memorial','commercial');
+  CREATE TYPE public.property_category AS ENUM ('condo','house','house_and_lot','townhouse','duplex','single_attached','single_detached','lot','farm','memorial','commercial');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
