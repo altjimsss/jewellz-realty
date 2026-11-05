@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, ImagePlus, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -1756,44 +1756,51 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 
 	if (!galleryItemId) {
 		return (
-			<div className="rounded-lg border border-dashed border-black/15 bg-zinc-50 px-4 py-5">
-				<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Gallery Photo</div>
-				<p className="mt-1 text-sm text-black/55">Create and save the gallery item first. After it exists, you can upload, replace, preview, or delete its photo here.</p>
+			<div className="flex items-start gap-3 rounded-2xl border border-dashed border-[#DE141C]/25 bg-[#DE141C]/[0.035] px-4 py-5">
+				<div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#DE141C] shadow-sm ring-1 ring-black/[0.05]"><ImagePlus className="h-5 w-5" /></div>
+				<div>
+					<div className="text-sm font-semibold text-[#111111]">Photo comes next</div>
+					<p className="mt-1 max-w-xl text-sm leading-5 text-black/55">Save this gallery item first. Then you can upload a photo, preview it, or replace it here.</p>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
+		<div className="rounded-2xl border border-black/[0.08] bg-zinc-50/70 p-4 sm:p-5">
 			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/60">Gallery Photo</div>
-					<p className="mt-1 text-sm text-black/55">Upload a replacement image or edit the Image URL field above, then save changes.</p>
+				<div className="flex items-start gap-3">
+					<div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#DE141C] shadow-sm ring-1 ring-black/[0.05]"><ImagePlus className="h-5 w-5" /></div>
+					<div>
+						<div className="text-sm font-semibold text-[#111111]">Gallery photo</div>
+						<p className="mt-1 text-xs leading-5 text-black/50">Upload a replacement or update the Image URL field, then save the gallery item.</p>
+					</div>
 				</div>
 				{canEdit ? (
-					<button type="button" onClick={deleteGalleryItem} className="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium text-[#111111] transition hover:bg-zinc-100">
+					<button type="button" onClick={deleteGalleryItem} className="rounded-xl border border-red-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/10">
 						Delete photo
 					</button>
 				) : null}
 			</div>
 
 			{imageUrl ? (
-				<div className="mt-4 overflow-hidden rounded-xl border border-black/10 bg-white">
+				<div className="mt-4 overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.03]">
 					<SafeImage src={imageUrl} alt={asText(galleryItem?.title || "Gallery image")} width={900} height={420} unoptimized className="h-56 w-full object-cover" fallbackContent={<div className="grid h-56 w-full place-items-center bg-zinc-100 text-xs text-black/45">Image link is not a valid image. Replace the URL or upload a photo.</div>} />
-					<div className="border-t border-black/10 px-3 py-2 text-xs text-black/45">{imageUrl}</div>
+					<div className="truncate border-t border-black/[0.07] px-3 py-2 text-xs text-black/45" title={imageUrl}>{imageUrl}</div>
 				</div>
 			) : (
-				<div className="mt-4 rounded-xl border border-dashed border-black/15 bg-white px-4 py-10 text-center text-sm text-black/45">No photo URL saved yet.</div>
+				<div className="mt-4 flex min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-8 text-center text-sm text-black/45"><ImagePlus className="h-6 w-6 text-black/25" /><span>No photo is attached yet.</span></div>
 			)}
 
-			<div className="mt-4 rounded-xl border border-dashed border-black/15 bg-white p-4">
+			<div className="mt-4 rounded-2xl border border-black/[0.08] bg-white p-4">
 				<label className="block">
 					<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Replace Photo</div>
-					<input type="file" accept="image/*" disabled={!canEdit || savingImage} onChange={handleFileChange} className="mt-2 block w-full text-sm text-black/60 file:mr-4 file:rounded-md file:border-0 file:bg-[#111111] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white disabled:cursor-not-allowed disabled:opacity-60" />
+					<input type="file" accept="image/*" disabled={!canEdit || savingImage} onChange={handleFileChange} className="mt-2 block w-full rounded-xl border border-dashed border-black/15 bg-zinc-50 p-3 text-sm text-black/60 file:mr-4 file:rounded-lg file:border-0 file:bg-[#DE141C] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#bf1018] disabled:cursor-not-allowed disabled:opacity-60" />
 				</label>
 				<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
 					<p className="text-xs text-black/45">{selectedFile ? selectedFile.name : "Choose a JPG, PNG, or WebP image."}</p>
-					<button type="button" onClick={uploadReplacementImage} disabled={!canEdit || savingImage || !selectedFile} className="inline-flex h-10 items-center justify-center rounded-md bg-[#111111] px-4 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
+					<button type="button" onClick={uploadReplacementImage} disabled={!canEdit || savingImage || !selectedFile} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#DE141C] px-4 text-sm font-semibold text-white transition hover:bg-[#bf1018] disabled:cursor-not-allowed disabled:bg-black/20">
+						<UploadCloud className="h-4 w-4" />
 						{savingImage ? "Uploading..." : "Upload and replace"}
 					</button>
 				</div>
@@ -5141,7 +5148,51 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "careerJobs" && isAdmin ? (
-							<EntityEditor title="Career Cards" description="Editable job cards shown on the public Careers page. Use details for the flipped-card bullet list." rows={workspace.careerJobs} selectedId={selectedCareerJobId} fields={careerJobFields} defaultValues={{ badge: "Full-Time", sort_order: workspace.careerJobs.length, is_active: true }} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.badge ?? "Role"} • ${row.is_active ? "active" : "hidden"}`} onSelect={(row) => setSelection((current) => ({ ...current, careerJobs: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, careerJobs: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("career_jobs", row)} onSubmit={saveCareerJob} saveLabel="Save career card" />
+							<EntityEditor
+								title="Career Cards"
+								description="Manage the job cards shown on the public Careers page. Preview both sides before saving."
+								rows={workspace.careerJobs}
+								selectedId={selectedCareerJobId}
+								fields={careerJobFields}
+								defaultValues={{ badge: "Full-Time", sort_order: workspace.careerJobs.length, is_active: true }}
+								canEdit={canEditContent}
+								rowLabel={labelForRow}
+								rowMeta={(row) => `${row.badge ?? "Role"} • ${row.is_active ? "active" : "hidden"}`}
+								onSelect={(row) => setSelection((current) => ({ ...current, careerJobs: row ? asText(row.id) : null }))}
+								onCreateNew={() => setSelection((current) => ({ ...current, careerJobs: NEW_RECORD_ID }))}
+								onDelete={(row) => deleteEntity("career_jobs", row)}
+								onSubmit={saveCareerJob}
+								saveLabel="Save career card"
+								guidance={(
+									<div className="flex items-start gap-3 rounded-2xl border border-[#DE141C]/15 bg-[#DE141C]/[0.035] px-4 py-3.5">
+										<BriefcaseBusiness className="mt-0.5 h-4 w-4 shrink-0 text-[#DE141C]" />
+										<p className="text-xs leading-5 text-black/60"><span className="font-semibold text-[#111111]">Quick tip:</span> Keep the description concise for the card front. Add one responsibility or qualification per line in Details for the card back.</p>
+									</div>
+								)}
+								renderPreview={(payload) => {
+									const details = Array.isArray(payload.details)
+										? payload.details.map(asText).filter(Boolean)
+										: asText(payload.details).split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+									const jobTitle = asText(payload.title) || "Untitled role";
+									return (
+										<div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
+											<article className="rounded-2xl border border-black/[0.08] bg-white p-6 shadow-sm">
+												<div className="mb-5 flex items-center justify-between gap-3"><span className="rounded-full bg-[#DE141C]/[0.08] px-3 py-1 text-xs font-semibold text-[#DE141C]">{asText(payload.badge) || "Role"}</span><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${payload.is_active ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{payload.is_active ? "Visible" : "Hidden"}</span></div>
+												<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/40">Career opportunity</div>
+												<h2 className="mt-2 text-xl font-semibold tracking-tight text-[#111111]">{jobTitle}</h2>
+												<p className="mt-3 text-sm leading-6 text-black/60">{asText(payload.description) || "Add a short description to introduce this role."}</p>
+												<button type="button" className="mt-6 rounded-full bg-[#DE141C] px-4 py-2 text-xs font-semibold text-white">View role details</button>
+											</article>
+											<article className="rounded-2xl border border-black/[0.08] bg-zinc-50 p-6">
+												<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Role details</div>
+												<h2 className="mt-2 text-lg font-semibold text-[#111111]">{jobTitle}</h2>
+												{details.length ? <ul className="mt-4 space-y-3">{details.map((detail, index) => <li key={`${index}-${detail}`} className="flex items-start gap-2.5 text-sm leading-5 text-black/65"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#DE141C]" />{detail}</li>)}</ul> : <p className="mt-4 text-sm text-black/45">Add details above to preview the bullet list.</p>}
+												<button type="button" className="mt-6 rounded-full bg-[#DE141C] px-4 py-2 text-xs font-semibold text-white">Apply now</button>
+											</article>
+										</div>
+									);
+								}}
+							/>
 						) : null}
 
 						{currentSection === "careerApplications" && isAdmin ? (
