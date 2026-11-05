@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import { formatDistance } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
+import { NearbyPoiDiscovery } from "@/components/properties/NearbyPoiDiscovery";
 
 const PropertyMapPreview = dynamic(
 	() => import("@/components/properties/PropertyMapPreview").then((mod) => mod.PropertyMapPreview),
@@ -90,33 +91,12 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 		return () => mediaQuery.removeEventListener("change", updateViewport);
 	}, []);
 
-	// Live groups discovered from Stadia Places API (used when cache is empty)
+	// Nearby places discovered by MapLibre when the server cache is empty
 	const hasCachedPlaces = nearbyGroups.some((g) => g.places.length > 0);
 	const [liveGroups, setLiveGroups] = useState<NearbyPlaceGroup[] | null>(null);
 
-	// Automatically load nearby places if not provided by server cache
-	useEffect(() => {
-		if (hasCachedPlaces || !property.coordinates) return;
 
-		let active = true;
-		const [lat, lng] = property.coordinates;
-		fetch(
-			`/api/nearby?propertyId=${encodeURIComponent(property.id)}&lat=${lat}&lng=${lng}&type=${encodeURIComponent(property.type ?? "")}`,
-		)
-			.then((res) => res.json())
-			.then((data) => {
-				if (active && Array.isArray(data.groups) && data.groups.some((g: NearbyPlaceGroup) => g.places.length > 0)) {
-					setLiveGroups(data.groups);
-				}
-			})
-			.catch(() => {});
-
-		return () => {
-			active = false;
-		};
-	}, [hasCachedPlaces, property.coordinates, property.id, property.type]);
-
-	/** Called by PropertyMapPreview after its first idle queryRenderedFeatures run */
+	/** Called when MapLibre finds places that can be cached */
 	const handleNearbyPlacesFound = useCallback(
 		(groups: NearbyPlaceGroup[]) => {
 			if (hasCachedPlaces) return; // cached data takes priority
@@ -149,6 +129,9 @@ export function PropertyLocationMap({ property, nearbyGroups, onInteraction }: P
 
 	return (
 		<>
+			{!hasCachedPlaces && property.coordinates && (
+				<NearbyPoiDiscovery property={property} onPlacesFound={handleNearbyPlacesFound} />
+			)}
 			<button
 				type="button"
 				onClick={() => {

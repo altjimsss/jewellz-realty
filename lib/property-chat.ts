@@ -2,7 +2,7 @@ import type { Property } from "@/types/property";
 import { getPropertyBySlug } from "@/lib/sample-properties";
 import { getComparablePublishedProperties, getPublicPropertyAnalytics, getPublishedPropertyBySlug, type PublicPropertyAnalytics } from "@/lib/supabase/properties";
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { formatDistance, fetchNearbyPlacesFromStadia, type NearbyPlaceGroup } from "@/lib/nearby-places";
+import { formatDistance, fetchNearbyPlacesFromMapTiles, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
 export type PropertyChatRole = "user" | "assistant";
 
@@ -149,7 +149,7 @@ async function buildNearbyContext(property: Property): Promise<string> {
 		if (Array.isArray(coords) && coords.length === 2) {
 			const [lat, lng] = coords;
 			if (typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng)) {
-				const liveGroups = await fetchNearbyPlacesFromStadia(lat, lng, property.type ?? undefined);
+				const liveGroups = await fetchNearbyPlacesFromMapTiles(lat, lng, property.type ?? undefined);
 				const formatted = formatNearbyGroups(liveGroups);
 				if (formatted) {
 					// Save to cache in the background so next requests are instant

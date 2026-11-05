@@ -13,8 +13,8 @@ type CachedNearbyRow = {
 
 /**
  * Reads nearby places for a property from the cached `property_nearby_places`
- * table. Returns null when no cache exists so callers can fall back to a
- * client-side MapLibre queryRenderedFeatures lookup.
+ * table. Returns null when no cache exists so callers can refresh the
+ * nearby-place data from Stadia's vector POI tiles.
  */
 export async function getCachedNearbyPlaceGroups(
 	propertyId: string,
@@ -58,8 +58,8 @@ export async function getCachedNearbyPlaceGroups(
 }
 
 /**
- * Persists nearby places found by the client-side MapLibre lookup so later
- * page loads serve cached data from the server (instant, no map query needed).
+ * Persists nearby places found in vector POI tiles so later page loads can
+ * serve the cached data without requesting map tiles again.
  */
 export async function saveNearbyPlaceGroups(propertyId: string, groups: NearbyPlaceGroup[]) {
 	const places: {
@@ -83,7 +83,7 @@ export async function saveNearbyPlaceGroups(propertyId: string, groups: NearbyPl
 			longitude: place.longitude,
 			address: place.address ?? null,
 			map_uri: place.googleMapsUri ?? null,
-			source: "maplibre",
+			source: "stadia-vector-tiles",
 			fetched_at: new Date().toISOString(),
 		})),
 	);

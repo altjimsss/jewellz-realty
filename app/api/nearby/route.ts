@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { fetchNearbyPlacesFromStadia, type NearbyPlaceGroup } from "@/lib/nearby-places";
+import { fetchNearbyPlacesFromMapTiles, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
 export const runtime = "nodejs";
 
 /**
  * GET /api/nearby?propertyId=...&lat=...&lng=...&type=...
  * Returns nearby places for Education, Health, Food, and Culture.
- * Serves from Supabase cache if present; otherwise queries Stadia Maps and caches the result.
+ * Serves from Supabase cache if present; otherwise reads Stadia vector POI tiles and caches the result.
  */
 export async function GET(request: Request) {
 	try {
@@ -28,16 +28,17 @@ export async function GET(request: Request) {
 			return NextResponse.json({ error: "Valid lat and lng query parameters are required." }, { status: 400 });
 		}
 
-		const groups = await fetchNearbyPlacesFromStadia(lat, lng, propertyType);
+		const groups = await fetchNearbyPlacesFromMapTiles(lat, lng, propertyType);
 
 		if (propertyId && groups.some((g) => g.places.length > 0)) {
 			saveNearbyPlaceGroups(propertyId, groups).catch(() => {});
 		}
 
-		return NextResponse.json({ groups, source: "stadia" });
+		return NextResponse.json({ groups, source: "stadia-vector-tiles" });
 	} catch (error) {
 		console.error("GET /api/nearby error:", error);
-		return NextResponse.json({ error: "Failed to fetch nearby places." }, { status: 500 });
+		const message = error instanceof Error ? error.message : "Failed to fetch nearby places.";
+		return NextResponse.json({ error: message }, { status: 502 });
 	}
 }
 

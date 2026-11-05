@@ -1,3 +1,6 @@
+import { VectorTile } from "@mapbox/vector-tile";
+import { PbfReader } from "pbf";
+
 export type NearbyCategory = "Education" | "Health" | "Food" | "Culture";
 
 export type NearbyPlace = {
@@ -131,89 +134,87 @@ const STADIA_API_KEY =
 	process.env.STADIA_MAPS_API_KEY ||
 	"";
 
-const CATEGORY_SEARCH_QUERIES: Record<NearbyCategory, string[]> = {
-	Education: ["school", "college", "university"],
-	Health: ["hospital", "clinic", "pharmacy"],
-	Food: ["restaurant", "cafe", "fast food"],
-	Culture: ["church", "museum", "park"],
-};
+function lonToTileX(longitude: number, zoom: number) {
+	return Math.floor(((longitude + 180) / 360) * 2 ** zoom);
+}
 
-/**
- * Automatically discovers nearby places for Education, Health, Food, and Culture
- * around any property coordinates using Stadia Maps Places API.
- */
-export async function fetchNearbyPlacesFromStadia(
+function latToTileY(latitude: number, zoom: number) {
+	const latRadians = (latitude * Math.PI) / 180;
+	return Math.floor(((1 - Math.asinh(Math.tan(latRadians)) / Math.PI) / 2) * 2 ** zoom);
+}
+
+/** Discover named POIs from Stadia's OpenMapTiles vector data, without geocoding. */
+export async function fetchNearbyPlacesFromMapTiles(
 	latitude: number,
 	longitude: number,
 	propertyType?: string,
 ): Promise<NearbyPlaceGroup[]> {
-	if (!STADIA_API_KEY) return nearbyCategories.map(({ category }) => ({ category, places: [] }));
+	if (!STADIA_API_KEY) throw new Error("STADIA_MAPS_API_KEY is not configured");
 	const radiusMeters = nearbyRadiusForPropertyType(propertyType);
-	const radiusKm = Math.max(1, Math.round(radiusMeters / 1000));
+	const zoom = 14;
+	const minX = lonToTileX(longitude - radiusMeters / (111_320 * Math.cos((latitude * Math.PI) / 180)), zoom);
+	const maxX = lonToTileX(longitude + radiusMeters / (111_320 * Math.cos((latitude * Math.PI) / 180)), zoom);
+	const minY = latToTileY(latitude + radiusMeters / 110_540, zoom);
+	const maxY = latToTileY(latitude - radiusMeters / 110_540, zoom);
+	const tileCandidates: { x: number; y: number }[] = [];
+	const tileCount = 2 ** zoom;
+	for (let x = minX; x <= maxX; x++) {
+		for (let y = minY; y <= maxY; y++) {
+			if (x < 0 || x >= tileCount || y < 0 || y >= tileCount) continue;
+			const tileLng = ((x + 0.5) / tileCount) * 360 - 180;
+			const tileLat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / tileCount))) * 180) / Math.PI;
+			// Drop tiles whose center is beyond the radius plus half a tile diagonal.
+			if (haversineMeters(latitude, longitude, tileLat, tileLng) <= radiusMeters + 1_750) {
+				tileCandidates.push({ x, y });
+			}
+		}
+	}
 
-	const groups: NearbyPlaceGroup[] = [];
+	const byCategory = new Map<NearbyCategory, NearbyPlace[]>(nearbyCategories.map(({ category }) => [category, []]));
+	const seen = new Set<string>();
+	for (let offset = 0; offset < tileCandidates.length; offset += 8) {
+		const batch = tileCandidates.slice(offset, offset + 8);
+		const tiles = await Promise.all(batch.map(async ({ x, y }) => {
+			const url = `https://tiles.stadiamaps.com/data/openmaptiles/${zoom}/${x}/${y}.pbf?api_key=${encodeURIComponent(STADIA_API_KEY)}`;
+			const response = await fetch(url, { signal: AbortSignal.timeout(8_000), next: { revalidate: 86_400 } });
+			if (!response.ok) throw new Error(`Stadia vector tile request failed (${response.status})`);
+			return { x, y, data: new Uint8Array(await response.arrayBuffer()) };
+		}));
 
-	await Promise.all(
-		nearbyCategories.map(async ({ category }) => {
-			const queries = CATEGORY_SEARCH_QUERIES[category];
-			const seen = new Set<string>();
-			const places: NearbyPlace[] = [];
+		for (const { x, y, data } of tiles) {
+			const layer = new VectorTile(new PbfReader(data)).layers.poi;
+			if (!layer) continue;
+			for (let index = 0; index < layer.length; index++) {
+				const feature = layer.feature(index);
+				const props = feature.properties as Record<string, unknown>;
+				const name = String(props.name ?? "").trim();
+				if (!name || feature.type !== 1) continue;
+				const category = ["class", "subclass", "amenity", "shop", "tourism", "historic"]
+					.map((key) => poiClassToCategory[String(props[key] ?? "").toLowerCase()])
+					.find((match) => match !== undefined);
+				if (!category) continue;
+				const point = feature.toGeoJSON(x, y, zoom).geometry;
+				if (point.type !== "Point") continue;
+				const [placeLng, placeLat] = point.coordinates;
+				const distanceMeters = haversineMeters(latitude, longitude, placeLat, placeLng);
+				if (distanceMeters > radiusMeters) continue;
+				const key = `${category}|${name.toLowerCase()}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				byCategory.get(category)!.push({
+					id: `stadia-${feature.id ?? key}`,
+					name,
+					category,
+					distanceMeters,
+					latitude: placeLat,
+					longitude: placeLng,
+				});
+			}
+		}
+	}
 
-			await Promise.all(
-				queries.map(async (q) => {
-					try {
-						const url = `https://api.stadiamaps.com/geocoding/v1/search?api_key=${STADIA_API_KEY}&text=${encodeURIComponent(
-							q,
-						)}&focus.point.lat=${latitude}&focus.point.lon=${longitude}&boundary.circle.lat=${latitude}&boundary.circle.lon=${longitude}&boundary.circle.radius=${radiusKm}&layers=venue&size=6`;
-
-						const res = await fetch(url, {
-							next: { revalidate: 60 * 60 * 24 },
-							signal: AbortSignal.timeout(5_000),
-						});
-						if (!res.ok) return;
-						const data = await res.json();
-
-						for (const f of data.features ?? []) {
-							const name = String(f.properties?.name ?? "").trim();
-							const key = name.toLowerCase();
-							if (!name || seen.has(key)) continue;
-							seen.add(key);
-
-							const [fLon, fLat] = f.geometry.coordinates;
-							const distMeters = Math.round(
-								(f.properties?.distance !== undefined
-									? f.properties.distance * 1000
-									: haversineMeters(latitude, longitude, fLat, fLon)),
-							);
-							if (distMeters > radiusMeters) continue;
-
-							places.push({
-								id: `stadia-${category.toLowerCase()}-${name.replace(/\s+/g, "_")}`,
-								name,
-								category,
-								distanceMeters: distMeters,
-								latitude: fLat,
-								longitude: fLon,
-								address: f.properties?.label ?? undefined,
-							});
-						}
-					} catch (err) {
-						console.error(`Failed to fetch Stadia places for ${category}:${q}`, err);
-					}
-				}),
-			);
-
-			places.sort((a, b) => a.distanceMeters - b.distanceMeters);
-			groups.push({
-				category,
-				places: places.slice(0, 8),
-			});
-		}),
-	);
-
-	// Ensure categories appear in standard order: Education, Health, Food, Culture
-	return nearbyCategories.map(({ category }) => {
-		const match = groups.find((g) => g.category === category);
-		return match ?? { category, places: [] };
-	});
+	return nearbyCategories.map(({ category }) => ({
+		category,
+		places: (byCategory.get(category) ?? []).sort((a, b) => a.distanceMeters - b.distanceMeters).slice(0, 8),
+	}));
 }

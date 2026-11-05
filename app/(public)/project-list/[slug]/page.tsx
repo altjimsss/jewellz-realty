@@ -4,7 +4,7 @@ import { PropertyDetailContent } from "@/components/properties/PropertyDetailCon
 import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
-import { fetchNearbyPlacesFromStadia, geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
+import { fetchNearbyPlacesFromMapTiles, geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
 import {
 	getPropertyBySlug,
 	getRelatedProperties as getSampleRelatedProperties,
@@ -50,9 +50,13 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 	let nearbyGroups = cachedNearbyGroups;
 	if (!nearbyGroups && propertyWithCoordinates.coordinates) {
 		const [lat, lng] = propertyWithCoordinates.coordinates;
-		nearbyGroups = await fetchNearbyPlacesFromStadia(lat, lng, property.type);
-		// Asynchronously save to Supabase cache
-		saveNearbyPlaceGroups(property.id, nearbyGroups).catch(() => {});
+		try {
+			nearbyGroups = await fetchNearbyPlacesFromMapTiles(lat, lng, property.type);
+			// Asynchronously save to Supabase cache
+			saveNearbyPlaceGroups(property.id, nearbyGroups).catch(() => {});
+		} catch (error) {
+			console.error("Failed to discover nearby places from Stadia vector tiles", error);
+		}
 	}
 	if (!nearbyGroups) {
 		nearbyGroups = nearbyCategories.map(({ category }) => ({ category, places: [] }));
