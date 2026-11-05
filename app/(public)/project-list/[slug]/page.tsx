@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
+import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
 import { fetchNearbyPlacesFromStadia, geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
@@ -63,9 +64,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 	const galleryImages =
 		property.images?.length
 			? property.images
-			: [property.image, ...fallbackRelatedProperties.map((item) => item.image)]
-					.filter((image): image is string => Boolean(image))
-					.slice(0, 3);
+			: [property.image || getPropertyPlaceholderImage(property.type)];
 
 	return (
 		<PropertyDetailContent

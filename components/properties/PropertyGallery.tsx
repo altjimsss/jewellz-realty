@@ -6,14 +6,15 @@ import { SafeImage } from "@/components/ui/SafeImage";
 type PropertyGalleryProps = {
   images: string[];
   title: string;
+  fallbackImage?: string;
   onInteraction?: (event: string, metadata?: Record<string, unknown>) => void;
 };
 
-const FALLBACK_IMAGE = "/assets/housebanner1.webp";
+const DEFAULT_FALLBACK_IMAGE = "/assets/housebanner1.webp";
 
-export function PropertyGallery({ images, title, onInteraction }: PropertyGalleryProps) {
+export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBACK_IMAGE, onInteraction }: PropertyGalleryProps) {
   const availableImages = images.filter(Boolean);
-  const galleryImages = availableImages.length > 0 ? availableImages : [FALLBACK_IMAGE];
+  const galleryImages = availableImages.length > 0 ? availableImages : [fallbackImage];
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
@@ -65,8 +66,8 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
               aria-label={isShowAllTile ? "Show all images" : `Show preview image ${idx + 1}`}
             >
               <SafeImage
-                src={galleryImages[previewIndex] ?? FALLBACK_IMAGE}
-                fallbackSrc={FALLBACK_IMAGE}
+                src={galleryImages[previewIndex] ?? fallbackImage}
+                fallbackSrc={fallbackImage}
                 alt={`${title} preview ${idx + 1}`}
                 fill
                 sizes="(min-width: 1024px) 200px, 140px"
@@ -95,7 +96,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
       <div className="order-1 relative aspect-[4/3] overflow-hidden bg-black/5 shadow-sm md:aspect-auto md:h-80 lg:h-96">
         <SafeImage
           src={mainImage}
-          fallbackSrc={FALLBACK_IMAGE}
+          fallbackSrc={fallbackImage}
           alt={title}
           fill
           sizes="(min-width: 1024px) 740px, 100vw"
@@ -187,7 +188,7 @@ export function PropertyGallery({ images, title, onInteraction }: PropertyGaller
             <div className="relative mx-auto flex h-[56vh] w-full max-w-5xl overflow-hidden rounded-[18px]">
               <SafeImage
                 src={mainImage}
-                fallbackSrc={FALLBACK_IMAGE}
+                fallbackSrc={fallbackImage}
                 alt={title}
                 fill
                 sizes="100vw"

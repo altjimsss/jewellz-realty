@@ -10,6 +10,7 @@ import { PropertyAnalyticsTracker } from "@/components/properties/PropertyAnalyt
 import { InquireCard } from "@/components/properties/InquireCard";
 import { ParamIcon } from "@/components/properties/ParamIcon";
 import { formatPHPWhole } from "@/lib/currency";
+import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import type { NearbyPlaceGroup } from "@/lib/nearby-places";
 import type { Property } from "@/types/property";
@@ -155,6 +156,8 @@ export function PropertyDetailContent({
 	}, [property.id]);
 
 	const computedDescription = getComputedDescription(property);
+	const propertyPlaceholderImage = getPropertyPlaceholderImage(property.type);
+	const propertyGalleryImages = galleryImages.length ? galleryImages : [property.image || propertyPlaceholderImage];
 	const parameterItems = getParameterItems(property);
 	const { track } = useAnalytics();
 	const trackPropertyInteraction = (event: string, metadata: Record<string, unknown> = {}) => {
@@ -187,7 +190,7 @@ export function PropertyDetailContent({
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
 				<div className="contents lg:block">
 				<div className="order-1 -mx-4 min-w-0 md:mx-0 lg:mb-6">
-					<PropertyGallery images={galleryImages} title={property.title} onInteraction={trackPropertyInteraction} />
+					<PropertyGallery images={propertyGalleryImages} title={property.title} fallbackImage={propertyPlaceholderImage} onInteraction={trackPropertyInteraction} />
 				</div>
 
 				<div className="order-3 min-w-0 space-y-6">
