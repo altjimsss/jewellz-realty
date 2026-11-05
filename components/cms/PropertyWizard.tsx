@@ -29,7 +29,6 @@ import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upl
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow, FieldSpec } from "./types";
 import { asText, displayValue } from "./utils";
-import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 import type { ReactNode } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -1420,7 +1419,7 @@ export function PropertyWizard({
 										};
 										const statusClass = statusColors[status] ?? statusColors["draft"];
 										const CategoryIcon = propertyCategoryIcon(asText(row.category));
-										const cardImage = asText(row.cover_image_url).trim() || getPropertyPlaceholderImage(asText(row.category));
+										const cardImage = asText(row.cover_image_url).trim();
 
 										return (
 											<div
@@ -1431,7 +1430,7 @@ export function PropertyWizard({
 											<div
 												aria-hidden="true"
 												className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center"
-												style={{ backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.34) 28%, rgba(255,255,255,0.9) 62%, #fff 82%), url("${cardImage.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}")` }}
+												style={cardImage ? { backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.55) 28%, rgba(255,255,255,0.96) 62%, #fff 82%), url("${cardImage.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}")` } : undefined}
 											/>
 												{badge && badge !== "none" && (
 													<span className="absolute right-3 top-3 rounded-full bg-[#111111]/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
