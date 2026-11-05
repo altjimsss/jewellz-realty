@@ -124,6 +124,7 @@ export default function Page({
   const [featuredRefreshesAt, setFeaturedRefreshesAt] = useState<string | null>(initialFeaturedRefreshesAt);
   const [priceMax, setPriceMax] = useState(850000);
   const [areaMax, setAreaMax] = useState(170);
+  const [isMobileHeroFiltersOpen, setIsMobileHeroFiltersOpen] = useState(false);
 
   useEffect(() => {
     if (initialHomeContent) return;
@@ -147,6 +148,9 @@ export default function Page({
     };
   }, [initialHomeContent]);
   const [heroSearchFilters, setHeroSearchFilters] = useState<HeroSearchFilters>(defaultHeroSearchFilters);
+  const mobileHeroActiveFilterCount = Object.values(heroSearchFilters).filter(Boolean).length
+    + (priceMax < 850000 ? 1 : 0)
+    + (areaMax !== 170 ? 1 : 0);
   const provinceOptions = [...new Map(locationOptions.map((item) => [item.province.trim().toLocaleLowerCase(), item.province.trim()])).values()]
     .sort((first, second) => first.localeCompare(second));
   const municipalityOptions = [...new Map(
@@ -559,12 +563,41 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               <div key={`mobile-progress-${heroIndex}`} className="hero-progress-fill h-full bg-[#DE141C]" style={{ animationDuration: `${HERO_DURATION_MS}ms` }} />
             </div>
           </div>
+          <div className="bg-black px-[15px] pb-[15px] pt-3">
+            <button
+              type="button"
+              aria-expanded={isMobileHeroFiltersOpen}
+              aria-controls="mobile-hero-property-filters"
+              onClick={() => setIsMobileHeroFiltersOpen((open) => !open)}
+              className="flex min-h-12 w-full items-center justify-between rounded-xl border border-white/15 bg-[#191919] px-4 text-left text-white transition-colors hover:bg-[#222] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]"
+            >
+              <span className="flex items-center gap-3">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#DE141C]" fill="none" aria-hidden="true">
+                  <path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <span>
+                  <span className="block text-xs font-semibold">Refine search</span>
+                  <span className="mt-0.5 block text-[10px] text-white/55">
+                    {mobileHeroActiveFilterCount ? `${mobileHeroActiveFilterCount} filter${mobileHeroActiveFilterCount === 1 ? "" : "s"} selected` : "Location, price and property details"}
+                  </span>
+                </span>
+              </span>
+              <svg viewBox="0 0 24 24" className={`h-4 w-4 text-white/60 transition-transform duration-200 ${isMobileHeroFiltersOpen ? "rotate-180" : ""}`} fill="none" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <div
+              id="mobile-hero-property-filters"
+              aria-hidden={!isMobileHeroFiltersOpen}
+              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${isMobileHeroFiltersOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            >
+              <div className="min-h-0 overflow-hidden">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               submitHeroSearch();
             }}
-            className="space-y-2 bg-black px-[15px] pb-[15px] pt-5"
+            className="space-y-2 pt-4"
           >
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
@@ -690,6 +723,9 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               Search Property
             </button>
           </form>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
