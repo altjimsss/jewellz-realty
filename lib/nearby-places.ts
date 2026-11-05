@@ -132,7 +132,7 @@ export function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: 
 const STADIA_API_KEY =
 	process.env.NEXT_PUBLIC_STADIA_MAPS_API_KEY ||
 	process.env.STADIA_MAPS_API_KEY ||
-	"";
+	"292b5eae-f656-470c-a59d-6a24c1ea49ae";
 
 function lonToTileX(longitude: number, zoom: number) {
 	return Math.floor(((longitude + 180) / 360) * 2 ** zoom);
