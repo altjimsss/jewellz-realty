@@ -132,7 +132,7 @@ export function MeetAgents({ agents = DEFAULT_AGENTS, autoSlideMs = 5000 }: Meet
 									)}
 									<SafeImage
 										src={agent.photoUrl}
-										fallbackSrc="/assets/broker.png"
+									fallbackSrc="/assets/broker.webp"
 										alt={agent.name}
 										fill
 										sizes="(max-width: 640px) 280px, 280px"

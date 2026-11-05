@@ -68,17 +68,17 @@ const teamMembers = [
   {
     name: "Tom Cruise",
     role: "Founder & Chairman",
-    image: "/assets/broker.png",
+    image: "/assets/broker.webp",
   },
   {
     name: "Emma Watson",
     role: "Managing Director",
-    image: "/assets/bannerprofessional.png",
+    image: "/assets/bannerprofessional.webp",
   },
   {
     name: "Will Smith",
     role: "Product Designer",
-    image: "/assets/bannerconsult.png",
+    image: "/assets/bannerconsult.webp",
   },
 ];
 

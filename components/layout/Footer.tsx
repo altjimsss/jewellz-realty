@@ -39,20 +39,20 @@ export function Footer() {
 	}
 
 	return (
-		<footer className="bg-[#0F0F10] px-4 py-10 text-white sm:px-6 lg:px-28">
-			<div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
-				<div className="col-span-2 text-center md:col-span-1 md:text-left">
-					<h3 className="text-2xl font-bold sm:text-3xl">Jewellz Realty</h3>
-					<p className="mt-2 max-w-sm text-center text-xs leading-5 text-white/70 sm:mt-3 sm:text-sm sm:leading-6 md:text-left">
+		<footer className="bg-[#0F0F10] px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-28">
+			<div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
+				<div className="col-span-2 min-w-0 md:col-span-1">
+					<h3 className="text-xl font-bold tracking-[-0.025em] sm:text-3xl">Jewellz Realty</h3>
+					<p className="mt-2 max-w-sm text-left text-xs leading-5 text-white/70 sm:mt-3 sm:text-sm sm:leading-6">
 						Your trusted real estate partner for buying, selling, and investing in premium but affordable properties.
 					</p>
-					<div className="mt-3 flex items-center justify-center gap-2 sm:mt-5 md:justify-start">
+					<div className="mt-3 flex items-center gap-2 sm:mt-5">
 						<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
 						<p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 sm:text-xs">Licensed Brokerage Team</p>
 					</div>
 				</div>
 
-				<div>
+				<div className="min-w-0">
 					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Quick Links</h4>
 					<ul className="mt-2 space-y-1.5 text-xs text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
 						<li><Link href="/" className="transition-colors hover:text-[#DE141C]">Home</Link></li>
@@ -64,19 +64,19 @@ export function Footer() {
 					</ul>
 				</div>
 
-				<div>
+				<div className="min-w-0">
 					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Contact</h4>
-					<ul className="mt-2 space-y-1.5 text-xs text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
+					<ul className="mt-2 space-y-2 text-[11px] leading-[1.45] text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
 						<li>Batangas, Philippines</li>
 						<li>+63 917 123 4567</li>
-						<li>inquiries@jewellzrealty.com</li>
+						<li className="break-words">inquiries@jewellzrealty.com</li>
 						<li>Mon - Sat, 9:00 AM - 6:00 PM</li>
 					</ul>
 				</div>
 
-				<div className="col-span-2 text-center md:col-span-1 md:text-left">
+				<div className="col-span-2 md:col-span-1">
 					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Follow Us</h4>
-					<div className="mt-2 flex items-center justify-center gap-2 sm:mt-4 md:justify-start">
+					<div className="mt-3 flex items-center gap-2 sm:mt-4">
 						{socialLinks.map((social) => (
 							<a
 								key={social.label}
@@ -93,19 +93,19 @@ export function Footer() {
 							</a>
 						))}
 					</div>
-					<p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm md:mx-0">Stay updated with listings, open houses, and real estate tips.</p>
+					<p className="mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm">Stay updated with listings, open houses, and real estate tips.</p>
 				</div>
 			</div>
 
 			{/* Sub-Footer & Portal Access Bar */}
-			<div className="mt-8 border-t border-white/10 pt-6">
+			<div className="mt-7 border-t border-white/10 pt-5 sm:mt-8 sm:pt-6">
 				{/* Partner & Associate Quick Access Bar */}
-				<div className="mb-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-xs backdrop-blur-sm sm:flex-row">
+				<div className="mb-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-xs backdrop-blur-sm sm:flex-row sm:items-center sm:rounded-xl sm:px-4 sm:py-2.5">
 					<div className="flex items-center gap-2 text-white/50">
 						<span className="h-1.5 w-1.5 rounded-full bg-[#DE141C]" />
 						<span className="text-[11px] font-semibold uppercase tracking-[0.08em]">Partner & Team Access</span>
 					</div>
-					<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+					<div className="flex w-full flex-wrap items-center justify-start gap-x-4 gap-y-2 text-xs sm:w-auto sm:justify-center">
 						<Link
 							href="/login?next=/agent"
 							onClick={(e) => handleOpenPortal(e, "agent")}
@@ -143,9 +143,9 @@ export function Footer() {
 				</div>
 
 				{/* Copyright & Legal */}
-				<div className="flex flex-col gap-2 text-center text-[11px] text-white/55 sm:gap-3 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
+				<div className="flex flex-col items-start gap-3 text-left text-[10px] leading-relaxed text-white/55 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
 					<p>© {new Date().getFullYear()} Jewellz Realty. All rights reserved. Licensed Real Estate Brokerage.</p>
-					<div className="flex items-center justify-center gap-4 text-white/50 md:justify-start">
+					<div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-white/50 sm:gap-4">
 						<Link href="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link>
 						<span className="text-white/20">•</span>
 						<Link href="/terms" className="transition-colors hover:text-white">Terms &amp; Conditions</Link>

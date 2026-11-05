@@ -12,7 +12,7 @@ const serviceVisuals = [
   {
     title: "CONSULTATION & GROWTH",
     subtitle: "Get tailored advice on value, timing, and smart property decisions.",
-    image: "/assets/bannerconsult.png",
+    image: "/assets/bannerconsult.webp",
   },
   {
     title: "Property Viewing & Tripping Services",
@@ -26,39 +26,12 @@ export function ServiceShowcase() {
   const [loaded, setLoaded] = useState<boolean[]>(() => serviceVisuals.map(() => false));
 
   useEffect(() => {
-    serviceVisuals.forEach((visual, index) => {
-      const image = new Image();
-
-      image.onload = () => {
-        setLoaded((current) => {
-          const next = [...current];
-          next[index] = true;
-          return next;
-        });
-      };
-
-      image.onerror = () => {
-        setLoaded((current) => {
-          const next = [...current];
-          next[index] = true;
-          return next;
-        });
-      };
-
-      image.src = visual.image;
-    });
-  }, []);
-
-  useEffect(() => {
     const timer = window.setInterval(() => {
-      setActiveIndex((current) => {
-        const nextIndex = (current + 1) % serviceVisuals.length;
-        return loaded[nextIndex] ? nextIndex : current;
-      });
+      setActiveIndex((current) => (current + 1) % serviceVisuals.length);
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [loaded]);
+  }, []);
 
   const activeVisual = serviceVisuals[activeIndex];
 
@@ -75,6 +48,7 @@ export function ServiceShowcase() {
       <div className="relative">
         <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl">
           {serviceVisuals.map((visual, index) => (
+            !loaded[index] && index !== activeIndex ? null : (
             <div
               key={visual.title}
               className={`absolute inset-0 transition-opacity duration-700 ${index === activeIndex ? "opacity-100" : "opacity-0"}`}
@@ -85,10 +59,13 @@ export function ServiceShowcase() {
                 fill
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority={index === activeIndex}
+                onLoad={() => setLoaded((current) => current[index] ? current : current.map((isLoaded, itemIndex) => itemIndex === index || isLoaded))}
+                onError={() => setLoaded((current) => current[index] ? current : current.map((isLoaded, itemIndex) => itemIndex === index || isLoaded))}
                 className={`object-cover transition-transform duration-[1400ms] ${index === activeIndex ? "scale-100" : "scale-105"}`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
             </div>
+            )
           ))}
         </div>
         <div className="pointer-events-none absolute bottom-3 left-3 right-12 text-white sm:bottom-4 sm:left-4 sm:right-24">

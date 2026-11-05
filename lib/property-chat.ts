@@ -1,6 +1,6 @@
 import type { Property } from "@/types/property";
 import { getPropertyBySlug } from "@/lib/sample-properties";
-import { getPublishedProperties, getPublishedPropertyBySlug } from "@/lib/supabase/properties";
+import { getComparablePublishedProperties, getPublishedPropertyBySlug } from "@/lib/supabase/properties";
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
 import { formatDistance, fetchNearbyPlacesFromStadia, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
@@ -172,7 +172,7 @@ export async function buildPropertyChatContext(slug: string): Promise<PropertyCh
 	}
 
 	const [publishedProperties, nearbyContext] = await Promise.all([
-		getPublishedProperties(),
+		getComparablePublishedProperties(),
 		buildNearbyContext(property),
 	]);
 

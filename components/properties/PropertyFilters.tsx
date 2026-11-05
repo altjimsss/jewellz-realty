@@ -291,7 +291,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 			</div>
 
 			<div className="hidden items-stretch sm:block lg:hidden">
-				<div className="grid grid-cols-2 gap-px border border-[#EAE4DE] bg-[#EAE4DE]">
+				<div className="grid grid-cols-2 gap-px border border-[#EAE4DE] bg-[#EAE4DE] md:grid-cols-3">
 					<div className="bg-white p-4">
 						<p className={LABEL_CLASS}>Search</p>
 						<input

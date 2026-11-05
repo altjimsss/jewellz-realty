@@ -86,6 +86,7 @@ export async function geocodeLocation(query: string): Promise<[number, number] |
 		const response = await fetch(
 			`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(trimmedQuery)}`,
 			{
+				signal: AbortSignal.timeout(5_000),
 				headers: {
 					Accept: "application/json",
 					"User-Agent": "JewellzRealty/1.0",
@@ -128,7 +129,7 @@ export function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: 
 const STADIA_API_KEY =
 	process.env.NEXT_PUBLIC_STADIA_MAPS_API_KEY ||
 	process.env.STADIA_MAPS_API_KEY ||
-	"292b5eae-f656-470c-a59d-6a24c1ea49ae";
+	"";
 
 const CATEGORY_SEARCH_QUERIES: Record<NearbyCategory, string[]> = {
 	Education: ["school", "college", "university"],
@@ -146,6 +147,7 @@ export async function fetchNearbyPlacesFromStadia(
 	longitude: number,
 	propertyType?: string,
 ): Promise<NearbyPlaceGroup[]> {
+	if (!STADIA_API_KEY) return nearbyCategories.map(({ category }) => ({ category, places: [] }));
 	const radiusMeters = nearbyRadiusForPropertyType(propertyType);
 	const radiusKm = Math.max(1, Math.round(radiusMeters / 1000));
 
@@ -164,7 +166,10 @@ export async function fetchNearbyPlacesFromStadia(
 							q,
 						)}&focus.point.lat=${latitude}&focus.point.lon=${longitude}&boundary.circle.lat=${latitude}&boundary.circle.lon=${longitude}&boundary.circle.radius=${radiusKm}&layers=venue&size=6`;
 
-						const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 } });
+						const res = await fetch(url, {
+							next: { revalidate: 60 * 60 * 24 },
+							signal: AbortSignal.timeout(5_000),
+						});
 						if (!res.ok) return;
 						const data = await res.json();
 

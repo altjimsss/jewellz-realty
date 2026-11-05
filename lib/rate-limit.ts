@@ -9,6 +9,8 @@ type RateLimitState = {
 };
 
 const buckets = new Map<string, RateLimitState>();
+const MAX_BUCKETS = 10_000;
+let checksSincePrune = 0;
 
 function now() {
 	return Date.now();
@@ -22,10 +24,23 @@ export function clientKey(request: Request) {
 
 export function checkRateLimit(key: string, options: RateLimitOptions) {
 	const currentTime = now();
+	// Expired keys otherwise accumulate forever in long-lived Node processes.
+	// Pruning periodically avoids a full map scan on every request.
+	checksSincePrune += 1;
+	if (checksSincePrune >= 128) {
+		checksSincePrune = 0;
+		for (const [bucketKey, state] of buckets) {
+			if (state.resetAt <= currentTime) buckets.delete(bucketKey);
+		}
+	}
 	const existing = buckets.get(key);
 
 	if (!existing || existing.resetAt <= currentTime) {
 		const next = { count: 1, resetAt: currentTime + options.windowMs };
+		if (buckets.size >= MAX_BUCKETS && !buckets.has(key)) {
+			const oldestKey = buckets.keys().next().value;
+			if (oldestKey !== undefined) buckets.delete(oldestKey);
+		}
 		buckets.set(key, next);
 		return { allowed: true, remaining: options.limit - 1, resetAt: next.resetAt };
 	}

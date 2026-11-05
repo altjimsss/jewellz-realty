@@ -1,9 +1,9 @@
 const PROPERTY_PLACEHOLDER_IMAGES: Record<string, string> = {
-	house: "/assets/placeholder-house.png",
-	condo: "/assets/placeholder-condo.png",
-	lot: "/assets/placeholder-lot.png",
-	farm: "/assets/placeholder-farm.png",
-	memorial: "/assets/placeholder-memorial.png",
+	house: "/assets/placeholder-house.webp",
+	condo: "/assets/placeholder-condo.webp",
+	lot: "/assets/placeholder-lot.webp",
+	farm: "/assets/placeholder-farm.webp",
+	memorial: "/assets/placeholder-memorial.webp",
 };
 
 export function getPropertyPlaceholderImage(propertyType?: string | null) {

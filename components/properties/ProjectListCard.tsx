@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Property } from "@/types/property";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { formatPHPWhole } from "@/lib/currency";
@@ -32,19 +32,42 @@ function getSpecs(property: Property) {
 
 export function ProjectListCard({ property, priceLabel, href, aiReason, aiConfidence }: ProjectListCardProps) {
 	const [showPendingDetail, setShowPendingDetail] = useState(false);
+	const [shouldLoadImage, setShouldLoadImage] = useState(false);
+	const imageContainerRef = useRef<HTMLDivElement>(null);
 	const specs = getSpecs(property);
+
+	useEffect(() => {
+		if (shouldLoadImage) return;
+		const container = imageContainerRef.current;
+		if (!container) return;
+		if (typeof window.IntersectionObserver !== "function") {
+			const timer = window.setTimeout(() => setShouldLoadImage(true), 0);
+			return () => window.clearTimeout(timer);
+		}
+
+		const observer = new IntersectionObserver(([entry]) => {
+			if (!entry.isIntersecting) return;
+			setShouldLoadImage(true);
+			observer.disconnect();
+		}, { rootMargin: "350px 0px" });
+		observer.observe(container);
+		return () => observer.disconnect();
+	}, [shouldLoadImage]);
 
 	const card = (
 		<article className="group overflow-hidden bg-white transition-shadow duration-300 hover:shadow-[0_12px_32px_-20px_rgba(0,0,0,0.35)]">
-			<div className="relative aspect-[4/3] overflow-hidden bg-[#F2F0ED]">
-				<SafeImage
-					src={property.image?.trim() || getPropertyPlaceholderImage(property.type)}
-					fallbackSrc={getPropertyPlaceholderImage(property.type)}
-					alt={property.title}
-					fill
-					sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 50vw"
-					className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-				/>
+			<div ref={imageContainerRef} className="relative aspect-[4/3] overflow-hidden bg-[#F2F0ED]">
+				{shouldLoadImage ? (
+					<SafeImage
+						src={property.image?.trim() || getPropertyPlaceholderImage(property.type)}
+						fallbackSrc={getPropertyPlaceholderImage(property.type)}
+						alt={property.title}
+						fill
+						loading="eager"
+						sizes="(min-width: 1280px) 370px, (min-width: 1024px) 30vw, (min-width: 640px) 44vw, 44vw"
+						className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+					/>
+				) : null}
 				{property.featured || typeof aiConfidence === "number" ? (
 					<div className="absolute left-3 top-3 flex gap-2">
 						{property.featured ? <span className="bg-white px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#222]">Featured</span> : null}

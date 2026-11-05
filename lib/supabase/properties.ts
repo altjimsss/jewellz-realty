@@ -153,6 +153,40 @@ export async function getPublishedProperties() {
 	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
 }
 
+/** Small, bounded candidate set used to prepare property-chat comparisons. */
+export async function getComparablePublishedProperties(limit = 100): Promise<Property[]> {
+	const safeLimit = Math.max(1, Math.min(Math.floor(limit), 100));
+	const { data, error } = await supabaseServer
+		.from("properties")
+		.select("id,slug,title,category,status,city,province,bedrooms,bathrooms,floor_area_sqm,lot_area_sqm,price")
+		.eq("status", "published")
+		.order("created_at", { ascending: false })
+		.limit(safeLimit);
+
+	if (error) {
+		console.error("Failed to load property-chat comparison candidates", error.message);
+		return [];
+	}
+
+	return (data ?? []).map((row) => {
+		const location = [row.city, row.province].filter(Boolean).join(", ") || undefined;
+		const floorArea = toNumber(row.floor_area_sqm);
+		const lotArea = toNumber(row.lot_area_sqm);
+		return {
+			id: row.id,
+			slug: row.slug,
+			title: row.title,
+			price: toNumber(row.price) ?? 0,
+			location,
+			type: titleCase(row.category),
+			beds: row.bedrooms ?? undefined,
+			baths: row.bathrooms ?? undefined,
+			areaSqm: floorArea ?? lotArea,
+			lotAreaSqm: lotArea,
+		} satisfies Property;
+	});
+}
+
 /** Fetch only the fields used by public listing cards and client-side search. */
 export async function getPublishedPropertiesForList() {
 	const { data, error } = await supabaseServer

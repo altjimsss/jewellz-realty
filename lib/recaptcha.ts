@@ -37,6 +37,7 @@ export async function verifyRecaptchaToken(token: string, request: Request): Pro
 			headers: { "Content-Type": "application/x-www-form-urlencoded" },
 			body: formData,
 			cache: "no-store",
+			signal: AbortSignal.timeout(5_000),
 		});
 		const payload = (await response.json().catch(() => null)) as RecaptchaResponse | null;
 

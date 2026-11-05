@@ -43,6 +43,7 @@ import {
 	X,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { compressImageForUpload } from "@/lib/media/compress-image";
 import { SafeImage } from "@/components/ui/SafeImage";
 import type { AgentChartRow } from "./AgentCharts";
 
@@ -656,14 +657,15 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 		setAgentPhotoError("");
 
 		try {
-			const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+			const uploadFile = await compressImageForUpload(file);
+			const cleanName = uploadFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
 			const filePath = `agent-photos/${Date.now()}-${cleanName}`;
 
 			// Try direct Supabase storage upload
 			const { error: uploadErr } = await supabaseBrowser.storage
 				.from("property-images")
-				.upload(filePath, file, {
-					contentType: file.type || "image/jpeg",
+				.upload(filePath, uploadFile, {
+					contentType: uploadFile.type || "image/jpeg",
 					upsert: true,
 				});
 
@@ -678,7 +680,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			// Fallback to /api/upload
 			const session = (await supabaseBrowser.auth.getSession()).data.session;
 			const formData = new FormData();
-			formData.append("file", file);
+			formData.append("file", uploadFile);
 			formData.append("folder", "agent-photos");
 
 			const res = await fetch("/api/upload", {

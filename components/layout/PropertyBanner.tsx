@@ -5,7 +5,6 @@ import Image from "next/image";
 import { SparkleSvg } from "@/components/ui/SparkleSvg";
 
 const BANNER_DURATION_MS = 5500;
-const BANNER_TICK_MS = 50;
 
 type BannerSlide = {
   key: string;
@@ -94,7 +93,7 @@ function BannerSvgTwo() {
       </div>
 
       <Image
-        src="/assets/bannerprofessional.png"
+        src="/assets/bannerprofessional.webp"
         alt="Listings and selling banner"
         width={460}
         height={360}
@@ -139,7 +138,7 @@ function BannerSvgThree() {
       </div>
 
       <Image
-        src="/assets/bannerconsult.png"
+        src="/assets/bannerconsult.webp"
         alt="Investment consultation banner"
         width={460}
         height={360}
@@ -158,25 +157,14 @@ const BANNER_SLIDES: BannerSlide[] = [
 
 export function PropertyBanner() {
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [bannerElapsed, setBannerElapsed] = useState(0);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setBannerElapsed((prev) => {
-        const next = prev + BANNER_TICK_MS;
-        if (next >= BANNER_DURATION_MS) {
-          setBannerIndex((idx) => (idx + 1) % BANNER_SLIDES.length);
-          return 0;
-        }
-        return next;
-      });
-    }, BANNER_TICK_MS);
+      setBannerIndex((index) => (index + 1) % BANNER_SLIDES.length);
+    }, BANNER_DURATION_MS);
 
     return () => window.clearInterval(id);
   }, []);
-
-  const bannerProgress = Math.min(100, (bannerElapsed / BANNER_DURATION_MS) * 100);
-  void bannerProgress;
 
   return (
     <>

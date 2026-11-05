@@ -65,30 +65,46 @@ function secondsUntilRefresh(refreshesAt?: string | null) {
   return Math.max(0, Math.floor((refreshTime - Date.now()) / 1000));
 }
 
-export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRefresh }: HomeDiscoverySectionProps) {
+function HotPickCountdown({ refreshesAt, onRefresh }: { refreshesAt?: string | null; onRefresh?: () => void | Promise<void> }) {
   const [total, setTotal] = useState(86400);
-  const [hotPicksPage, setHotPicksPage] = useState(0);
-  const [hotPicksLoading, setHotPicksLoading] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshedAtZeroRef = useRef(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       const next = secondsUntilRefresh(refreshesAt);
-      setTotal(() => {
-        if (next === 0 && !refreshedAtZeroRef.current) {
-          refreshedAtZeroRef.current = true;
-          void onRefresh?.();
-        }
-        if (next > 0) {
-          refreshedAtZeroRef.current = false;
-        }
-        return next;
-      });
+      if (next === 0 && !refreshedAtZeroRef.current) {
+        refreshedAtZeroRef.current = true;
+        void onRefresh?.();
+      }
+      if (next > 0) refreshedAtZeroRef.current = false;
+      setTotal(next);
     }, 1000);
 
     return () => window.clearInterval(timer);
   }, [onRefresh, refreshesAt]);
+
+  const days = String(Math.floor(total / 86400)).padStart(2, "0");
+  const hours = String(Math.floor((total % 86400) / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const seconds = String(total % 60).padStart(2, "0");
+
+  return (
+    <div className="hidden items-end gap-5 lg:flex">
+      <div><p className="text-[10px] font-semibold uppercase text-black/70">Days</p><p className="text-3xl font-bold leading-none">{days}</p></div>
+      <span className="pb-1 text-xl font-bold text-[#DE141C]">:</span>
+      <div><p className="text-[10px] font-semibold uppercase text-black/70">Hours</p><p className="text-3xl font-bold leading-none">{hours}</p></div>
+      <span className="pb-1 text-xl font-bold text-[#DE141C]">:</span>
+      <div><p className="text-[10px] font-semibold uppercase text-black/70">Minutes</p><p className="text-3xl font-bold leading-none">{minutes}</p></div>
+      <span className="pb-1 text-xl font-bold text-[#DE141C]">:</span>
+      <div><p className="text-[10px] font-semibold uppercase text-black/70">Seconds</p><p className="text-3xl font-bold leading-none">{seconds}</p></div>
+    </div>
+  );
+}
+
+export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRefresh }: HomeDiscoverySectionProps) {
+  const [hotPicksPage, setHotPicksPage] = useState(0);
+  const [hotPicksLoading, setHotPicksLoading] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -97,11 +113,6 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
       }
     };
   }, []);
-
-  const days = String(Math.floor(total / 86400)).padStart(2, "0");
-  const hours = String(Math.floor((total % 86400) / 3600)).padStart(2, "0");
-  const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const seconds = String(total % 60).padStart(2, "0");
 
   const hotPicksPerPage = 6;
   const activeHotPicks = hotPicks;
@@ -139,15 +150,7 @@ export default function HomeDiscoverySection({ hotPicks = [], refreshesAt, onRef
                 <h2 className="mt-1 text-2xl font-semibold leading-none tracking-[-0.035em] text-[#1C1B19] sm:text-3xl">Hot picks</h2>
                 <div className="mt-3 h-[2px] w-10 bg-[#DE141C]" />
               </div>
-              <div className="hidden items-end gap-5 lg:flex">
-                <div><p className="text-[10px] font-semibold uppercase text-black/70">Days</p><p className="text-3xl font-bold leading-none">{days}</p></div>
-                <span className="pb-1 text-xl font-bold text-[#DE141C]">:</span>
-                <div><p className="text-[10px] font-semibold uppercase text-black/70">Hours</p><p className="text-3xl font-bold leading-none">{hours}</p></div>
-                <span className="pb-1 text-xl font-bold text-[#DE141C]">:</span>
-                <div><p className="text-[10px] font-semibold uppercase text-black/70">Minutes</p><p className="text-3xl font-bold leading-none">{minutes}</p></div>
-                <span className="pb-1 text-xl font-bold text-[#DE141C]">:</span>
-                <div><p className="text-[10px] font-semibold uppercase text-black/70">Seconds</p><p className="text-3xl font-bold leading-none">{seconds}</p></div>
-              </div>
+              <HotPickCountdown refreshesAt={refreshesAt} onRefresh={onRefresh} />
             </div>
             <div className="ml-auto flex items-center justify-end">
               <button type="button" onClick={() => changeHotPicksPage("prev")} disabled={hotPicksLoading} className="grid h-9 w-8 place-items-center border border-black/10 bg-white text-lg leading-none text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50">

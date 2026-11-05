@@ -10,6 +10,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
 import { convertHeicToJpeg } from "@/lib/media/convert-heic";
+import { compressImageForUpload } from "@/lib/media/compress-image";
 import { AgentPerformanceTable } from "@/components/dashboard/AgentPerformanceTable";
 import { InquiryVolumeChart } from "@/components/dashboard/InquiryVolumeChart";
 import { LeadScoreBadge } from "@/components/dashboard/LeadScoreBadge";
@@ -1685,7 +1686,7 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 
 		let uploadFile: File;
 		try {
-			uploadFile = await convertHeicToJpeg(selectedFile);
+			uploadFile = await compressImageForUpload(await convertHeicToJpeg(selectedFile));
 		} catch (error) {
 			setUploadMessage(error instanceof Error ? error.message : "Could not prepare the gallery image.");
 			setSavingImage(false);
@@ -1859,7 +1860,7 @@ function PropertyImagesManager({
 		for (const [index, file] of selectedFiles.entries()) {
 			let uploadFile: File;
 			try {
-				uploadFile = await convertHeicToJpeg(file);
+				uploadFile = await compressImageForUpload(await convertHeicToJpeg(file));
 			} catch (error) {
 				setUploadMessage(error instanceof Error ? error.message : `Could not prepare ${file.name}.`);
 				setSaving(false);
@@ -3947,7 +3948,7 @@ export default function AdminCms({
 		updateStagedPhoto(photo.id, { status: "uploading", progress: 0, error: undefined });
 
 		try {
-			const uploadFile = await convertHeicToJpeg(photo.file);
+			const uploadFile = await compressImageForUpload(await convertHeicToJpeg(photo.file));
 			if (controller.signal.aborted) return;
 			if (uploadFile !== photo.file) {
 				const previewUrl = URL.createObjectURL(uploadFile);

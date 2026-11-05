@@ -125,6 +125,7 @@ export default function Page({
   const [priceMax, setPriceMax] = useState(850000);
   const [areaMax, setAreaMax] = useState(170);
   const [isMobileHeroFiltersOpen, setIsMobileHeroFiltersOpen] = useState(false);
+  const [loadedHeroImages, setLoadedHeroImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (initialHomeContent) return;
@@ -244,19 +245,27 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
       <AnnouncementBar />
       <Navbar links={navLinks} fontClassName={poppins.className} />
 
-      <section className="customer-hero relative overflow-hidden bg-black md:h-[520px]">
-        <div className="absolute right-0 top-0 z-0 hidden h-full w-[70%] overflow-hidden transition-all duration-700 md:block">
+      <section className="customer-hero relative overflow-hidden bg-black lg:h-[520px]">
+        <div className="absolute right-0 top-0 z-0 hidden h-full w-[70%] overflow-hidden transition-all duration-700 lg:block">
           {displayedHeroProperties.map((hero, idx) => (
+            !loadedHeroImages[hero.slug ?? hero.title] && idx !== heroIndex ? null : (
             <div key={`desktop-hero-${hero.title}`} className={`absolute inset-0 transition-all duration-700 ease-out ${idx === heroIndex ? "scale-100 opacity-100" : "scale-105 opacity-0"}`}>
-              <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt="" fill sizes="100vw" priority={idx === 0} quality={70} className="object-cover object-center" />
+              {hero.slug ? (
+                <Link href={`/project-list/${hero.slug}`} aria-label={`View ${hero.title} project description`} className="absolute inset-0 cursor-pointer">
+                  <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt={`View ${hero.title}`} fill sizes="100vw" priority={idx === 0} quality={70} onLoad={() => setLoadedHeroImages((current) => current[hero.slug ?? hero.title] ? current : { ...current, [hero.slug ?? hero.title]: true })} className="object-cover object-center" />
+                </Link>
+              ) : (
+                <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt="" fill sizes="100vw" priority={idx === 0} quality={70} onLoad={() => setLoadedHeroImages((current) => current[hero.slug ?? hero.title] ? current : { ...current, [hero.slug ?? hero.title]: true })} className="object-cover object-center" />
+              )}
             </div>
+            )
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0 hidden w-[34%] bg-gradient-to-r from-black/85 via-black/45 to-transparent md:block" />
-        <div className="absolute bottom-0 right-0 hidden h-[5px] w-[70%] overflow-hidden rounded bg-white/25 md:block">
+        <div className="absolute inset-y-0 left-0 hidden w-[34%] bg-gradient-to-r from-black/85 via-black/45 to-transparent lg:block" />
+        <div className="absolute bottom-0 right-0 hidden h-[5px] w-[70%] overflow-hidden rounded bg-white/25 lg:block">
           <div key={`desktop-progress-${heroIndex}`} className="hero-progress-fill h-full bg-[#DE141C]" style={{ animationDuration: `${HERO_DURATION_MS}ms` }} />
         </div>
-        <div className="absolute bottom-8 left-[35%] z-20 hidden w-[36%] md:block">
+        <div className="absolute bottom-8 left-[35%] z-20 hidden w-[36%] lg:block">
           <div className="mb-0 relative inline-flex overflow-hidden">
             <button type="button"
               onClick={() => {
@@ -318,8 +327,8 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
           </div>
         </div>
 
-        <div className="absolute left-10 top-12 hidden h-28 w-[3px] bg-[#DE141C] md:block" />
-        <div className="absolute left-14 top-11 hidden items-start gap-4 md:flex">
+        <div className="absolute left-10 top-12 hidden h-28 w-[3px] bg-[#DE141C] lg:block" />
+        <div className="absolute left-14 top-11 hidden items-start gap-4 lg:flex">
           <div>
             <p className="font-bold text-[#7F7F7F]">DISCOVER YOUR</p>
             <h1 className="text-5xl font-bold leading-[0.92] text-white">DREAM<br />PROPERTY</h1>
@@ -332,7 +341,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
             e.preventDefault();
             submitHeroSearch();
           }}
-          className="absolute left-10 top-52 hidden w-[370px] md:block"
+          className="absolute left-10 top-52 hidden w-[370px] lg:block"
         >
           <div className="grid grid-cols-2 gap-3.5">
             <div className="relative">
@@ -489,7 +498,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
           <button type="submit" className="mx-auto mt-5 block h-10 w-[170px] rounded bg-[#DE141C] text-xs font-bold text-white">Search Property</button>
         </form>
 
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <div className="px-4 pb-6 pt-8">
             <div className="flex items-stretch gap-2">
               <span className="w-[3px] bg-[#DE141C]" />
@@ -504,14 +513,22 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
           </div>
           <div className="relative h-[300px] w-full overflow-hidden">
             {displayedHeroProperties.map((hero, idx) => (
+              !loadedHeroImages[hero.slug ?? hero.title] && idx !== heroIndex ? null : (
               <div
                 key={`mobile-hero-${hero.title}`}
                 className={`absolute inset-0 transition-all duration-700 ease-out ${
                   idx === heroIndex ? "scale-100 opacity-100" : "scale-105 opacity-0"
                 }`}
               >
-                <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt="" fill sizes="100vw" priority={idx === 0} quality={70} className="object-cover object-center" />
+                {hero.slug ? (
+                  <Link href={`/project-list/${hero.slug}`} aria-label={`View ${hero.title} project description`} className="absolute inset-0 cursor-pointer">
+                    <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt={`View ${hero.title}`} fill sizes="100vw" priority={idx === 0} quality={70} onLoad={() => setLoadedHeroImages((current) => current[hero.slug ?? hero.title] ? current : { ...current, [hero.slug ?? hero.title]: true })} className="object-cover object-center" />
+                  </Link>
+                ) : (
+                  <SafeImage src={hero.image} fallbackSrc="/assets/housebanner1.webp" alt="" fill sizes="100vw" priority={idx === 0} quality={70} onLoad={() => setLoadedHeroImages((current) => current[hero.slug ?? hero.title] ? current : { ...current, [hero.slug ?? hero.title]: true })} className="object-cover object-center" />
+                )}
               </div>
+              )
             ))}
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="relative inline-flex overflow-hidden">
@@ -783,9 +800,9 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
             <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
             <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-5 sm:left-5 sm:gap-3">
               <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-              <div className="min-w-0">
-                <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">ACHIEVEMENTS</p>
-                <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">SEE OUR MILESTONES</p>
+              <div className="min-w-0 max-w-full">
+                <p className="whitespace-nowrap text-[clamp(8px,2.4vw,13px)] font-bold leading-tight tracking-[-0.045em] sm:text-4xl sm:tracking-normal lg:text-5xl">ACHIEVEMENTS</p>
+                <p className="mt-1 max-w-full break-words text-[6px] font-semibold uppercase leading-tight tracking-[0.02em] sm:text-xs sm:tracking-normal lg:text-sm">SEE OUR MILESTONES</p>
               </div>
             </div>
           </Link>
@@ -795,9 +812,9 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
               <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-5 sm:gap-3">
                 <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-                <div className="min-w-0">
-                  <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">EVENTS</p>
-                  <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">MEMORABLE TIMES</p>
+                <div className="min-w-0 max-w-full">
+                  <p className="text-[clamp(9px,3vw,13px)] font-bold leading-tight sm:text-4xl lg:text-5xl">EVENTS</p>
+                  <p className="mt-1 max-w-full break-words text-[6px] font-semibold uppercase leading-tight tracking-[0.02em] sm:text-xs sm:tracking-normal lg:text-sm">MEMORABLE TIMES</p>
                 </div>
               </div>
             </Link>
@@ -807,9 +824,9 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
                 <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
                 <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
                   <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">TRAININGS</p>
-                    <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">ENHANCING OUR SKILLS</p>
+                  <div className="min-w-0 max-w-full">
+                    <p className="text-[clamp(9px,3vw,13px)] font-bold leading-tight sm:text-4xl lg:text-5xl">TRAININGS</p>
+                    <p className="mt-1 max-w-full break-words text-[6px] font-semibold uppercase leading-tight tracking-[0.02em] sm:text-xs sm:tracking-normal lg:text-sm">ENHANCING OUR SKILLS</p>
                   </div>
                 </div>
               </Link>
@@ -818,9 +835,9 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
                 <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent transition-colors duration-300 group-hover:from-[#DE141C]" />
                 <div className="absolute bottom-3 left-3 flex items-stretch gap-2 text-white sm:bottom-4 sm:left-4 sm:gap-3">
                   <span className="w-[3px] self-stretch bg-[#DE141C] transition-colors duration-300 group-hover:bg-white" />
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold leading-[0.95] sm:text-4xl lg:text-5xl">SERVICE</p>
-                    <p className="mt-1 text-[7px] font-semibold uppercase leading-tight tracking-[0.04em] sm:text-xs lg:text-sm">FOR THE PEOPLE</p>
+                  <div className="min-w-0 max-w-full">
+                    <p className="text-[clamp(9px,3vw,13px)] font-bold leading-tight sm:text-4xl lg:text-5xl">SERVICE</p>
+                    <p className="mt-1 max-w-full break-words text-[6px] font-semibold uppercase leading-tight tracking-[0.02em] sm:text-xs sm:tracking-normal lg:text-sm">FOR THE PEOPLE</p>
                   </div>
                 </div>
               </Link>

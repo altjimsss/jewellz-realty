@@ -528,7 +528,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 
 			<PropertyBanner />
 
-			<section className="sticky top-16 z-[4000] border-b border-[#EAE4DE] bg-white md:top-20">
+			<section className="sticky top-16 z-[4000] border-b border-[#EAE4DE] bg-white lg:top-20">
 				<div className="mx-auto max-w-[1320px] px-[clamp(20px,4vw,56px)]">
 					<PropertyFilters
 						value={draftFilters}
@@ -561,7 +561,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 						<p className="shrink-0 border-l border-[#EAE7E3] pl-3 text-xs text-black/55 sm:text-sm">Showing {filteredProperties.length} results</p>
 					</div>
 
-					<div className="-mx-4 hidden snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+					<div className="-mx-4 hidden snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
 						{CATEGORY_TABS.map((tab) => {
 							const active = tab === activeCategory;
 							return (
@@ -569,7 +569,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 									key={tab}
 									type="button"
 									onClick={() => setActiveCategory(tab)}
-									className={`h-9 shrink-0 snap-start rounded-full border px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-black/20 md:rounded-md md:px-3 ${
+									className={`h-9 shrink-0 snap-start rounded-full border px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-black/20 lg:rounded-md lg:px-3 ${
 										active
 										? "border-[#DE141C] bg-[#DE141C] text-white"
 										: "border-black/10 bg-white text-black hover:bg-black/5"

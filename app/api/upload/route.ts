@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_MULTIPART_OVERHEAD = 256 * 1024;
+
 export async function POST(request: Request) {
 	try {
+		const contentLength = Number(request.headers.get("content-length"));
+		if (Number.isFinite(contentLength) && contentLength > MAX_FILE_SIZE + MAX_MULTIPART_OVERHEAD) {
+			return NextResponse.json({ error: "The file must be 10 MB or smaller." }, { status: 413 });
+		}
 		// Require an authenticated admin or developer partner. The service-role server
 		// client has no cookie session, so auth must arrive as a bearer token.
 		const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
@@ -34,6 +41,12 @@ export async function POST(request: Request) {
 		if (!file) {
 			return NextResponse.json({ error: "No file provided." }, { status: 400 });
 		}
+		if (file.size <= 0) {
+			return NextResponse.json({ error: "The uploaded file is empty." }, { status: 400 });
+		}
+		if (file.size > MAX_FILE_SIZE) {
+			return NextResponse.json({ error: "The file must be 10 MB or smaller." }, { status: 413 });
+		}
 
 		// Ensure allowed image or video formats
 		const mimeType = file.type || "application/octet-stream";
@@ -45,7 +58,11 @@ export async function POST(request: Request) {
 
 		const buffer = Buffer.from(await file.arrayBuffer());
 		const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-		const filePath = `${folder}/${Date.now()}-${cleanName}`;
+		const safeFolder = folder === "agent-photos" || folder === "developer-logos" ? folder : null;
+		if (!safeFolder) {
+			return NextResponse.json({ error: "The upload folder is invalid." }, { status: 400 });
+		}
+		const filePath = `${safeFolder}/${Date.now()}-${cleanName}`;
 
 		const { error: uploadError } = await supabaseServer.storage
 			.from("property-images")
