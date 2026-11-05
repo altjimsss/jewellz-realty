@@ -108,7 +108,7 @@ const STEPS: StepDef[] = [
 		description: "Address and map coordinates.",
 		icon: MapPin,
 		sectionPrefix: "Step 3",
-		required: ["address", "city", "province"],
+		required: ["address", "city"],
 	},
 	{
 		id: "details",

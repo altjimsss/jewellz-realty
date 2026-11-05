@@ -113,7 +113,7 @@ export const propertyFields: FieldSpec[] = [
 	{ section: "Step 2 · Basic Listing", name: "badge", label: "Badge", type: "select", options: listingBadgeOptions },
 	{ section: "Step 3 · Location", name: "address", label: "Address", type: "text" },
 	{ section: "Step 3 · Location", name: "city", label: "City", type: "text" },
-	{ section: "Step 3 · Location", name: "province", label: "Province", type: "text" },
+	{ section: "Step 3 · Location", name: "province", label: "Province (if applicable)", type: "text", help: "Leave blank for locations in Metro Manila (NCR), which has no province." },
 	{ section: "Step 3 · Location", name: "region", label: "Region", type: "text" },
 	{ section: "Step 3 · Location", name: "zip_code", label: "Zip Code", type: "text" },
 	{ section: "Step 3 · Location", name: "latitude", label: "Latitude", type: "number", step: "any", placeholder: "13.7563", help: "Filled automatically when a full Google Maps link is pasted." },

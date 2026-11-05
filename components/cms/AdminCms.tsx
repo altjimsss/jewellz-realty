@@ -4183,8 +4183,8 @@ export default function AdminCms({
 			setMessage("Choose a Developer Partner for this property. Private Owner is available for farm listings.");
 			return false;
 		}
-		if (!payload.title || !payload.slug || !payload.address || !payload.city || !payload.province) {
-			setMessage("Property records need title, slug, address, city, and province.");
+		if (!payload.title || !payload.slug || !payload.address || !payload.city) {
+			setMessage("Property records need title, slug, address, and city. Province is optional for locations such as Metro Manila.");
 			return false;
 		}
 
