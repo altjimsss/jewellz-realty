@@ -27,6 +27,7 @@ type PropertyDetailContentProps = {
 
 function getComputedDescription(property: Property) {
 	if (property.description) return property.description;
+	if (property.type === "Farm") return "Contact Jewellz Realty for verified information about this farm property, including land details, access, and availability.";
 
 	if (property.type === "Lot") {
 		return "A spacious lot in a prime location, ideal for residential or investment use. Flexible for custom builds with good access to roads, utilities, and nearby community essentials.";
@@ -44,6 +45,23 @@ function getComputedDescription(property: Property) {
 }
 
 function getParameterItems(property: Property) {
+	if (property.type === "Farm") {
+		const farmArea = property.lotAreaSqm ?? property.areaSqm;
+		const farmSpecs = property.specs ?? [];
+		return [
+			{ label: "Lot Area", value: farmArea ? `${farmArea.toLocaleString()} sqm` : farmSpecs.find((spec) => /lot area|area|sqm/i.test(spec.label))?.value ?? "Ask for details", icon: "grid" },
+			...[
+				{ label: "Road Access", pattern: /road access/i },
+				{ label: "Water Source", pattern: /water source/i },
+				{ label: "Terrain", pattern: /terrain/i },
+				{ label: "Current Use", pattern: /current use/i },
+			].map(({ label, pattern }) => ({
+				label,
+				value: farmSpecs.find((spec) => pattern.test(spec.label))?.value ?? "Ask for details",
+				icon: "area",
+			})),
+		];
+	}
 	const floorArea = property.specs?.find((spec) => /floor area/i.test(spec.label))?.value
 		?? (property.type !== "Lot" && property.areaSqm ? `+/- ${property.areaSqm} sqm` : "N/A");
 	const lotArea = property.lotAreaSqm != null
@@ -260,11 +278,10 @@ export function PropertyDetailContent({
 						</div>
 						<h1 className="mt-2 text-[21px] font-semibold leading-tight text-black sm:text-2xl">{property.title}</h1>
 
-						<p className="mt-3 text-[11px] font-medium uppercase tracking-[0.1em] text-black/45">Start at</p>
+						<p className="mt-3 text-[11px] font-medium uppercase tracking-[0.1em] text-black/45">{property.type === "Farm" ? "Listed price" : "Start at"}</p>
 						<p className="mt-1 text-[28px] font-semibold leading-none tracking-[-0.03em] text-black sm:text-[32px]">{formatPHPWhole(property.price)}</p>
 						<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-black/50 sm:text-sm">
-							<span>{property.monthlyAmortization ? `PHP ${Math.round(property.monthlyAmortization).toLocaleString()} / month` : `PHP ${Math.round(property.price / 12).toLocaleString()} / month`}</span>
-							<span aria-hidden="true">|</span>
+							{property.type !== "Farm" ? <><span>{property.monthlyAmortization ? `PHP ${Math.round(property.monthlyAmortization).toLocaleString()} / month` : `PHP ${Math.round(property.price / 12).toLocaleString()} / month`}</span><span aria-hidden="true">|</span></> : null}
 							<span>{property.type ?? "Property"}</span>
 							{property.pricePerSqm ? <><span aria-hidden="true">|</span><span>PHP {Math.round(property.pricePerSqm).toLocaleString()} / sqm</span></> : null}
 							{property.isPriceNegotiable ? <><span aria-hidden="true">|</span><span className="font-medium text-[#DE141C]">Negotiable</span></> : null}
@@ -439,7 +456,7 @@ export function PropertyDetailContent({
 						<PropertyChatAssistant property={property} previewMode={previewMode} />
 					</div>
 					<InquireCard previewMode={previewMode} property={property} />
-					<p className="text-right text-sm text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>
+					{property.type === "Farm" ? <p className="text-right text-sm text-black/45">Contact Jewellz Realty for farm listing details.</p> : <p className="text-right text-sm text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>}
 				</div>
 				</div>
 			</div>

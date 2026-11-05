@@ -8,6 +8,7 @@ import { emailValidationMessage } from "@/lib/validation";
 import type { Property } from "@/types/property";
 
 export function InquireCard({ previewMode = false, property }: { previewMode?: boolean; property?: Property }) {
+  const isFarm = property?.type === "Farm";
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: "", name: "", subject: "", message: "" });	const [status, setStatus] = useState("");
 	const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -105,8 +106,8 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
             <path d="M4 8l8 5 8-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-black">Inquire Us</p>
-            <p className="text-[11px] text-black/45">Let&apos;s connect and inquire about the property</p>
+            <p className="text-sm font-semibold text-black">{isFarm ? "Ask about this farm" : "Inquire Us"}</p>
+            <p className="text-[11px] text-black/45">{isFarm ? "Request verified listing details from our team" : "Let&apos;s connect and inquire about the property"}</p>
           </div>
         </div>
         <svg

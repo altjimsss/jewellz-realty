@@ -17,6 +17,15 @@ type ProjectListCardProps = {
 };
 
 function getSpecs(property: Property) {
+	if (property.type === "Farm") {
+		const farmArea = property.lotAreaSqm ?? property.areaSqm;
+		const details = [
+			...(farmArea ? [{ label: "Area", value: `${farmArea.toLocaleString()} sqm` }] : []),
+			...(property.specs ?? []).filter((spec) => /water|road access|terrain|current use|land classification/i.test(spec.label)),
+		];
+		return details.filter((spec) => spec.value.trim()).slice(0, 3);
+	}
+
 	const specs = property.specs?.length
 		? property.specs
 		: [
@@ -92,6 +101,7 @@ export function ProjectListCard({ property, priceLabel, href, aiReason, aiConfid
 				) : null}
 
 				<p className="mt-3 text-[16px] font-semibold tracking-[-0.03em] text-[#DE141C] sm:text-[18px]">{priceLabel ?? formatPHPWhole(property.price)}</p>
+				{property.type === "Farm" ? <p className="mt-1 text-[10px] text-black/45">Contact us to confirm listing details</p> : null}
 				{aiReason ? <p className="mt-2 line-clamp-1 text-[10px] text-black/45">{aiReason}</p> : null}
 			</div>
 		</article>

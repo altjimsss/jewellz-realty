@@ -650,6 +650,13 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				) : (
 					<div className="mt-7">
 						<p className="text-center text-sm text-black/55">No properties matched your search. Try a different keyword, location, or category.</p>
+						{activeCategory === "Farm" ? (
+							<div className="mx-auto mt-5 max-w-md rounded-xl border border-black/10 bg-[#FAF8F5] p-5 text-center">
+								<p className="text-sm font-semibold text-black">Looking for a farm property?</p>
+								<p className="mt-1 text-xs leading-5 text-black/55">Tell our team what you need and we&apos;ll help you check available listings and details.</p>
+								<Link href="/contact" className="mt-4 inline-flex h-10 items-center rounded-md bg-[#DE141C] px-5 text-xs font-semibold text-white transition-colors hover:bg-[#c51018]">Request farm details</Link>
+							</div>
+						) : null}
 
 						{recommendedProperties.length > 0 ? (
 							<RecommendationPanel recommendations={recommendedProperties} status={aiRecommendationStatus} variant="alternatives" />
