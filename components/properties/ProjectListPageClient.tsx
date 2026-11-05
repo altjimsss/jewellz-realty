@@ -29,6 +29,7 @@ import { SafeImage } from "@/components/ui/SafeImage";
 import { formatPHPWhole } from "@/lib/currency";
 import { mergeNaturalLanguageFilters } from "@/lib/property-search";
 import type { Property } from "@/types/property";
+import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
@@ -88,8 +89,8 @@ function TopMapListings({ properties }: { properties: Property[] }) {
 					>
 						<div className="relative h-14 w-[68px] shrink-0 overflow-hidden rounded-lg bg-stone-100">
 							<SafeImage
-								src={property.image || "/assets/housebanner1.webp"}
-								fallbackSrc="/assets/housebanner1.webp"
+								src={property.image || getPropertyPlaceholderImage(property.type)}
+								fallbackSrc={getPropertyPlaceholderImage(property.type)}
 								alt={property.title}
 								fill
 								sizes="68px"

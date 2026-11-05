@@ -1,4 +1,5 @@
 import type { Property } from "@/types/property";
+import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
 
 export const SAMPLE_PROPERTIES: Property[] = [
   {
@@ -14,11 +15,9 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "House",
     category: "For Sale",
     featured: true,
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
+    image: getPropertyPlaceholderImage("House"),
     images: [
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
-      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",
+      getPropertyPlaceholderImage("House"),
     ],
     description:
       "A comfortable home designed for practical family living and everyday convenience. Practical layouts and durable finishes create flexible, well-lit spaces with secure neighborhood access, efficient storage, and adaptable rooms to meet changing family needs.",
@@ -36,7 +35,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Apartment",
     category: "For Rent",
     featured: false,
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Apartment"),
   },
   {
     id: "p3",
@@ -51,7 +50,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "House",
     category: "For Sale",
     featured: true,
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",
+    image: getPropertyPlaceholderImage("House"),
   },
   {
     id: "p4",
@@ -65,7 +64,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "House",
     category: "Pre-selling",
     featured: false,
-    image: "https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=1200&q=80",
+    image: getPropertyPlaceholderImage("House"),
   },
   {
     id: "p5",
@@ -79,7 +78,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Condo",
     category: "For Rent",
     featured: false,
-    image: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Condo"),
   },
   {
     id: "p6",
@@ -93,7 +92,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Townhouse",
     category: "Pre-selling",
     featured: true,
-    image: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Townhouse"),
   },
   {
     id: "p7",
@@ -107,7 +106,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Condo",
     category: "For Sale",
     featured: false,
-    image: "https://images.unsplash.com/photo-1494526585095-c41746248156?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Condo"),
   },
   {
     id: "p8",
@@ -121,7 +120,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "House",
     category: "For Sale",
     featured: false,
-    image: "https://images.unsplash.com/photo-1449844908441-8829872d2607?w=1200&q=80",
+    image: getPropertyPlaceholderImage("House"),
   },
   {
     id: "p9",
@@ -135,7 +134,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Condo",
     category: "For Rent",
     featured: false,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Condo"),
   },
   {
     id: "p10",
@@ -149,7 +148,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Condo",
     category: "Commercial",
     featured: true,
-    image: "https://images.unsplash.com/photo-1464890100898-a385f744067f?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Condo"),
   },
   {
     id: "p11",
@@ -163,7 +162,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "House",
     category: "Commercial",
     featured: false,
-    image: "https://images.unsplash.com/photo-1430285561322-7808604715df?w=1200&q=80",
+    image: getPropertyPlaceholderImage("House"),
   },
   {
     id: "p12",
@@ -177,7 +176,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Townhouse",
     category: "Pre-selling",
     featured: false,
-    image: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Townhouse"),
   },
   {
     id: "p13",
@@ -190,7 +189,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Lot",
     category: "For Sale",
     featured: false,
-    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Lot"),
     specs: [{ label: "SQM", value: "320 sqm" }],
   },
   {
@@ -204,7 +203,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Farm",
     category: "For Sale",
     featured: true,
-    image: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Farm"),
     specs: [{ label: "SQM", value: "4,800 sqm" }],
   },
   {
@@ -218,7 +217,7 @@ export const SAMPLE_PROPERTIES: Property[] = [
     type: "Memorial",
     category: "For Sale",
     featured: false,
-    image: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=1200&q=80",
+    image: getPropertyPlaceholderImage("Memorial"),
     specs: [{ label: "SQM", value: "6 sqm" }],
   },
 ];
