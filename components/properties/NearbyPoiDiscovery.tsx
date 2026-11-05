@@ -43,7 +43,6 @@ export function NearbyPoiDiscovery({ property, onPlacesFound }: Props) {
 				zoom: 14,
 				interactive: false,
 				attributionControl: false,
-				preserveDrawingBuffer: false,
 			});
 			map = discoveryMap;
 
