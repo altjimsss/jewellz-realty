@@ -122,8 +122,8 @@ function mapPropertyRow(row: PropertyRow): Property {
 		.filter((item): item is string => Boolean(item));
 	const allImages = [...new Set([...(image ? [image] : []), ...images])];
 	const propertyType = getPropertyType(row.category, row.property_subtype);
-	const isCondo = propertyType.type === "Condo" || propertyType.type === "Apartment";
-	const displayArea = floorArea ?? (isCondo ? undefined : lotArea);
+	// Condo unit sizes may be stored in lot_area_sqm on older listings.
+	const displayArea = floorArea ?? lotArea;
 
 	return {
 		id: row.id,
