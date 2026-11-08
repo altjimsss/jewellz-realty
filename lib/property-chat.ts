@@ -1,6 +1,6 @@
 import type { Property } from "@/types/property";
 import { getPropertyBySlug } from "@/lib/sample-properties";
-import { getComparablePublishedProperties, getPublicPropertyAnalytics, getPublishedPropertyBySlug, type PublicPropertyAnalytics } from "@/lib/supabase/properties";
+import { getPublicPropertyAnalytics, getPublishedPropertiesForList, getPublishedPropertyBySlug, type PublicPropertyAnalytics } from "@/lib/supabase/properties";
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
 import { formatDistance, fetchNearbyPlacesFromMapTiles, type NearbyPlaceGroup } from "@/lib/nearby-places";
 
@@ -97,18 +97,24 @@ function scoreComparableProperty(current: Property, candidate: Property) {
 }
 
 const LISTING_QUERY_STOP_WORDS = new Set([
-	"a", "an", "and", "are", "about", "available", "can", "do", "does", "find", "for", "have", "how", "i", "in", "is", "it", "list", "listing", "me", "our", "please", "property", "show", "tell", "the", "there", "this", "to", "we", "what", "with", "you", "your",
+	"a", "an", "and", "any", "are", "about", "available", "can", "do", "does", "find", "for", "have", "how", "i", "in", "is", "it", "list", "listing", "me", "our", "please", "property", "show", "tell", "the", "there", "this", "to", "we", "what", "with", "you", "your",
 ]);
+
+function normalizeListingTerm(term: string) {
+	if (term.endsWith("ies") && term.length > 4) return `${term.slice(0, -3)}y`;
+	if (term.endsWith("s") && term.length > 3) return term.slice(0, -1);
+	return term;
+}
 
 function getNamedListingMatches(query: string, properties: Property[]) {
 	const queryTerms = new Set(
-		query.toLowerCase().match(/[a-z0-9]+/g)?.filter((term) => term.length > 2 && !LISTING_QUERY_STOP_WORDS.has(term)) ?? [],
+		query.toLowerCase().match(/[a-z0-9]+/g)?.map(normalizeListingTerm).filter((term) => term.length > 2 && !LISTING_QUERY_STOP_WORDS.has(term)) ?? [],
 	);
 	if (!queryTerms.size) return [];
 
 	return properties
 		.map((property) => {
-			const listingTerms = new Set(`${property.title} ${property.slug}`.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+			const listingTerms = new Set(`${property.title} ${property.slug}`.toLowerCase().match(/[a-z0-9]+/g)?.map(normalizeListingTerm) ?? []);
 			const matchedTerms = [...queryTerms].filter((term) => listingTerms.has(term));
 			return { property, score: matchedTerms.length, matchedTerms };
 		})
@@ -205,7 +211,7 @@ export async function buildPropertyChatContext(slug: string, listingQuery = ""):
 	}
 
 	const [publishedProperties, nearbyContext, analytics] = await Promise.all([
-		getComparablePublishedProperties(),
+		getPublishedPropertiesForList(),
 		buildNearbyContext(property),
 		publishedProperty ? getPublicPropertyAnalytics(publishedProperty.id) : Promise.resolve(null),
 	]);
@@ -220,14 +226,16 @@ export async function buildPropertyChatContext(slug: string, listingQuery = ""):
 }
 
 export async function buildPropertyCatalogChatPrompt(message: string, conversation: string, listingQuery = message) {
-	const properties = await getComparablePublishedProperties();
-	const queryTerms = [...new Set(listingQuery.toLowerCase().match(/[a-z0-9]+/g) ?? [])]
+	const properties = await getPublishedPropertiesForList();
+	const queryTerms = [...new Set(listingQuery.toLowerCase().match(/[a-z0-9]+/g)?.map(normalizeListingTerm) ?? [])]
 		.filter((term) => term.length > 2 && !LISTING_QUERY_STOP_WORDS.has(term));
 	const namedMatches = getNamedListingMatches(listingQuery, properties);
 	const rankedMatches = properties
 		.map((property) => {
-			const searchableText = `${property.title} ${property.slug} ${property.type ?? ""} ${property.subtype ?? ""} ${property.location ?? ""} ${property.description ?? ""}`.toLowerCase();
-			const score = queryTerms.reduce((total, term) => total + (searchableText.includes(term) ? (property.title.toLowerCase().includes(term) ? 4 : 1) : 0), 0);
+			const searchableTokens = new Set(`${property.title} ${property.slug} ${property.type ?? ""} ${property.subtype ?? ""} ${property.location ?? ""} ${property.description ?? ""}`.toLowerCase().match(/[a-z0-9]+/g)?.map(normalizeListingTerm) ?? []);
+			const titleTokens = new Set(property.title.toLowerCase().match(/[a-z0-9]+/g)?.map(normalizeListingTerm) ?? []);
+			const typeTokens = new Set(`${property.type ?? ""} ${property.subtype ?? ""}`.toLowerCase().match(/[a-z0-9]+/g)?.map(normalizeListingTerm) ?? []);
+			const score = queryTerms.reduce((total, term) => total + (typeTokens.has(term) ? 6 : titleTokens.has(term) ? 4 : searchableTokens.has(term) ? 1 : 0), 0);
 			return { property, score };
 		})
 		.filter(({ score }) => score > 0)
