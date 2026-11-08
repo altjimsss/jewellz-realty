@@ -643,6 +643,15 @@ function AnalyticsVisualSuite({
 	selectedPropertyInquiries: CmsRow[];
 	onSelectPortfolioProperty: (id: string | null) => void;
 }) {
+	const selectedPropertyDetailRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (!selectedProperty) return;
+		const frame = window.requestAnimationFrame(() => {
+			selectedPropertyDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [selectedProperty?.id]);
+
 	const [propertySearch, setPropertySearch] = useState("");
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState("all");
 	const [propertyStatusFilter, setPropertyStatusFilter] = useState("all");
@@ -952,10 +961,10 @@ function AnalyticsVisualSuite({
 							<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
 								{propertyAnalyticsRows.map(({ id, performance, title, category: propertyType, status, location }) => {
 									const isSelected = selectedProperty?.id === id;
-									return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-pressed={isSelected} className={`rounded-xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
+													return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-label={`Open analytics for ${title}`} aria-pressed={isSelected} className={`rounded-xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
 										<div className="flex items-start justify-between gap-3"><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-black/55">{status}</span></div>
 										<div className="mt-1 truncate text-xs text-black/45">{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div>
-										<div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-2.5 text-xs"><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span><span className="font-semibold text-[#DE141C]">View report →</span></div>
+														<div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-2.5 text-xs"><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span><span className="font-semibold text-[#DE141C]">View analytics →</span></div>
 									</button>;
 								})}
 							</div>
@@ -963,7 +972,7 @@ function AnalyticsVisualSuite({
 					</div>
 				</div>
 				{selectedProperty ? (
-					<div className="mb-5 rounded-xl border border-black/10 bg-white p-4 sm:p-5">
+					<div id="property-performance-detail" ref={selectedPropertyDetailRef} tabIndex={-1} className="mb-5 scroll-mt-24 rounded-xl border border-black/10 bg-white p-4 outline-none sm:p-5">
 						<div className="flex flex-wrap items-start justify-between gap-3">
 							<div className="min-w-0">
 								<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Dedicated property analytics</div>
@@ -2343,6 +2352,15 @@ function AnalyticsPanel({
 	onSelectPortfolioProperty: (id: string | null) => void;
 	selectedDateFilter?: string | null;
 }) {
+	const selectedPropertyAnalyticsRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (!selectedPortfolioPropertyId) return;
+		const frame = window.requestAnimationFrame(() => {
+			selectedPropertyAnalyticsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [selectedPortfolioPropertyId]);
+
 	const inquiryCounts = inquiries.reduce((acc: Record<string, number>, item) => {
 		const status = asText(item.status || "unclassified");
 		acc[status] = (acc[status] ?? 0) + 1;
@@ -2867,14 +2885,15 @@ function AnalyticsPanel({
 										const propertyId = asText(property.id);
 										const performance = listingChartRows.find((row) => row.property_id === propertyId);
 										const active = selectedPortfolioPropertyId === propertyId;
-										return (
-											<button key={propertyId} type="button" onClick={() => onSelectPortfolioProperty(propertyId)} className={`rounded-md border px-3 py-2 text-left transition ${active ? "border-black/20 bg-white shadow-sm" : "border-black/10 bg-white hover:bg-zinc-50"}`}>
+																	return (
+																		<button key={propertyId} type="button" aria-label={`Open analytics for ${property.title ?? "this property"}`} onClick={() => onSelectPortfolioProperty(propertyId)} className={`rounded-md border px-3 py-2 text-left transition ${active ? "border-black/20 bg-white shadow-sm" : "border-black/10 bg-white hover:bg-zinc-50"}`}>
 												<div className="truncate text-sm font-semibold text-[#111111]">{property.title ?? "Untitled property"}</div>
 												<div className="mt-1 truncate text-xs text-black/45">{property.city ?? ""} {property.province ?? ""}</div>
 												<div className="mt-3 flex items-center justify-between gap-3 text-xs text-black/50">
 													<span>{performance?.total_views ?? 0} views</span>
 													<span>{performance?.total_interactions ?? performance?.detail_opens ?? 0} interactions</span>
 												</div>
+																		<div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#DE141C]">Open analytics <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
 											</button>
 										);
 									})}
@@ -2883,7 +2902,7 @@ function AnalyticsPanel({
 						) : null}
 
 						{developerPortfolioLevel === "property" && selectedPortfolioProperty ? (
-							<div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+							<div id="property-analytics-detail" ref={selectedPropertyAnalyticsRef} tabIndex={-1} className="mt-4 scroll-mt-24 grid gap-4 outline-none xl:grid-cols-[1fr_0.9fr]">
 								<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 									<div className="flex flex-wrap items-start justify-between gap-3">
 										<div>
