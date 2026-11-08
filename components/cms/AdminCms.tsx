@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, ImagePlus, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
@@ -709,70 +709,37 @@ function AnalyticsVisualSuite({
 	const demand = buildDemandForecast(inquiryVolumeRows, 21, 7);
 	const demandRegression = demand.regression;
 	const demandRows = [
-		...demand.series.map((row, index) => ({ date: row.date, demand: row.value, forecast: index === demand.series.length - 1 ? row.value : null })),
+		...demand.series.map((row, index) => ({
+			date: row.date,
+			demand: row.value,
+			forecast: Number(Math.max(0, demandRegression.intercept + demandRegression.slope * (index + 1)).toFixed(2)),
+		})),
 		...demand.forecast.map((row) => ({ date: row.date, demand: null, forecast: row.value })),
 	];
 	const demandRowsAreLive = demand.series.some((row) => row.value > 0);
 	const conversion = buildConversionForecast(events, inquiryVolumeRows, 21, 7);
 	const conversionForecastIsLive = conversion.observations >= 3;
-	const lastObservedIndex = conversion.series.map((row) => row.rate !== null).lastIndexOf(true);
+	let observedConversionIndex = 0;
 	const conversionRows = [
-		...conversion.series.map((row, index) => ({ date: row.date, rate: row.rate, forecast: index === lastObservedIndex ? row.rate : null })),
+		...conversion.series.map((row) => {
+			const forecast = row.rate === null
+				? null
+				: Number(Math.max(0, Math.min(100, conversion.regression.intercept + conversion.regression.slope * (++observedConversionIndex))).toFixed(2));
+			return { date: row.date, rate: row.rate, forecast };
+		}),
 		...conversion.forecast.map((row) => ({ date: row.date, rate: null, forecast: row.value })),
 	];
 	const priceHistogramRaw = histogram(properties.map(propertyPrice));
 	const priceHistogramIsLive = hasMeaningfulChartValue(priceHistogramRaw, ["count"]);
 	const priceHistogram = priceHistogramRaw;
-	const clusterRowsRaw = properties
-		.map((row) => {
-			const area = propertyArea(row);
-			const price = propertyPrice(row);
-			return {
-				location: locationLabel(row),
-				price,
-				pricePerSqm: area ? Math.round(price / area) : 0,
-				area,
-			};
+	const averagePriceByType = Object.entries(groupByLabel(properties, (row) => titleCase(asText(row.category || "Other").replace(/[_-]+/g, " "))))
+		.map(([type, rows]) => {
+			const prices = rows.map(propertyPrice).filter((price) => price > 0);
+			return { type, averagePrice: Math.round(numberAverage(prices)), listings: prices.length };
 		})
-		.filter((row) => row.price > 0 && row.pricePerSqm > 0);
-	const clusterRowsAreLive = hasMeaningfulChartValue(clusterRowsRaw, ["price", "pricePerSqm"]);
-	const clusterRows = clusterRowsRaw;
-	const clusterOption = {
-		grid: { top: 18, right: 20, bottom: 42, left: 60 },
-		tooltip: {
-			formatter: (params: { data?: [number, number, number, string] }) => {
-				const data = params.data;
-				if (!data) return "";
-				return `${data[3]}<br/>Price: PHP ${Math.round(data[0]).toLocaleString()}<br/>PHP/sqm: ${Math.round(data[1]).toLocaleString()}<br/>Area: ${Math.round(data[2]).toLocaleString()} sqm`;
-			},
-		},
-		xAxis: {
-			type: "value",
-			name: "Price",
-			nameTextStyle: { color: "#71717a" },
-			axisLabel: { color: "#71717a", fontSize: 11, formatter: (value: number) => `${Math.round(value / 1000000)}m` },
-			splitLine: { lineStyle: { color: "#eeeeee" } },
-		},
-		yAxis: {
-			type: "value",
-			name: "PHP/sqm",
-			nameTextStyle: { color: "#71717a" },
-			axisLabel: { color: "#71717a", fontSize: 11 },
-			splitLine: { lineStyle: { color: "#eeeeee" } },
-		},
-		visualMap: {
-			min: Math.min(...clusterRows.map((row) => row.area), 0),
-			max: Math.max(...clusterRows.map((row) => row.area), 1),
-			show: false,
-			inRange: { symbolSize: [8, 28], color: ["#a1a1aa", "#111111"] },
-		},
-		series: [{
-			name: "Properties",
-			type: "scatter",
-			data: clusterRows.map((row) => [row.price, row.pricePerSqm, row.area, row.location]),
-			itemStyle: { opacity: 0.82 },
-		}],
-	};
+		.filter((row) => row.averagePrice > 0)
+		.sort((first, second) => second.averagePrice - first.averagePrice);
+	const averagePriceByTypeIsLive = averagePriceByType.length > 0;
 	const totalViews = listingRows.reduce((sum, row) => sum + row.total_views, 0);
 	const totalDetailOpens = listingRows.reduce((sum, row) => sum + row.detail_opens + row.total_interactions, 0);
 	const totalInquiries = inquiries.length;
@@ -1064,28 +1031,30 @@ function AnalyticsVisualSuite({
 
 			{category === "predictiveAnalytics" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Conversion-rate forecast" description="Daily views-to-inquiry conversion rate from tracked page views and inquiries, plus a 7-day regression forecast." isLive={conversionForecastIsLive}>
+					<AnalyticsChartCard title="Conversion-rate forecast" description="Solid line shows actual conversion; dashed line shows the fitted trend and its 7-day forecast." isLive={conversionForecastIsLive}>
 						{conversionForecastIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={conversionRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<Legend verticalAlign="top" height={28} />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="rate" name="Conversion rate" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
+								<Line type="monotone" dataKey="rate" name="Actual conversion rate" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="The conversion-rate forecast needs at least 3 days with tracked page views in the last 21 days." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Demand forecast" description="Daily inquiries for the last 21 days plus a 7-day linear-regression forecast." isLive={demandRowsAreLive}>
+					<AnalyticsChartCard title="Demand forecast" description="Solid line shows actual inquiries; dashed line compares the fitted trend and continues 7 days ahead." isLive={demandRowsAreLive}>
 						{demandRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
-							<AreaChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+							<LineChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
+								<Legend verticalAlign="top" height={28} />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Area type="monotone" dataKey="demand" name="Demand" stroke="#111111" fill="#111111" fillOpacity={0.12} strokeWidth={2.5} />
-								<Line type="monotone" dataKey="forecast" name="Forecast" stroke="#2563eb" strokeWidth={2.5} dot={false} />
-							</AreaChart>
+								<Line type="monotone" dataKey="demand" name="Actual inquiries" stroke="#111111" strokeWidth={2.5} dot={{ r: 2, fill: "#111111" }} />
+								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
+							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="The demand forecast needs recorded inquiries in the last 21 days." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Price distribution" description="Histogram of real listing prices." isLive={priceHistogramIsLive}>
@@ -1099,8 +1068,16 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Price distribution needs listings with numeric price values." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Property clusters" description="Scatter plot by price and price per sqm." isLive={clusterRowsAreLive}>
-						{clusterRowsAreLive ? <EChart option={clusterOption} /> : <ChartEmptyState message="Property clustering needs listings with price and area/sqm values." />}
+					<AnalyticsChartCard title="Average price by property type" description="Compare average asking prices across condos, houses, lots, and other types. Hover for listing counts." isLive={averagePriceByTypeIsLive}>
+						{averagePriceByTypeIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={averagePriceByType} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+								<CartesianGrid horizontal={false} stroke="#e8e8e8" />
+								<XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} tickFormatter={(value) => `₱${Math.round(Number(value) / 1000000)}m`} />
+								<YAxis type="category" dataKey="type" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} width={76} />
+								<Tooltip content={<CmsChartTooltip />} formatter={(value, _name, item) => [`₱${Math.round(Number(value)).toLocaleString()} · ${item.payload.listings} listings`, "Average price"]} />
+								<Bar dataKey="averagePrice" name="Average price" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={24} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Average prices by property type will appear when published listings have prices." />}
 					</AnalyticsChartCard>
 				</div>
 				<div className="mt-4"><ModelReadout category="predictive" title={predictiveInsight.title} insight={predictiveInsight.insight} actions={predictiveInsight.actions} metrics={predictiveMetrics} /></div>
