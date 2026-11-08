@@ -331,7 +331,7 @@ function JobCard({ job, onApply }: { job: Job; onApply: () => void }) {
 							</button>
 						</div>
 					</div>
-					<p className="mt-4 text-[12.5px] leading-6 text-black/55">{job.description}</p>
+					<p className="mt-4 text-justify text-[12.5px] leading-6 text-black/55">{job.description}</p>
 				</article>
 
 				{/* Back */}
@@ -416,10 +416,10 @@ export default function CareerPage() {
 						<h2 className="mt-4 max-w-xl text-[clamp(2.05rem,3.7vw,3.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-[#111111]">
 							Build your career with us.
 						</h2>
-						<p className="mt-3 text-[12px] leading-[1.75] text-black/55">
+						<p className="mt-3 text-justify text-[12px] leading-[1.75] text-black/55">
 							Join one of the country&apos;s leading real estate companies. Jewellz Realty believes in the value of every team member and the contributions they bring. We provide a competitive salary, growth opportunities, and a supportive work environment.
 						</p>
-						<p className="mt-3 text-[12px] leading-[1.75] text-black/55">
+						<p className="mt-3 text-justify text-[12px] leading-[1.75] text-black/55">
 							Send your resume and cover letter to{" "}
 							<a href="mailto:jobs@jewellzrealty.ph" className="text-[#DE141C] underline-offset-2 hover:underline">
 								jobs@jewellzrealty.ph

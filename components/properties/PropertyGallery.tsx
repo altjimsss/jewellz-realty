@@ -7,12 +7,14 @@ type PropertyGalleryProps = {
   images: string[];
   title: string;
   fallbackImage?: string;
+  videoUrl?: string;
+  onVideoOpen?: () => void;
   onInteraction?: (event: string, metadata?: Record<string, unknown>) => void;
 };
 
 const DEFAULT_FALLBACK_IMAGE = "/assets/housebanner1.webp";
 
-export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBACK_IMAGE, onInteraction }: PropertyGalleryProps) {
+export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBACK_IMAGE, videoUrl, onVideoOpen, onInteraction }: PropertyGalleryProps) {
   const availableImages = images.filter(Boolean);
   const galleryImages = availableImages.length > 0 ? availableImages : [fallbackImage];
   const [activeIndex, setActiveIndex] = useState(0);
@@ -47,7 +49,13 @@ export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBAC
 
   return (
     <div className="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)]">
-      <div className="order-2 hidden h-28 grid-cols-2 gap-3 md:order-none md:grid md:h-80 md:grid-cols-1 md:grid-rows-2 lg:h-96">
+      <div className="order-2 hidden h-28 grid-cols-2 gap-3 md:order-none md:grid md:h-80 md:grid-cols-1 md:grid-rows-3 lg:h-96">
+        {videoUrl ? (
+          <button type="button" onClick={onVideoOpen} className="relative min-h-0 overflow-hidden bg-black text-left text-white shadow-sm" aria-label="Play property walkthrough video">
+            <SafeImage src={galleryImages[0]} fallbackSrc={fallbackImage} alt={`${title} video walkthrough`} fill sizes="200px" className="object-cover opacity-60" />
+            <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-xs font-semibold"><span className="grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#DE141C]"><svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3" /></svg></span>Video walkthrough</span>
+          </button>
+        ) : null}
         {previewIndices.map((previewIndex, idx) => {
           const isShowAllTile = idx === 1;
 
@@ -103,6 +111,8 @@ export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBAC
           className="object-cover"
           priority
         />
+
+        {videoUrl ? <button type="button" onClick={onVideoOpen} className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-2 text-xs font-semibold text-white shadow backdrop-blur transition hover:bg-black/90" aria-label="Play property walkthrough video"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3" /></svg>Walkthrough</button> : null}
 
         <button
           type="button"

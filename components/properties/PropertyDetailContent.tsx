@@ -103,14 +103,14 @@ function getVimeoEmbedUrl(url: string): string {
 	return url;
 }
 
-/** Phone-only: circular chat launcher pinned to the bottom-right, like typical site chat widgets. */
-function PhonePropertyChat({ property, previewMode }: { property: Property; previewMode: boolean }) {
+/** Floating chat launcher for the customer property page. */
+function FloatingPropertyChat({ property, previewMode }: { property: Property; previewMode: boolean }) {
 	const [open, setOpen] = useState(false);
 
 	return (
-		<div className="lg:hidden">
+		<div>
 			{open ? (
-				<div className="fixed inset-x-4 bottom-24 z-[5600] sm:left-auto sm:right-5 sm:w-[380px]">
+				<div className="fixed inset-x-3 bottom-24 z-[5600] sm:left-auto sm:right-5 sm:w-[380px]">
 					<div className="overflow-hidden rounded-2xl shadow-2xl">
 						<PropertyChatAssistant property={property} previewMode={previewMode} />
 					</div>
@@ -204,7 +204,7 @@ export function PropertyDetailContent({
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
 				<div className="contents lg:block">
 				<div className="order-1 -mx-4 min-w-0 md:mx-0 lg:mb-6">
-					<PropertyGallery images={propertyGalleryImages} title={property.title} fallbackImage={propertyPlaceholderImage} onInteraction={trackPropertyInteraction} />
+															<PropertyGallery images={propertyGalleryImages} title={property.title} fallbackImage={propertyPlaceholderImage} videoUrl={videoSrc || undefined} onVideoOpen={() => { setIsVideoOpen(true); trackPropertyInteraction("video_walkthrough_open"); }} onInteraction={trackPropertyInteraction} />
 				</div>
 
 				<div className="order-3 min-w-0 space-y-6">
@@ -284,21 +284,6 @@ export function PropertyDetailContent({
 							{property.isPriceNegotiable ? <><span aria-hidden="true">|</span><span className="font-medium text-[#DE141C]">Negotiable</span></> : null}
 							<span aria-hidden="true">|</span>
 							<span className="font-medium text-[#DE141C]">Available</span>
-							{videoSrc ? (
-								<button
-									type="button"
-									onClick={() => {
-										setIsVideoOpen(true);
-										trackPropertyInteraction("video_walkthrough_open");
-										}}
-									className="inline-flex h-6 items-center gap-1 rounded-full border border-[#DE141C]/25 bg-white px-2 text-[10px] font-semibold leading-none text-[#DE141C] transition hover:bg-[#DE141C] hover:text-white lg:hidden"
-								>
-									<svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden="true">
-										<polygon points="5 3 19 12 5 21 5 3" />
-									</svg>
-									Video Walkthrough
-								</button>
-							) : null}
 						</div>
 
 						<details className="group mt-3 border-t border-black/10 py-3 lg:hidden">
@@ -361,21 +346,6 @@ export function PropertyDetailContent({
 							</>
 						) : null}
 
-						{videoSrc ? (
-							<button
-								type="button"
-								onClick={() => {
-									setIsVideoOpen(true);
-									trackPropertyInteraction("video_walkthrough_open");
-								}}
-								className="mt-4 hidden items-center gap-2 rounded-full border border-[#DE141C]/30 bg-red-50/70 px-3.5 py-1.5 text-xs font-semibold text-[#DE141C] transition hover:bg-[#DE141C] hover:text-white lg:inline-flex"
-							>
-								<svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-									<polygon points="5 3 19 12 5 21 5 3" />
-								</svg>
-								Video Walkthrough
-							</button>
-						) : null}
 
 						<details className="group border-t border-black/10 py-3 lg:hidden">
 							<summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-black marker:hidden">
@@ -449,16 +419,13 @@ export function PropertyDetailContent({
 				</aside>
 
 				<div className="order-4 min-w-0 space-y-4 lg:mt-4">
-					<div className="hidden lg:block">
-						<PropertyChatAssistant property={property} previewMode={previewMode} />
-					</div>
 					<InquireCard previewMode={previewMode} property={property} />
 					{property.type === "Farm" ? <p className="text-right text-sm text-black/45">Contact Jewellz Realty for farm listing details.</p> : <p className="text-right text-sm text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>}
 				</div>
 				</div>
 			</div>
 
-			<PhonePropertyChat property={property} previewMode={previewMode} />
+			<FloatingPropertyChat property={property} previewMode={previewMode} />
 
 			{videoSrc && isVideoOpen ? (
 				<div

@@ -98,7 +98,7 @@ export default function AboutUsPage() {
                 Discover Jewellz Realty
               </h1>
 
-              <p className="mt-3 max-w-[430px] text-[13px] leading-6 text-black/55 sm:mt-4 sm:text-[14px] sm:leading-7">
+              <p className="mt-3 max-w-[430px] text-justify text-[13px] leading-6 text-black/55 sm:mt-4 sm:text-[14px] sm:leading-7">
                 Jewellz Realty helps buyers and investors find the right property with less friction and more confidence.
                 We combine curated listings, responsive support, and thoughtful presentation so every step feels clear and professional.
               </p>
@@ -147,7 +147,7 @@ export default function AboutUsPage() {
                   {item.icon}
                 </div>
                 <h2 className="text-[13px] font-semibold text-black sm:text-[14px]">{item.title}</h2>
-                <p className="mt-1.5 text-xs leading-5 text-black/55 sm:mt-2 sm:text-[12.5px] sm:leading-6">{item.description}</p>
+                <p className="mt-1.5 text-justify text-xs leading-5 text-black/55 sm:mt-2 sm:text-[12.5px] sm:leading-6">{item.description}</p>
               </article>
             ))}
           </div>
