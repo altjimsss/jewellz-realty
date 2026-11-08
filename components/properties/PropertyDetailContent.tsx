@@ -75,34 +75,6 @@ function getParameterItems(property: Property) {
 	];
 }
 
-function getYouTubeEmbedUrl(url: string): string {
-	try {
-		const parsed = new URL(url);
-		if (parsed.hostname.includes("youtu.be")) {
-			const id = parsed.pathname.slice(1);
-			return `https://www.youtube.com/embed/${id}`;
-		}
-		const v = parsed.searchParams.get("v");
-		if (v) return `https://www.youtube.com/embed/${v}`;
-		if (parsed.pathname.includes("/embed/")) return url;
-	} catch {
-		// return url
-	}
-	return url;
-}
-
-function getVimeoEmbedUrl(url: string): string {
-	try {
-		const match = url.match(/vimeo\.com\/(\d+)/);
-		if (match?.[1]) {
-			return `https://player.vimeo.com/video/${match[1]}`;
-		}
-	} catch {
-		// return url
-	}
-	return url;
-}
-
 /** Floating chat launcher for the customer property page. */
 function FloatingPropertyChat({ property, previewMode }: { property: Property; previewMode: boolean }) {
 	const [open, setOpen] = useState(false);
@@ -180,23 +152,6 @@ export function PropertyDetailContent({
 	};
 
 	const videoSrc = property.videoUrl?.trim() ?? "";
-	const isYouTube = videoSrc.includes("youtube.com") || videoSrc.includes("youtu.be");
-	const isVimeo = videoSrc.includes("vimeo.com");
-	const [isVideoOpen, setIsVideoOpen] = useState(false);
-
-	useEffect(() => {
-		if (!isVideoOpen) return;
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") setIsVideoOpen(false);
-		};
-		const previousOverflow = document.body.style.overflow;
-		document.body.style.overflow = "hidden";
-		window.addEventListener("keydown", handleKeyDown);
-		return () => {
-			document.body.style.overflow = previousOverflow;
-			window.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [isVideoOpen]);
 
 	return (
 		<section className="mx-auto max-w-[1200px] overflow-x-clip px-4 pb-24 pt-4 md:py-6">
@@ -204,7 +159,7 @@ export function PropertyDetailContent({
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
 				<div className="contents lg:block">
 				<div className="order-1 -mx-4 min-w-0 md:mx-0 lg:mb-6">
-															<PropertyGallery images={propertyGalleryImages} title={property.title} fallbackImage={propertyPlaceholderImage} videoUrl={videoSrc || undefined} onVideoOpen={() => { setIsVideoOpen(true); trackPropertyInteraction("video_walkthrough_open"); }} onInteraction={trackPropertyInteraction} />
+															<PropertyGallery images={propertyGalleryImages} title={property.title} fallbackImage={propertyPlaceholderImage} videoUrl={videoSrc || undefined} onInteraction={trackPropertyInteraction} />
 				</div>
 
 				<div className="order-3 min-w-0 space-y-6">
@@ -426,63 +381,6 @@ export function PropertyDetailContent({
 			</div>
 
 			<FloatingPropertyChat property={property} previewMode={previewMode} />
-
-			{videoSrc && isVideoOpen ? (
-				<div
-					className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
-					role="dialog"
-					aria-modal="true"
-					aria-label={`${property.title} walkthrough video`}
-					onClick={() => setIsVideoOpen(false)}
-				>
-					<div className="relative w-full max-w-5xl" onClick={(event) => event.stopPropagation()}>
-						<div className="relative overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl">
-							<button
-								type="button"
-								onClick={() => setIsVideoOpen(false)}
-								aria-label="Close video"
-								className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur transition hover:bg-black/95"
-							>
-								<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-									<path d="M18 6 6 18M6 6l12 12" />
-								</svg>
-								Close
-							</button>
-							{isYouTube ? (
-								<div className="aspect-video w-full">
-									<iframe
-										src={getYouTubeEmbedUrl(videoSrc)}
-										title={`${property.title} Video Tour`}
-										className="h-full w-full"
-										allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-										allowFullScreen
-									/>
-								</div>
-							) : isVimeo ? (
-								<div className="aspect-video w-full">
-									<iframe
-										src={getVimeoEmbedUrl(videoSrc)}
-										title={`${property.title} Video Tour`}
-										className="h-full w-full"
-										allowFullScreen
-									/>
-								</div>
-							) : (
-								<video
-									src={videoSrc}
-									controls
-									autoPlay
-									playsInline
-									preload="metadata"
-									className="max-h-[80vh] w-full object-contain"
-								>
-									Your browser does not support the video tag.
-								</video>
-							)}
-						</div>
-					</div>
-				</div>
-			) : null}
 		</section>
 	);
 }
