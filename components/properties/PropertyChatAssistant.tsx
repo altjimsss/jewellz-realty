@@ -17,7 +17,7 @@ type ChatMessage = PropertyChatMessage & {
 };
 
 type PropertyChatAssistantProps = {
-  property: Property;
+	property?: Property;
   previewMode?: boolean;
 };
 
@@ -81,19 +81,19 @@ function ChatActions({
   onSend,
 }: {
   actions: ChatAction[];
-  property: Property;
+  property?: Property;
   previewMode: boolean;
   onSend: (msg: string) => void;
 }) {
   if (actions.length === 0) return null;
 
   function handleBook() {
-    if (previewMode) return;
+    if (previewMode || !property) return;
     window.location.href = `/appointment?from=${encodeURIComponent(`/project-list/${property.slug}`)}&property=${encodeURIComponent(property.title)}`;
   }
 
   function handleShare() {
-    if (previewMode) return;
+    if (previewMode || !property) return;
     const url = `${window.location.origin}/project-list/${property.slug}`;
     void navigator.clipboard.writeText(url).then(() => {
       onSend("I just shared this property link with a friend. What should I tell them about it?");
@@ -104,6 +104,7 @@ function ChatActions({
     <div className="mt-2 flex flex-wrap gap-1.5">
       {actions.map((action, i) => {
         if (action.type === "book-appointment") {
+          if (!property) return null;
           return (
             <button
               key={i}
@@ -135,6 +136,7 @@ function ChatActions({
           );
         }
         if (action.type === "share-listing") {
+          if (!property) return null;
           return (
             <button
               key={i}
@@ -159,12 +161,12 @@ function ChatActions({
   );
 }
 
-async function fetchPropertyPrompt(property: Property, message: string, history: ChatMessage[]) {
+async function fetchPropertyPrompt(property: Property | undefined, message: string, history: ChatMessage[]) {
   const response = await fetch("/api/property-chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      slug: property.slug,
+      ...(property ? { slug: property.slug } : {}),
       message,
       history: history.map(({ role, content }) => ({ role, content })),
     }),
@@ -247,7 +249,9 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
     {
       id: createId(),
       role: "assistant",
-      content: `Hey there! 👋 I'm Jewel, your Jewellz Realty guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`,
+      content: property
+        ? `Hey there! 👋 I'm Jewel, your Jewellz Realty guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`
+        : "Hey there! 👋 I'm Jewel, your Jewellz Realty property guide. Ask me to find a listing, compare properties, or share details about a home, condo, or lot.",
       actions: [],
     },
   ]);

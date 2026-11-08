@@ -17,6 +17,16 @@ type ProjectListCardProps = {
 };
 
 function getSpecs(property: Property) {
+	if (property.type === "Condo" || property.type === "Apartment") {
+		const floorArea = property.specs?.find((spec) => /floor area/i.test(spec.label) && !["", "n/a", "0", "0 sqm"].includes(spec.value.trim().toLowerCase()))?.value
+			?? (property.areaSqm ? `${property.areaSqm.toLocaleString()} sqm` : "");
+		return [
+			...(property.beds ? [{ label: "Beds", value: String(property.beds) }] : []),
+			...(property.baths ? [{ label: "Baths", value: String(property.baths) }] : []),
+			...(floorArea ? [{ label: "Floor Area", value: floorArea }] : []),
+		].slice(0, 3);
+	}
+
 	if (property.type === "Farm") {
 		const farmArea = property.lotAreaSqm ?? property.areaSqm;
 		const details = [

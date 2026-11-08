@@ -12,7 +12,7 @@ export type PropertyChatMessage = {
 };
 
 export type PropertyChatRequestBody = {
-	slug: string;
+	slug?: string;
 	message: string;
 	history: PropertyChatMessage[];
 };
@@ -20,7 +20,7 @@ export type PropertyChatRequestBody = {
 export type PropertyChatResponse = {
 	content: string;
 	fallbackReply: string;
-	propertyTitle: string;
+	propertyTitle?: string;
 };
 
 export type PropertyChatContext = {
@@ -52,11 +52,11 @@ export function parsePropertyChatRequestBody(value: unknown): PropertyChatReques
 	const message = normalizeText(candidate.message);
 	const history = Array.isArray(candidate.history) ? candidate.history.filter(isPropertyChatMessage).slice(-4) : [];
 
-	if (!slug || !message) {
+	if (!message) {
 		return null;
 	}
 
-	return { slug, message, history };
+	return { ...(slug ? { slug } : {}), message, history };
 }
 
 function propertyToSummary(property: Property) {
@@ -96,27 +96,57 @@ function scoreComparableProperty(current: Property, candidate: Property) {
 	return score;
 }
 
-function buildComparisonSummary(property: Property, properties: Property[]) {
-	const comparableProperties = properties
+const LISTING_QUERY_STOP_WORDS = new Set([
+	"a", "an", "and", "are", "about", "available", "can", "do", "does", "find", "for", "have", "how", "i", "in", "is", "it", "list", "listing", "me", "our", "please", "property", "show", "tell", "the", "there", "this", "to", "we", "what", "with", "you", "your",
+]);
+
+function getNamedListingMatches(query: string, properties: Property[]) {
+	const queryTerms = new Set(
+		query.toLowerCase().match(/[a-z0-9]+/g)?.filter((term) => term.length > 2 && !LISTING_QUERY_STOP_WORDS.has(term)) ?? [],
+	);
+	if (!queryTerms.size) return [];
+
+	return properties
+		.map((property) => {
+			const listingTerms = new Set(`${property.title} ${property.slug}`.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+			const matchedTerms = [...queryTerms].filter((term) => listingTerms.has(term));
+			return { property, score: matchedTerms.length, matchedTerms };
+		})
+		.filter(({ score, matchedTerms }) => score >= 2 || matchedTerms.some((term) => term.length >= 7))
+		.sort((first, second) => second.score - first.score)
+		.slice(0, 3)
+		.map(({ property }) => property);
+}
+
+function formatComparisonProperty(item: Property) {
+	return [
+		`- ${item.title}`,
+		`slug: ${item.slug}`,
+		`type: ${item.type ?? "N/A"}`,
+		`location: ${item.location ?? "N/A"}`,
+		`price: PHP ${item.price.toLocaleString()}`,
+		`beds: ${item.beds ?? "N/A"}`,
+		`baths: ${item.baths ?? "N/A"}`,
+		`area: ${item.areaSqm ? `${item.areaSqm} sqm` : "N/A"}`,
+		item.description ? `description: ${item.description.replace(/\s+/g, " ").trim().slice(0, 500)}` : null,
+	].filter(Boolean).join(" | ");
+}
+
+function buildComparisonSummary(property: Property, properties: Property[], query: string) {
+	const namedMatches = getNamedListingMatches(query, properties).filter((candidate) => candidate.id !== property.id);
+	const similarProperties = properties
 		.map((candidate) => ({ property: candidate, score: scoreComparableProperty(property, candidate) }))
 		.filter((item) => Number.isFinite(item.score))
 		.sort((first, second) => second.score - first.score)
 		.slice(0, 5)
-		.map(({ property: item }) =>
-			[
-				`- ${item.title}`,
-				`slug: ${item.slug}`,
-				`type: ${item.type ?? "N/A"}`,
-				`location: ${item.location ?? "N/A"}`,
-				`price: PHP ${item.price.toLocaleString()}`,
-				`beds: ${item.beds ?? "N/A"}`,
-				`baths: ${item.baths ?? "N/A"}`,
-				`area: ${item.areaSqm ? `${item.areaSqm} sqm` : "N/A"}`,
-				item.description ? `description: ${item.description.replace(/\s+/g, " ").trim().slice(0, 500)}` : null,
-			].filter(Boolean).join(" | "),
-		);
+		.map(({ property: item }) => item);
+	const includedProperties = [...new Map([...namedMatches, ...similarProperties].map((item) => [item.id, item])).values()];
+	const formattedProperties = includedProperties.map(formatComparisonProperty);
 
-	return comparableProperties.length ? comparableProperties.join("\n") : "No comparable published listings are available.";
+	if (namedMatches.length) {
+		return [`MATCHES FOR THE BUYER'S NAMED LISTINGS`, ...namedMatches.map(formatComparisonProperty), "OTHER SIMILAR LISTINGS", ...similarProperties.filter((item) => !namedMatches.some((match) => match.id === item.id)).map(formatComparisonProperty)].join("\n");
+	}
+	return formattedProperties.length ? formattedProperties.join("\n") : "No comparable published listings are available.";
 }
 
 function formatNearbyGroups(groups: NearbyPlaceGroup[]): string {
@@ -166,7 +196,7 @@ async function buildNearbyContext(property: Property): Promise<string> {
 	}
 }
 
-export async function buildPropertyChatContext(slug: string): Promise<PropertyChatContext | null> {
+export async function buildPropertyChatContext(slug: string, listingQuery = ""): Promise<PropertyChatContext | null> {
 	const publishedProperty = await getPublishedPropertyBySlug(slug);
 	const property = publishedProperty ?? getPropertyBySlug(slug);
 
@@ -183,10 +213,46 @@ export async function buildPropertyChatContext(slug: string): Promise<PropertyCh
 	return {
 		property,
 		summary: propertyToSummary(property),
-		comparisonSummary: buildComparisonSummary(property, publishedProperties),
+		comparisonSummary: buildComparisonSummary(property, publishedProperties, listingQuery),
 		nearbyContext,
 		analyticsContext: buildAnalyticsSummary(analytics),
 	};
+}
+
+export async function buildPropertyCatalogChatPrompt(message: string, conversation: string, listingQuery = message) {
+	const properties = await getComparablePublishedProperties();
+	const queryTerms = [...new Set(listingQuery.toLowerCase().match(/[a-z0-9]+/g) ?? [])]
+		.filter((term) => term.length > 2 && !LISTING_QUERY_STOP_WORDS.has(term));
+	const namedMatches = getNamedListingMatches(listingQuery, properties);
+	const rankedMatches = properties
+		.map((property) => {
+			const searchableText = `${property.title} ${property.slug} ${property.type ?? ""} ${property.subtype ?? ""} ${property.location ?? ""} ${property.description ?? ""}`.toLowerCase();
+			const score = queryTerms.reduce((total, term) => total + (searchableText.includes(term) ? (property.title.toLowerCase().includes(term) ? 4 : 1) : 0), 0);
+			return { property, score };
+		})
+		.filter(({ score }) => score > 0)
+		.sort((first, second) => second.score - first.score)
+		.slice(0, 8)
+		.map(({ property }) => property);
+	const selectedListings = [...new Map([...namedMatches, ...rankedMatches].map((property) => [property.id, property])).values()].slice(0, 8);
+	const listingsText = selectedListings.length
+		? selectedListings.map(formatComparisonProperty).join("\n")
+		: "No published listings matched this request.";
+
+	return [
+		"You are Jewel, a friendly Jewellz Realty guide helping a buyer browse published property listings.",
+		"Answer questions about listings using only the published listings supplied below. If the buyer names a specific listing, use the matching listing details and its exact slug. If no matching listing is supplied, say you could not find it in the published listings and offer to help search by another name or location.",
+		"Do not invent prices, locations, property features, availability, fees, or legal details. Keep the answer conversational and concise. Do not use markdown tables.",
+		"When a listing is named or recommended, append [ACTION:view-property:exact-slug:Property Name] using its exact slug from the list. Only suggest a booking action when the buyer asks to book or view a listing and the target listing is known; use [ACTION:book-appointment] only if a current listing is in context.",
+		"",
+		"PUBLISHED LISTINGS MATCHING THE BUYER'S REQUEST",
+		listingsText,
+		"",
+		"CONVERSATION SO FAR",
+		conversation,
+		"",
+		`BUYER'S QUESTION: ${message}`,
+	].join("\n");
 }
 
 function buildAnalyticsSummary(analytics: PublicPropertyAnalytics | null) {

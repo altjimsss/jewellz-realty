@@ -121,8 +121,9 @@ function mapPropertyRow(row: PropertyRow): Property {
 		.map((item) => normalizeImageUrl(item.storage_url))
 		.filter((item): item is string => Boolean(item));
 	const allImages = [...new Set([...(image ? [image] : []), ...images])];
-	const displayArea = floorArea ?? lotArea;
 	const propertyType = getPropertyType(row.category, row.property_subtype);
+	const isCondo = propertyType.type === "Condo" || propertyType.type === "Apartment";
+	const displayArea = floorArea ?? (isCondo ? undefined : lotArea);
 
 	return {
 		id: row.id,

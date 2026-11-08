@@ -25,6 +25,7 @@ const PropertyMapPreview = dynamic(
 	},
 );
 import { ProjectListCard } from "@/components/properties/ProjectListCard";
+import { FloatingPropertyChat } from "@/components/properties/FloatingPropertyChat";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { formatPHPWhole } from "@/lib/currency";
 import { mergeNaturalLanguageFilters } from "@/lib/property-search";
@@ -672,6 +673,7 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 			</section>
 
 			<Footer />
+			<FloatingPropertyChat />
 		</main>
 	);
 }

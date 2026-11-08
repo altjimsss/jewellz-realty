@@ -3,6 +3,7 @@ import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import {
 	buildPropertyChatContext,
 	buildPropertyChatConversation,
+	buildPropertyCatalogChatPrompt,
 	buildPropertyChatPrompt,
 	parsePropertyChatRequestBody,
 } from "@/lib/property-chat";
@@ -28,14 +29,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing slug or message." }, { status: 400, headers: rateLimitHeaders(limiter) });
   }
 
-  const propertyContext = await buildPropertyChatContext(parsedBody.slug);
+  const recentListingQuestions = parsedBody.history.filter((entry) => entry.role === "user").slice(-3).map((entry) => entry.content);
+  const listingQuery = [...recentListingQuestions, parsedBody.message].join(" ");
+  const propertyContext = parsedBody.slug ? await buildPropertyChatContext(parsedBody.slug, listingQuery) : null;
 
-  if (!propertyContext) {
+  if (parsedBody.slug && !propertyContext) {
     return NextResponse.json({ error: "Property not found." }, { status: 404, headers: rateLimitHeaders(limiter) });
   }
 
   const conversation = buildPropertyChatConversation(parsedBody.history);
-  const prompt = buildPropertyChatPrompt(propertyContext, parsedBody.message, conversation);
+  const prompt = propertyContext
+    ? buildPropertyChatPrompt(propertyContext, parsedBody.message, conversation)
+    : await buildPropertyCatalogChatPrompt(parsedBody.message, conversation, listingQuery);
 
   if (!hasAiConfigured()) {
     return NextResponse.json({ error: "AI provider is not configured." }, { status: 500, headers: rateLimitHeaders(limiter) });
@@ -77,8 +82,10 @@ Rules for action tokens:
     if (aiResult?.content) {
       return NextResponse.json({
         content: aiResult.content,
-        propertyTitle: propertyContext.property.title,
-        fallbackReply: `I can help with ${propertyContext.property.title}'s price, features, comparisons, and viewing details. Ask me anything specific about this listing.`,
+        propertyTitle: propertyContext?.property.title,
+        fallbackReply: propertyContext
+          ? `I can help with ${propertyContext.property.title}'s price, features, comparisons, and viewing details. Ask me anything specific about this listing.`
+          : "I can help find and compare published Jewellz Realty listings. Ask me about a property name, type, or location.",
         model: aiResult.model,
         provider: aiResult.provider,
       });
