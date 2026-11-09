@@ -555,18 +555,24 @@ function EChart({ option }: { option: Record<string, unknown> }) {
 	return <ReactECharts option={option} style={{ height: "100%", width: "100%" }} notMerge lazyUpdate />;
 }
 
-function PricePerSqmHeatmap({ properties }: { properties: CmsRow[] }) {
-	const grouped = Object.entries(groupByLabel(properties, locationLabel))
+function pricePerSqmByLocation(properties: CmsRow[]) {
+	return Object.entries(groupByLabel(properties, locationLabel))
 		.map(([location, rows]) => {
-			const avgPricePerSqm = numberAverage(rows.map((row) => {
+			const values = rows.map((row) => {
 				const area = propertyArea(row);
-				return area ? propertyPrice(row) / area : 0;
-			}));
-			return { location, avgPricePerSqm };
+				const price = propertyPrice(row);
+				return area > 0 && price > 0 ? price / area : 0;
+			}).filter((value) => value > 0);
+			return { location, avgPricePerSqm: numberAverage(values) };
 		})
 		.filter((row) => row.avgPricePerSqm > 0)
 		.sort((a, b) => b.avgPricePerSqm - a.avgPricePerSqm)
 		.slice(0, 12);
+}
+
+function PricePerSqmHeatmap({ properties }: { properties: CmsRow[] }) {
+	const grouped = pricePerSqmByLocation(properties);
+	if (!grouped.length) return <ChartEmptyState message="Price-per-sqm data will appear when listings have a price and area." />;
 	const max = Math.max(...grouped.map((row) => row.avgPricePerSqm), 1);
 	const xLabels = grouped.map((row) => row.location);
 	const option = {
@@ -794,6 +800,15 @@ function AnalyticsVisualSuite({
 		if (visitor) visitorWindow.add(visitor);
 	}
 	const topSource = trafficRows[0] ?? null;
+	const topViewedListing = mostViewed[0] ?? null;
+	const topPriceLocation = priceByLocation[0] ?? null;
+	const topViewedInquiryListing = viewsVsInquiries[0] ?? null;
+	const latestMonthlyPrice = monthlyPrices[monthlyPrices.length - 1] ?? null;
+	const topPricePerSqmLocation = pricePerSqmByLocation(properties)[0] ?? null;
+	const mostCommonPriceRange = priceHistogram.slice().sort((first, second) => second.count - first.count)[0] ?? null;
+	const mostCommonSessionDuration = durationRows.slice().sort((first, second) => second.count - first.count)[0] ?? null;
+	const topTypePrice = averagePriceByType[0] ?? null;
+	const returningVisitorShare = totalVisitors ? Math.round((returningUsers / totalVisitors) * 100) : 0;
 	const trafficInsight = {
 		title: "Traffic & behavior readout",
 		metrics: [
@@ -852,7 +867,7 @@ function AnalyticsVisualSuite({
 		<div className="mt-5 space-y-5">
 			{category === "trafficBehavior" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Sessions & visitors over time" description="Distinct sessions and visitors per day from tracked page views." isLive={visitorsAreLive}>
+					<AnalyticsChartCard title="Sessions & visitors over time" description={visitorsAreLive ? `${totalSessions14d.toLocaleString()} sessions · ${visitorWindow.size.toLocaleString()} unique visitors in 14 days.` : "No sessions recorded yet."} isLive={visitorsAreLive}>
 						{visitorsAreLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={visitorsOverTime} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -864,7 +879,7 @@ function AnalyticsVisualSuite({
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No sessions have been recorded for the recent visitor window yet." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Traffic sources" description="Organic, direct, social, referral, and UTM/session sources." isLive={trafficPieIsLive}>
+					<AnalyticsChartCard title="Traffic sources" description={trafficPieIsLive && topSource ? `${topSource.source || "Direct"} leads with ${topSource.share_pct}% of sessions.` : "No traffic sources recorded yet."} isLive={trafficPieIsLive}>
 						{trafficPieIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<PieChart>
 								<Pie data={trafficPie} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
@@ -874,7 +889,7 @@ function AnalyticsVisualSuite({
 							</PieChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No session source rows are available yet. Record UTM/referrer data to populate mv_traffic_sources." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Most viewed properties" description="Horizontal bar chart ranked by listing views." isLive={mostViewedIsLive}>
+					<AnalyticsChartCard title="Most viewed properties" description={mostViewedIsLive && topViewedListing ? `${topViewedListing.title} leads with ${topViewedListing.total_views.toLocaleString()} views.` : "No listing views recorded yet."} isLive={mostViewedIsLive}>
 						{mostViewedIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={mostViewed} layout="vertical" margin={{ top: 6, right: 12, left: 10, bottom: 0 }}>
 								<CartesianGrid horizontal={false} stroke="#e8e8e8" />
@@ -885,7 +900,7 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No listing view counts yet. Property page tracking must write property_view events first." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Bounce rate over time" description="Share of sessions with one or fewer page views." isLive={bounceIsLive}>
+					<AnalyticsChartCard title="Bounce rate over time" description={bounceIsLive ? `${avgBounceRate.toFixed(0)}% average bounce rate across tracked sessions.` : "No bounce data recorded yet."} isLive={bounceIsLive}>
 						{bounceIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={bounceRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -958,6 +973,7 @@ function AnalyticsVisualSuite({
 						<div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
 							<div className="rounded-2xl border border-black/[0.08] bg-white p-4">
 								<div className="text-sm font-semibold text-[#111111]">Performance breakdown</div>
+								<p className="mt-1 text-xs text-black/50">{selectedPropertyPerformance ? `${selectedPropertyPerformance.total_views.toLocaleString()} views · ${selectedPropertyPerformance.total_inquiries.toLocaleString()} inquiries · ${selectedPropertyPerformance.inquiry_rate_pct}% inquiry rate.` : "No performance totals recorded for this property yet."}</p>
 								<div className="mt-3 h-56">
 									<ResponsiveContainer width="100%" height="100%">
 										<BarChart data={selectedPropertyChartRows} margin={{ top: 8, right: 8, left: -22, bottom: 18 }}>
@@ -987,7 +1003,7 @@ function AnalyticsVisualSuite({
 					</div>
 				) : null}
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Average asking price by listing month" description="Monthly average of recorded listing prices, not synthetic price points." isLive={priceTrendIsLive}>
+					<AnalyticsChartCard title="Average asking price by listing month" description={priceForecastIsLive ? `Next month forecast: PHP ${Math.round(priceForecastValue).toLocaleString()}.` : latestMonthlyPrice ? `Latest monthly average: PHP ${latestMonthlyPrice.average.toLocaleString()}.` : "No monthly listing prices recorded yet."} isLive={priceTrendIsLive}>
 						{priceTrendIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={priceTrendRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -999,7 +1015,7 @@ function AnalyticsVisualSuite({
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Monthly price trends need listings with a numeric price and created_at date." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Price comparison across locations" description="Bar chart of average listing price by city or area." isLive={priceByLocationIsLive}>
+					<AnalyticsChartCard title="Price comparison across locations" description={topPriceLocation ? `${topPriceLocation.location} has the highest average at PHP ${topPriceLocation.price.toLocaleString()}.` : "No location prices available yet."} isLive={priceByLocationIsLive}>
 						{priceByLocationIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={priceByLocation} margin={{ top: 8, right: 12, left: -18, bottom: 34 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -1010,7 +1026,7 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Location price comparison needs listings with both location and price." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Property views vs inquiries" description="Grouped bar chart comparing listing views and submitted inquiries." isLive={viewsVsInquiriesIsLive}>
+					<AnalyticsChartCard title="Property views vs inquiries" description={topViewedInquiryListing ? `${topViewedInquiryListing.title}: ${topViewedInquiryListing.total_views.toLocaleString()} views, ${topViewedInquiryListing.total_inquiries.toLocaleString()} inquiries.` : "No property views or inquiries recorded yet."} isLive={viewsVsInquiriesIsLive}>
 						{viewsVsInquiriesIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={viewsVsInquiries} margin={{ top: 8, right: 12, left: -18, bottom: 38 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -1022,7 +1038,7 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No property views or inquiry totals are available in mv_listing_performance yet." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Price per sqm by area" description="Heatmap of average PHP per sqm.">
+					<AnalyticsChartCard title="Price per sqm by area" description={topPricePerSqmLocation ? `${topPricePerSqmLocation.location} leads at PHP ${Math.round(topPricePerSqmLocation.avgPricePerSqm).toLocaleString()} per sqm.` : "No price-per-sqm data available yet."} isLive={Boolean(topPricePerSqmLocation)}>
 						<PricePerSqmHeatmap properties={properties} />
 					</AnalyticsChartCard>
 				</div>
@@ -1031,8 +1047,8 @@ function AnalyticsVisualSuite({
 
 			{category === "predictiveAnalytics" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Conversion-rate forecast" description="Solid line shows actual conversion; dashed line shows the fitted trend and its 7-day forecast." isLive={conversionForecastIsLive}>
-						{conversionForecastIsLive ? <ResponsiveContainer width="100%" height="100%">
+					<AnalyticsChartCard title="Conversion-rate forecast" description={conversionForecastIsLive ? `Next-period forecast: ${conversion.forecast[0]?.value ?? 0}% from ${conversion.observations} tracked days.` : `Preliminary forecast: ${conversion.forecast[0]?.value ?? 0}%; ${conversion.observations} of 3 tracked days.`} isLive={conversionForecastIsLive}>
+						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={conversionRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<Legend verticalAlign="top" height={28} />
@@ -1040,24 +1056,24 @@ function AnalyticsVisualSuite({
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="rate" name="Actual conversion rate" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
+								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#2563eb" }} />
 							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="The conversion-rate forecast needs at least 3 days with tracked page views in the last 21 days." />}
+						</ResponsiveContainer>
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Demand forecast" description="Solid line shows actual inquiries; dashed line compares the fitted trend and continues 7 days ahead." isLive={demandRowsAreLive}>
-						{demandRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
+					<AnalyticsChartCard title="Demand forecast" description={demandRowsAreLive ? `${demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1)} inquiries forecast over the next 7 days.` : "No recent inquiries; showing the 0-inquiry baseline forecast."} isLive={demandRowsAreLive}>
+						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<Legend verticalAlign="top" height={28} />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => Number(value).toFixed(1)} />
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="demand" name="Actual inquiries" stroke="#111111" strokeWidth={2.5} dot={{ r: 2, fill: "#111111" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
+								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#2563eb" }} />
 							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="The demand forecast needs recorded inquiries in the last 21 days." />}
+						</ResponsiveContainer>
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Price distribution" description="Histogram of real listing prices." isLive={priceHistogramIsLive}>
+					<AnalyticsChartCard title="Price distribution" description={mostCommonPriceRange ? `Most listings: PHP ${mostCommonPriceRange.range} (${mostCommonPriceRange.count}).` : "No listing prices recorded yet."} isLive={priceHistogramIsLive}>
 						{priceHistogramIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={priceHistogram} margin={{ top: 8, right: 12, left: -18, bottom: 34 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -1068,7 +1084,7 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Price distribution needs listings with numeric price values." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Average price by property type" description="Compare average asking prices across condos, houses, lots, and other types. Hover for listing counts." isLive={averagePriceByTypeIsLive}>
+					<AnalyticsChartCard title="Average price by property type" description={topTypePrice ? `${topTypePrice.type} leads at PHP ${topTypePrice.averagePrice.toLocaleString()} across ${topTypePrice.listings} listings.` : "No property type prices available yet."} isLive={averagePriceByTypeIsLive}>
 						{averagePriceByTypeIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={averagePriceByType} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
 								<CartesianGrid horizontal={false} stroke="#e8e8e8" />
@@ -1085,10 +1101,10 @@ function AnalyticsVisualSuite({
 
 			{category === "userEngagement" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Conversion funnel" description="Viewed to detail/gallery/map engagement to inquired." isLive={funnelRowsAreLive}>
+					<AnalyticsChartCard title="Conversion funnel" description={funnelRowsAreLive ? `${totalViews.toLocaleString()} views led to ${totalInquiries.toLocaleString()} inquiries (${(totalViews ? totalInquiries / totalViews * 100 : 0).toFixed(2)}%).` : "No funnel activity recorded yet."} isLive={funnelRowsAreLive}>
 						{funnelRowsAreLive ? <EChart option={funnelOption} /> : <ChartEmptyState message="The funnel needs recorded views, engagement events, or inquiries." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Session duration" description="Bar chart from recorded property dwell time." isLive={durationRowsAreLive}>
+					<AnalyticsChartCard title="Session duration" description={mostCommonSessionDuration ? `Most common: ${mostCommonSessionDuration.range} seconds (${mostCommonSessionDuration.count} sessions).` : "No session duration data recorded yet."} isLive={durationRowsAreLive}>
 						{durationRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={durationRows} margin={{ top: 8, right: 12, left: -18, bottom: 28 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -1099,7 +1115,7 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Session duration needs property dwell-time rows from property analytics events." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Returning vs new visitors" description="Distinct visitors grouped by whether they have one or multiple sessions." isLive={totalVisitors > 0}>
+					<AnalyticsChartCard title="Returning vs new visitors" description={totalVisitors ? `${returningVisitorShare}% of tracked visitors returned.` : "No visitor sessions recorded yet."} isLive={totalVisitors > 0}>
 						{totalVisitors > 0 ? <ResponsiveContainer width="100%" height="100%">
 							<PieChart>
 								<Pie data={userTypeRows} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
@@ -2412,7 +2428,7 @@ function AnalyticsPanel({
 		session_count: toNullableNumber(row.session_count) ?? 0,
 		total_page_views: toNullableNumber(row.total_page_views) ?? 0,
 		share_pct: toNullableNumber(row.share_pct) ?? 0,
-	}));
+	})).sort((first, second) => second.session_count - first.session_count);
 	const normalizedAnalyticsReport: CmsSection = activeReport === "traffic" ? "trafficBehavior" : activeReport;
 	const activeAnalyticsCategory = normalizedAnalyticsReport === "trafficBehavior" || normalizedAnalyticsReport === "propertyPerformance" || normalizedAnalyticsReport === "predictiveAnalytics" || normalizedAnalyticsReport === "userEngagement"
 		? normalizedAnalyticsReport
