@@ -24,7 +24,7 @@ async function attachPropertyTitles(rows: Array<Record<string, unknown>>) {
   return rows.map((row) => ({ ...row, property_title: titles.get(String(row.property_id ?? "")) ?? "General inquiry" }));
 }
 
-const APPOINTMENT_FIELDS = "id, inquiry_id, property_id, assigned_agent_id, buyer_name, appointment_type, scheduled_at, status, location";
+const APPOINTMENT_FIELDS = "id, inquiry_id, property_id, buyer_name, appointment_type, scheduled_at, status, location";
 
 export async function GET(request: Request) {
   const auth = await getAgent(request);
@@ -33,18 +33,20 @@ export async function GET(request: Request) {
   const { data: assignedInquiries, error: inquiriesError } = await supabaseServer.from("inquiries").select("id").eq("assigned_agent_id", auth.agentId);
   if (inquiriesError) return NextResponse.json({ error: "Could not load your assigned inquiries." }, { status: 500 });
   const inquiryIds = (assignedInquiries ?? []).map((row) => row.id);
-  const directResult = await supabaseServer.from("appointments").select(APPOINTMENT_FIELDS).eq("assigned_agent_id", auth.agentId).in("status", ["requested", "confirmed"]).order("scheduled_at", { ascending: true });
-  if (directResult.error) return NextResponse.json({ error: "Could not load your appointments." }, { status: 500 });
+  if (!inquiryIds.length) return NextResponse.json({ appointments: [] });
 
-  let inquiryResult: { data: Array<Record<string, unknown>> | null; error: { message: string } | null } = { data: [], error: null };
-  if (inquiryIds.length) {
-    inquiryResult = await supabaseServer.from("appointments").select(APPOINTMENT_FIELDS).in("inquiry_id", inquiryIds).in("status", ["requested", "confirmed"]).order("scheduled_at", { ascending: true });
+  const { data: appointmentRows, error: appointmentsError } = await supabaseServer
+    .from("appointments")
+    .select(APPOINTMENT_FIELDS)
+    .in("inquiry_id", inquiryIds)
+    .in("status", ["requested", "confirmed"])
+    .order("scheduled_at", { ascending: true });
+  if (appointmentsError) {
+    console.error("[agent appointments lookup]", appointmentsError);
+    return NextResponse.json({ error: "Could not load appointments for your assigned inquiries." }, { status: 500 });
   }
-  if (inquiryResult.error) return NextResponse.json({ error: "Could not load appointments for your assigned inquiries." }, { status: 500 });
 
-  const unique = new Map<string, Record<string, unknown>>();
-  [...(directResult.data ?? []), ...(inquiryResult.data ?? [])].forEach((row) => unique.set(String(row.id), row as Record<string, unknown>));
-  const appointments = await attachPropertyTitles([...unique.values()]);
+  const appointments = await attachPropertyTitles((appointmentRows ?? []) as Array<Record<string, unknown>>);
   return NextResponse.json({ appointments });
 }
 
@@ -59,10 +61,14 @@ export async function PATCH(request: Request) {
   if (appointmentError) return NextResponse.json({ error: "Could not load appointment." }, { status: 500 });
   if (!appointment) return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
 
-  let isAssigned = appointment.assigned_agent_id === auth.agentId;
-  if (!isAssigned && appointment.inquiry_id) {
+  let isAssigned = false;
+  if (appointment.inquiry_id) {
     const { data: inquiry } = await supabaseServer.from("inquiries").select("id").eq("id", appointment.inquiry_id).eq("assigned_agent_id", auth.agentId).maybeSingle();
     isAssigned = Boolean(inquiry);
+  }
+  if (!isAssigned && appointment.property_id) {
+    const { data: property } = await supabaseServer.from("properties").select("id").eq("id", appointment.property_id).eq("assigned_agent_id", auth.agentId).maybeSingle();
+    isAssigned = Boolean(property);
   }
   if (!isAssigned) return NextResponse.json({ error: "This appointment is not assigned to you." }, { status: 403 });
   if (appointment.status !== "requested") return NextResponse.json({ error: "Only requested appointments can be confirmed." }, { status: 409 });
