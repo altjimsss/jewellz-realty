@@ -1782,7 +1782,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							{activeSection === "appointments" ? (
 								<div className="space-y-3">
 									{appointmentsError ? <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{appointmentsError} Refresh to try again.</div> : null}
-									<AgentAppointmentCalendar appointments={appointments} onAppointmentsChange={setAppointments} />
+									<AgentAppointmentCalendar appointments={appointments} assignedInquiries={inquiries} onAppointmentsChange={setAppointments} />
 								</div>
 							) : null}
 

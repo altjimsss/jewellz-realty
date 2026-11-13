@@ -83,3 +83,59 @@ export async function PATCH(request: Request) {
   const [withTitle] = await attachPropertyTitles([updated as Record<string, unknown>]);
   return NextResponse.json({ appointment: withTitle });
 }
+
+export async function POST(request: Request) {
+  const auth = await getAgent(request);
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const body = await request.json().catch(() => ({})) as {
+    inquiryId?: unknown;
+    scheduledAt?: unknown;
+    location?: unknown;
+    notes?: unknown;
+  };
+  const inquiryId = typeof body.inquiryId === "string" ? body.inquiryId.trim() : "";
+  const scheduledAt = typeof body.scheduledAt === "string" ? body.scheduledAt.trim() : "";
+  const location = typeof body.location === "string" ? body.location.trim() : "";
+  const notes = typeof body.notes === "string" ? body.notes.trim() : "";
+  const time = Date.parse(scheduledAt);
+
+  if (!inquiryId) return NextResponse.json({ error: "Choose one of your assigned customer inquiries." }, { status: 400 });
+  if (!scheduledAt || !Number.isFinite(time) || time <= Date.now()) return NextResponse.json({ error: "Choose a future date and time." }, { status: 400 });
+  if (!location) return NextResponse.json({ error: "Add the viewing location or call/meeting details." }, { status: 400 });
+  if (location.length > 500 || notes.length > 2000) return NextResponse.json({ error: "Meeting details are too long." }, { status: 400 });
+
+  const { data: inquiry, error: inquiryError } = await supabaseServer
+    .from("inquiries")
+    .select("id, property_id, buyer_name, buyer_email, buyer_phone")
+    .eq("id", inquiryId)
+    .eq("assigned_agent_id", auth.agentId)
+    .maybeSingle();
+  if (inquiryError) return NextResponse.json({ error: "Could not verify the selected inquiry." }, { status: 500 });
+  if (!inquiry) return NextResponse.json({ error: "That inquiry is not assigned to you." }, { status: 403 });
+
+  const { data: appointment, error: insertError } = await supabaseServer
+    .from("appointments")
+    .insert({
+      inquiry_id: inquiry.id,
+      property_id: inquiry.property_id,
+      assigned_agent_id: auth.agentId,
+      buyer_name: inquiry.buyer_name,
+      buyer_email: inquiry.buyer_email,
+      buyer_phone: inquiry.buyer_phone,
+      scheduled_at: new Date(time).toISOString(),
+      status: "confirmed",
+      location,
+      notes: notes || null,
+    })
+    .select("id, inquiry_id, property_id, buyer_name, scheduled_at, status, location")
+    .single();
+
+  if (insertError || !appointment) {
+    console.error("[agent appointment create]", insertError);
+    const conflict = insertError?.code === "23505" || insertError?.code === "23P01";
+    return NextResponse.json({ error: conflict ? "That appointment time conflicts with another booking. Choose a different time." : "Could not save the appointment. Refresh and try again." }, { status: conflict ? 409 : 500 });
+  }
+
+  const [withTitle] = await attachPropertyTitles([{ ...appointment, appointment_type: "site_viewing" } as Record<string, unknown>]);
+  return NextResponse.json({ appointment: withTitle }, { status: 201 });
+}

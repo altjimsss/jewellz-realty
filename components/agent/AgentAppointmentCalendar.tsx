@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, ShieldCheck, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Plus, ShieldCheck, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export type AgentAppointment = {
@@ -14,6 +14,14 @@ export type AgentAppointment = {
   scheduled_at: string;
   status: "requested" | "confirmed";
   location: string | null;
+};
+
+export type AgentAppointmentLead = {
+  id: string;
+  buyer_name?: string | null;
+  buyer_email?: string | null;
+  property_id?: string | null;
+  properties?: { title?: string | null } | { title?: string | null }[] | null;
 };
 
 const TZ = "Asia/Manila";
@@ -33,7 +41,7 @@ function formatTime(value: string) {
   return new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: TZ }).format(new Date(value));
 }
 
-export function AgentAppointmentCalendar({ appointments, onAppointmentsChange }: { appointments: AgentAppointment[]; onAppointmentsChange: (items: AgentAppointment[]) => void }) {
+export function AgentAppointmentCalendar({ appointments, assignedInquiries, onAppointmentsChange }: { appointments: AgentAppointment[]; assignedInquiries: AgentAppointmentLead[]; onAppointmentsChange: (items: AgentAppointment[]) => void }) {
   const today = useMemo(() => dateKey(new Date()), []);
   const [year, month] = today.split("-").map(Number);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(Date.UTC(year, month - 1, 1)));
@@ -42,6 +50,14 @@ export function AgentAppointmentCalendar({ appointments, onAppointmentsChange }:
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [leadId, setLeadId] = useState("");
+  const [newDateTime, setNewDateTime] = useState("");
+  const [newLocation, setNewLocation] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [newReady, setNewReady] = useState(false);
+  const [newSaving, setNewSaving] = useState(false);
+  const [newError, setNewError] = useState("");
   const byDate = useMemo(() => {
     const map = new Map<string, AgentAppointment[]>();
     appointments.forEach((item) => {
@@ -93,6 +109,49 @@ export function AgentAppointmentCalendar({ appointments, onAppointmentsChange }:
     }
   }
 
+  function openAddAppointment() {
+    const suggested = new Date(Date.now() + 60 * 60 * 1000);
+    suggested.setMinutes(Math.ceil(suggested.getMinutes() / 30) * 30, 0, 0);
+    const localValue = new Date(suggested.getTime() - suggested.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+    setLeadId(assignedInquiries[0]?.id ?? "");
+    setNewDateTime(localValue);
+    setNewLocation("");
+    setNewNotes("");
+    setNewReady(false);
+    setNewError("");
+    setAddOpen(true);
+  }
+
+  async function createAppointment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!leadId || !newDateTime || !newLocation.trim() || !newReady || newSaving) return;
+    setNewSaving(true);
+    setNewError("");
+    try {
+      const { data } = await supabaseBrowser.auth.getSession();
+      const response = await fetch("/api/agent/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(data.session?.access_token ? { Authorization: "Bearer " + data.session.access_token } : {}) },
+        body: JSON.stringify({ inquiryId: leadId, scheduledAt: new Date(newDateTime).toISOString(), location: newLocation.trim(), notes: newNotes.trim() }),
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; appointment?: AgentAppointment };
+      if (!response.ok || !result.appointment) throw new Error(result.error ?? "Could not save the appointment.");
+      onAppointmentsChange([...appointments, result.appointment].sort((left, right) => left.scheduled_at.localeCompare(right.scheduled_at)));
+      setSelectedDate(dateKey(result.appointment.scheduled_at));
+      setVisibleMonth((current) => {
+        const appointmentDate = new Date(result.appointment!.scheduled_at);
+        const key = dateKey(appointmentDate);
+        const [appointmentYear, appointmentMonth] = key.split("-").map(Number);
+        return new Date(Date.UTC(appointmentYear, appointmentMonth - 1, 1));
+      });
+      setAddOpen(false);
+    } catch (caught) {
+      setNewError(caught instanceof Error ? caught.message : "Could not save the appointment.");
+    } finally {
+      setNewSaving(false);
+    }
+  }
+
   return (
     <>
       <section className="border border-black/10 bg-white">
@@ -102,6 +161,7 @@ export function AgentAppointmentCalendar({ appointments, onAppointmentsChange }:
             <div><h2 className="text-sm font-semibold">Customer appointments</h2><p className="mt-0.5 text-xs text-black/50">Review requests and track confirmed meetings</p></div>
           </div>
           <div className="flex items-center gap-2">
+            <button type="button" onClick={openAddAppointment} disabled={!assignedInquiries.length} className="inline-flex h-8 items-center gap-1.5 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Add appointment</button>
             <span className={pending ? "bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800" : "bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"}>{pending ? pending + " need review" : "All reviewed"}</span>
             <span className="text-xs text-black/45">{monthCount} this month</span>
             <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="grid h-8 w-8 place-items-center border border-black/10 hover:bg-zinc-50"><ChevronLeft className="h-4 w-4" /></button>
@@ -135,6 +195,26 @@ export function AgentAppointmentCalendar({ appointments, onAppointmentsChange }:
           </aside>
         </div>
       </section>
+      {addOpen ? <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !newSaving) setAddOpen(false); }}>
+        <form onSubmit={createAppointment} role="dialog" aria-modal="true" aria-labelledby="agent-add-appointment-title" className="w-full max-w-lg border border-black/10 bg-white p-5 shadow-xl">
+          <div className="flex items-start justify-between gap-4"><div><span className="grid h-9 w-9 place-items-center bg-[#DE141C] text-white"><CalendarDays className="h-4 w-4" /></span><h2 id="agent-add-appointment-title" className="mt-3 text-lg font-semibold">Add customer appointment</h2><p className="mt-1 text-xs leading-5 text-black/55">Choose an assigned inquiry and enter the agreed meeting details.</p></div><button type="button" onClick={() => setAddOpen(false)} disabled={newSaving} aria-label="Close appointment form" className="grid h-8 w-8 place-items-center border border-black/10 text-black/55 hover:bg-zinc-50"><X className="h-4 w-4" /></button></div>
+          {assignedInquiries.length ? <div className="mt-4 space-y-3">
+            <label className="block text-xs font-medium text-black/65">Customer inquiry<select required value={leadId} onChange={(event) => setLeadId(event.target.value)} className="mt-1.5 h-10 w-full border border-black/10 bg-white px-3 text-sm text-black outline-none focus:border-black/40">
+              {assignedInquiries.map((inquiry) => {
+                const relation = inquiry.properties;
+                const propertyName = Array.isArray(relation) ? relation[0]?.title : relation?.title;
+                return <option key={inquiry.id} value={inquiry.id}>{inquiry.buyer_name || inquiry.buyer_email || "Customer"} — {propertyName || "General inquiry"}</option>;
+              })}
+            </select></label>
+            <label className="block text-xs font-medium text-black/65">Date and time<input required type="datetime-local" value={newDateTime} onChange={(event) => setNewDateTime(event.target.value)} min={new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16)} className="mt-1.5 h-10 w-full border border-black/10 bg-white px-3 text-sm text-black outline-none focus:border-black/40" /></label>
+            <label className="block text-xs font-medium text-black/65">Location or meeting details<input required maxLength={500} value={newLocation} onChange={(event) => setNewLocation(event.target.value)} placeholder="Property address, call, or online meeting link" className="mt-1.5 h-10 w-full border border-black/10 bg-white px-3 text-sm text-black outline-none placeholder:text-black/35 focus:border-black/40" /></label>
+            <label className="block text-xs font-medium text-black/65">Notes <span className="font-normal text-black/40">(optional)</span><textarea maxLength={2000} rows={3} value={newNotes} onChange={(event) => setNewNotes(event.target.value)} placeholder="Anything the customer or agent should prepare" className="mt-1.5 w-full resize-y border border-black/10 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-black/35 focus:border-black/40" /></label>
+            <label className="flex cursor-pointer items-start gap-2.5 border border-black/10 bg-zinc-50 p-3 text-xs leading-5 text-black/70"><input type="checkbox" checked={newReady} onChange={(event) => setNewReady(event.target.checked)} className="mt-1 accent-[#DE141C]" /><span>The customer agreed to this date and time, and I verified the meeting location or call details.</span></label>
+          </div> : <p className="mt-4 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">You need an assigned customer inquiry before you can add an appointment.</p>}
+          {newError ? <p role="alert" className="mt-3 border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{newError}</p> : null}
+          <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setAddOpen(false)} disabled={newSaving} className="h-9 border border-black/10 px-4 text-xs font-medium hover:bg-zinc-50">Cancel</button><button type="submit" disabled={!assignedInquiries.length || !leadId || !newLocation.trim() || !newReady || newSaving} className="h-9 bg-[#111111] px-4 text-xs font-semibold text-white hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40">{newSaving ? "Saving..." : "Add confirmed appointment"}</button></div>
+        </form>
+      </div> : null}
       {confirming ? <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setConfirming(null); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="agent-confirm-appointment-title" className="w-full max-w-md border border-black/10 bg-white p-5 shadow-xl">
           <div className="flex items-start justify-between gap-4"><div><span className="grid h-9 w-9 place-items-center bg-[#DE141C] text-white"><ShieldCheck className="h-4 w-4" /></span><h2 id="agent-confirm-appointment-title" className="mt-3 text-lg font-semibold">Confirm this appointment?</h2><p className="mt-1 text-xs leading-5 text-black/55">Review the booking and verify the arrangements with the customer before confirming.</p></div><button type="button" onClick={() => setConfirming(null)} disabled={saving} aria-label="Close confirmation" className="grid h-8 w-8 place-items-center border border-black/10 text-black/55 hover:bg-zinc-50"><X className="h-4 w-4" /></button></div>
