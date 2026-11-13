@@ -1582,7 +1582,7 @@ function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: stri
 		],
 		series: [{ type: "pie", name: "Lead status", radius: ["48%", "68%"], center: ["50%", "44%"], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false }, itemStyle: { borderColor: "#fff", borderWidth: 3 }, data: rows.map((row) => {
 			const status = row.label.toLowerCase().replaceAll("_", " ");
-			const color = /closed won|sold|converted|complete|approved/.test(status) ? "#16a34a" : /lost|rejected|cancelled|inactive/.test(status) ? "#52525b" : /reserved|pending|review|scheduled|assigned/.test(status) ? "#f59e0b" : /contacted|in progress|qualified|negotiat/.test(status) ? "#DE141C" : /new/.test(status) ? "#171717" : "#a1a1aa";
+			const color = /closed won|sold|converted|complete|approved/.test(status) ? "#DE141C" : /lost|rejected|cancelled|inactive/.test(status) ? "#d4d4d8" : /reserved|pending|review|scheduled|assigned|contacted|in progress|qualified|negotiat/.test(status) ? "#737373" : /new/.test(status) ? "#252525" : "#a1a1aa";
 			return { name: row.label, value: row.value, itemStyle: { color } };
 		}) }],
 	};
