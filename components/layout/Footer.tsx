@@ -7,7 +7,7 @@ import { PortalAuthModal, type PortalRole } from "@/components/auth/PortalAuthMo
 const socialLinks = [
 	{
 		label: "Facebook",
-		href: "https://www.facebook.com/jewellzrealty",
+		href: "https://www.facebook.com/Jewellzrealtyph",
 		icon: <path d="M13 21v-8h2.7l.4-3H13V8.1c0-.9.3-1.5 1.6-1.5H16V4c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2V10H7v3h2.5v8H13z" />,
 	},
 	{
@@ -67,10 +67,9 @@ export function Footer() {
 				<div className="min-w-0">
 					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Contact</h4>
 					<ul className="mt-2 space-y-2 text-[11px] leading-[1.45] text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
-						<li>Batangas, Philippines</li>
-						<li>+63 917 123 4567</li>
-						<li className="break-words">inquiries@jewellzrealty.com</li>
-						<li>Mon - Sat, 9:00 AM - 6:00 PM</li>
+						<li>Block 16 Lot 1 Maple St. Olivares Homes, Barangay Milagrosa, Calamba, Laguna</li>
+						<li><a href="tel:+639618738236" className="transition-colors hover:text-white">639618738236</a></li>
+						<li className="break-words"><a href="mailto:recruitment@jewellzrealty.ph" className="transition-colors hover:text-white">recruitment@jewellzrealty.ph</a></li>
 					</ul>
 				</div>
 
