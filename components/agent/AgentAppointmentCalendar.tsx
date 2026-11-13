@@ -179,7 +179,7 @@ export function AgentAppointmentCalendar({ appointments, assignedInquiries, onAp
                 const cellClass = "flex min-h-[60px] flex-col items-start border-b border-r border-black/10 p-1.5 text-left transition sm:min-h-[72px] sm:p-2 " + (!key ? "bg-zinc-50/50 " : "hover:bg-red-50/60 ") + (active ? "bg-red-50 ring-1 ring-inset ring-[#DE141C]" : "bg-white");
                 return <button key={key ?? "empty-" + index} type="button" disabled={!key} onClick={() => key && setSelectedDate(key)} className={cellClass}>
                   {key ? <span className={key === today ? "grid h-6 w-6 place-items-center bg-[#111111] text-xs font-semibold text-white" : "text-xs font-medium text-black/75"}>{Number(key.slice(-2))}</span> : null}
-                  {total ? <span aria-label={`${total} ${total === 1 ? "appointment" : "appointments"}`} title={`${total} ${total === 1 ? "appointment" : "appointments"}`} className="relative mt-1 grid h-6 w-6 shrink-0 place-items-center bg-[#DE141C] text-white">
+                  {total ? <span aria-label={`${total} ${total === 1 ? "appointment" : "appointments"}`} title={`${total} ${total === 1 ? "appointment" : "appointments"}`} className="relative mt-1 self-center grid h-6 w-6 shrink-0 place-items-center bg-[#DE141C] text-white">
                     <Clock3 className="h-3.5 w-3.5" />
                     <span className="absolute -right-1 -top-1 grid h-3 w-3 place-items-center rounded-full bg-[#111111] text-[8px] font-bold leading-none text-white">{total > 9 ? "9+" : total}</span>
                   </span> : null}
