@@ -1358,8 +1358,8 @@ function AnalyticsChatSidebar(props: {
 	}
 
 	return (
-			<aside className="sticky top-3 flex h-[calc(100vh-104px)] min-h-[560px] flex-col overflow-hidden rounded-lg border border-black/10 bg-[#fbfbfa] shadow-sm lg:fixed lg:right-0 lg:top-[2.75rem] lg:z-20 lg:h-[calc(100vh-2.75rem)] lg:w-[276px] lg:rounded-none lg:border-y-0 lg:border-l lg:border-r-0">
-				<div className="border-b border-black/10 bg-[#fbfbfa] px-3 py-2.5">
+			<aside className="sticky top-3 flex h-[calc(100vh-104px)] min-h-[560px] flex-col overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm lg:fixed lg:right-0 lg:top-[2.75rem] lg:z-20 lg:h-[calc(100vh-2.75rem)] lg:w-[276px] lg:rounded-none lg:border-y-0 lg:border-l lg:border-r-0">
+				<div className="border-b border-black/10 bg-white px-3 pb-3 pt-5">
 					<div className="flex items-center gap-2.5">
 						<div className="min-w-0">
 							<div className="flex items-center gap-1.5">
@@ -1373,7 +1373,7 @@ function AnalyticsChatSidebar(props: {
 						</div>
 					</div>
 				</div>
-				<div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfbfa] p-3 text-[11px] text-black/55" aria-live="polite">
+				<div className="min-h-0 flex-1 overflow-y-auto bg-white p-3 text-[11px] text-black/55" aria-live="polite">
 					<div className="space-y-3">
 					{messages.map((message, index) => (
 						<div key={message.id || index} className={`flex items-end gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -1418,7 +1418,7 @@ function AnalyticsChatSidebar(props: {
 					))}
 					</div>
 				</div>
-				<div className="shrink-0 border-t border-black/10 bg-[#fbfbfa] p-2.5">
+				<div className="shrink-0 border-t border-black/10 bg-white p-2.5">
 					<form
 						className="flex gap-2"
 						onSubmit={(event) => {
