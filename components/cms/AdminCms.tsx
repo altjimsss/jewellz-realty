@@ -2502,7 +2502,7 @@ function AnalyticsPanel({
 		.map((developer) => {
 			const developerId = asText(developer.developer_id);
 			const developerProperties = properties.filter((property) => asText(property.developer_id) === developerId);
-			const totals = developerProperties.reduce((result, property) => {
+			const totals = developerProperties.reduce<{ views: number; inquiries: number; interactions: number }>((result, property) => {
 				const performance = listingPerformanceByPropertyId.get(asText(property.id));
 				result.views += performance?.total_views ?? 0;
 				result.inquiries += performance?.total_inquiries ?? 0;
