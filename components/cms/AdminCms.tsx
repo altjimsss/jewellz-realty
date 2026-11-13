@@ -1605,6 +1605,50 @@ function OverviewListingChart({ rows }: { rows: Array<{ label: string; views: nu
 	return <div className="h-44"><EChart option={option} /></div>;
 }
 
+function OverviewTrafficChart({ rows }: { rows: Array<{ source: string; sessions: number }> }) {
+	const chartRows = rows.filter((row) => row.sessions > 0).slice(0, 5);
+	if (!chartRows.length) return <p className="flex h-44 items-center justify-center text-sm text-black/45">No traffic source data yet.</p>;
+	const colors = ["#DE141C", "#252525", "#71717a", "#a1a1aa", "#d4d4d8"];
+	const totalSessions = chartRows.reduce((sum, row) => sum + row.sessions, 0);
+	return (
+		<div className="grid h-44 grid-cols-[minmax(110px,0.9fr)_minmax(0,1fr)] items-center gap-2">
+			<div className="relative h-40 min-w-0">
+				<ResponsiveContainer width="100%" height="100%">
+					<PieChart>
+						<Pie data={chartRows} dataKey="sessions" nameKey="source" innerRadius="58%" outerRadius="82%" paddingAngle={3} stroke="none">
+							{chartRows.map((row, index) => <Cell key={row.source} fill={colors[index % colors.length]} />)}
+						</Pie>
+						<Tooltip content={<OverviewTrafficTooltip />} />
+					</PieChart>
+				</ResponsiveContainer>
+				<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+					<span className="text-lg font-semibold leading-none tabular-nums text-[#111111]">{totalSessions.toLocaleString()}</span>
+					<span className="mt-1 text-[9px] font-medium uppercase tracking-wide text-black/45">sessions</span>
+				</div>
+			</div>
+			<div className="min-w-0 space-y-2">
+				{chartRows.map((row, index) => (
+					<div key={row.source} className="flex min-w-0 items-center gap-2 text-[11px]">
+						<span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+						<span className="min-w-0 flex-1 truncate text-black/60" title={row.source}>{row.source}</span>
+						<span className="shrink-0 font-semibold tabular-nums text-[#111111]">{row.sessions}</span>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function OverviewTrafficTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name?: string; value?: number }> }) {
+	if (!active || !payload?.length) return null;
+	return (
+		<div className="rounded-md border border-black/10 bg-white px-3 py-2 text-xs shadow-lg">
+			<div className="font-semibold text-[#111111]">{payload[0]?.name}</div>
+			<div className="mt-0.5 text-black/60">{payload[0]?.value ?? 0} sessions</div>
+		</div>
+	);
+}
+
 function CmsChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string }>; label?: string | number }) {
 	if (!active || !payload?.length) return null;
 	return (
@@ -3978,6 +4022,10 @@ export default function AdminCms({
 			return { label: `${weekday} ${date.getUTCDate()}`, views: viewsByDate.get(dateKey) ?? 0, inquiries: inquiriesByDate.get(dateKey) ?? 0 };
 		});
 	}, [workspace.engagementEvents, workspace.dailyInquiryVolume, selectedDateFilter]);
+	const overviewTrafficSources = useMemo(() => workspace.trafficSources
+		.map((row) => ({ source: asText(row.source || "Direct"), sessions: toNullableNumber(row.session_count) ?? 0 }))
+		.sort((first, second) => second.sessions - first.sessions)
+		.slice(0, 5), [workspace.trafficSources]);
 	function openInquiryForEditing(inquiryId: string) {
 		setActivePrimary("inquiries");
 		setActiveSection("inquiries");
@@ -4956,18 +5004,22 @@ export default function AdminCms({
 					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
-								<div className="grid gap-3 xl:grid-cols-3">
+								<div className="grid gap-3 xl:grid-cols-4">
 									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
 										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Inquiry trend</h2><button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="text-xs font-semibold text-[#DE141C] hover:underline">Report</button></div>
 										<OverviewBars rows={overviewInquiryTrend} />
 									</div>
 									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
-										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Conversion rate</h2><span className="text-xs text-zinc-500">{stats.closedCount} closed</span></div>
+										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Lead pipeline</h2><span className="text-xs text-zinc-500">{stats.closedCount} closed</span></div>
 										<OverviewPipelineBars rows={overviewPipelineRows} closedCount={stats.closedCount} />
 									</div>
 									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
 										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Listing performance</h2><button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="text-xs font-semibold text-[#DE141C] hover:underline">Details</button></div>
 										<OverviewListingChart rows={overviewListingTrend} />
+									</div>
+									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
+										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Traffic sources</h2><button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("trafficBehavior"); syncAdminUrl("/admin?section=trafficBehavior"); }} className="text-xs font-semibold text-[#DE141C] hover:underline">Report</button></div>
+										<OverviewTrafficChart rows={overviewTrafficSources} />
 									</div>
 								</div>
 								</div>
