@@ -550,57 +550,62 @@ export function InquiryWorkflowManager({
 			) : null}
 
 			{/* KPI Summary Strip */}
-			<div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+			<div className="grid auto-rows-fr grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-5">
 				<button
 					type="button"
 					onClick={() => {
 						setQuickFilter("all");
 						setStatusFilter("all");
 					}}
-					className="portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
+					className="portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
 				>
-					<div className="portal-stat-label">Total leads</div>
+					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Total leads</div><span className="portal-stat-badge">ALL</span></div>
 					<div className="portal-stat-value">{summaryStats.total}</div>
+					<div className="portal-stat-hint mt-auto">All inquiry records</div>
 				</button>
 
 				<button
 					type="button"
 					onClick={() => setQuickFilter("high_intent")}
 					aria-pressed={quickFilter === "high_intent"}
-					className={`portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "high_intent" ? "border-[#DE141C]/50" : ""}`}
+					className={`portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "high_intent" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="portal-stat-label">High intent</div>
+					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">High intent</div><span className="portal-stat-badge">PRIORITY</span></div>
 					<div className="portal-stat-value">{summaryStats.highIntent}</div>
+					<div className="portal-stat-hint mt-auto">Priority follow-up</div>
 				</button>
 
 				<button
 					type="button"
 					onClick={() => setQuickFilter("unassigned")}
 					aria-pressed={quickFilter === "unassigned"}
-					className={`portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "unassigned" ? "border-[#DE141C]/50" : ""}`}
+					className={`portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "unassigned" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="portal-stat-label">Unassigned</div>
+					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Unassigned</div><span className="portal-stat-badge">QUEUE</span></div>
 					<div className="portal-stat-value">{summaryStats.unassigned}</div>
+					<div className="portal-stat-hint mt-auto">Awaiting an agent</div>
 				</button>
 
 				<button
 					type="button"
 					onClick={() => setQuickFilter("stale")}
 					aria-pressed={quickFilter === "stale"}
-					className={`portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "stale" ? "border-[#DE141C]/50" : ""}`}
+					className={`portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "stale" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="portal-stat-label">Overdue (&gt;24h)</div>
+					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Overdue (&gt;24h)</div><span className="portal-stat-badge">24H+</span></div>
 					<div className="portal-stat-value">{summaryStats.overdue}</div>
+					<div className="portal-stat-hint mt-auto">Needs a response</div>
 				</button>
 
 				<button
 					type="button"
 					onClick={() => setStatusFilter("closed_won")}
 					aria-pressed={statusFilter === "closed_won"}
-					className="portal-stat-card w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
+					className="portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
 				>
-					<div className="portal-stat-label">Won / reserved</div>
+					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Won / reserved</div><span className="portal-stat-badge">CLOSED</span></div>
 					<div className="portal-stat-value">{summaryStats.won}</div>
+					<div className="portal-stat-hint mt-auto">Successful outcomes</div>
 				</button>
 			</div>
 

@@ -811,6 +811,16 @@ function AnalyticsVisualSuite({
 	}
 	const totalVisitors = newUsers + returningUsers;
 	const userTypeRows = totalVisitors ? [{ name: "New", value: newUsers }, { name: "Returning", value: returningUsers }] : [];
+	const engagementActionCounts = events.reduce<Record<string, number>>((counts, event) => {
+		const action = asText(event.event_type).trim();
+		if (action) counts[action] = (counts[action] ?? 0) + 1;
+		return counts;
+	}, {});
+	const engagementActionRows = Object.entries(engagementActionCounts)
+		.map(([action, count]) => ({ action: titleCase(action), count }))
+		.sort((first, second) => second.count - first.count)
+		.slice(0, 8);
+	const engagementActionTotal = Object.values(engagementActionCounts).reduce((total, count) => total + count, 0);
 	const totalSessions14d = visitorsOverTime.reduce((sum, row) => sum + row.sessions, 0);
 	const avgBounceRate = numberAverage(visitorsOverTime.filter((row) => row.sessions > 0).map((row) => row.bounceRate));
 	const sessionTrend = localRegression(visitorsOverTime.map((row) => row.sessions));
@@ -1148,6 +1158,17 @@ function AnalyticsVisualSuite({
 								<Tooltip content={<CmsChartTooltip />} />
 							</PieChart>
 						</ResponsiveContainer> : <ChartEmptyState message="New vs returning visitors needs tracked sessions with visitor IDs." />}
+					</AnalyticsChartCard>
+					<AnalyticsChartCard title="Most used engagement actions" description={engagementActionRows.length ? `${engagementActionTotal.toLocaleString()} tracked events across ${Object.keys(engagementActionCounts).length} action types.` : "No engagement actions recorded yet."} isLive={engagementActionRows.length > 0}>
+						{engagementActionRows.length ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={engagementActionRows} layout="vertical" margin={{ top: 4, right: 14, left: 8, bottom: 4 }}>
+								<CartesianGrid horizontal={false} stroke="#f0f0f0" />
+								<XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} />
+								<YAxis type="category" dataKey="action" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#52525b" }} width={112} />
+								<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
+								<Bar dataKey="count" name="Events" fill="#DE141C" radius={[0, 4, 4, 0]} maxBarSize={20} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="Tracked page views, gallery opens, map actions, and other events will appear here." />}
 					</AnalyticsChartCard>
 				</div>
 				<div className="mt-4"><ModelReadout category="engagement" {...engagementInsight} /></div>
@@ -2376,7 +2397,7 @@ function AnalyticsPanel({
 
 	const clickThrough = recommendationStats.total ? (recommendationStats.clicked / recommendationStats.total) * 100 : 0;
 	const fallbackRate = recommendationStats.total ? (recommendationStats.fallback / recommendationStats.total) * 100 : 0;
-	const pipelineChartRows = Object.entries(inquiryCounts).map(([label, value]) => ({ label, value }));
+	const pipelineChartRows = Object.entries(inquiryCounts).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 	const inquiryVolumeRows = dailyInquiryVolume.map((row) => ({
 		inquiry_date: asText(row.inquiry_date),
 		total_inquiries: toNullableNumber(row.total_inquiries) ?? 0,
@@ -2540,58 +2561,56 @@ function AnalyticsPanel({
 			</div>
 
 			{showOverviewReport ? (
-				<div className="mb-6 grid gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
-					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
+					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Traffic Snapshot</span>
-								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">7D</span>
+								<span className="portal-stat-label">Traffic Snapshot</span>
+								<span className="portal-stat-badge">7D</span>
 							</div>
-							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{weeklyVisitors.toLocaleString()}</div>
+							<div className="portal-stat-value">{weeklyVisitors.toLocaleString()}</div>
 						</div>
-						<p className="mt-3 text-xs leading-relaxed text-black/50">Distinct visitors with at least one tracked session in the last 7 days.</p>
+						<p className="portal-stat-hint mt-3">Distinct visitors in the last 7 days.</p>
 					</div>
 
-					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Top Property</span>
-								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Most Viewed</span>
+								<span className="portal-stat-label">Top Property</span>
+								<span className="portal-stat-badge">Most Viewed</span>
 							</div>
-							<div className="mt-3 truncate text-base font-semibold text-[#111111]" title={topListing?.title || "No listing yet"}>
+							<div className="portal-stat-value mt-3 truncate text-base leading-6" title={topListing?.title || "No listing yet"}>
 								{topListing?.title || "No listing yet"}
 							</div>
 						</div>
-						<div className="mt-3 flex items-center gap-2">
-							<span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-black/75">
+						<div className="mt-auto flex items-center gap-2 pt-2">
+							<span className="portal-stat-badge">
 								{topListing?.total_views ?? 0} views
 							</span>
-							<span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-black/75">
+							<span className="portal-stat-badge">
 								{topListing?.total_inquiries ?? 0} inquiries
 							</span>
 						</div>
 					</div>
 
-					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Next-Day Demand</span>
-								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Forecast</span>
+								<span className="portal-stat-label">Next-Day Demand</span>
+								<span className="portal-stat-badge">Forecast</span>
 							</div>
-							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{nextDayForecast.toFixed(1)}</div>
+							<div className="portal-stat-value">{nextDayForecast.toFixed(1)}</div>
 						</div>
-						<p className="mt-3 text-xs leading-relaxed text-black/50">
-							Linear-regression inquiry forecast from the last 21 days ({overviewDemand.regression.trend} trend, R2 {overviewDemand.regression.r2}).
-						</p>
+						<p className="portal-stat-hint mt-3">21-day forecast · {overviewDemand.regression.trend} trend.</p>
 					</div>
 
-					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Conversion Funnel</span>
-								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Rate</span>
+								<span className="portal-stat-label">Conversion Funnel</span>
+								<span className="portal-stat-badge">Rate</span>
 							</div>
-							<div className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#111111]">{funnelCompletionRate.toFixed(1)}%</div>
+							<div className="portal-stat-value">{funnelCompletionRate.toFixed(1)}%</div>
 						</div>
 						<div className="mt-3">
 							<div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
@@ -2601,13 +2620,13 @@ function AnalyticsPanel({
 						</div>
 					</div>
 
-					<div className="group flex flex-col justify-between rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/25 hover:shadow-xs">
+					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Portfolio Velocity</span>
-								<span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-black/60">Inventory</span>
+								<span className="portal-stat-label">Portfolio Velocity</span>
+								<span className="portal-stat-badge">Inventory</span>
 							</div>
-							<div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#111111]">{inquiries.length} Inquiries</div>
+							<div className="portal-stat-value text-2xl">{inquiries.length} Inquiries</div>
 						</div>
 						<div className="mt-3 border-t border-black/5 pt-2 text-xs text-black/55 flex items-center justify-between">
 							<span>{activeListings} Active listings</span>
@@ -2639,35 +2658,35 @@ function AnalyticsPanel({
 
 			{isAdmin && showOverviewReport ? (
 				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-3">
-					<DashboardMetricCard Icon={Globe} label="Top traffic source" value={trafficSources[0]?.source || "Direct"} hint={`${trafficSources[0]?.session_count ?? 0} sessions`} />
-					<DashboardMetricCard Icon={Users} label="Top converting agent" value={agentPerformance[0]?.agent_name || "Unassigned"} hint={`${agentPerformance[0]?.conversions ?? 0} conversions`} />
-					<DashboardMetricCard Icon={Building2} label="Developer portfolio" value={developerPortfolio[0]?.company_name || "Partner Network"} hint={`${developerPortfolio[0]?.total_listings ?? 0} listings`} />
+					<DashboardMetricCard Icon={Globe} label="Top traffic source" value={trafficSources[0]?.source || "Direct"} hint={`${trafficSources[0]?.session_count ?? 0} sessions`} badge="TOP SOURCE" />
+					<DashboardMetricCard Icon={Users} label="Top converting agent" value={agentPerformance[0]?.agent_name || "Unassigned"} hint={`${agentPerformance[0]?.conversions ?? 0} conversions`} badge="TOP AGENT" />
+					<DashboardMetricCard Icon={Building2} label="Developer portfolio" value={developerPortfolio[0]?.company_name || "Partner Network"} hint={`${developerPortfolio[0]?.total_listings ?? 0} listings`} badge="PARTNERS" />
 				</div>
 			) : null}
 
 			{showOverviewReport ? (
 				<div className="mb-6 grid gap-5 xl:grid-cols-12">
 					{/* Lead Pipeline & Priority Distribution - 7 cols */}
-					<div className="xl:col-span-7 flex flex-col justify-between rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+					<div className="portal-stat-card xl:col-span-7 flex flex-col justify-between p-4">
 						<div>
 							<div className="flex items-start justify-between gap-3">
 								<div>
 								<h3 className="text-sm font-semibold text-[#111111]">Lead pipeline</h3>
 								</div>
-								<span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-black/70">
+								<span className="portal-stat-badge">
 									{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)} Total Leads
 								</span>
 							</div>
 
-							<div className="mt-4 h-56">
+							<div className="mt-3 h-44">
 								{pipelineChartRows.length ? (
 									<ResponsiveContainer width="100%" height="100%">
-										<BarChart data={pipelineChartRows} layout="vertical" margin={{ top: 8, right: 14, left: -4, bottom: 0 }}>
-											<CartesianGrid horizontal={false} stroke="#f4f4f5" />
-											<XAxis type="number" hide allowDecimals={false} />
-											<YAxis dataKey="label" type="category" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 11, fill: "#71717a" }} width={100} />
+										<BarChart data={pipelineChartRows} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+											<CartesianGrid vertical={false} stroke="#f4f4f5" />
+											<XAxis dataKey="label" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} />
+											<YAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} width={34} />
 											<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-											<Bar dataKey="value" name="Leads" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={16} />
+											<Bar dataKey="value" name="Leads" fill="#DE141C" radius={[4, 4, 0, 0]} maxBarSize={28} />
 										</BarChart>
 									</ResponsiveContainer>
 								) : <p className="text-sm text-black/45 py-12 text-center">No inquiry activity recorded yet.</p>}
@@ -4525,8 +4544,8 @@ export default function AdminCms({
 		return (
 			<main className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 text-[#0f172a]">
 				<div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-sm text-center">
-					<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-50 border border-black/10 shadow-xs mb-4">
-						<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
+					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center">
+						<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={64} height={64} className="h-16 w-16 object-contain" />
 					</div>
 					<div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/45">Jewellz Realty Portal</div>
 					<h1 className="mt-2 text-2xl font-bold tracking-tight text-[#111111]">Sign In Required</h1>
@@ -4554,8 +4573,8 @@ export default function AdminCms({
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				<aside aria-label="Primary navigation" className="portal-sidebar portal-primary-rail border-white/10 bg-[#171717] text-white hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.12)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-5">
-						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20">
-							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
+						<div className="flex h-10 w-10 items-center justify-center">
+							<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
 						</div>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {
@@ -4566,7 +4585,7 @@ export default function AdminCms({
 										key={group.id}
 										type="button"
 										onClick={() => openPrimary(group)}
-										className={`relative flex h-10 w-10 items-center justify-center transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "bg-white text-[#DE141C] shadow-2xs" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
+										className={`relative flex h-10 w-10 items-center justify-center transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "bg-[#3A3A3A] text-[#FF4B52] shadow-2xs ring-1 ring-white/10" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -4594,7 +4613,7 @@ export default function AdminCms({
 									<button
 										type="button"
 										onClick={() => openSection(analyticsOverviewItem.id)}
-											className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-red-100 font-semibold text-red-800" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
@@ -4609,7 +4628,7 @@ export default function AdminCms({
 													key={item.id}
 													type="button"
 													onClick={() => openSection(item.id)}
-											className={`relative w-full px-7 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${index ? "mt-0.5" : ""} ${active ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+													className={`relative ml-3 w-[calc(100%-0.75rem)] px-4 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${index ? "mt-0.5" : ""} ${active ? "bg-red-100 font-semibold text-red-800" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													{item.label}
 												</button>
@@ -4626,7 +4645,7 @@ export default function AdminCms({
 										<button
 											type="button"
 											onClick={() => openSection(item.id)}
-										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${active ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${active ? "bg-red-100 font-semibold text-red-800" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
@@ -4638,7 +4657,7 @@ export default function AdminCms({
 												<button
 													type="button"
 													onClick={() => openPropertyCategory("all")}
-														className={`relative w-full px-7 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${propertyCategoryFilter === "all" ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+														className={`relative ml-3 w-[calc(100%-0.75rem)] px-4 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${propertyCategoryFilter === "all" ? "bg-red-100 font-semibold text-red-800" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													All Categories
 												</button>
@@ -4647,7 +4666,7 @@ export default function AdminCms({
 														key={option.value}
 														type="button"
 														onClick={() => openPropertyCategory(option.value)}
-															className={`relative mt-0.5 w-full px-7 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${propertyCategoryFilter === option.value ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+															className={`relative ml-3 mt-0.5 w-[calc(100%-0.75rem)] px-4 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${propertyCategoryFilter === option.value ? "bg-red-100 font-semibold text-red-800" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 													>
 														{option.label}
 													</button>
@@ -4902,10 +4921,10 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
-					<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High priority" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-					<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Needs assignment" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-					<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Not published" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
-					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
+					<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High priority" badge="PRIORITY" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+					<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Needs assignment" badge="QUEUE" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+					<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Not published" badge="DRAFTS" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
+					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" badge="REVIEW" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
 								<div className="grid gap-3 xl:grid-cols-3">

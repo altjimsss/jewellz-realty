@@ -1,5 +1,5 @@
 import { Fragment, FormEvent, useId, useMemo, useRef, useState } from "react";
-import { Activity, ArrowUpRight, Building2, Clock3, Eye, MessageSquare, Search, TrendingUp, Users } from "lucide-react";
+import { Activity, Search } from "lucide-react";
 import type { CmsPayload, EditorProps, SectionProps } from "./types";
 import { asText, buildPayload, displayValue } from "./utils";
 
@@ -29,41 +29,24 @@ export function SectionShell({ title, description, children }: SectionProps) {
 export function InfoCard({ label, value, hint, compact = false }: { label: string; value: string | number; hint?: string; compact?: boolean }) {
 	const text = String(value);
 	const isLong = text.length > 14;
-	const labelKey = label.toLowerCase();
-	const metricStyle = labelKey.includes("inquiry") || labelKey.includes("lead") || labelKey.includes("engagement")
-		? { Icon: MessageSquare }
-		: labelKey.includes("view") || labelKey.includes("visitor") || labelKey.includes("session")
-			? { Icon: Eye }
-			: labelKey.includes("rate") || labelKey.includes("conversion") || labelKey.includes("trend")
-				? { Icon: TrendingUp }
-				: labelKey.includes("time") || labelKey.includes("duration") || labelKey.includes("response") || labelKey.includes("dwell")
-					? { Icon: Clock3 }
-					: labelKey.includes("agent") || labelKey.includes("profile") || labelKey.includes("user")
-						? { Icon: Users }
-						: labelKey.includes("property") || labelKey.includes("listing") || labelKey.includes("portfolio")
-							? { Icon: Building2 }
-							: { Icon: Activity };
-	const MetricIcon = metricStyle.Icon;
 	return (
-		<div className={`portal-stat-card flex h-full min-w-0 flex-col border border-black/[0.08] bg-white shadow-none ${compact ? "min-h-[104px] p-3" : "min-h-[132px]"}`}>
-			<div className="flex min-w-0 items-center gap-2">
-				<span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><MetricIcon className="h-3.5 w-3.5" /></span>
-				<div className="portal-stat-label min-w-0 flex-1 truncate">{label}</div>
-				<ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
+		<div className={`portal-stat-card flex h-full min-w-0 flex-col ${compact ? "min-h-[104px] p-3" : "min-h-[132px]"}`}>
+			<div className="flex min-w-0 items-center justify-between gap-2">
+				<div className="portal-stat-label min-w-0 truncate">{label}</div>
+				<span className="portal-stat-badge">{compact ? "SUMMARY" : "STAT"}</span>
 			</div>
 			<div className={`portal-stat-value break-all leading-tight ${isLong ? "text-lg" : ""}`}>{value}</div>
-			{hint ? <div className="portal-stat-hint mt-auto flex min-w-0 items-center gap-1.5 pt-1"><span className="h-1 w-1 shrink-0 bg-zinc-400" aria-hidden="true" /><span className="truncate">{hint}</span></div> : null}
+			{hint ? <div className="portal-stat-hint mt-auto truncate pt-1">{hint}</div> : null}
 		</div>
 	);
 }
 
-export function DashboardMetricCard({ Icon, label, value, hint, onClick }: { Icon: typeof Activity; label: string; value: string | number; hint?: string; onClick?: () => void }) {
+export function DashboardMetricCard({ label, value, hint, badge = "SUMMARY", onClick }: { Icon: typeof Activity; label: string; value: string | number; hint?: string; badge?: string; onClick?: () => void }) {
 	const content = (
 		<>
-			<div className="flex min-w-0 items-center gap-2">
-				<span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Icon className="h-3.5 w-3.5" /></span>
-				<div className="portal-stat-label min-w-0 flex-1 truncate">{label}</div>
-				<ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
+			<div className="flex min-w-0 items-center justify-between gap-2">
+				<div className="portal-stat-label min-w-0 truncate">{label}</div>
+				<span className="portal-stat-badge">{badge}</span>
 			</div>
 			<div className="portal-stat-value min-w-0 break-words">{value}</div>
 			{hint ? <p className="portal-stat-hint mt-auto truncate pt-1">{hint}</p> : null}
