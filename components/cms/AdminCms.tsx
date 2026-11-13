@@ -1592,9 +1592,8 @@ function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: stri
 function OverviewListingChart({ rows }: { rows: Array<{ label: string; views: number; inquiries: number }> }) {
 	const option = {
 		animationDuration: 300,
-		grid: { top: 8, right: 8, bottom: 24, left: 28 },
+		grid: { top: 8, right: 8, bottom: 22, left: 28 },
 		tooltip: { trigger: "axis", axisPointer: { type: "line", lineStyle: { color: "#d4d4d8", type: "dashed" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ seriesName: string; value: number; axisValue: string }>) => `${items[0]?.axisValue ?? ""}<br/>Views: <strong>${items.find((item) => item.seriesName === "Views")?.value ?? 0}</strong><br/>Inquiries: <strong>${items.find((item) => item.seriesName === "Inquiries")?.value ?? 0}</strong>` },
-		legend: { bottom: 0, left: "center", icon: "circle", itemWidth: 6, itemHeight: 6, itemGap: 14, textStyle: { color: "#71717a", fontSize: 9 } },
 		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 8 }, splitLine: { show: false } },
 		yAxis: { type: "value", min: 0, minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#a1a1aa", fontSize: 9 }, splitLine: { show: true, lineStyle: { color: "#f4f4f5" } } },
 		series: [
@@ -1602,7 +1601,15 @@ function OverviewListingChart({ rows }: { rows: Array<{ label: string; views: nu
 			{ type: "line", name: "Inquiries", data: rows.map((row) => row.inquiries), smooth: false, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 4, lineStyle: { color: "#292929", width: 1.75 }, itemStyle: { color: "#292929", borderColor: "#fff", borderWidth: 1 }, emphasis: { focus: "series", scale: 1.5 }, z: 13 },
 		],
 	};
-	return <div className="h-44"><EChart option={option} /></div>;
+	return (
+		<div className="flex h-44 flex-col">
+			<div className="h-36 min-h-0"><EChart option={option} /></div>
+			<div className="flex h-8 shrink-0 items-center justify-center gap-5 text-[10px] text-black/55" aria-label="Chart legend">
+				<span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#DE141C]" />Views</span>
+				<span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#292929]" />Inquiries</span>
+			</div>
+		</div>
+	);
 }
 
 function OverviewTrafficChart({ rows }: { rows: Array<{ source: string; sessions: number }> }) {
@@ -2490,6 +2497,22 @@ function AnalyticsPanel({
 		total_inquiries: toNullableNumber(row.total_inquiries) ?? 0,
 		inquiry_rate_pct: toNullableNumber(row.inquiry_rate_pct) ?? 0,
 	}));
+	const listingPerformanceByPropertyId = new Map(listingChartRows.map((row) => [row.property_id, row]));
+	const topDeveloperByPerformance = developerPortfolio
+		.map((developer) => {
+			const developerId = asText(developer.developer_id);
+			const developerProperties = properties.filter((property) => asText(property.developer_id) === developerId);
+			const totals = developerProperties.reduce((result, property) => {
+				const performance = listingPerformanceByPropertyId.get(asText(property.id));
+				result.views += performance?.total_views ?? 0;
+				result.inquiries += performance?.total_inquiries ?? 0;
+				result.interactions += performance?.total_interactions ?? 0;
+				return result;
+			}, { views: 0, inquiries: 0, interactions: 0 });
+			return { name: asText(developer.company_name), ...totals };
+		})
+		.filter((developer) => developer.name)
+		.sort((first, second) => second.views - first.views || second.inquiries - first.inquiries || second.interactions - first.interactions)[0];
 	const selectedPortfolioDeveloper = selectedPortfolioDeveloperId
 		? developerPortfolio.find((row) => asText(row.developer_id) === selectedPortfolioDeveloperId) ?? null
 		: null;
@@ -2720,7 +2743,7 @@ function AnalyticsPanel({
 				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-3">
 					<DashboardMetricCard Icon={Globe} label="Top traffic source" value={trafficSources[0]?.source || "Direct"} hint={`${trafficSources[0]?.session_count ?? 0} sessions`} />
 					<DashboardMetricCard Icon={Users} label="Top converting agent" value={agentPerformance[0]?.agent_name || "Unassigned"} hint={`${agentPerformance[0]?.conversions ?? 0} conversions`} />
-					<DashboardMetricCard Icon={Building2} label="Developer portfolio" value={developerPortfolio[0]?.company_name || "Partner Network"} hint={`${developerPortfolio[0]?.total_listings ?? 0} listings`} />
+					<DashboardMetricCard Icon={Building2} label="Top developer" value={topDeveloperByPerformance?.name || "No performance data"} hint={topDeveloperByPerformance ? `${topDeveloperByPerformance.views.toLocaleString()} views · ${topDeveloperByPerformance.inquiries.toLocaleString()} inquiries` : "No listing activity yet"} />
 				</div>
 			) : null}
 
@@ -2813,9 +2836,12 @@ function AnalyticsPanel({
 
 			{isAdmin && showOverviewReport ? (
 				<div className="grid gap-5">
-					<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Listing Performance Matrix</div>
-						<div className="mt-3">
+					<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
+						<div className="mb-3 border-b border-black/[0.06] pb-3">
+							<h2 className="text-base font-semibold tracking-tight text-[#111111]">Listing performance</h2>
+							<p className="mt-1 text-xs text-black/45">Compare views, interactions, and inquiry conversion across your top listings.</p>
+						</div>
+						<div>
 							<ListingPerformanceChart rows={listingChartRows} />
 						</div>
 					</div>

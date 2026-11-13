@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type ListingPerformanceRow = {
 	property_id?: string;
@@ -14,23 +14,26 @@ type ListingPerformanceRow = {
 };
 
 export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerformanceRow[] }) {
-	const chartRows = rows.slice(0, 10).map((row) => ({
-		name: compactLabel(row.title ?? "Untitled", 10),
+	const chartRows = rows
+		.slice()
+		.sort((first, second) => (second.total_views ?? 0) - (first.total_views ?? 0))
+		.slice(0, 6)
+		.map((row) => ({
+		name: compactLabel(row.title ?? "Untitled", 15),
 		fullName: row.title ?? "Untitled",
 		views: row.total_views ?? 0,
-		opens: row.detail_opens ?? 0,
 		interactions: row.total_interactions ?? row.detail_opens ?? 0,
 		dwellSeconds: Math.round(row.avg_dwell_seconds ?? 0),
 		inquiries: row.total_inquiries ?? 0,
 		rate: row.inquiry_rate_pct ?? 0,
-	}));
-	const activityTickInterval = chartRows.length > 7 ? 1 : 0;
-	const rateTickInterval = chartRows.length > 5 ? 2 : 0;
+		}));
+	const rateRows = chartRows.slice().sort((first, second) => second.rate - first.rate || second.views - first.views);
+	const hasInquiryConversions = rateRows.some((row) => row.rate > 0);
 
 	return (
 		<div>
 			{chartRows.length ? (
-				<div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+				<div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
 					<div>
 						<div className="mb-2 flex items-center justify-between gap-3">
 							<div>
@@ -39,18 +42,18 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 							</div>
 						</div>
 						<div className="h-52">
-						<ResponsiveContainer width="100%" height="100%">
-							<BarChart data={chartRows} margin={{ top: 8, right: 8, left: -18, bottom: 18 }} barGap={6}>
-								<CartesianGrid vertical={false} stroke="#ececec" />
-								<XAxis dataKey="name" interval={activityTickInterval} minTickGap={18} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} height={44} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<Tooltip content={<NeutralTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-								<Legend verticalAlign="bottom" height={34} content={<NeutralLegend />} />
-								<Bar dataKey="views" name="Views" fill="#111111" radius={[7, 7, 0, 0]} maxBarSize={28} />
-								<Bar dataKey="interactions" name="Interactions" fill="#9ca3af" radius={[7, 7, 0, 0]} maxBarSize={28} />
-								<Bar dataKey="inquiries" name="Inquiries" fill="#d4d4d8" radius={[7, 7, 0, 0]} maxBarSize={28} />
-							</BarChart>
-						</ResponsiveContainer>
+							<ResponsiveContainer width="100%" height="100%">
+								<BarChart data={chartRows} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }} barGap={2} barCategoryGap="24%">
+									<CartesianGrid horizontal={false} stroke="#f0f0f1" />
+									<XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#a1a1aa" }} allowDecimals={false} />
+									<YAxis type="category" dataKey="name" width={100} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} />
+									<Tooltip content={<NeutralTooltip />} cursor={{ fill: "rgba(0,0,0,0.035)" }} />
+									<Legend verticalAlign="bottom" height={24} content={<NeutralLegend />} />
+									<Bar dataKey="views" name="Views" fill="#DE141C" radius={[0, 4, 4, 0]} maxBarSize={10} />
+									<Bar dataKey="interactions" name="Interactions" fill="#737373" radius={[0, 4, 4, 0]} maxBarSize={10} />
+									<Bar dataKey="inquiries" name="Inquiries" fill="#252525" radius={[0, 4, 4, 0]} maxBarSize={10} />
+								</BarChart>
+							</ResponsiveContainer>
 						</div>
 					</div>
 					<div>
@@ -59,15 +62,22 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 							<p className="text-xs text-black/45">Conversion percentage per listing.</p>
 						</div>
 						<div className="h-52">
-						<ResponsiveContainer width="100%" height="100%">
-							<LineChart data={chartRows} margin={{ top: 8, right: 12, left: -18, bottom: 24 }}>
-								<CartesianGrid vertical={false} stroke="#ececec" />
-								<XAxis dataKey="name" interval={rateTickInterval} minTickGap={20} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} height={42} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<Tooltip content={<NeutralTooltip />} cursor={{ stroke: "#d4d4d8", strokeDasharray: "4 4" }} />
-								<Line type="monotone" dataKey="rate" name="Inquiry rate %" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#ffffff", stroke: "#111111", strokeWidth: 2 }} activeDot={{ r: 5, fill: "#111111", stroke: "#ffffff", strokeWidth: 2 }} />
-							</LineChart>
-						</ResponsiveContainer>
+							{hasInquiryConversions ? (
+								<ResponsiveContainer width="100%" height="100%">
+									<BarChart data={rateRows} layout="vertical" margin={{ top: 6, right: 10, left: 0, bottom: 4 }} barCategoryGap="26%">
+										<CartesianGrid horizontal={false} stroke="#f0f0f1" />
+										<XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#a1a1aa" }} tickFormatter={(value) => `${value}%`} />
+										<YAxis type="category" dataKey="name" width={92} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} />
+										<Tooltip content={<NeutralTooltip />} cursor={{ fill: "rgba(0,0,0,0.035)" }} />
+										<Bar dataKey="rate" name="Inquiry rate %" fill="#252525" radius={[0, 4, 4, 0]} maxBarSize={16} />
+									</BarChart>
+								</ResponsiveContainer>
+							) : (
+								<div className="flex h-full flex-col items-center justify-center border-t border-black/[0.06] text-center">
+									<span className="text-sm font-medium text-black/55">No inquiry conversions yet</span>
+									<span className="mt-1 text-xs text-black/35">Rates will appear when listings receive inquiries.</span>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>
