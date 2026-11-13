@@ -161,6 +161,22 @@ CREATE INDEX IF NOT EXISTS idx_analytics_events_property_type
 CREATE INDEX IF NOT EXISTS idx_analytics_events_session
   ON analytics_events(session_id, created_at DESC);
 
+-- Older clients incremented page_view_count for property_view events as well.
+-- Rebuild the counter from real site page_view events only. Older rows may still
+-- represent a browser's combined history because those clients reused one ID.
+UPDATE sessions s
+SET page_view_count = (
+  SELECT COUNT(*)::INTEGER
+  FROM analytics_events ae
+  WHERE ae.session_id = s.id
+    AND ae.event_type::TEXT = 'page_view'
+    AND COALESCE(ae.metadata->>'event', 'page_view') = 'page_view'
+    AND ae.property_id IS NULL
+);
+
+COMMENT ON COLUMN sessions.page_view_count IS
+  'Count of page_view events for this time-bounded visit; property_view events are excluded.';
+
 CREATE TABLE IF NOT EXISTS property_analytics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
@@ -277,7 +293,7 @@ WITH property_event_counts AS (
   SELECT
     p.id AS property_id,
     COUNT(ae.id) FILTER (
-      WHERE ae.event_type::TEXT IN (
+      WHERE COALESCE(ae.metadata->>'event', ae.event_type::TEXT) IN (
         'property_view',
         'listing_view',
         'property_impression',
@@ -286,7 +302,7 @@ WITH property_event_counts AS (
       )
     ) AS total_views,
     COUNT(ae.id) FILTER (
-      WHERE ae.event_type::TEXT IN (
+      WHERE COALESCE(ae.metadata->>'event', ae.event_type::TEXT) IN (
         'property_detail_open',
         'detail_open',
         'property_open',
@@ -294,7 +310,7 @@ WITH property_event_counts AS (
       )
     ) AS detail_opens,
     COUNT(ae.id) FILTER (
-      WHERE ae.event_type::TEXT IN (
+      WHERE COALESCE(ae.metadata->>'event', ae.event_type::TEXT) IN (
         'property_detail_open',
         'detail_open',
         'property_open',

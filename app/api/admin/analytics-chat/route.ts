@@ -19,7 +19,7 @@ function numberValue(value: unknown) {
 	return Number.isFinite(numeric) ? numeric : 0;
 }
 
-const VIEW_EVENT_TYPES = ["property_view", "listing_view", "property_impression", "page_view", "view"];
+const VIEW_EVENT_TYPES = ["page_view"];
 
 function manilaDayWindow(offsetDays = 0) {
 	const parts = new Intl.DateTimeFormat("en-CA", {
@@ -132,8 +132,8 @@ async function buildAnalyticsContext() {
 		supabaseServer.from("recommendations").select("was_clicked, is_fallback, generated_at", { count: "exact" }).gte("generated_at", since.toISOString()).limit(300),
 		supabaseServer.from("analytics_events").select("event_type, property_id, created_at", { count: "exact" }).gte("created_at", since.toISOString()).order("created_at", { ascending: false }).limit(500),
 		supabaseServer.from("sessions").select("id", { count: "exact", head: true }),
-		supabaseServer.from("analytics_events").select("id", { count: "exact", head: true }).gte("created_at", todayWindow.start).lt("created_at", todayWindow.end).in("event_type", VIEW_EVENT_TYPES),
-		supabaseServer.from("analytics_events").select("id", { count: "exact", head: true }).gte("created_at", yesterdayWindow.start).lt("created_at", yesterdayWindow.end).in("event_type", VIEW_EVENT_TYPES),
+		supabaseServer.from("analytics_events").select("id", { count: "exact", head: true }).gte("created_at", todayWindow.start).lt("created_at", todayWindow.end).in("event_type", VIEW_EVENT_TYPES).is("property_id", null),
+		supabaseServer.from("analytics_events").select("id", { count: "exact", head: true }).gte("created_at", yesterdayWindow.start).lt("created_at", yesterdayWindow.end).in("event_type", VIEW_EVENT_TYPES).is("property_id", null),
 		supabaseServer.from("inquiries").select("id", { count: "exact", head: true }).gte("created_at", todayWindow.start).lt("created_at", todayWindow.end),
 		supabaseServer.from("inquiries").select("id", { count: "exact", head: true }).gte("created_at", yesterdayWindow.start).lt("created_at", yesterdayWindow.end),
 	]);
@@ -143,7 +143,7 @@ async function buildAnalyticsContext() {
 	const recommendationRows = safeRows(recommendations);
 	const eventRows = safeRows(events);
 	const viewEventTypes = new Set(VIEW_EVENT_TYPES);
-	const viewRows = eventRows.filter((row) => viewEventTypes.has(text(row.event_type)));
+	const viewRows = eventRows.filter((row) => viewEventTypes.has(text(row.event_type)) && !text(row.property_id));
 	const totalSessions = sessions.count ?? 0;
 
 	// Property ID -> readable title map to ensure NO raw UUIDs ever leak to the user

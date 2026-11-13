@@ -32,7 +32,10 @@ import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
 import { PropertyWizard } from "./PropertyWizard";
 import { InquiryWorkflowManager } from "./InquiryWorkflowManager";
+import { AboutPageEditor } from "./AboutPageEditor";
+import { AccountsWorkspace } from "./AccountsWorkspace";
 import { categoryFromParam, primaryForSection, sectionFromParam } from "./routing";
+import { ABOUT_PAGE_CONTENT_KEY } from "@/lib/about-page-content";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -189,18 +192,17 @@ function shiftUtcDayKey(dayKey: string, offsetDays: number) {
 }
 
 function dailyEngagementRows(events: CmsRow[], days = 14) {
-	const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
 	const buckets = new Map<string, { visitors: Set<string>; sessionViews: Map<string, number> }>();
 	for (let offset = -(days - 1); offset <= 0; offset += 1) {
 		buckets.set(utcDayKey(offset), { visitors: new Set<string>(), sessionViews: new Map<string, number>() });
 	}
 
 	for (const event of events) {
-		if (!viewTypes.has(asText(event.event_type))) continue;
+		if (analyticsEventName(event) !== "page_view") continue;
 		const key = asText(event.created_at).slice(0, 10);
 		const bucket = buckets.get(key);
 		if (!bucket) continue;
-		const visitor = asText(event.session_id);
+		const visitor = analyticsVisitorId(event);
 		if (!visitor) continue;
 		bucket.visitors.add(visitor);
 		bucket.sessionViews.set(visitor, (bucket.sessionViews.get(visitor) ?? 0) + 1);
@@ -216,6 +218,26 @@ function dailyEngagementRows(events: CmsRow[], days = 14) {
 			bounceRate: sessions ? Number(((singleViewSessions / sessions) * 100).toFixed(1)) : 0,
 		};
 	});
+}
+
+function analyticsEventMetadata(event: CmsRow) {
+	const metadata = event.metadata;
+	return metadata && typeof metadata === "object" && !Array.isArray(metadata)
+		? metadata as Record<string, unknown>
+		: {};
+}
+
+function analyticsEventName(event: CmsRow) {
+	return asText(analyticsEventMetadata(event).event || event.event_type);
+}
+
+function analyticsVisitorId(event: CmsRow) {
+	return asText(analyticsEventMetadata(event).anonymousVisitorId) || asText(event.session_id);
+}
+
+function isPropertyViewEvent(event: CmsRow) {
+	const eventName = analyticsEventName(event);
+	return eventName === "property_view" || eventName === "listing_view" || eventName === "property_impression" || eventName === "view";
 }
 
 function dailyInquirySeries(rows: CmsRow[], days = 21) {
@@ -244,10 +266,9 @@ function buildDemandForecast(rows: CmsRow[], historyDays = 21, forecastDays = 7)
 }
 
 function buildConversionForecast(events: CmsRow[], inquiryVolumeRows: CmsRow[], days = 21, forecastDays = 7) {
-	const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
 	const viewsByDay = new Map<string, number>();
 	for (const event of events) {
-		if (!viewTypes.has(asText(event.event_type))) continue;
+		if (!isPropertyViewEvent(event) && !(analyticsEventName(event) === "page_view" && Boolean(event.property_id))) continue;
 		const key = asText(event.created_at).slice(0, 10);
 		viewsByDay.set(key, (viewsByDay.get(key) ?? 0) + 1);
 	}
@@ -799,16 +820,23 @@ function AnalyticsVisualSuite({
 			data: funnelRows.map((row, index) => ({ name: row.label, value: row.value, itemStyle: { color: analyticsColors[index] } })),
 		}],
 	};
-	const durationRowsRaw = histogram(listingRows.map((row) => row.avg_dwell_seconds), 7);
+	const propertyDwellEvents = events.filter((event) => analyticsEventName(event) === "property_dwell_time");
+	const durationRowsRaw = histogram(propertyDwellEvents.map((event) => Number(analyticsEventMetadata(event).durationSeconds)), 7);
 	const durationRowsAreLive = hasMeaningfulChartValue(durationRowsRaw, ["count"]);
 	const durationRows = durationRowsRaw;
 	let returningUsers = 0;
 	let newUsers = 0;
+	const sessionsByVisitor = new Map<string, Set<string>>();
 	for (const session of sessions) {
-		const startedAt = asText(session.started_at).slice(0, 10);
-		const lastSeenAt = asText(session.last_seen_at).slice(0, 10);
-		if (!startedAt || !lastSeenAt) continue;
-		if (lastSeenAt > startedAt) returningUsers += 1;
+		const visitorId = asText(session.anonymous_visitor_id);
+		const sessionId = asText(session.id);
+		if (!visitorId || !sessionId) continue;
+		const visitorSessions = sessionsByVisitor.get(visitorId) ?? new Set<string>();
+		visitorSessions.add(sessionId);
+		sessionsByVisitor.set(visitorId, visitorSessions);
+	}
+	for (const visitorSessions of sessionsByVisitor.values()) {
+		if (visitorSessions.size > 1) returningUsers += 1;
 		else newUsers += 1;
 	}
 	const totalVisitors = newUsers + returningUsers;
@@ -828,11 +856,10 @@ function AnalyticsVisualSuite({
 	const sessionTrend = localRegression(visitorsOverTime.map((row) => row.sessions));
 	const windowStart = utcDayKey(-13);
 	const visitorWindow = new Set<string>();
-	const viewTypeNames = new Set(["property_view", "page_view", "view", "listing_view"]);
 	for (const event of events) {
-		if (!viewTypeNames.has(asText(event.event_type))) continue;
+		if (analyticsEventName(event) !== "page_view") continue;
 		if (asText(event.created_at).slice(0, 10) < windowStart) continue;
-		const visitor = asText(event.session_id);
+		const visitor = analyticsVisitorId(event);
 		if (visitor) visitorWindow.add(visitor);
 	}
 	const topSource = trafficRows[0] ?? null;
@@ -842,7 +869,7 @@ function AnalyticsVisualSuite({
 	const latestMonthlyPrice = monthlyPrices[monthlyPrices.length - 1] ?? null;
 	const topPricePerSqmLocation = pricePerSqmByLocation(properties)[0] ?? null;
 	const mostCommonPriceRange = priceHistogram.slice().sort((first, second) => second.count - first.count)[0] ?? null;
-	const mostCommonSessionDuration = durationRows.slice().sort((first, second) => second.count - first.count)[0] ?? null;
+	const mostCommonPropertyDwell = durationRows.slice().sort((first, second) => second.count - first.count)[0] ?? null;
 	const topTypePrice = averagePriceByType[0] ?? null;
 	const returningVisitorShare = totalVisitors ? Math.round((returningUsers / totalVisitors) * 100) : 0;
 	const trafficInsight = {
@@ -1156,16 +1183,16 @@ function AnalyticsVisualSuite({
 					<AnalyticsChartCard title="Conversion funnel" description={funnelRowsAreLive ? `${totalViews.toLocaleString()} views led to ${totalInquiries.toLocaleString()} inquiries (${(totalViews ? totalInquiries / totalViews * 100 : 0).toFixed(2)}%).` : "No funnel activity recorded yet."} isLive={funnelRowsAreLive}>
 						{funnelRowsAreLive ? <EChart option={funnelOption} /> : <ChartEmptyState message="The funnel needs recorded views, engagement events, or inquiries." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Session duration" description={mostCommonSessionDuration ? `Most common: ${mostCommonSessionDuration.range} seconds (${mostCommonSessionDuration.count} sessions).` : "No session duration data recorded yet."} isLive={durationRowsAreLive}>
+					<AnalyticsChartCard title="Property-page dwell time" description={mostCommonPropertyDwell ? `Most common: ${mostCommonPropertyDwell.range} seconds (${mostCommonPropertyDwell.count} page visits).` : "No property dwell-time data recorded yet."} isLive={durationRowsAreLive}>
 						{durationRowsAreLive ? <ResponsiveContainer width="100%" height="100%">
 							<BarChart data={durationRows} margin={{ top: 8, right: 12, left: -18, bottom: 28 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<XAxis dataKey="range" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-18} textAnchor="end" />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Bar dataKey="count" name="Sessions" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={28} />
+								<Bar dataKey="count" name="Property page visits" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={28} />
 							</BarChart>
-						</ResponsiveContainer> : <ChartEmptyState message="Session duration needs property dwell-time rows from property analytics events." />}
+						</ResponsiveContainer> : <ChartEmptyState message="This chart uses active time recorded on property pages; general session duration is not currently collected." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Returning vs new visitors" description={totalVisitors ? `${returningVisitorShare}% of tracked visitors returned.` : "No visitor sessions recorded yet."} isLive={totalVisitors > 0}>
 						{totalVisitors > 0 ? <ResponsiveContainer width="100%" height="100%">
@@ -1786,6 +1813,7 @@ function routeForSection(section: CmsSection) {
 		agents: "/admin/agents",
 		developers: "/admin/agents?section=developers",
 		profiles: "/admin/agents?section=profiles",
+		about: "/admin?section=about",
 		gallery: "/admin?section=gallery",
 		careerJobs: "/admin?section=careerJobs",
 		careerApplications: "/admin?section=careerApplications",
@@ -2567,7 +2595,7 @@ function AnalyticsPanel({
 			: normalizedAnalyticsReport === "predictiveAnalytics"
 				? "Forecasts, distributions, and property clusters for decision support."
 				: normalizedAnalyticsReport === "userEngagement"
-					? "Funnel movement, session duration, and new versus returning behavior."
+					? "Funnel movement, property-page dwell time, and new versus returning behavior."
 		: activeReport === "agentPerformance"
 			? "Agent workload, response speed, and conversion performance."
 			: activeReport === "developerPortfolio"
@@ -2581,12 +2609,11 @@ function AnalyticsPanel({
 	const weekStart = new Date();
 	weekStart.setUTCDate(weekStart.getUTCDate() - 6);
 	const weekStartKey = weekStart.toISOString().slice(0, 10);
-	const viewEventTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
 	const weeklyVisitorKeys = new Set<string>();
 	for (const event of engagementEvents) {
-		if (!viewEventTypes.has(asText(event.event_type))) continue;
+		if (analyticsEventName(event) !== "page_view") continue;
 		if (asText(event.created_at).slice(0, 10) < weekStartKey) continue;
-		const visitor = asText(event.session_id);
+		const visitor = analyticsVisitorId(event);
 		if (visitor) weeklyVisitorKeys.add(visitor);
 	}
 	const weeklyVisitors = weeklyVisitorKeys.size;
@@ -3344,6 +3371,7 @@ export default function AdminCms({
 	const selectedCareerJobId = selection.careerJobs === NEW_RECORD_ID ? NEW_RECORD_ID : selection.careerJobs ?? optionalId(workspace.careerJobs[0]);
 	const selectedCareerApplicationId = selection.careerApplications ?? optionalId(workspace.careerApplications[0]);
 	const selectedGalleryItem = workspace.galleryItems.find((row) => asText(row.id) === asText(selection.galleryItems)) ?? null;
+	const aboutPageContentRow = workspace.settings.find((row) => asText(row.key) === ABOUT_PAGE_CONTENT_KEY) ?? null;
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
 	const selectedPropertyImageUrls = useMemo(
 		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
@@ -3448,7 +3476,7 @@ export default function AdminCms({
 					items: [
 						{ id: "agents", label: "Agents", hint: `${workspace.agents.length} agents`, icon: Users },
 						{ id: "developers", label: "Developer Partners", hint: `${workspace.developers.length} partners`, icon: Building2 },
-						{ id: "profiles", label: "Profiles & Buyers", hint: "Auth profiles", icon: UserCircle },
+						{ id: "profiles", label: "Accounts & Buyers", hint: "Manage account access", icon: UserCircle },
 					],
 				},
 				{
@@ -3456,6 +3484,7 @@ export default function AdminCms({
 					label: "Content",
 					icon: FileText,
 					items: [
+						{ id: "about", label: "About Us", hint: "Public page copy", icon: FileText },
 						{ id: "gallery", label: "Gallery", hint: `${workspace.galleryItems.length} items`, icon: FileText },
 						{ id: "careerJobs", label: "Career Cards", hint: `${workspace.careerJobs.length} roles`, icon: BriefcaseBusiness },
 						{ id: "careerApplications", label: "Applications", hint: `${workspace.careerApplications.length} received`, icon: Inbox },
@@ -3669,7 +3698,7 @@ export default function AdminCms({
 				supabaseBrowser.from("mv_agent_performance").select("*"),
 				supabaseBrowser.from("mv_developer_portfolio").select("*"),
 				supabaseBrowser.from("recommendations").select("id, was_clicked, is_fallback, clicked_at, generated_at"),
-				supabaseBrowser.from("analytics_events").select("id, event_type, session_id, created_at").order("created_at", { ascending: false }).limit(1000),
+				supabaseBrowser.from("analytics_events").select("id, event_type, session_id, property_id, metadata, created_at").order("created_at", { ascending: false }).limit(1000),
 				supabaseBrowser.from("profiles").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100),
 			]);
@@ -3986,10 +4015,6 @@ export default function AdminCms({
 		() => filteredInquiries.filter((item) => !asText(item.assigned_agent_id) && !["reserved", "closed_won", "closed_lost"].includes(asText(item.status))).slice(0, 5),
 		[filteredInquiries],
 	);
-	const draftListings = useMemo(
-		() => workspace.properties.filter((item) => asText(item.status || "draft") === "draft").slice(0, 5),
-		[workspace.properties],
-	);
 	const lowPerformingListings = useMemo(
 		() => workspace.listingPerformance
 			.filter((item) => (toNullableNumber(item.total_views) ?? 0) >= 5 && (toNullableNumber(item.inquiry_rate_pct) ?? 0) < 2)
@@ -4028,12 +4053,11 @@ export default function AdminCms({
 	const overviewListingTrend = useMemo(() => {
 		const endDate = selectedDateFilter || utcDayKey();
 		const startDate = shiftUtcDayKey(endDate, -6);
-		const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
 		const viewsByDate = new Map<string, number>();
 		const inquiriesByDate = new Map<string, number>();
 		for (const event of workspace.engagementEvents) {
 			const date = asText(event.created_at).slice(0, 10);
-			if (date < startDate || date > endDate || !viewTypes.has(asText(event.event_type))) continue;
+			if (date < startDate || date > endDate || (!isPropertyViewEvent(event) && !(analyticsEventName(event) === "page_view" && Boolean(event.property_id)))) continue;
 			viewsByDate.set(date, (viewsByDate.get(date) ?? 0) + 1);
 		}
 		for (const row of workspace.dailyInquiryVolume) {
@@ -4637,10 +4661,10 @@ export default function AdminCms({
 	async function saveSetting(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.key || payload.value == null) {
 			setMessage("Settings need key and value.");
-			return;
+			return false;
 		}
 		if (sessionUser?.id) payload.updated_by = sessionUser.id;
-		await saveEntity("system_settings", payload, currentRow, "key");
+		return await saveEntity("system_settings", payload, currentRow, "key");
 	}
 
 	if (!loading && (!sessionUser || !profile)) {
@@ -5026,7 +5050,7 @@ export default function AdminCms({
 									<div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
 					<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High priority" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
 					<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Needs assignment" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-					<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Not published" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
+									<DashboardMetricCard Icon={Building2} label="Published properties" value={stats.publishedCount} hint="Live on site" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
 					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
@@ -5251,44 +5275,8 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "profiles" && isAdmin ? (
-							<SectionShell title="Profiles & Buyers" description="Account overview with shortcuts into each buyer's inquiry history.">
-								<div className="overflow-x-auto rounded-lg border border-black/10">
-									<table className="min-w-full text-left text-sm">
-										<thead className="text-xs uppercase tracking-[0.18em] text-black/45">
-											<tr>
-												<th className="px-4 py-3">Name</th>
-												<th className="px-4 py-3">Email</th>
-												<th className="px-4 py-3">Role</th>
-												<th className="px-4 py-3">Active</th>
-												<th className="px-4 py-3">Inquiries</th>
-											</tr>
-										</thead>
-										<tbody>
-											{workspace.profiles.length === 0 ? <tr><td colSpan={5} className="px-4 py-5 text-black/45">No profiles found.</td></tr> : null}
-											{workspace.profiles.map((row) => {
-												const email = asText(row.email).toLowerCase();
-												const matchingInquiries = workspace.inquiries.filter((inquiry) => asText(inquiry.buyer_email).toLowerCase() === email);
-												return (
-													<tr key={asText(row.id)} className="border-t border-black/10">
-														<td className="px-4 py-3 font-medium text-[#111111]">{row.full_name ?? "Unnamed"}</td>
-														<td className="px-4 py-3 text-black/60">{row.email ?? "—"}</td>
-														<td className="px-4 py-3 text-black/60">{row.role ?? "buyer"}</td>
-														<td className="px-4 py-3 text-black/60">{asText(row.is_active) === "false" ? "No" : "Yes"}</td>
-														<td className="px-4 py-3 text-black/60">
-															{matchingInquiries.length ? (
-																<button type="button" onClick={() => openInquiryForEditing(asText(matchingInquiries[0].id))} className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold text-[#111111] transition hover:bg-zinc-100">
-																	View {matchingInquiries.length}
-																</button>
-															) : (
-																<span className="text-black/35">None</span>
-															)}
-														</td>
-													</tr>
-												);
-											})}
-										</tbody>
-									</table>
-								</div>
+							<SectionShell title="Accounts & Buyers" description="Invite administrators and manage account access. Buyer inquiry history stays available here.">
+								<AccountsWorkspace rows={workspace.profiles} inquiries={workspace.inquiries} currentUserId={sessionUserId} onReload={reloadWorkspace} onViewInquiry={openInquiryForEditing} />
 							</SectionShell>
 						) : null}
 
@@ -5310,6 +5298,16 @@ export default function AdminCms({
 									setActiveSection(view);
 									syncAdminUrl(`/admin/inquiries${view === "inquiries" ? "" : `?section=${view}`}`);
 								}}
+							/>
+						) : null}
+
+						{currentSection === "about" && isAdmin ? (
+							<AboutPageEditor
+								key={aboutPageContentRow ? `${asText(aboutPageContentRow.updated_at)}-${asText(aboutPageContentRow.value).length}` : "about-page-default"}
+								row={aboutPageContentRow}
+								canEdit={canEditContent}
+								onSubmit={saveSetting}
+								onDelete={(row) => deleteEntity("system_settings", row, "key")}
 							/>
 						) : null}
 
@@ -5374,7 +5372,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (
-							<SettingsWorkspace rows={workspace.settings} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={saveSetting} />
+							<SettingsWorkspace rows={workspace.settings.filter((row) => asText(row.key) !== ABOUT_PAGE_CONTENT_KEY)} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} />
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (

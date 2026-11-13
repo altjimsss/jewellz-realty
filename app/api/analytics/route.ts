@@ -172,7 +172,7 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 	if (sessionId) {
 		const { data: existingSession, error: sessionReadError } = await supabaseServer
 			.from("sessions")
-			.select("id, page_view_count")
+			.select("id, page_view_count, landing_path, source, referrer, utm_source, utm_medium, utm_campaign")
 			.eq("id", sessionId)
 			.maybeSingle();
 		if (sessionReadError) failures.push(`sessions lookup: ${sessionReadError.message}`);
@@ -180,18 +180,18 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 		const sessionWrite = await upsertSessionWithSchemaFallback({
 			id: sessionId,
 			anonymous_visitor_id: text(body?.anonymousVisitorId) || sessionId,
-			source,
-			referrer: referrer || null,
-			utm_source: utmSource || null,
-			utm_medium: text(body?.utmMedium) || null,
-			utm_campaign: text(body?.utmCampaign) || null,
-			landing_path: path || null,
+			source: text(existingSession?.source) || source,
+			referrer: text(existingSession?.referrer) || referrer || null,
+			utm_source: text(existingSession?.utm_source) || utmSource || null,
+			utm_medium: text(existingSession?.utm_medium) || text(body?.utmMedium) || null,
+			utm_campaign: text(existingSession?.utm_campaign) || text(body?.utmCampaign) || null,
+			landing_path: text(existingSession?.landing_path) || path || null,
 			device_type: text(body?.deviceType) || null,
 			browser: text(body?.browser) || null,
 			os: text(body?.os) || null,
 			language: text(body?.language) || null,
 			last_seen_at: new Date().toISOString(),
-			page_view_count: eventType === "page_view" || eventType === "property_view"
+			page_view_count: eventType === "page_view"
 				? Number(existingSession?.page_view_count ?? 0) + 1
 				: Number(existingSession?.page_view_count ?? 0),
 		});
@@ -229,6 +229,7 @@ async function trackAnalyticsEvent(body: Record<string, unknown>) {
 			.eq("id", recommendationId);
 		if (recommendationUpdate.error) failures.push(`recommendation update: ${recommendationUpdate.error.message}`);
 	}
+	if (failures.length) console.error("[analytics] Event persistence failed", { eventType, sessionId, propertyId: propertyId || undefined, failures });
 
 	return { tracked: failures.length === 0, error: failures.length ? failures.join("; ") : undefined };
 }

@@ -12,7 +12,7 @@ const sections = [
 	},
 	{
 		title: "Website activity",
-		body: "The site records basic browsing and property interaction events to understand which pages and listings are useful. This may include the page visited, approximate device and browser details, referral or campaign information, and an anonymous session identifier. Essential browser storage is also used for sign-in sessions and site functionality.",
+		body: "The site records basic browsing and property interaction events to understand which pages and listings are useful. This may include the page visited, approximate device and browser details, referral or campaign information, an anonymous visitor identifier used to recognize returning browsers, and a separate time-bounded visit identifier. Essential browser storage is also used for sign-in sessions and site functionality.",
 	},
 	{
 		title: "How we use information",

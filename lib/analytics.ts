@@ -1,4 +1,4 @@
-import { getOrCreateSessionId } from "@/lib/session";
+import { getOrCreateSessionId, getOrCreateVisitorId } from "@/lib/session";
 
 type AnalyticsEventPayload = {
 	event: string;
@@ -65,7 +65,7 @@ function getVisitorEnvironment() {
 	if (typeof window === "undefined") return {};
 	const userAgent = window.navigator.userAgent;
 	return {
-		anonymousVisitorId: getOrCreateSessionId(),
+		anonymousVisitorId: getOrCreateVisitorId(),
 		deviceType: getDeviceType(userAgent),
 		browser: getBrowserName(userAgent),
 		os: getOsName(userAgent),
@@ -106,9 +106,15 @@ async function postAnalyticsBatch(items: QueuedEvent[]) {
 		});
 		const result = await response.json().catch(() => null) as { tracked?: boolean } | null;
 		const ok = response.ok && result?.tracked !== false;
-		for (const item of items) item.resolve({ event: item.body.event, payload: item.body, ok });
+		for (const item of items) {
+			if (!ok) console.warn(`[analytics] Failed to record "${item.body.event}".`, result);
+			item.resolve({ event: item.body.event, payload: item.body, ok });
+		}
 	} catch {
-		for (const item of items) item.resolve({ event: item.body.event, payload: item.body, ok: false });
+		for (const item of items) {
+			console.warn(`[analytics] Network error while recording "${item.body.event}".`);
+			item.resolve({ event: item.body.event, payload: item.body, ok: false });
+		}
 	}
 }
 

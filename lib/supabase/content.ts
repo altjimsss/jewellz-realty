@@ -1,4 +1,5 @@
 import { normalizeImageUrl } from "@/lib/image-url";
+import { ABOUT_PAGE_CONTENT_KEY, DEFAULT_ABOUT_PAGE_CONTENT, parseAboutPageContent } from "@/lib/about-page-content";
 import { supabaseServer } from "./server";
 
 export type PublicHeroBanner = {
@@ -59,6 +60,20 @@ export type PublicCareerJob = {
 	details: string[];
 	sortOrder?: number;
 };
+
+export async function getPublicAboutPageContent() {
+	try {
+		const { data, error } = await supabaseServer
+			.from("system_settings")
+			.select("value")
+			.eq("key", ABOUT_PAGE_CONTENT_KEY)
+			.maybeSingle();
+		if (error || !data?.value) return DEFAULT_ABOUT_PAGE_CONTENT;
+		return parseAboutPageContent(data.value);
+	} catch {
+		return DEFAULT_ABOUT_PAGE_CONTENT;
+	}
+}
 
 function asNumber(value: unknown) {
 	const numberValue = Number(value);

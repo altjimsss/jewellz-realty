@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import SectionHeader from "@/components/layout/SectionHeader";
@@ -6,6 +5,9 @@ import { Poppins } from "next/font/google";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { Compass, TrendingUp, UsersRound } from "lucide-react";
+import { SafeImage } from "@/components/ui/SafeImage";
+import { getPublicAboutPageContent } from "@/lib/supabase/content";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -13,6 +15,7 @@ export const metadata: Metadata = {
   title: "About Us | Jewellz Realty",
   description: "Learn about Jewellz Realty, our brokerage team, values, and real estate services.",
 };
+export const dynamic = "force-dynamic";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -23,66 +26,10 @@ const navLinks = [
   { label: "Career", href: "/career" },
 ];
 
-const stats = [
-  { value: "5.6M+", label: "Downloads" },
-  { value: "3.2+", label: "Active Users" },
-  { value: "4.9", label: "Ratings" },
-  { value: "60+", label: "Team Members" },
-];
+const highlightIcons = [TrendingUp, Compass, UsersRound];
 
-const highlights = [
-  {
-    title: "Why Choose Jewellz Realty?",
-    description: "We pair curated listings with clear guidance so buyers can move confidently from browsing to booking to closing.",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-        <path d="M4 12l5-5 3 3 8-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4 20h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    title: "Our Vision",
-    description: "To make property discovery feel simple, modern, and trustworthy for every Filipino family and investor.",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-        <path d="M12 21s6-4.5 6-10a6 6 0 10-12 0c0 5.5 6 10 6 10z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="12" cy="11" r="2" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    ),
-  },
-  {
-    title: "Our Team",
-    description: "A hands-on group of agents, advisors, and support staff focused on quick responses and a better client experience.",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-        <path d="M7 19a5 5 0 0110 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx="12" cy="8" r="3" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    ),
-  },
-];
-
-const teamMembers = [
-  {
-    name: "Tom Cruise",
-    role: "Founder & Chairman",
-    image: "/assets/broker.webp",
-  },
-  {
-    name: "Emma Watson",
-    role: "Managing Director",
-    image: "/assets/bannerprofessional.webp",
-  },
-  {
-    name: "Will Smith",
-    role: "Product Designer",
-    image: "/assets/bannerconsult.webp",
-  },
-];
-
-export default function AboutUsPage() {
+export default async function AboutUsPage() {
+  const about = await getPublicAboutPageContent();
   return (
     <main className={`${poppins.className} bg-white text-[#111111]`}>
       <AnnouncementBar />
@@ -92,31 +39,31 @@ export default function AboutUsPage() {
         <div className="rounded-[24px] bg-white px-0 py-0">
           <div className="grid items-start gap-6 lg:grid-cols-[1fr_0.98fr] lg:gap-x-12 lg:gap-y-6">
             <div>
-              <SectionHeader title={"About Us"} subtitle={"Redefining the way people discover property."} />
+              <SectionHeader title={about.eyebrow} subtitle={about.subtitle} />
 
               <h1 className="mt-3 max-w-xl text-[clamp(1.75rem,3.7vw,3.2rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-[#111111]">
-                Discover Jewellz Realty
+                {about.title}
               </h1>
 
               <p className="mt-3 max-w-[430px] text-justify text-[13px] leading-6 text-black/55 sm:mt-4 sm:text-[14px] sm:leading-7">
-                Jewellz Realty helps buyers and investors find the right property with less friction and more confidence.
-                We combine curated listings, responsive support, and thoughtful presentation so every step feels clear and professional.
+                {about.introduction}
               </p>
 
-              <div className="mt-5">
+              {about.ctaLabel ? <div className="mt-5">
                 <Link
-                  href="/contact"
+                  href={about.ctaUrl || "/contact"}
                   className="inline-flex min-h-10 items-center rounded-full bg-[#DE141C] px-5 py-2.5 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-[#c01018]"
                 >
-                  Contact Us
+                  {about.ctaLabel || "Contact Us"}
                 </Link>
-              </div>
+              </div> : null}
             </div>
 
             <div className="relative lg:col-start-2 lg:row-span-2 lg:row-start-1">
               <div className="overflow-hidden rounded-[18px] bg-white">
-                <Image
-                  src="/assets/housebanner1.webp"
+                <SafeImage
+                  src={about.heroImageUrl}
+                  fallbackSrc="/assets/housebanner1.webp"
                   alt="Jewellz Realty property showcase"
                   width={1100}
                   height={820}
@@ -126,54 +73,58 @@ export default function AboutUsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#EAE7E3] pt-4 sm:grid-cols-4 sm:gap-x-8 lg:col-start-1 lg:row-start-2 lg:border-0 lg:pt-0">
-              {stats.map((item, index) => (
-                <div key={item.label} className={`min-w-0 ${index < 3 ? "sm:border-r sm:border-black/8 sm:pr-6" : ""}`}>
+            {about.stats.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#EAE7E3] pt-4 sm:grid-cols-4 sm:gap-x-8 lg:col-start-1 lg:row-start-2 lg:border-0 lg:pt-0">
+              {about.stats.map((item, index) => (
+                <div key={`${item.label}-${index}`} className={`min-w-0 ${index < 3 ? "sm:border-r sm:border-black/8 sm:pr-6" : ""}`}>
                   <div className="text-[17px] font-semibold tracking-[-0.03em] text-[#DE141C] sm:text-[20px]">{item.value}</div>
                   <div className="mt-0.5 text-xs text-black/55 sm:mt-1 sm:text-[13px]">{item.label}</div>
                 </div>
               ))}
-            </div>
+            </div> : null}
           </div>
         </div>
       </section>
 
-      <section className="px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
+      {about.highlights.length ? <section className="px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
         <div className="mx-auto max-w-[1120px]">
           <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-            {highlights.map((item) => (
-              <article key={item.title} className="rounded-xl border border-black/10 bg-white px-4 py-4 shadow-[0_6px_18px_rgba(0,0,0,0.04)] sm:rounded-[16px] sm:px-5 sm:py-5">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-[#DE141C]">
-                  {item.icon}
-                </div>
-                <h2 className="text-[13px] font-semibold text-black sm:text-[14px]">{item.title}</h2>
-                <p className="mt-1.5 text-justify text-xs leading-5 text-black/55 sm:mt-2 sm:text-[12.5px] sm:leading-6">{item.description}</p>
-              </article>
-            ))}
+            {about.highlights.map((item, index) => {
+              const HighlightIcon = highlightIcons[index % highlightIcons.length];
+              return (
+                <article key={`${item.title}-${index}`} className="rounded-xl border border-black/10 bg-white px-4 py-4 shadow-[0_6px_18px_rgba(0,0,0,0.04)] sm:rounded-[16px] sm:px-5 sm:py-5">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-[#DE141C]">
+                    <HighlightIcon className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <h2 className="text-[13px] font-semibold text-black sm:text-[14px]">{item.title}</h2>
+                  <p className="mt-1.5 text-justify text-xs leading-5 text-black/55 sm:mt-2 sm:text-[12.5px] sm:leading-6">{item.description}</p>
+                </article>
+              );
+            })}
           </div>
         </div>
-      </section>
+      </section> : null}
 
-      <section className="px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
+      {about.teamHeading || about.teamDescription || about.teamMembers.length ? <section className="px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-6 flex items-start gap-3">
             <span className="mt-1.5 h-[2.2em] w-[3px] shrink-0 rounded-full bg-[#DE141C]" aria-hidden="true" />
             <div>
               <h2 className="font-semibold leading-tight text-zinc-900" style={{ fontFamily: "'Poppins', sans-serif", fontSize: "clamp(18px, 5vw, 22px)" }}>
-                Our Leadership
+                {about.teamHeading}
               </h2>
               <p className="mt-[2px] font-normal leading-tight text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif", fontSize: "11px" }}>
-                The executives guiding the vision and direction of Jewellz Realty.
+                {about.teamDescription}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
-            {teamMembers.map((member, index) => (
-              <article key={member.name} className={`bg-white ${index === 2 ? "col-span-2 mx-auto w-1/2 md:col-span-1 md:w-full" : ""}`}>
+            {about.teamMembers.map((member, index) => (
+              <article key={`${member.name}-${index}`} className="bg-white">
                 <div className="relative aspect-[1.08] overflow-hidden rounded-md bg-zinc-100">
-                  <Image
-                    src={member.image}
+                  <SafeImage
+                    src={member.imageUrl}
+                    fallbackSrc="/assets/bannerprofessional.webp"
                     alt={member.name}
                     fill
                     className="object-contain object-center"
@@ -195,7 +146,7 @@ export default function AboutUsPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> : null}
 
       <Footer />
     </main>

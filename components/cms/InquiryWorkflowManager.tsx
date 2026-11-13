@@ -1531,13 +1531,20 @@ function LeadInspectorDrawer({
 	const score = toNullableNumber(selectedInquiry.lead_score);
 	const currentStatus = asText(selectedInquiry.status || "new");
 	const statusConfig = STAGE_CONFIGS[currentStatus] || STAGE_CONFIGS.new;
+	const trackedEventName = (event: CmsRow) => {
+		const metadata = event.metadata;
+		if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+			return asText((metadata as Record<string, unknown>).event) || asText(event.event_type);
+		}
+		return asText(event.event_type);
+	};
 
 	// Visitor behavior summary
-	const visitorViewCount = visitorEvents.filter((e) =>
-		["property_view", "page_view", "view"].includes(asText(e.event_type))
+	const visitorViewCount = visitorEvents.filter((event) =>
+		["property_view", "view", "listing_view", "property_impression"].includes(trackedEventName(event))
 	).length;
-	const visitorInteractionCount = visitorEvents.filter((e) =>
-		asText(e.event_type).includes("click") || asText(e.event_type).includes("open")
+	const visitorInteractionCount = visitorEvents.filter((event) =>
+		trackedEventName(event).includes("click") || trackedEventName(event).includes("open")
 	).length;
 
 	return (
