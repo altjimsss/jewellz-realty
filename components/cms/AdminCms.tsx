@@ -686,7 +686,7 @@ function AnalyticsVisualSuite({
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState("all");
 	const [propertyStatusFilter, setPropertyStatusFilter] = useState("all");
 	const [propertyListExpanded, setPropertyListExpanded] = useState(true);
-	const [propertyLayout, setPropertyLayout] = useState<"cards" | "list">("cards");
+	const [propertyLayout, setPropertyLayout] = useState<"cards" | "table">("cards");
 	const propertyCategories = useMemo(() => Array.from(new Set(properties.map((property) => asText(property.category).trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [properties]);
 	const propertyAnalyticsRows = useMemo(() => {
 		const query = propertySearch.trim().toLowerCase();
@@ -966,7 +966,7 @@ function AnalyticsVisualSuite({
 						</div>
 					</div>
 					{propertyListExpanded ? <div id="analytics-properties-content">
-					<div className="grid gap-3 border-b border-black/[0.07] p-4 sm:grid-cols-[minmax(220px,1fr)_180px_160px] sm:items-end sm:px-5">
+					<div className="grid gap-3 border-b border-black/[0.07] p-4 sm:grid-cols-[minmax(220px,1fr)_160px_140px_auto] sm:items-end sm:px-5">
 						<label className="block">
 							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Search properties</span>
 							<div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" /><input type="search" value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} placeholder="Name, city, category..." className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-9 pr-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]" /></div>
@@ -979,22 +979,25 @@ function AnalyticsVisualSuite({
 							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Status</span>
 							<select value={propertyStatusFilter} onChange={(event) => setPropertyStatusFilter(event.target.value)} className="h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]"><option value="all">All statuses</option>{Array.from(new Set(properties.map((property) => asText(property.status || property.publish_status || property.listing_status || "draft").toLowerCase()))).sort().map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}</select>
 						</label>
-					</div>
-					<div className="flex items-center justify-end border-b border-black/[0.06] px-3 py-2 sm:px-4">
-						<div role="group" aria-label="Property analytics layout" className="inline-flex border border-black/10 bg-white p-0.5">
-							<button type="button" aria-label="Card layout" aria-pressed={propertyLayout === "cards"} onClick={() => setPropertyLayout("cards")} className={`grid h-7 w-8 place-items-center transition ${propertyLayout === "cards" ? "bg-[#252525] text-white" : "text-black/50 hover:bg-zinc-100"}`}><LayoutGrid className="h-3.5 w-3.5" /></button>
-							<button type="button" aria-label="List layout" aria-pressed={propertyLayout === "list"} onClick={() => setPropertyLayout("list")} className={`grid h-7 w-8 place-items-center transition ${propertyLayout === "list" ? "bg-[#252525] text-white" : "text-black/50 hover:bg-zinc-100"}`}><ListIcon className="h-3.5 w-3.5" /></button>
+						<div className="block">
+							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">View</span>
+							<div role="group" aria-label="Property analytics layout" className="inline-flex h-10 w-full items-center border border-black/[0.08] bg-white p-0.5">
+								<button type="button" aria-label="Card layout" aria-pressed={propertyLayout === "cards"} onClick={() => setPropertyLayout("cards")} className={`flex h-full flex-1 items-center justify-center gap-1.5 px-2 text-xs font-medium transition ${propertyLayout === "cards" ? "bg-[#252525] text-white" : "text-black/55 hover:bg-zinc-100"}`}><LayoutGrid className="h-3.5 w-3.5" /><span>Cards</span></button>
+								<button type="button" aria-label="Table layout" aria-pressed={propertyLayout === "table"} onClick={() => setPropertyLayout("table")} className={`flex h-full flex-1 items-center justify-center gap-1.5 px-2 text-xs font-medium transition ${propertyLayout === "table" ? "bg-[#252525] text-white" : "text-black/55 hover:bg-zinc-100"}`}><ListIcon className="h-3.5 w-3.5" /><span>Table</span></button>
+							</div>
 						</div>
 					</div>
-					<div className="max-h-[min(56vh,520px)] overflow-y-auto p-3 sm:p-4">
+					<div className="max-h-[min(56vh,520px)] overflow-auto p-3 sm:p-4">
 						{propertyAnalyticsRows.length === 0 ? <div className="rounded-xl border border-dashed border-black/10 bg-zinc-50 px-4 py-8 text-center text-sm text-black/45">No properties match those filters.</div> : (
-							<div className={propertyLayout === "cards" ? "grid gap-2 md:grid-cols-2 xl:grid-cols-3" : "space-y-1"}>
+							<div className={propertyLayout === "cards" ? "grid gap-2 md:grid-cols-2 xl:grid-cols-3" : "min-w-[540px] overflow-hidden border border-black/[0.07]"}>
+								{propertyLayout === "table" ? <div className="grid grid-cols-[minmax(0,1fr)_110px_92px_100px] gap-3 border-b border-black/[0.07] bg-zinc-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-black/45"><span>Property</span><span>Status</span><span className="text-right">Views</span><span className="text-right">Inquiries</span></div> : null}
 								{propertyAnalyticsRows.map(({ id, performance, title, category: propertyType, status, location }) => {
 									const isSelected = selectedProperty?.id === id;
-										return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-label={`Open analytics for ${title}`} aria-pressed={isSelected} className={`${propertyLayout === "cards" ? "rounded-xl p-3.5" : "flex items-center gap-3 px-3 py-2"} w-full border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
-									<div className={`flex ${propertyLayout === "cards" ? "items-start justify-between gap-3" : "min-w-0 flex-1 items-center gap-3"}`}><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><StatusBadge value={status} /></div>
-									<div className={`${propertyLayout === "cards" ? "mt-1" : "hidden sm:block"} truncate text-xs text-black/45`}>{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div>
-									<div className={`${propertyLayout === "cards" ? "mt-3 border-t border-black/[0.06] pt-2.5" : "ml-auto"} flex items-center gap-3 text-xs`}><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span>{propertyLayout === "cards" ? <span className="ml-auto font-semibold text-[#DE141C]">View analytics →</span> : null}</div>
+										return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-label={`Open analytics for ${title}`} aria-pressed={isSelected} className={`${propertyLayout === "cards" ? "rounded-xl p-3.5" : "grid grid-cols-[minmax(0,1fr)_110px_92px_100px] items-center gap-3 border-0 border-b border-black/[0.06] px-3 py-2.5 last:border-b-0"} w-full border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
+										<div className={propertyLayout === "cards" ? "flex items-start justify-between gap-3" : "min-w-0"}><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span>{propertyLayout === "cards" ? <StatusBadge value={status} /> : <span className="mt-0.5 block truncate text-[11px] text-black/45">{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</span>}</div>
+										{propertyLayout === "table" ? <span className="justify-self-start"><StatusBadge value={status} /></span> : null}
+										{propertyLayout === "cards" ? <div className="mt-1 truncate text-xs text-black/45">{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div> : null}
+										{propertyLayout === "cards" ? <div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-2.5 text-xs"><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span><span className="font-semibold text-[#DE141C]">View analytics →</span></div> : <><span className="text-right text-xs font-medium tabular-nums text-black/60">{performance?.total_views ?? 0}</span><span className="text-right text-xs font-medium tabular-nums text-black/60">{performance?.total_inquiries ?? 0}</span></>}
 									</button>;
 								})}
 							</div>
@@ -1579,15 +1582,15 @@ function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: stri
 
 function OverviewListingChart({ rows }: { rows: Array<{ label: string; views: number; inquiries: number }> }) {
 	const option = {
-		animationDuration: 450,
-		grid: { top: 12, right: 10, bottom: 24, left: 28 },
+		animationDuration: 300,
+		grid: { top: 8, right: 8, bottom: 24, left: 28 },
 		tooltip: { trigger: "axis", axisPointer: { type: "line", lineStyle: { color: "#d4d4d8", type: "dashed" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ seriesName: string; value: number; axisValue: string }>) => `${items[0]?.axisValue ?? ""}<br/>Views: <strong>${items.find((item) => item.seriesName === "Views")?.value ?? 0}</strong><br/>Inquiries: <strong>${items.find((item) => item.seriesName === "Inquiries")?.value ?? 0}</strong>` },
-		legend: { top: 0, right: 0, icon: "circle", itemWidth: 7, itemHeight: 7, itemGap: 12, textStyle: { color: "#71717a", fontSize: 10 } },
-		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 10 }, splitLine: { show: false } },
-		yAxis: { type: "value", min: 0, minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9 }, splitLine: { show: true, lineStyle: { color: "#f0f0f0" } } },
+		legend: { bottom: 0, left: "center", icon: "circle", itemWidth: 6, itemHeight: 6, itemGap: 14, textStyle: { color: "#71717a", fontSize: 9 } },
+		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 8 }, splitLine: { show: false } },
+		yAxis: { type: "value", min: 0, minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#a1a1aa", fontSize: 9 }, splitLine: { show: true, lineStyle: { color: "#f4f4f5" } } },
 		series: [
-			{ type: "line", name: "Views", data: rows.map((row) => row.views), smooth: 0.25, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 5, lineStyle: { color: "#DE141C", width: 2.5 }, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 1.5 }, areaStyle: { color: "rgba(222,20,28,0.08)" }, z: 12 },
-			{ type: "line", name: "Inquiries", data: rows.map((row) => row.inquiries), smooth: 0.25, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 5, lineStyle: { color: "#292929", width: 2 }, itemStyle: { color: "#292929", borderColor: "#fff", borderWidth: 1.5 }, z: 13 },
+			{ type: "line", name: "Views", data: rows.map((row) => row.views), smooth: false, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 4, lineStyle: { color: "#DE141C", width: 2 }, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 1 }, emphasis: { focus: "series", scale: 1.5 }, z: 12 },
+			{ type: "line", name: "Inquiries", data: rows.map((row) => row.inquiries), smooth: false, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 4, lineStyle: { color: "#292929", width: 1.75 }, itemStyle: { color: "#292929", borderColor: "#fff", borderWidth: 1 }, emphasis: { focus: "series", scale: 1.5 }, z: 13 },
 		],
 	};
 	return <div className="h-44"><EChart option={option} /></div>;
@@ -4662,7 +4665,7 @@ export default function AdminCms({
 										<button
 											type="button"
 											onClick={() => openSection(item.id)}
-										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${active ? "bg-red-100 font-semibold text-red-800" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+						className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${active ? "bg-[#B5121B] font-semibold text-white" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
