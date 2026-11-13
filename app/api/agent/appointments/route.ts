@@ -28,7 +28,34 @@ async function attachPropertyTitles(rows: Array<Record<string, unknown>>) {
   }));
 }
 
-const APPOINTMENT_FIELDS = "id, inquiry_id, property_id, buyer_name, scheduled_at, status, location";
+const APPOINTMENT_FIELDS = "id, inquiry_id, property_id, buyer_name, buyer_email, scheduled_at, status, location";
+
+const APPOINTMENT_DURATION_MS = 30 * 60 * 1000;
+
+async function hasScheduleConflict(agentId: string, buyerEmail: string, scheduledAt: string, excludeId?: string) {
+  const start = Date.parse(scheduledAt);
+  const windowStart = new Date(start - APPOINTMENT_DURATION_MS).toISOString();
+  const windowEnd = new Date(start + APPOINTMENT_DURATION_MS).toISOString();
+  const [agentResult, customerResult] = await Promise.all([
+    supabaseServer.from("appointments").select("id")
+      .eq("assigned_agent_id", agentId)
+      .in("status", ["requested", "confirmed"])
+      .gt("scheduled_at", windowStart)
+      .lt("scheduled_at", windowEnd),
+    supabaseServer.from("appointments").select("id")
+      .ilike("buyer_email", buyerEmail.replace(/[\\%_]/g, "\\$&"))
+      .in("status", ["requested", "confirmed"])
+      .gt("scheduled_at", windowStart)
+      .lt("scheduled_at", windowEnd),
+  ]);
+
+  if (agentResult.error || customerResult.error) {
+    return { conflict: false, error: true };
+  }
+  const overlappingIds = new Set([...(agentResult.data ?? []), ...(customerResult.data ?? [])].map((row) => row.id));
+  if (excludeId) overlappingIds.delete(excludeId);
+  return { conflict: overlappingIds.size > 0, error: false };
+}
 
 export async function GET(request: Request) {
   const auth = await getAgent(request);
@@ -77,6 +104,10 @@ export async function PATCH(request: Request) {
   if (!isAssigned) return NextResponse.json({ error: "This appointment is not assigned to you." }, { status: 403 });
   if (appointment.status !== "requested") return NextResponse.json({ error: "Only requested appointments can be confirmed." }, { status: 409 });
 
+  const conflictCheck = await hasScheduleConflict(auth.agentId, String(appointment.buyer_email ?? ""), String(appointment.scheduled_at), appointment.id);
+  if (conflictCheck.error) return NextResponse.json({ error: "Could not verify the agent and customer calendars. Refresh and try again." }, { status: 500 });
+  if (conflictCheck.conflict) return NextResponse.json({ error: "This time overlaps another active appointment for you or the customer. Choose a time at least 30 minutes apart." }, { status: 409 });
+
   const { data: updated, error: updateError } = await supabaseServer.from("appointments").update({ status: "confirmed", updated_at: new Date().toISOString() }).eq("id", appointmentId).eq("status", "requested").select(APPOINTMENT_FIELDS).maybeSingle();
   if (updateError) return NextResponse.json({ error: "Could not confirm this appointment. Refresh and try again." }, { status: 500 });
   if (!updated) return NextResponse.json({ error: "This appointment has already changed. Refresh your calendar." }, { status: 409 });
@@ -112,6 +143,10 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (inquiryError) return NextResponse.json({ error: "Could not verify the selected inquiry." }, { status: 500 });
   if (!inquiry) return NextResponse.json({ error: "That inquiry is not assigned to you." }, { status: 403 });
+
+  const conflictCheck = await hasScheduleConflict(auth.agentId, String(inquiry.buyer_email ?? ""), new Date(time).toISOString());
+  if (conflictCheck.error) return NextResponse.json({ error: "Could not verify the agent and customer calendars. Refresh and try again." }, { status: 500 });
+  if (conflictCheck.conflict) return NextResponse.json({ error: "This time overlaps another active appointment for you or the customer. Choose a time at least 30 minutes apart." }, { status: 409 });
 
   const { data: appointment, error: insertError } = await supabaseServer
     .from("appointments")
