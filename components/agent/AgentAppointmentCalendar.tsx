@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Plus, ShieldCheck, X } from "lucide-react";
+import { CalendarCheck2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Plus, ShieldCheck, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export type AgentAppointment = {
@@ -179,7 +179,10 @@ export function AgentAppointmentCalendar({ appointments, assignedInquiries, onAp
                 const cellClass = "flex min-h-[60px] flex-col items-start border-b border-r border-black/10 p-1.5 text-left transition sm:min-h-[72px] sm:p-2 " + (!key ? "bg-zinc-50/50 " : "hover:bg-red-50/60 ") + (active ? "bg-red-50 ring-1 ring-inset ring-[#DE141C]" : "bg-white");
                 return <button key={key ?? "empty-" + index} type="button" disabled={!key} onClick={() => key && setSelectedDate(key)} className={cellClass}>
                   {key ? <span className={key === today ? "grid h-6 w-6 place-items-center bg-[#111111] text-xs font-semibold text-white" : "text-xs font-medium text-black/75"}>{Number(key.slice(-2))}</span> : null}
-                  {total ? <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#B5121B]"><span className="h-1.5 w-1.5 bg-[#DE141C]" />{total}<span className="hidden sm:inline"> {total === 1 ? "appointment" : "appointments"}</span></span> : null}
+                  {total ? <span className="mt-1 inline-flex max-w-full items-center gap-1.5 border border-[#DE141C]/20 bg-red-50 px-1 py-0.5 text-[10px] font-semibold leading-none text-[#B5121B] sm:px-1.5 sm:py-1">
+                    <span className="relative grid h-5 w-5 shrink-0 place-items-center bg-[#DE141C] text-white"><CalendarCheck2 className="h-3 w-3" /><span className="absolute -right-1 -top-1 grid h-3 w-3 place-items-center rounded-full bg-[#111111] text-[8px] font-bold leading-none text-white">{total > 9 ? "9+" : total}</span></span>
+                    <span className="hidden truncate sm:inline">{total === 1 ? "Appointment" : `${total} appointments`}</span>
+                  </span> : null}
                 </button>;
               })}
             </div>
