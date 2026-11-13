@@ -183,40 +183,46 @@ export function extractBasicSearchIntent(searchText: string): PropertySearchInte
 }
 
 export async function extractSemanticSearchIntent(searchText: string): Promise<PropertySearchIntent> {
-	const { generatePropertyEmbedding } = await import("@/lib/ai/property-embeddings");
 	const intent = extractBasicSearchIntent(searchText);
-	const queryEmbedding = await generatePropertyEmbedding(searchText);
-	const exampleEmbeddings = await Promise.all(intentExamples.map((example) => generatePropertyEmbedding(example.text)));
-	let strongestScore = intent.confidence;
+	try {
+		const { generatePropertyEmbedding } = await import("@/lib/ai/property-embeddings");
+		const queryEmbedding = await generatePropertyEmbedding(searchText);
+		const exampleEmbeddings = await Promise.all(intentExamples.map((example) => generatePropertyEmbedding(example.text)));
+		let strongestScore = intent.confidence;
 
-	intentExamples.forEach((example, index) => {
-		const score = cosineSimilarity(queryEmbedding, exampleEmbeddings[index]) * (example.weight ?? 1);
+		intentExamples.forEach((example, index) => {
+			const score = cosineSimilarity(queryEmbedding, exampleEmbeddings[index]) * (example.weight ?? 1);
 
-		if (score < 0.42) return;
+			if (score < 0.42) return;
 
-		strongestScore = Math.max(strongestScore, score);
+			strongestScore = Math.max(strongestScore, score);
 
-		if (example.key === "propertyIntent" && intent.propertyIntent === "any") {
-			intent.propertyIntent = example.value as PropertySearchIntent["propertyIntent"];
-		}
+			if (example.key === "propertyIntent" && intent.propertyIntent === "any") {
+				intent.propertyIntent = example.value as PropertySearchIntent["propertyIntent"];
+			}
 
-		if (example.key === "budgetIntent" && intent.budgetIntent === "any") {
-			intent.budgetIntent = example.value as PropertySearchIntent["budgetIntent"];
-			intent.sort = intent.budgetIntent === "affordable" ? "price_asc" : "price_desc";
-		}
+			if (example.key === "budgetIntent" && intent.budgetIntent === "any") {
+				intent.budgetIntent = example.value as PropertySearchIntent["budgetIntent"];
+				intent.sort = intent.budgetIntent === "affordable" ? "price_asc" : "price_desc";
+			}
 
-		if (example.key === "nearbyNeed" && !intent.nearbyNeed) {
-			intent.nearbyNeed = example.value as PropertySearchIntent["nearbyNeed"];
-		}
+			if (example.key === "nearbyNeed" && !intent.nearbyNeed) {
+				intent.nearbyNeed = example.value as PropertySearchIntent["nearbyNeed"];
+			}
 
-		if (example.key === "familySuitable" && example.value === true) {
-			intent.familySuitable = true;
-			if (intent.propertyIntent === "any") intent.propertyIntent = "residential";
-		}
-	});
+			if (example.key === "familySuitable" && example.value === true) {
+				intent.familySuitable = true;
+				if (intent.propertyIntent === "any") intent.propertyIntent = "residential";
+			}
+		});
 
-	intent.preferredTypes = inferPreferredTypes(intent, searchText);
-	intent.confidence = Math.max(0, Math.min(1, strongestScore));
+		intent.preferredTypes = inferPreferredTypes(intent, searchText);
+		intent.confidence = Math.max(0, Math.min(1, strongestScore));
+	} catch (error) {
+		// Transformers depends on a native ONNX runtime that may be unavailable
+		// in serverless environments. Basic intent extraction still keeps search usable.
+		console.warn("Semantic search model unavailable; using basic intent parsing.", error);
+	}
 
 	return intent;
 }

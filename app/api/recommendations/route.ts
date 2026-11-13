@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { generatePropertyEmbedding, formatEmbeddingForPostgres } from "@/lib/ai/property-embeddings";
 import { extractBasicSearchIntent, extractSemanticSearchIntent, type PropertySearchIntent } from "@/lib/ai/search-intent";
 import { formatDistance } from "@/lib/nearby-places";
 import { sanitizePropertySearchQuery } from "@/lib/property-search";
@@ -589,6 +588,7 @@ function buildVectorReason(category: string, filters: RecommendationFilters, sim
 }
 
 async function getVectorRecommendations(category: string, filters: RecommendationFilters, candidates: RecommendationCandidate[]) {
+	const { generatePropertyEmbedding, formatEmbeddingForPostgres } = await import("@/lib/ai/property-embeddings");
 	const intent = await extractSemanticSearchIntent(buildRawSearchText(category, filters));
 	const queryEmbedding = await generatePropertyEmbedding(await buildRecommendationQuery(category, filters, candidates, intent));
 	const singlePreferredType = intent.preferredTypes.length === 1 ? intent.preferredTypes[0] : null;
