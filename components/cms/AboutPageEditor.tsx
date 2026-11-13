@@ -130,11 +130,16 @@ export function AboutPageEditor({ row, canEdit, onSubmit, onDelete }: AboutPageE
 									<TextField label="Name" value={member.name} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, name: value })} />
 									<TextField label="Role" value={member.role} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, role: value })} />
 									<TextField label="Photo URL" value={member.imageUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, imageUrl: value })} placeholder="/assets/team-member.webp or https://..." />
+									<div className="grid gap-3 sm:grid-cols-3">
+										<TextField label="X / Twitter profile" type="url" value={member.twitterUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, twitterUrl: value })} placeholder="https://x.com/username" />
+										<TextField label="Instagram profile" type="url" value={member.instagramUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, instagramUrl: value })} placeholder="https://instagram.com/username" />
+										<TextField label="LinkedIn profile" type="url" value={member.linkedinUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, linkedinUrl: value })} placeholder="https://linkedin.com/in/username" />
+									</div>
 								</div>
 							</div>
 						))}
 					</div>
-					<AddButton disabled={!canEdit} onClick={() => updateContent("teamMembers", [...content.teamMembers, { name: "", role: "", imageUrl: "" }])}>Add team member</AddButton>
+					<AddButton disabled={!canEdit} onClick={() => updateContent("teamMembers", [...content.teamMembers, { name: "", role: "", imageUrl: "", twitterUrl: "", instagramUrl: "", linkedinUrl: "" }])}>Add team member</AddButton>
 				</EditorSection>
 
 				<footer className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
@@ -161,8 +166,8 @@ function EditorSection({ title, description, children }: { title: string; descri
 	);
 }
 
-function TextField({ label, value, disabled, onChange, placeholder }: { label: string; value: string; disabled: boolean; onChange: (value: string) => void; placeholder?: string }) {
-	return <label className={labelClass}>{label}<input className={inputClass} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>;
+function TextField({ label, value, disabled, onChange, placeholder, type = "text" }: { label: string; value: string; disabled: boolean; onChange: (value: string) => void; placeholder?: string; type?: "text" | "url" }) {
+	return <label className={labelClass}>{label}<input type={type} className={inputClass} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>;
 }
 
 function TextArea({ label, value, disabled, onChange, rows }: { label: string; value: string; disabled: boolean; onChange: (value: string) => void; rows: number }) {

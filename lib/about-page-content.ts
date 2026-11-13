@@ -2,7 +2,7 @@ export const ABOUT_PAGE_CONTENT_KEY = "about_page_content";
 
 export type AboutStat = { value: string; label: string };
 export type AboutHighlight = { title: string; description: string };
-export type AboutTeamMember = { name: string; role: string; imageUrl: string };
+export type AboutTeamMember = { name: string; role: string; imageUrl: string; twitterUrl: string; instagramUrl: string; linkedinUrl: string };
 
 export type AboutPageContent = {
 	eyebrow: string;
@@ -41,9 +41,9 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
 	teamHeading: "Our Leadership",
 	teamDescription: "The executives guiding the vision and direction of Jewellz Realty.",
 	teamMembers: [
-		{ name: "Tom Cruise", role: "Founder & Chairman", imageUrl: "/assets/broker.webp" },
-		{ name: "Emma Watson", role: "Managing Director", imageUrl: "/assets/bannerprofessional.webp" },
-		{ name: "Will Smith", role: "Product Designer", imageUrl: "/assets/bannerconsult.webp" },
+		{ name: "Tom Cruise", role: "Founder & Chairman", imageUrl: "/assets/broker.webp", twitterUrl: "", instagramUrl: "", linkedinUrl: "" },
+		{ name: "Emma Watson", role: "Managing Director", imageUrl: "/assets/bannerprofessional.webp", twitterUrl: "", instagramUrl: "", linkedinUrl: "" },
+		{ name: "Will Smith", role: "Product Designer", imageUrl: "/assets/bannerconsult.webp", twitterUrl: "", instagramUrl: "", linkedinUrl: "" },
 	],
 };
 
@@ -74,6 +74,13 @@ export function parseAboutPageContent(value: unknown): AboutPageContent {
 		highlights: Array.isArray(content.highlights) ? content.highlights.filter((item) => item && typeof item === "object").map((item) => ({ title: textValue(item.title, ""), description: textValue(item.description, "") })) : DEFAULT_ABOUT_PAGE_CONTENT.highlights,
 		teamHeading: textValue(content.teamHeading, DEFAULT_ABOUT_PAGE_CONTENT.teamHeading),
 		teamDescription: textValue(content.teamDescription, DEFAULT_ABOUT_PAGE_CONTENT.teamDescription),
-		teamMembers: Array.isArray(content.teamMembers) ? content.teamMembers.filter((item) => item && typeof item === "object").map((item) => ({ name: textValue(item.name, ""), role: textValue(item.role, ""), imageUrl: textValue(item.imageUrl, "") })) : DEFAULT_ABOUT_PAGE_CONTENT.teamMembers,
+		teamMembers: Array.isArray(content.teamMembers) ? content.teamMembers.filter((item) => item && typeof item === "object").map((item) => ({
+			name: textValue(item.name, ""),
+			role: textValue(item.role, ""),
+			imageUrl: textValue(item.imageUrl, ""),
+			twitterUrl: textValue(item.twitterUrl, ""),
+			instagramUrl: textValue(item.instagramUrl, ""),
+			linkedinUrl: textValue(item.linkedinUrl, ""),
+		})) : DEFAULT_ABOUT_PAGE_CONTENT.teamMembers,
 	};
 }
