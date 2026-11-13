@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+	Activity,
 	BarChart3,
 	Building,
 	Building2,
@@ -24,6 +25,7 @@ import {
 	UserCircle,
 } from "lucide-react";
 import { ListingPerformanceChart } from "@/components/dashboard/ListingPerformanceChart";
+import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
 import { DashboardBarChart, DashboardDonut, DashboardTrendChart, type DashboardChartRow } from "@/components/dashboard/DashboardCharts";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -205,14 +207,16 @@ function buildDailyTrend(rows: InquiryItem[], days: number): DashboardChartRow[]
 	return buckets;
 }
 
-function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint: string; accent?: boolean }) {
-	return (
-		<div className="portal-stat-card">
-			<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">{label}</div>
-			<div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
-			<p className="mt-1 text-xs text-slate-600">{hint}</p>
-		</div>
-	);
+function StatCard({ label, value, hint }: { label: string; value: string | number; hint: string; accent?: boolean }) {
+	const normalized = label.toLowerCase();
+	const Icon = normalized.includes("unit") || normalized.includes("propert") || normalized.includes("project")
+		? Building2
+		: normalized.includes("lead") || normalized.includes("inquir")
+			? Inbox
+			: normalized.includes("view") || normalized.includes("performance") || normalized.includes("conversion")
+				? TrendingUp
+				: Activity;
+	return <PortalScorecard label={label} value={value} hint={hint} Icon={Icon} />;
 }
 
 function StatusPill({ status, tone }: { status?: string | null; tone: "stage" | "property" }) {
@@ -954,13 +958,13 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	};
 
 	return (
-		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
+		<main className="admin-square-ui portal-canvas min-h-screen text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				{/* Primary icon rail */}
-				<aside className="portal-sidebar hidden border-r py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between shadow-[1px_0_3px_rgba(15,23,42,0.02)]">
+				<aside className="portal-sidebar portal-primary-rail hidden border-r py-3 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
-						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Jewellz Realty">
-							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
+						<Link href="/" className="flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-80" title="Jewellz Realty">
+							<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
 						</Link>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {
@@ -971,7 +975,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 										key={group.id}
 										type="button"
 										onClick={() => openSection(group.items[0].id)}
-										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`flex h-9 w-9 items-center justify-center transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${active ? "bg-[#383838] text-[#FF4B52]" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -991,10 +995,10 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				</aside>
 
 				{/* Secondary navigation */}
-				<aside className={`portal-sidebar ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(15,23,42,0.02)]`}>
-					<nav className="flex max-h-[60vh] flex-col overflow-auto px-2 py-3 lg:max-h-[calc(100vh-120px)]">
-						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{activeGroup.label}</div>
-						<div className="space-y-1">
+				<aside className={`portal-sidebar portal-secondary-sidebar bg-white ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r`}>
+					<nav className="flex max-h-[60vh] flex-col overflow-auto py-3 lg:max-h-[calc(100vh-120px)]">
+						<div className="px-4 pb-3 text-sm font-semibold text-[#111111]">{activeGroup.label}</div>
+						<div>
 							{activeGroup.items.map((item) => {
 								const Icon = item.icon;
 								const active = activeSection === item.id;
@@ -1003,12 +1007,11 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 										key={item.id}
 										type="button"
 										onClick={() => openSection(item.id)}
-										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-2 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${active ? "bg-[#B5121B] font-semibold text-white" : "text-zinc-600 hover:bg-red-50 hover:text-[#B5121B]"}`}
 									>
 										<Icon className="h-4 w-4 shrink-0" />
 										<span className="min-w-0 flex-1">
 											<span className="block truncate text-sm font-medium">{item.label}</span>
-											<span className="block truncate text-[11px] text-zinc-500 font-normal">{item.hint}</span>
 										</span>
 									</button>
 								);
@@ -1039,7 +1042,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 
 				{/* Main column */}
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="portal-header sticky top-0 z-20 flex h-12 items-center gap-3 px-4">
+					<header className="portal-header sticky top-0 z-20 flex h-14 items-center gap-3 px-4">
 						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 transition hover:text-[#111111] hover:bg-zinc-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>

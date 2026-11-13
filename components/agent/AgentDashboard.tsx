@@ -45,6 +45,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { compressImageForUpload } from "@/lib/media/compress-image";
 import { SafeImage } from "@/components/ui/SafeImage";
+import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
 import type { AgentChartRow } from "./AgentCharts";
 
 const AgentChartLoading = () => <div className="h-56 animate-pulse rounded-lg bg-zinc-100" aria-hidden="true" />;
@@ -264,17 +265,8 @@ function PriorityPill({ priority }: { priority?: string | null }) {
 	return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone}`}>{priority ?? "medium"}</span>;
 }
 
-function StatCard({ label, value, hint, accent = false, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
-	return (
-		<div className="portal-stat-card">
-			<div className="flex items-center justify-between gap-2">
-				<div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">{label}</div>
-				{Icon ? <Icon className="h-4 w-4 text-slate-500" /> : null}
-			</div>
-			<div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${accent ? "text-[#DE141C]" : "text-[#111111]"}`}>{value}</div>
-			<p className="mt-1 text-xs text-slate-600">{hint}</p>
-		</div>
-	);
+function StatCard({ label, value, hint, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
+	return <PortalScorecard label={label} value={value} hint={hint} Icon={Icon} />;
 }
 
 export default function AgentDashboard({ initialSection }: { initialSection?: string }) {
@@ -1013,13 +1005,13 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	}
 
 	return (
-		<main className="portal-canvas min-h-screen bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(222,20,28,0.035),rgba(248,250,252,1))] text-[#111111] selection:bg-[#DE141C]/15">
+		<main className="admin-square-ui portal-canvas min-h-screen text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
 				{/* Primary icon rail */}
-				<aside className="portal-sidebar hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+				<aside className="portal-sidebar portal-primary-rail hidden border-r py-3 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
-						<Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-xs ring-1 ring-slate-200 transition hover:ring-black/20" title="Jewellz Realty — Go to website">
-							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
+						<Link href="/" className="flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-80" title="Jewellz Realty — Go to website">
+							<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
 						</Link>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {
@@ -1030,7 +1022,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										key={group.id}
 										type="button"
 										onClick={() => openSection(group.items[0].id)}
-										className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition ${active ? "bg-[#111111] text-white shadow-xs" : "text-slate-500 hover:bg-slate-100 hover:text-[#0f172a]"}`}
+										className={`relative flex h-9 w-9 items-center justify-center transition ${active ? "bg-[#383838] text-[#FF4B52]" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -1041,23 +1033,23 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<Link href="/" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-[#0f172a]" title="Visit customer website">
+						<Link href="/" className="flex h-9 w-9 items-center justify-center text-white/55 transition hover:bg-white/10 hover:text-white" title="Visit customer website">
 							<Globe className="h-4 w-4" />
 						</Link>
-						<button type="button" onClick={() => void reloadInquiries()} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-[#0f172a]" title="Refresh">
+						<button type="button" onClick={() => void reloadInquiries()} className="flex h-9 w-9 items-center justify-center text-white/55 transition hover:bg-white/10 hover:text-white" title="Refresh">
 							<RefreshCw className="h-4 w-4" />
 						</button>
-						<button type="button" onClick={handleSignOut} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Sign out to customer website">
+						<button type="button" onClick={handleSignOut} className="flex h-9 w-9 items-center justify-center text-white/55 transition hover:bg-white/10 hover:text-[#FF4B52]" title="Sign out to customer website">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
 				</aside>
 
 				{/* Secondary navigation */}
-				<aside className={`portal-sidebar ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r shadow-[1px_0_3px_rgba(15,23,42,0.02)]`}>
-					<nav className="flex max-h-[60vh] flex-col overflow-auto px-2 py-3 lg:max-h-[calc(100vh-96px)]">
-						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{activeGroup.label}</div>
-						<div className="space-y-1">
+				<aside className={`portal-sidebar portal-secondary-sidebar bg-white ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r`}>
+					<nav className="flex max-h-[60vh] flex-col overflow-auto py-3 lg:max-h-[calc(100vh-96px)]">
+						<div className="px-4 pb-3 text-sm font-semibold text-[#111111]">{activeGroup.label}</div>
+						<div>
 							{activeGroup.items.map((item) => {
 								const Icon = item.icon;
 								const active = activeSection === item.id;
@@ -1067,14 +1059,13 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 										key={item.id}
 										type="button"
 										onClick={() => openSection(item.id)}
-										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition ${active ? "bg-slate-100/90 font-semibold text-[#0f172a] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-slate-600 hover:bg-slate-50 hover:text-[#0f172a]"}`}
+										className={`relative flex w-full items-center gap-2 px-4 py-3 text-left transition ${active ? "bg-[#B5121B] font-semibold text-white" : "text-slate-600 hover:bg-red-50 hover:text-[#B5121B]"}`}
 									>
 										<Icon className="h-4 w-4 shrink-0" />
 										<span className="min-w-0 flex-1">
 											<span className="block truncate text-sm">{item.label}</span>
-											<span className="block truncate text-[11px] text-slate-400 font-normal">{item.hint}</span>
 										</span>
-										{badge ? <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{badge}</span> : null}
+										{badge ? <span className={`shrink-0 px-2 py-0.5 text-[10px] font-semibold ${active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"}`}>{badge}</span> : null}
 									</button>
 								);
 							})}
@@ -1103,7 +1094,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 				{/* Main column */}
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="portal-header sticky top-0 z-20 flex h-12 items-center gap-3 px-4 md:px-6">
+					<header className="portal-header sticky top-0 z-20 flex h-14 items-center gap-3 px-4 md:px-6">
 						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:text-[#0f172a] hover:bg-slate-50" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
