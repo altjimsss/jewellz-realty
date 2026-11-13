@@ -9,10 +9,10 @@ import { asText } from "./utils";
 import { DeveloperLogoCropDialog } from "./DeveloperLogoCropDialog";
 
 const inputClass =
-	"mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30 disabled:bg-zinc-50 disabled:text-black/45";
+	"mt-1.5 w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08] disabled:bg-zinc-50 disabled:text-black/45";
 const labelClass = "text-sm font-medium text-[#111111]";
 const primaryButton =
-	"inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#111111] px-5 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20";
+	"inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#111111] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/15 disabled:cursor-not-allowed disabled:bg-black/20";
 const subtleButton =
 	"inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-medium text-[#111111] transition hover:bg-zinc-50 disabled:opacity-50";
 
@@ -70,22 +70,28 @@ export function DeveloperPartnersWorkspace({ rows, selectedId, canEdit, onSelect
 	const filtered = rows.filter((row) => {
 		if (!query) return true;
 		return [asText(row.company_name), asText(row.contact_email), asText(row.website_url)].join(" ").toLowerCase().includes(query);
-	});
+	}).sort((left, right) => asText(left.company_name).localeCompare(asText(right.company_name)));
+	const liveCount = rows.filter((row) => asText(row.is_active) !== "false").length;
 
 	return (
-		<section className="overflow-hidden rounded-lg border border-black/10 bg-white">
-			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 px-4 py-3">
+		<section className="overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
+			<div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/[0.07] bg-zinc-50/70 px-5 py-5 sm:px-6">
 				<div>
-					<h2 className="text-sm font-semibold text-[#111111]">Developer Partners</h2>
-					<p className="mt-1 max-w-2xl text-xs leading-5 text-black/55">
+					<h2 className="text-base font-semibold tracking-tight text-[#111111]">Developer partners</h2>
+					<p className="mt-1 max-w-2xl text-sm leading-5 text-black/55">
 						Manage the partner companies shown in the homepage marquee. A logo is all that is needed to appear — a login account is optional and lets the partner manage their own logo.
 					</p>
+					<div className="mt-3 flex flex-wrap gap-2">
+						<Pill>{rows.length} total</Pill>
+						<Pill tone="emerald">{liveCount} visible</Pill>
+						{rows.length - liveCount > 0 ? <Pill tone="zinc">{rows.length - liveCount} hidden</Pill> : null}
+					</div>
 				</div>
 				{canEdit ? (
 					<button
 						type="button"
 						onClick={onCreateNew}
-						className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-3 py-2 text-xs font-medium text-white transition hover:bg-black/80"
+						className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#111111] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/15"
 					>
 						<Plus className="h-3.5 w-3.5" />
 						Add partner
@@ -93,24 +99,27 @@ export function DeveloperPartnersWorkspace({ rows, selectedId, canEdit, onSelect
 				) : null}
 			</div>
 
-			<div className="p-4">
-				<div className="grid gap-4 xl:grid-cols-[300px_1fr]">
-					<aside className="rounded-lg border border-black/10 bg-white p-3">
-						<div className="flex items-center justify-between gap-2 px-1 pb-3">
-							<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Partners</div>
-							<span className="text-xs text-black/40">{rows.length}</span>
+			<div className="p-4 sm:p-5">
+				<div className="grid gap-4 xl:grid-cols-[minmax(260px,0.78fr)_minmax(0,1.6fr)] xl:items-start">
+					<aside className="overflow-hidden rounded-2xl border border-black/[0.08] bg-zinc-50/60">
+						<div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
+							<div>
+								<div className="text-sm font-semibold text-[#111111]">Your partners</div>
+								<div className="mt-0.5 text-xs text-black/45">Select a company to edit</div>
+							</div>
+							<span className="rounded-lg border border-black/[0.07] bg-white px-2.5 py-1 text-xs font-semibold tabular-nums text-black/55">{filtered.length}</span>
 						</div>
-						<label className="mb-3 block px-1">
+						<label className="relative mx-3 mb-3 block">
 							<span className="sr-only">Search partners</span>
 							<input
 								type="search"
 								value={search}
 								onChange={(event) => setSearch(event.target.value)}
 								placeholder="Search partners..."
-								className="h-9 w-full rounded-md border border-black/10 bg-zinc-50 px-3 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/30 focus:bg-white"
+								className="h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]"
 							/>
 						</label>
-						<div className="max-h-[720px] min-h-[520px] space-y-2 overflow-auto pr-1 xl:max-h-[calc(100vh-300px)]">
+						<div className="max-h-[640px] min-h-40 space-y-1.5 overflow-auto px-2 pb-2 xl:max-h-[calc(100vh-330px)]">
 							{rows.length === 0 ? <p className="px-2 py-4 text-sm text-black/45">No partners yet. Use “Add partner”.</p> : null}
 							{rows.length > 0 && filtered.length === 0 ? <p className="px-2 py-4 text-sm text-black/45">No partners match your search.</p> : null}
 							{filtered.map((row) => {
@@ -124,15 +133,15 @@ export function DeveloperPartnersWorkspace({ rows, selectedId, canEdit, onSelect
 										key={id}
 										type="button"
 										onClick={() => onSelect(row)}
-										className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition ${active ? "border-black/20 bg-zinc-100" : "border-transparent bg-white hover:border-black/10 hover:bg-zinc-50"}`}
+										className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${active ? "border-[#DE141C]/20 bg-white shadow-sm ring-1 ring-inset ring-[#DE141C]/10" : "border-transparent bg-transparent hover:border-black/[0.06] hover:bg-white/80"}`}
 									>
 										<LogoBadge src={asText(row.logo_url)} name={asText(row.company_name)} />
 										<div className="min-w-0 flex-1">
 											<div className="truncate text-sm font-medium text-[#111111]">{asText(row.company_name) || "Untitled partner"}</div>
 											<div className="mt-1 flex flex-wrap gap-1">
-												<Pill tone={isActive ? "emerald" : "zinc"}>{isActive ? "Live" : "Hidden"}</Pill>
-												{hasLogo ? null : <Pill tone="amber">No logo</Pill>}
-												{hasAccount ? <Pill tone="blue">Account</Pill> : null}
+												<Pill tone={isActive ? "emerald" : "zinc"}>{isActive ? "Visible" : "Hidden"}</Pill>
+												{hasLogo ? null : <Pill tone="amber">Logo needed</Pill>}
+												{hasAccount ? <Pill tone="blue">Login active</Pill> : null}
 											</div>
 										</div>
 									</button>
@@ -141,7 +150,7 @@ export function DeveloperPartnersWorkspace({ rows, selectedId, canEdit, onSelect
 						</div>
 					</aside>
 
-					<div className="rounded-lg border border-black/10 bg-white p-4">
+					<div className="min-w-0 rounded-2xl border border-black/[0.08] bg-white p-4 shadow-sm shadow-black/[0.025] sm:p-6">
 						{selectedRow || isCreating ? (
 							<DeveloperEditor
 								key={editorKey}
@@ -153,10 +162,10 @@ export function DeveloperPartnersWorkspace({ rows, selectedId, canEdit, onSelect
 								onReload={onReload}
 							/>
 						) : (
-							<div className="flex min-h-[520px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-black/15 bg-zinc-50 p-8 text-center">
-								<Building2 className="h-6 w-6 text-black/30" />
-								<p className="text-sm font-medium text-[#111111]">Select a partner to edit</p>
-								<p className="max-w-sm text-xs leading-5 text-black/50">Choose a company from the list, or add a new partner to feature in the homepage marquee.</p>
+							<div className="flex min-h-[360px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-zinc-50/70 p-8 text-center">
+								<Building2 className="h-8 w-8 text-black/25" />
+								<p className="text-sm font-semibold text-[#111111]">Choose a developer partner</p>
+								<p className="max-w-sm text-sm leading-5 text-black/50">Select a company from the list to edit its details, logo, visibility, or login access.</p>
 								{canEdit ? (
 									<button
 										type="button"
@@ -343,6 +352,10 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 				) : null}
 			</div>
 
+			<div>
+				<h3 className="text-sm font-semibold text-[#111111]">Company details</h3>
+				<p className="mt-0.5 text-xs text-black/45">Basic information shown to your team and used on partner listings.</p>
+			</div>
 			<div className="grid gap-4 md:grid-cols-2">
 				<label className="block md:col-span-2">
 					<div className={labelClass}>Company name</div>
@@ -367,6 +380,17 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 					/>
 				</label>
 				<label className="block">
+					<div className={labelClass}>Contact email</div>
+					<input
+						type="email"
+						value={form.contact_email}
+						onChange={(event) => update("contact_email", event.target.value)}
+						placeholder="contact@company.com"
+						disabled={!canEdit}
+						className={inputClass}
+					/>
+				</label>
+				<label className="block">
 					<div className={labelClass}>Contact phone</div>
 					<input
 						type="text"
@@ -378,7 +402,7 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 					/>
 				</label>
 				<label className="block md:col-span-2">
-					<div className={labelClass}>Description</div>
+					<div className={labelClass}>Company description <span className="font-normal text-black/40">(optional)</span></div>
 					<textarea
 						rows={3}
 						value={form.description}
@@ -390,11 +414,11 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 				</label>
 			</div>
 
-			<div className="rounded-lg border border-black/10 bg-zinc-50/60 p-4">
+			<div className="rounded-2xl border border-black/[0.08] bg-zinc-50/70 p-4 sm:p-5">
 				<div className="flex flex-wrap items-start justify-between gap-2">
 					<div>
-						<div className="text-sm font-semibold text-[#111111]">Marquee logo</div>
-						<p className="text-xs text-black/50">Shown in the homepage partner loop. Partners without a logo use a text badge instead.</p>
+						<div className="text-sm font-semibold text-[#111111]">Homepage logo</div>
+						<p className="mt-1 text-xs leading-5 text-black/50">This image appears in the homepage partner carousel. Upload and crop a logo, or paste an image URL.</p>
 					</div>
 					{form.logo_url.trim() ? (
 						<div className="flex flex-wrap items-center gap-3">
@@ -451,10 +475,10 @@ function DeveloperEditor({ row, isCreating, canEdit, onDelete, onSubmit, onReloa
 				</div>
 			</div>
 
-			<label className={`flex items-center justify-between gap-3 rounded-lg border border-black/10 bg-white px-4 py-3 ${canEdit ? "cursor-pointer" : ""}`}>
+				<label className={`flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] bg-white px-4 py-4 ${canEdit ? "cursor-pointer hover:border-black/15" : ""}`}>
 				<span>
-					<span className="block text-sm font-medium text-[#111111]">Visible on the website</span>
-					<span className="block text-xs text-black/50">When off, this partner is hidden from the homepage marquee.</span>
+					<span className="block text-sm font-medium text-[#111111]">Show in homepage carousel</span>
+					<span className="mt-0.5 block text-xs text-black/50">Turn off to keep this partner in the admin list but hide it from visitors.</span>
 				</span>
 				<input
 					type="checkbox"
@@ -541,11 +565,11 @@ function AccountPanel({ developer, defaultEmail, onReload }: { developer: CmsRow
 	}
 
 	return (
-		<div className="rounded-lg border border-black/10 bg-white p-4">
+		<div className="rounded-2xl border border-black/[0.08] bg-zinc-50/60 p-4 sm:p-5">
 			<div className="flex flex-wrap items-start justify-between gap-2">
 				<div>
-					<div className="text-sm font-semibold text-[#111111]">Login account</div>
-					<p className="text-xs text-black/50">Optional. Lets this partner sign in to manage their own logo.</p>
+					<div className="text-sm font-semibold text-[#111111]">Partner login access <span className="font-normal text-black/40">(optional)</span></div>
+					<p className="mt-1 text-xs text-black/50">Create an account only if the partner needs to sign in and manage their own logo.</p>
 				</div>
 				{hasAccount ? (
 					<Pill tone="emerald">
@@ -562,7 +586,6 @@ function AccountPanel({ developer, defaultEmail, onReload }: { developer: CmsRow
 				<div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5 text-xs">
 					<div className="min-w-0">
 						<div className="break-all font-medium text-emerald-900">{asText(developer.contact_email) || "Linked account"}</div>
-						<div className="mt-0.5 truncate font-mono text-[10px] text-emerald-900/60">{profileId}</div>
 					</div>
 					<button
 						type="button"

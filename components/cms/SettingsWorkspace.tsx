@@ -25,6 +25,10 @@ function valueKind(key: string, value: string): ValueKind {
 
 const kindLabel: Record<ValueKind, string> = { boolean: "Toggle", number: "Number", text: "Text" };
 
+function settingName(key: string) {
+	return key.trim().replace(/[_-]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) || "New setting";
+}
+
 function ValueChip({ kind, value }: { kind: ValueKind; value: string }) {
 	if (kind === "boolean") {
 		const on = value.trim().toLowerCase() === "true";
@@ -124,10 +128,10 @@ export function SettingsWorkspace({ rows, selectedId, canEdit, onSelect, onCreat
 									>
 										<div className="flex items-center gap-2">
 											<span className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-[#DE141C]" : "bg-black/15 group-hover:bg-black/30"}`} />
-											<span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold text-[#111111]">{key}</span>
+											<span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#111111]">{settingName(key)}</span>
 											<ValueChip kind={kind} value={value} />
 										</div>
-										<div className="mt-1.5 truncate pl-3.5 text-xs text-black/45">{asText(row.description) || "No description"}</div>
+									<div className="mt-1.5 truncate pl-3.5 text-xs text-black/45">{kindLabel[kind]} setting</div>
 									</button>
 								);
 							})}
@@ -209,11 +213,11 @@ function SettingEditor({ row, isCreating, canEdit, onDelete, onSubmit }: EditorP
 	<div className="space-y-6">
 		<div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/[0.07] pb-5">
 				<div className="min-w-0">
-				<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">{isCreating ? "Create configuration" : "Configuration editor"}</div>
-				<div className="mt-1.5 truncate font-mono text-xl font-semibold tracking-[-0.03em] text-[#111111]">{key.trim() || "new_setting_key"}</div>
+				<div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#DE141C]">{isCreating ? "Add a setting" : "Edit setting"}</div>
+				<div className="mt-1.5 truncate text-xl font-semibold tracking-[-0.03em] text-[#111111]">{settingName(key)}</div>
 				<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-black/45">
-					<span className="rounded-full border border-black/[0.08] bg-zinc-50 px-2.5 py-1 font-medium text-black/60">{kindLabel[kind]} value</span>
-					<span>{isCreating ? "Add a key and value to create a setting." : "Update the value or description below."}</span>
+					<span className="rounded-full border border-black/[0.08] bg-zinc-50 px-2.5 py-1 font-medium text-black/60">{kindLabel[kind]}</span>
+					<span>{isCreating ? "Give this setting a name and choose its value." : "Change the value below and save."}</span>
 					</div>
 				</div>
 				{!isCreating && row && canEdit ? (
@@ -229,24 +233,8 @@ function SettingEditor({ row, isCreating, canEdit, onDelete, onSubmit }: EditorP
 			</div>
 
 		<div className="grid gap-x-5 gap-y-6 md:grid-cols-2">
-				<label className="block md:col-span-2">
-					<div className={labelClass}>Key</div>
-					<input
-						type="text"
-						value={key}
-						onChange={(event) => {
-							setKey(event.target.value);
-							setStatus("");
-						}}
-						placeholder="e.g. hot_picks_count"
-						disabled={!canEdit || !isCreating}
-						className={`${inputClass} font-mono`}
-					/>
-					{!isCreating ? <p className="mt-1 text-[11px] text-black/45">The key is the identifier and can’t be changed.</p> : null}
-				</label>
-
 				<div className="md:col-span-2">
-					<div className={labelClass}>Value</div>
+					<div className={labelClass}>{settingName(key)} value</div>
 					{kind === "boolean" ? (
 						<label className={`mt-2 flex items-center justify-between gap-3 rounded-xl border border-black/[0.08] bg-zinc-50/60 px-4 py-4 transition ${canEdit ? "cursor-pointer hover:border-black/15 hover:bg-zinc-50" : ""}`}>
 							<span>
@@ -279,24 +267,24 @@ function SettingEditor({ row, isCreating, canEdit, onDelete, onSubmit }: EditorP
 					)}
 				</div>
 
-				<label className="block md:col-span-2">
-					<div className={labelClass}>Description</div>
-					<textarea
-						rows={4}
-						value={description}
-						onChange={(event) => {
-							setDescription(event.target.value);
-							setStatus("");
-						}}
-						placeholder="What does this setting control?"
-						disabled={!canEdit}
-						className={`${inputClass} min-h-28 resize-y leading-6`}
-					/>
-				</label>
+				<details className="md:col-span-2 rounded-xl border border-black/[0.08] bg-zinc-50/60 px-4 py-3" open={isCreating ? true : undefined}>
+					<summary className="cursor-pointer text-sm font-medium text-black/65">Advanced details</summary>
+					<div className="mt-4 grid gap-4">
+						<label className="block">
+							<div className={labelClass}>Setting identifier</div>
+							<input type="text" value={key} onChange={(event) => { setKey(event.target.value); setStatus(""); }} placeholder="e.g. hot_picks_count" disabled={!canEdit || !isCreating} className={`${inputClass} font-mono`} />
+							<p className="mt-1 text-[11px] text-black/45">Used internally by the system. Leave unchanged when editing.</p>
+						</label>
+						<label className="block">
+							<div className={labelClass}>Internal note <span className="font-normal text-black/40">(optional)</span></div>
+							<textarea rows={2} value={description} onChange={(event) => { setDescription(event.target.value); setStatus(""); }} placeholder="Add a note for other administrators" disabled={!canEdit} className={`${inputClass} resize-y leading-6`} />
+						</label>
+					</div>
+				</details>
 			</div>
 
 			<div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.07] pt-5">
-				<p className={`text-xs ${status.includes("saved") || status.includes("created") ? "text-emerald-700" : status.includes("required") ? "text-red-600" : "text-black/45"}`} aria-live="polite">{status || (isCreating ? "Fill in the key and value to create a setting." : "Changes take effect after you save.")}</p>
+				<p className={`text-xs ${status.includes("saved") || status.includes("created") ? "text-emerald-700" : status.includes("required") ? "text-red-600" : "text-black/45"}`} aria-live="polite">{status || (isCreating ? "Complete the setting details above to create it." : "Changes take effect after you save.")}</p>
 				<button type="button" onClick={handleSubmit} disabled={!canSave} className={primaryButton}>
 					{saving ? "Saving..." : isCreating ? "Create setting" : "Save changes"}
 				</button>

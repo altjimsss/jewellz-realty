@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, ChangeEvent, type RefObject } from "react";
 import {
 	Building2,
 	MapPin,
@@ -42,6 +42,7 @@ function isFarmCategory(value: unknown) {
 export type PropertyWizardProps = {
 	rows: CmsRow[];
 	selectedId: string | null;
+	descriptionFocusPropertyId?: string | null;
 	fields: FieldSpec[];
 	defaultValues?: CmsPayload;
 	canEdit: boolean;
@@ -617,6 +618,7 @@ function FieldInput({
 	canEdit,
 	onChange,
 	onVideoUploadingChange,
+	descriptionRef,
 }: {
 	field: FieldSpec;
 	value: CmsPayload[string];
@@ -624,6 +626,7 @@ function FieldInput({
 	canEdit: boolean;
 	onChange: (name: string, val: string | boolean) => void;
 	onVideoUploadingChange?: (uploading: boolean) => void;
+	descriptionRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
 	if (field.name === "video_url") {
 		return (
@@ -642,6 +645,7 @@ function FieldInput({
 	if (field.type === "textarea" || field.type === "array") {
 		return (
 			<textarea
+				ref={field.name === "description" ? descriptionRef : undefined}
 				name={field.name}
 				rows={field.rows ?? 4}
 				value={displayValue(field, value)}
@@ -720,6 +724,7 @@ function FieldInput({
 export function PropertyWizard({
 	rows,
 	selectedId,
+	descriptionFocusPropertyId,
 	fields,
 	defaultValues,
 	canEdit,
@@ -735,13 +740,17 @@ export function PropertyWizard({
 	saveBlockedMessage,
 }: PropertyWizardProps) {
 	const [search, setSearch] = useState("");
-	const [wizardOpen, setWizardOpen] = useState(false);
-	const [currentStep, setCurrentStep] = useState(0);
+	const contentStepIndex = STEPS.findIndex((step) => step.id === "content");
+	const shouldFocusSelectedDescription = Boolean(selectedId && selectedId === descriptionFocusPropertyId);
+	const [wizardOpen, setWizardOpen] = useState(shouldFocusSelectedDescription);
+	const [currentStep, setCurrentStep] = useState(shouldFocusSelectedDescription ? contentStepIndex : 0);
 	const [saving, setSaving] = useState(false);
 	const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 	const [previewPayload, setPreviewPayload] = useState<CmsPayload | null>(null);
 	const formRef = useRef<HTMLFormElement | null>(null);
 	const sectionRef = useRef<HTMLElement | null>(null);
+	const descriptionFieldRef = useRef<HTMLTextAreaElement | null>(null);
+	const focusDescriptionOnOpenRef = useRef(shouldFocusSelectedDescription);
 
 	const selectedRow = useMemo(
 		() => rows.find((r) => asText(r.id) === asText(selectedId)) ?? null,
@@ -925,10 +934,26 @@ export function PropertyWizard({
 				}
 			} catch {}
 			setPayload(initialData);
-			setCurrentStep(0);
+			if (!wizardOpen && selectedId && selectedId === descriptionFocusPropertyId) {
+				setWizardOpen(true);
+				setCurrentStep(contentStepIndex);
+				focusDescriptionOnOpenRef.current = true;
+			} else if (!wizardOpen) {
+				setCurrentStep(0);
+			}
 			setStepErrors({});
 		}
-	}, [selectedId, selectedRow, fields, defaultValues]);
+	}, [selectedId, selectedRow, fields, defaultValues, wizardOpen, contentStepIndex, descriptionFocusPropertyId]);
+
+	useEffect(() => {
+		if (!wizardOpen || !focusDescriptionOnOpenRef.current || currentStep !== contentStepIndex) return;
+		focusDescriptionOnOpenRef.current = false;
+		const frame = window.requestAnimationFrame(() => {
+			descriptionFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+			descriptionFieldRef.current?.focus({ preventScroll: true });
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [wizardOpen, currentStep, contentStepIndex]);
 
 	// Autosave active draft to localStorage
 	useEffect(() => {
@@ -1266,6 +1291,7 @@ export function PropertyWizard({
 														canEdit={canEdit}
 														onChange={handleFieldChange}
 														onVideoUploadingChange={setVideoUploading}
+												descriptionRef={descriptionFieldRef}
 													/>
 													{field.help && (
 														<p className="mt-1.5 text-[11px] leading-5 text-black/40">

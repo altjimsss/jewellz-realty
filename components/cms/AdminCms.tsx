@@ -1887,7 +1887,7 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 				<div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#DE141C] shadow-sm ring-1 ring-black/[0.05]"><ImagePlus className="h-5 w-5" /></div>
 				<div>
 					<div className="text-sm font-semibold text-[#111111]">Photo comes next</div>
-					<p className="mt-1 max-w-xl text-sm leading-5 text-black/55">Save this gallery item first. Then you can upload a photo, preview it, or replace it here.</p>
+				<p className="mt-1 max-w-xl text-sm leading-5 text-black/55">Save the photo details first. Then you can upload or replace its image here.</p>
 				</div>
 			</div>
 		);
@@ -1900,12 +1900,12 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 					<div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#DE141C] shadow-sm ring-1 ring-black/[0.05]"><ImagePlus className="h-5 w-5" /></div>
 					<div>
 						<div className="text-sm font-semibold text-[#111111]">Gallery photo</div>
-						<p className="mt-1 text-xs leading-5 text-black/50">Upload a replacement or update the Image URL field, then save the gallery item.</p>
+						<p className="mt-1 text-xs leading-5 text-black/50">Upload a replacement photo here. It will be saved to this gallery item automatically.</p>
 					</div>
 				</div>
 				{canEdit ? (
 					<button type="button" onClick={deleteGalleryItem} className="rounded-xl border border-red-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/10">
-						Delete photo
+						Delete gallery item
 					</button>
 				) : null}
 			</div>
@@ -3061,6 +3061,7 @@ export default function AdminCms({
 	const [actionToast, setActionToast] = useState<ActionToast | null>(null);
 	const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
+	const [descriptionFocusPropertyId, setDescriptionFocusPropertyId] = useState<string | null>(null);
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
 	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState(initialPropertyCategory);
@@ -3511,6 +3512,7 @@ export default function AdminCms({
 		setActivePrimary("listings");
 		setActiveSection("properties");
 		setPropertyCategoryFilter("all");
+		setDescriptionFocusPropertyId(propertyId);
 		setSelection((current) => ({ ...current, properties: propertyId }));
 		syncAdminUrl("/admin/listings");
 	}
@@ -4524,7 +4526,7 @@ export default function AdminCms({
 
 	async function saveGalleryItem(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.section || !payload.title || !payload.image_url) {
-			setMessage("Gallery items need section, title, and image_url.");
+			setMessage("Add a photo title, choose a gallery section, and provide a photo URL.");
 			return;
 		}
 		if (sessionUser?.id && !currentRow) payload.created_by = sessionUser.id;
@@ -4556,9 +4558,22 @@ export default function AdminCms({
 	}
 
 	async function saveSiteStat(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.key || !payload.label) {
-			setMessage("Site stats need key and label.");
+		if (!payload.label) {
+			setMessage("Add a label for this homepage stat.");
 			return;
+		}
+		if (!currentRow) {
+			const baseKey = asText(payload.label)
+				.normalize("NFKD")
+				.replace(/[\u0300-\u036f]/g, "")
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, "-")
+				.replace(/^-|-$/g, "") || `stat-${Date.now()}`;
+			const usedKeys = new Set(workspace.siteStats.map((row) => asText(row.key)));
+			let key = baseKey;
+			let suffix = 2;
+			while (usedKeys.has(key)) key = `${baseKey}-${suffix++}`;
+			payload.key = key;
 		}
 		await saveEntity("site_stats", payload, currentRow, "key");
 	}
@@ -5102,6 +5117,7 @@ export default function AdminCms({
 									<PropertyWizard
 										rows={workspace.properties}
 										selectedId={selectedPropertyId}
+									descriptionFocusPropertyId={descriptionFocusPropertyId}
 										fields={propertyEditorFields}
 										defaultValues={DEFAULT_PROPERTY_VALUES}
 										canEdit={canEditCatalog}
@@ -5287,7 +5303,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "gallery" && isAdmin ? (
-						<EntityEditor title="Gallery Items" description="Browse Gallery tiles for achievements, events, trainings, service, and general content." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.section ?? "general"} • ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} saveLabel="Save gallery item" extra={<GalleryImageManager galleryItem={selectedGalleryItem} canEdit={canEditContent} onChanged={reloadWorkspace} onRequestDelete={requestDestructiveAction} />} />
+						<EntityEditor title="Gallery Items" description="Add and organize the photos visitors see in your gallery. Choose a photo, add a caption, then publish it when it is ready." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={(row) => asText(row.title) || "Untitled photo"} rowMeta={(row) => `${displayCategory(row.section)} · ${row.is_published ? "Published" : "Hidden"}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} saveLabel="Save photo" createLabel="Add a gallery photo" extra={<GalleryImageManager galleryItem={selectedGalleryItem} canEdit={canEditContent} onChanged={reloadWorkspace} onRequestDelete={requestDestructiveAction} />} />
 						) : null}
 
 						{currentSection === "careerJobs" && isAdmin ? (
@@ -5347,7 +5363,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "stats" && isAdmin ? (
-							<EntityEditor title="Site Stats" description="Key-value counters shown in the homepage stat strip." rows={workspace.siteStats} selectedId={selection.siteStats} idKey="key" fields={siteStatFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.value ?? 0}${row.suffix ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, siteStats: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, siteStats: null }))} onDelete={(row) => deleteEntity("site_stats", row, "key")} onSubmit={saveSiteStat} />
+							<EntityEditor title="Homepage Stats" description="Manage the number highlights shown on your homepage. Edit the label and number, then choose where each stat appears." rows={workspace.siteStats} selectedId={selection.siteStats} idKey="key" fields={siteStatFields} defaultValues={{ value: 0, suffix: "+", sort_order: workspace.siteStats.length + 1 }} canEdit={canEditContent} rowLabel={(row) => asText(row.label) || "Untitled stat"} rowMeta={(row) => `${Number(row.value ?? 0).toLocaleString()}${asText(row.suffix)} · Position ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, siteStats: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, siteStats: null }))} onDelete={(row) => deleteEntity("site_stats", row, "key")} onSubmit={saveSiteStat} saveLabel="Save stat" createLabel="Add a homepage stat" guidance={<p className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm leading-5 text-blue-900/75">The system creates the internal identifier automatically from your stat label. For example, “Properties” displays as 500+ when the number is 500 and the ending is +.</p>} />
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (

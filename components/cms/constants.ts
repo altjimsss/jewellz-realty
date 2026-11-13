@@ -154,13 +154,13 @@ export const projectFields: FieldSpec[] = [
 ];
 
 export const galleryFields: FieldSpec[] = [
-	{ name: "section", label: "Section", type: "select", options: gallerySectionOptions },
-	{ name: "title", label: "Title", type: "text" },
-	{ name: "description", label: "Description", type: "textarea", rows: 4 },
-	{ name: "image_url", label: "Image URL", type: "url" },
-	{ name: "link_url", label: "Link URL", type: "url" },
-	{ name: "sort_order", label: "Sort Order", type: "number" },
-	{ name: "is_published", label: "Published", type: "checkbox" },
+	{ name: "title", label: "Photo title", type: "text", placeholder: "e.g. Team building day" },
+	{ name: "section", label: "Gallery section", type: "select", options: gallerySectionOptions, help: "Choose where visitors will find this photo." },
+	{ name: "image_url", label: "Photo URL", type: "url", placeholder: "https://...", help: "Required to create the item. After saving, you can upload a replacement photo below." },
+	{ name: "description", label: "Caption", type: "textarea", rows: 3, placeholder: "Add a short caption (optional)" },
+	{ name: "link_url", label: "Link (optional)", type: "url", placeholder: "https://..." },
+	{ name: "is_published", label: "Show in public gallery", type: "checkbox", help: "Turn off to save this item without showing it to visitors." },
+	{ name: "sort_order", label: "Display order", type: "number", help: "Lower numbers appear first." },
 ];
 
 export const careerJobFields: FieldSpec[] = [
@@ -200,11 +200,10 @@ export const partnerLogoFields: FieldSpec[] = [
 ];
 
 export const siteStatFields: FieldSpec[] = [
-	{ name: "key", label: "Key", type: "text" },
-	{ name: "label", label: "Label", type: "text" },
-	{ name: "value", label: "Value", type: "number" },
-	{ name: "suffix", label: "Suffix", type: "text" },
-	{ name: "sort_order", label: "Sort Order", type: "number" },
+	{ name: "label", label: "Stat label", type: "text", placeholder: "e.g. Properties" },
+	{ name: "value", label: "Number", type: "number", placeholder: "0", help: "Enter the number visitors will see." },
+	{ name: "suffix", label: "Ending (optional)", type: "text", placeholder: "e.g. + or %", help: "Shown right after the number, such as 500+." },
+	{ name: "sort_order", label: "Position on homepage", type: "number", help: "Use 1 for the first stat, 2 for the second, and so on." },
 ];
 
 export const settingFields: FieldSpec[] = [
