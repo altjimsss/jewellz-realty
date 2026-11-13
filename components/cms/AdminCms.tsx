@@ -25,7 +25,7 @@ import { AgentsWorkspace } from "./AgentsWorkspace";
 import { DeveloperPartnersWorkspace } from "./DeveloperPartnersWorkspace";
 import { SettingsWorkspace } from "./SettingsWorkspace";
 import { AdminContentSkeleton } from "./AdminContentSkeleton";
-import { EntityEditor, InfoCard, SectionShell, StatusBadge } from "./blocks";
+import { DashboardMetricCard, EntityEditor, InfoCard, SectionShell, StatusBadge } from "./blocks";
 import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
@@ -147,7 +147,7 @@ function localRegression(points: number[]) {
 	};
 }
 
-const analyticsColors = ["#DE141C", "#2563eb", "#059669", "#d97706", "#7c3aed", "#0891b2", "#111111", "#71717a"];
+const analyticsColors = ["#DE141C", "#171717", "#71717a", "#a1a1aa", "#52525b"];
 
 function numberAverage(values: number[]) {
 	const clean = values.filter((value) => Number.isFinite(value));
@@ -325,15 +325,15 @@ function hasMeaningfulChartValue<T extends Record<string, unknown>>(rows: T[], k
 function AnalyticsChartCard({ title, description, isLive = true, children }: { title: string; description: string; isLive?: boolean; children: React.ReactNode }) {
 	const titleKey = title.toLowerCase();
 	const chartStyle = titleKey.includes("traffic") || titleKey.includes("source")
-		? { Icon: Globe, iconClass: "bg-blue-50 text-blue-700" }
+		? { Icon: Globe, iconClass: "bg-zinc-100 text-zinc-700" }
 		: titleKey.includes("price") || titleKey.includes("asking")
 			? { Icon: CircleDollarSign, iconClass: "bg-amber-50 text-amber-700" }
 			: titleKey.includes("view") || titleKey.includes("property") || titleKey.includes("listing")
-				? { Icon: Building2, iconClass: "bg-cyan-50 text-cyan-800" }
+				? { Icon: Building2, iconClass: "bg-zinc-100 text-zinc-700" }
 				: titleKey.includes("conversion") || titleKey.includes("inquiry") || titleKey.includes("funnel")
-					? { Icon: TrendingUp, iconClass: "bg-emerald-50 text-emerald-700" }
+					? { Icon: TrendingUp, iconClass: "bg-red-50 text-[#DE141C]" }
 					: titleKey.includes("session") || titleKey.includes("visitor") || titleKey.includes("bounce")
-						? { Icon: Activity, iconClass: "bg-violet-50 text-violet-700" }
+						? { Icon: Activity, iconClass: "bg-zinc-100 text-zinc-700" }
 						: { Icon: BarChart3, iconClass: "bg-zinc-100 text-zinc-700" };
 	const ChartIcon = chartStyle.Icon;
 	return (
@@ -892,7 +892,7 @@ function AnalyticsVisualSuite({
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="visitors" name="Unique visitors" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 3, fill: "#DE141C" }} />
-								<Line type="monotone" dataKey="sessions" name="Sessions" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+								<Line type="monotone" dataKey="sessions" name="Sessions" stroke="#71717a" strokeWidth={2} strokeDasharray="5 4" dot={false} />
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No sessions have been recorded for the recent visitor window yet." />}
 					</AnalyticsChartCard>
@@ -913,7 +913,7 @@ function AnalyticsVisualSuite({
 								<XAxis type="number" hide />
 								<YAxis dataKey="title" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} width={138} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Bar dataKey="total_views" name="Views" fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
+								<Bar dataKey="total_views" name="Views" fill="#171717" radius={[0, 6, 6, 0]} maxBarSize={14} />
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No listing view counts yet. Property page tracking must write property_view events first." />}
 					</AnalyticsChartCard>
@@ -1028,7 +1028,7 @@ function AnalyticsVisualSuite({
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="average" name="Average price" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
-								<Line type="monotone" dataKey="forecast" name="Next month forecast" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
+								<Line type="monotone" dataKey="forecast" name="Next month forecast" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Monthly price trends need listings with a numeric price and created_at date." />}
 					</AnalyticsChartCard>
@@ -1073,7 +1073,7 @@ function AnalyticsVisualSuite({
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="rate" name="Actual conversion rate" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#2563eb" }} />
+								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
 							</LineChart>
 						</ResponsiveContainer>
 					</AnalyticsChartCard>
@@ -1086,7 +1086,7 @@ function AnalyticsVisualSuite({
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => Number(value).toFixed(1)} />
 								<Tooltip content={<CmsChartTooltip />} />
 								<Line type="monotone" dataKey="demand" name="Actual inquiries" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 2, fill: "#DE141C" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#2563eb" }} />
+								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
 							</LineChart>
 						</ResponsiveContainer>
 					</AnalyticsChartCard>
@@ -2739,13 +2739,13 @@ function AnalyticsPanel({
 												key={priority}
 												className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold capitalize transition ${
 													isHigh
-													? "bg-rose-50 text-rose-700"
+																		? "bg-red-50 text-[#DE141C]"
 														: isMedium
 														? "bg-amber-50 text-amber-800"
-														: "bg-blue-50 text-blue-700"
+																		: "bg-zinc-100 text-zinc-700"
 												}`}
 											>
-											<span className={`h-1.5 w-1.5 rounded-full ${isHigh ? "bg-rose-600" : isMedium ? "bg-amber-600" : "bg-blue-600"}`} />
+																<span className={`h-1.5 w-1.5 rounded-full ${isHigh ? "bg-[#DE141C]" : isMedium ? "bg-amber-600" : "bg-zinc-500"}`} />
 												{priority}: {count}
 											</span>
 										);
@@ -4622,8 +4622,8 @@ export default function AdminCms({
 	return (
 		<main className="admin-square-ui portal-canvas min-h-screen text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
-				<aside className="portal-sidebar border-white/10 bg-[#171717] text-white hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.12)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
-					<div className="flex flex-col items-center gap-4">
+				<aside aria-label="Primary navigation" className="portal-sidebar portal-primary-rail border-white/10 bg-[#171717] text-white hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.12)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+					<div className="flex flex-col items-center gap-5">
 						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
 						</div>
@@ -4636,7 +4636,7 @@ export default function AdminCms({
 										key={group.id}
 										type="button"
 										onClick={() => openPrimary(group)}
-										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "bg-white text-[#111111] shadow-2xs" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
+										className={`relative flex h-10 w-10 items-center justify-center transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:bg-[#DE141C] bg-white text-[#111111] shadow-2xs" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -4655,9 +4655,9 @@ export default function AdminCms({
 					</div>
 				</aside>
 
-				<aside className={`portal-sidebar ${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
-					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-2 py-3">
-						<div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{activeNavGroup?.label ?? "Dashboard"}</div>
+				<aside aria-label="Section navigation" className={`portal-sidebar portal-secondary-sidebar bg-zinc-50 ${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
+					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-3 py-5">
+						<div className="px-2 pb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
 							{activePrimary === "analytics" && analyticsOverviewItem && AnalyticsOverviewIcon ? (
 								<div>
@@ -4762,7 +4762,7 @@ export default function AdminCms({
 				</aside>
 
 				<section className="flex min-w-0 flex-col bg-transparent">
-					<header className="portal-header sticky top-0 z-40 flex h-12 items-center gap-3 px-4">
+					<header className="portal-header sticky top-0 z-40 flex h-14 items-center gap-3 px-5">
 						<button type="button" onClick={() => setShowSecondarySidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title={showSecondarySidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSecondarySidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
@@ -4980,27 +4980,11 @@ export default function AdminCms({
 						{currentSection === "overview" ? (
 							<>
 								<div className="grid gap-3">
-									<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-										<div className="portal-stat-label">Needs attention</div>
-										<div className="portal-stat-value">{urgentLeads.length}</div>
-										<p className="portal-stat-hint">High-intent or overdue leads.</p>
-										</button>
-										<button type="button" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-										<div className="portal-stat-label">Unassigned leads</div>
-										<div className="portal-stat-value">{unassignedLeads.length}</div>
-										<p className="portal-stat-hint">Assign these before follow-up slips.</p>
-										</button>
-										<button type="button" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-										<div className="portal-stat-label">Draft listings</div>
-										<div className="portal-stat-value">{draftListings.length}</div>
-										<p className="portal-stat-hint">Listings not yet public.</p>
-										</button>
-										<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="portal-stat-card text-left active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
-										<div className="portal-stat-label">Low inquiry listings</div>
-										<div className="portal-stat-value">{lowPerformingListings.length}</div>
-										<p className="portal-stat-hint">Viewed listings below target rate.</p>
-										</button>
+									<div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+										<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High-intent or overdue leads." onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+										<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Assign these before follow-up slips." onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+										<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Listings not yet public." onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
+										<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Viewed listings below target rate." onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
 									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
@@ -5363,7 +5347,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "stats" && isAdmin ? (
-							<EntityEditor title="Homepage Stats" description="Manage the number highlights shown on your homepage. Edit the label and number, then choose where each stat appears." rows={workspace.siteStats} selectedId={selection.siteStats} idKey="key" fields={siteStatFields} defaultValues={{ value: 0, suffix: "+", sort_order: workspace.siteStats.length + 1 }} canEdit={canEditContent} rowLabel={(row) => asText(row.label) || "Untitled stat"} rowMeta={(row) => `${Number(row.value ?? 0).toLocaleString()}${asText(row.suffix)} · Position ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, siteStats: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, siteStats: null }))} onDelete={(row) => deleteEntity("site_stats", row, "key")} onSubmit={saveSiteStat} saveLabel="Save stat" createLabel="Add a homepage stat" guidance={<p className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm leading-5 text-blue-900/75">The system creates the internal identifier automatically from your stat label. For example, “Properties” displays as 500+ when the number is 500 and the ending is +.</p>} />
+						<EntityEditor title="Homepage Stats" description="Manage the number highlights shown on your homepage. Edit the label and number, then choose where each stat appears." rows={workspace.siteStats} selectedId={selection.siteStats} idKey="key" fields={siteStatFields} defaultValues={{ value: 0, suffix: "+", sort_order: workspace.siteStats.length + 1 }} canEdit={canEditContent} rowLabel={(row) => asText(row.label) || "Untitled stat"} rowMeta={(row) => `${Number(row.value ?? 0).toLocaleString()}${asText(row.suffix)} · Position ${row.sort_order ?? 0}`} onSelect={(row) => setSelection((current) => ({ ...current, siteStats: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, siteStats: null }))} onDelete={(row) => deleteEntity("site_stats", row, "key")} onSubmit={saveSiteStat} saveLabel="Save stat" createLabel="Add a homepage stat" guidance={<p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-5 text-zinc-600">The system creates the internal identifier automatically from your stat label. For example, “Properties” displays as 500+ when the number is 500 and the ending is +.</p>} />
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (

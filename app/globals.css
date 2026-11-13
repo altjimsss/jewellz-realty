@@ -22,7 +22,7 @@
 }
 
 :root {
-  --portal-canvas: 248 250 252;
+	--portal-canvas: 250 250 250;
   --portal-surface: 255 255 255;
   --portal-ink: 17 17 17;
   --portal-muted: 71 85 105;
@@ -42,11 +42,20 @@
     backdrop-filter: blur(12px);
   }
 
+  .portal-primary-rail {
+    background-color: #171717;
+    border-color: rgb(255 255 255 / 0.1);
+  }
+
+  .portal-secondary-sidebar {
+    border-color: rgb(var(--portal-border));
+  }
+
   .portal-header {
     border-color: rgb(var(--portal-border) / 0.85);
-    background-color: rgb(var(--portal-surface) / 0.94);
+    background-color: rgb(var(--portal-surface) / 0.98);
     backdrop-filter: blur(12px);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.045);
   }
 
   .portal-stat-card {
