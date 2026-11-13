@@ -315,7 +315,7 @@ function buildLocalReason(candidate: RecommendationCandidate, scoreParts: string
 	return reasons.join(", ");
 }
 
-function getLocalSemanticRecommendations(category: string, filters: RecommendationFilters, candidates: RecommendationCandidate[]) {
+function getLocalSemanticRecommendations(category: string, filters: RecommendationFilters, candidates: RecommendationCandidate[], nearbyRows: CachedNearbyPlaceRow[] = []) {
 	const rawSearch = buildRawSearchText(category, filters);
 	const intent = extractBasicSearchIntent(rawSearch);
 	const queryTokens = uniqueTokens(rawSearch);
@@ -371,9 +371,15 @@ function getLocalSemanticRecommendations(category: string, filters: Recommendati
 				scoreParts.push("good bedroom count for family use");
 			}
 
-			if (intent.nearbyNeed && text.includes(intent.nearbyNeed.toLowerCase())) {
-				score += 12;
-				scoreParts.push(`mentions ${intent.nearbyNeed.toLowerCase()} access`);
+			if (intent.nearbyNeed) {
+				const nearestPlace = nearbyRows
+					.filter((row) => row.property_id === candidate.id && row.category === intent.nearbyNeed)
+					.sort((first, second) => first.distance_meters - second.distance_meters)[0];
+				if (nearestPlace) {
+					const distance = formatDistance(nearestPlace.distance_meters);
+					score += nearestPlace.distance_meters <= 1000 ? 42 : nearestPlace.distance_meters <= 2500 ? 28 : 12;
+					scoreParts.push(`${distance} from ${nearestPlace.name}`);
+				}
 			}
 
 			if (candidate.featured) score += 5;
@@ -507,7 +513,7 @@ function wantsNearbyContext(filters: RecommendationFilters) {
 }
 
 async function getCachedNearbyRows(candidates: RecommendationCandidate[]) {
-	const candidateIds = candidates.slice(0, 8).map((candidate) => candidate.id);
+	const candidateIds = candidates.slice(0, 60).map((candidate) => candidate.id);
 
 	if (candidateIds.length === 0) return [];
 
@@ -614,7 +620,7 @@ async function getVectorRecommendations(category: string, filters: Recommendatio
 	}
 
 	const candidateById = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-	const nearbyRows = intent.nearbyNeed ? await getCachedNearbyRows(candidates) : [];
+	const nearbyRows = intent.nearbyNeed ? await getCachedNearbyRows(candidates.slice(0, 60)) : [];
 	const matchedPrices = vectorRows
 		.map((item) => candidateById.get(item.id)?.price)
 		.filter((price): price is number => typeof price === "number" && price > 0);
@@ -787,7 +793,9 @@ export async function POST(request: Request) {
 		});
 	}
 
-	const localRecommendations = getLocalSemanticRecommendations(category, filters, candidates);
+	const fallbackIntent = extractBasicSearchIntent(buildRawSearchText(category, filters));
+	const fallbackNearbyRows = fallbackIntent.nearbyNeed ? await getCachedNearbyRows(candidates).catch(() => []) : [];
+	const localRecommendations = getLocalSemanticRecommendations(category, filters, candidates, fallbackNearbyRows);
 
 	return NextResponse.json({
 		recommendations: await persistRecommendations(localRecommendations, body, "semantic-local"),

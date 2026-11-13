@@ -31,6 +31,30 @@ const LOCATION_STOP_WORDS = new Set([
 	"near",
 	"place",
 	"property",
+	"school",
+	"schools",
+	"college",
+	"university",
+	"education",
+	"campus",
+	"kindergarten",
+	"hospital",
+	"clinic",
+	"pharmacy",
+	"doctor",
+	"medical",
+	"health",
+	"restaurant",
+	"cafe",
+	"food",
+	"dining",
+	"mall",
+	"shops",
+	"church",
+	"worship",
+	"museum",
+	"culture",
+	"landmark",
 	"small",
 ]);
 
@@ -104,7 +128,9 @@ function inferPreferredTypes(intent: PropertySearchIntent, text: string) {
 
 function extractLocationHint(searchText: string) {
 	const normalized = searchText.toLowerCase().replace(/[^a-z0-9\s,.-]+/g, " ");
-	const explicitLocation = normalized.match(/\b(?:in|at|around|near|nearby)\s+([a-z][a-z\s.-]{2,40})/i)?.[1] ?? "";
+	// "Near school/hospital" is an amenity preference, not a place name.
+	// Only parse a free-text location after explicit geographic prepositions.
+	const explicitLocation = normalized.match(/\b(?:in|at|around)\s+([a-z][a-z\s.-]{2,40})/i)?.[1] ?? "";
 	const source = explicitLocation || normalized;
 	const tokens = source
 		.split(/[\s,.-]+/)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
@@ -150,6 +150,12 @@ function inferCategoryFromSearch(value: string) {
 
 function keywordTokensForFiltering(keyword: string) {
 	const inferredCategory = inferCategoryFromSearch(keyword);
+	const intent = extractBasicSearchIntent(keyword);
+	const proximitySearch = /\b(near|nearby|close to|walking distance)\b/i.test(keyword);
+	const nearbyNeedWords = intent.nearbyNeed === "Education" ? ["school", "schools", "college", "university", "education", "campus", "kindergarten"] :
+		intent.nearbyNeed === "Health" ? ["hospital", "clinic", "pharmacy", "doctor", "medical", "health"] :
+		intent.nearbyNeed === "Food" ? ["food", "restaurant", "cafe", "dining", "mall", "shops"] :
+		intent.nearbyNeed === "Culture" ? ["church", "worship", "museum", "culture", "landmark"] : [];
 	const categoryWords = new Set(
 		inferredCategory === "Condo" ? ["condo", "condos", "condominium", "condominiums", "studio", "studios"] :
 		inferredCategory === "House" ? ["house", "houses", "home", "homes", "family", "families", "residential"] :
@@ -159,7 +165,11 @@ function keywordTokensForFiltering(keyword: string) {
 		[],
 	);
 
-	return tokenize(keyword).filter((token) => !SEARCH_STOP_WORDS.has(token) && !categoryWords.has(token));
+	return tokenize(keyword).filter((token) =>
+		!SEARCH_STOP_WORDS.has(token) &&
+		!categoryWords.has(token) &&
+		!(proximitySearch && nearbyNeedWords.includes(token)),
+	);
 }
 
 function inferSearchIntent(filters: PropertyFiltersState) {
@@ -395,6 +405,56 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 	const [draftFilters, setDraftFilters] = useState<PropertyFiltersState>(normalizedInitialFilters);
 	const [appliedFilters, setAppliedFilters] = useState<PropertyFiltersState>(normalizedInitialFilters);
 	const [hasSearched, setHasSearched] = useState(hasInitialFilters);
+	const searchIntentRequest = useRef(0);
+
+	function submitSearch() {
+		const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);
+		const isEmptySearch = Object.values(enrichedFilters).every((value) => !value.trim());
+
+		if (isEmptySearch) {
+			searchIntentRequest.current += 1;
+			setActiveCategory("All");
+			setAiSuggestions([]);
+			setAiRecommendedProperties([]);
+			setAiRecommendationStatus("idle");
+			setHasSearched(false);
+		} else {
+			setHasSearched(true);
+		}
+
+		setDraftFilters(enrichedFilters);
+		setAppliedFilters(enrichedFilters);
+
+		// Apply semantic intent from the NLP endpoint after the immediate local
+		// parse. If it is unavailable, the basic search still works unchanged.
+		if (!enrichedFilters.keyword) return;
+		const requestId = ++searchIntentRequest.current;
+		void fetch("/api/nlp-search", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ prompt: enrichedFilters.keyword }),
+		}).then(async (response) => {
+			if (!response.ok) return null;
+			return await response.json() as { filters?: Partial<PropertyFiltersState> };
+		}).then((result) => {
+			if (!result?.filters || requestId !== searchIntentRequest.current) return;
+			const semanticFilters: PropertyFiltersState = {
+				...enrichedFilters,
+				lookingFor: enrichedFilters.lookingFor || result.filters.lookingFor || "",
+				location: enrichedFilters.location || result.filters.location || "",
+				subLocation: enrichedFilters.subLocation || result.filters.subLocation || "",
+				priceMin: enrichedFilters.priceMin || result.filters.priceMin || "",
+				priceMax: enrichedFilters.priceMax || result.filters.priceMax || "",
+				beds: enrichedFilters.beds || result.filters.beds || "",
+				baths: enrichedFilters.baths || result.filters.baths || "",
+			};
+			setDraftFilters(semanticFilters);
+			setAppliedFilters(semanticFilters);
+		}).catch(() => {
+			// Keep the immediate deterministic parse if semantic lookup is unavailable.
+		});
+	}
+
 	const filteredProperties = useMemo(() => getFilteredProperties(properties, activeCategory, appliedFilters), [activeCategory, appliedFilters, properties]);
 	const fallbackRecommendedProperties = useMemo(
 		() => (filteredProperties.length === 0 ? getFallbackRecommendedProperties(properties, activeCategory, appliedFilters) : []),
@@ -534,24 +594,11 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 				<div className="mx-auto max-w-[1320px] px-[clamp(20px,4vw,56px)]">
 					<PropertyFilters
 						value={draftFilters}
-						onChange={setDraftFilters}
-						onSubmit={() => {
-							const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);
-							const isEmptySearch = Object.values(enrichedFilters).every((value) => !value.trim());
-
-							if (isEmptySearch) {
-								setActiveCategory("All");
-								setAiSuggestions([]);
-								setAiRecommendedProperties([]);
-								setAiRecommendationStatus("idle");
-								setHasSearched(false);
-							} else {
-								setHasSearched(true);
-							}
-
-							setDraftFilters(enrichedFilters);
-							setAppliedFilters(enrichedFilters);
+						onChange={(next) => {
+							searchIntentRequest.current += 1;
+							setDraftFilters(next);
 						}}
+						onSubmit={submitSearch}
 					/>
 				</div>
 			</section>
