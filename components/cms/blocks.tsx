@@ -1,5 +1,5 @@
 import { Fragment, FormEvent, useId, useMemo, useRef, useState } from "react";
-import { Activity, Building2, Clock3, Eye, MessageSquare, Search, TrendingUp, Users } from "lucide-react";
+import { Activity, ArrowUpRight, Building2, Clock3, Eye, MessageSquare, Search, TrendingUp, Users } from "lucide-react";
 import type { CmsPayload, EditorProps, SectionProps } from "./types";
 import { asText, buildPayload, displayValue } from "./utils";
 
@@ -46,12 +46,13 @@ export function InfoCard({ label, value, hint, compact = false }: { label: strin
 	const MetricIcon = metricStyle.Icon;
 	return (
 		<div className={`portal-stat-card flex h-full min-w-0 flex-col border border-black/[0.08] bg-white shadow-none ${compact ? "min-h-[104px] p-3" : "min-h-[132px]"}`}>
-			<div className="flex items-start justify-between gap-3">
-				<div className="portal-stat-label truncate pt-1">{label}</div>
-				<span className="grid h-8 w-8 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><MetricIcon className="h-4 w-4" /></span>
+			<div className="flex min-w-0 items-center gap-2">
+				<span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><MetricIcon className="h-3.5 w-3.5" /></span>
+				<div className="portal-stat-label min-w-0 flex-1 truncate">{label}</div>
+				<ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
 			</div>
 			<div className={`portal-stat-value break-all leading-tight ${isLong ? "text-lg" : ""}`}>{value}</div>
-			{hint ? <div className="portal-stat-hint mt-auto line-clamp-2 pt-1">{hint}</div> : null}
+			{hint ? <div className="portal-stat-hint mt-auto flex min-w-0 items-center gap-1.5 pt-1"><span className="h-1 w-1 shrink-0 bg-zinc-400" aria-hidden="true" /><span className="truncate">{hint}</span></div> : null}
 		</div>
 	);
 }
@@ -59,12 +60,13 @@ export function InfoCard({ label, value, hint, compact = false }: { label: strin
 export function DashboardMetricCard({ Icon, label, value, hint, onClick }: { Icon: typeof Activity; label: string; value: string | number; hint?: string; onClick?: () => void }) {
 	const content = (
 		<>
-			<div className="flex items-start justify-between gap-3">
-				<div className="portal-stat-label truncate pt-1">{label}</div>
-				<span className="grid h-8 w-8 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Icon className="h-4 w-4" /></span>
+			<div className="flex min-w-0 items-center gap-2">
+				<span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Icon className="h-3.5 w-3.5" /></span>
+				<div className="portal-stat-label min-w-0 flex-1 truncate">{label}</div>
+				<ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
 			</div>
 			<div className="portal-stat-value min-w-0 break-words">{value}</div>
-			{hint ? <p className="portal-stat-hint mt-auto pt-1">{hint}</p> : null}
+			{hint ? <p className="portal-stat-hint mt-auto truncate pt-1">{hint}</p> : null}
 		</>
 	);
 	const className = "portal-stat-card flex h-full min-h-[132px] min-w-0 flex-col text-left";

@@ -181,6 +181,13 @@ function utcDayKey(offsetDays = 0) {
 	return date.toISOString().slice(0, 10);
 }
 
+function shiftUtcDayKey(dayKey: string, offsetDays: number) {
+	const date = new Date(`${dayKey}T00:00:00.000Z`);
+	if (!Number.isFinite(date.getTime())) return utcDayKey(offsetDays);
+	date.setUTCDate(date.getUTCDate() + offsetDays);
+	return date.toISOString().slice(0, 10);
+}
+
 function dailyEngagementRows(events: CmsRow[], days = 14) {
 	const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
 	const buckets = new Map<string, { visitors: Set<string>; sessionViews: Map<string, number> }>();
@@ -981,11 +988,11 @@ function AnalyticsVisualSuite({
 							<button type="button" onClick={() => onSelectPortfolioProperty(null)} className="inline-flex h-9 items-center rounded-xl border border-black/10 bg-white px-3.5 text-xs font-semibold text-black/65 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/25">Back to all properties</button>
 						</div>
 						<div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-							<InfoCard label="Views" value={selectedPropertyPerformance?.total_views ?? 0} hint="Recorded property views" />
-							<InfoCard label="Interactions" value={selectedPropertyPerformance?.total_interactions ?? selectedPropertyPerformance?.detail_opens ?? 0} hint="Detail, gallery, map and other actions" />
-							<InfoCard label="Inquiries" value={selectedPropertyPerformance?.total_inquiries ?? selectedPropertyInquiries.length} hint="Leads linked to this property" />
-							<InfoCard label="Average browse time" value={`${Math.round(selectedPropertyPerformance?.avg_dwell_seconds ?? 0)}s`} hint="Recorded time on listing" />
-							<InfoCard label="Inquiry rate" value={`${selectedPropertyPerformance?.inquiry_rate_pct ?? 0}%`} hint="Inquiries relative to views" />
+							<InfoCard label="Views" value={selectedPropertyPerformance?.total_views ?? 0} hint="Total property views" />
+							<InfoCard label="Interactions" value={selectedPropertyPerformance?.total_interactions ?? selectedPropertyPerformance?.detail_opens ?? 0} hint="Gallery, map, and detail actions" />
+							<InfoCard label="Inquiries" value={selectedPropertyPerformance?.total_inquiries ?? selectedPropertyInquiries.length} hint="Property leads" />
+							<InfoCard label="Average browse time" value={`${Math.round(selectedPropertyPerformance?.avg_dwell_seconds ?? 0)}s`} hint="Average dwell time" />
+							<InfoCard label="Inquiry rate" value={`${selectedPropertyPerformance?.inquiry_rate_pct ?? 0}%`} hint="Views to inquiry" />
 						</div>
 						<div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
 							<div className="rounded-2xl border border-black/[0.08] bg-white p-4">
@@ -1485,10 +1492,10 @@ function AgentMetricsSummary({ agentId, agentEmail, agentPerformance }: { agentI
 		<div className="rounded-lg border border-black/10 bg-zinc-50 p-4">
 			<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Account & Live Performance</div>
 			<div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-				<InfoCard label="Login Email" value={agentEmail ?? "No login account"} hint="Email the agent uses to sign in." />
-				<InfoCard label="Assigned" value={asText(metrics?.total_assigned ?? 0)} hint="Leads assigned to this agent." />
-				<InfoCard label="Conversions" value={asText(metrics?.conversions ?? 0)} hint="Reserved or closed-won leads." />
-				<InfoCard label="Avg Response" value={metrics?.avg_response_time_hours == null ? "n/a" : `${metrics.avg_response_time_hours}h`} hint="Creation to first contact." />
+				<InfoCard label="Login Email" value={agentEmail ?? "No login account"} hint="Agent sign-in" />
+				<InfoCard label="Assigned" value={asText(metrics?.total_assigned ?? 0)} hint="Assigned leads" />
+				<InfoCard label="Conversions" value={asText(metrics?.conversions ?? 0)} hint="Won leads" />
+				<InfoCard label="Avg Response" value={metrics?.avg_response_time_hours == null ? "n/a" : `${metrics.avg_response_time_hours}h`} hint="First contact time" />
 			</div>
 			{!metrics ? (
 				<p className="mt-3 text-sm text-black/55">No performance row exists for this agent yet. It will appear once assignments and pipeline activity are recorded.</p>
@@ -1507,7 +1514,7 @@ function OverviewBars({ rows }: { rows: Array<{ label: string; value: number }> 
 		yAxis: { type: "value", show: false, min: 0, max: (value: { max: number }) => Math.max(1, value.max * 1.15), splitLine: { show: false } },
 		series: [
 			{ type: "bar", name: "Inquiry volume", data: rows.map((row) => row.value), barWidth: 2, itemStyle: { color: "#d4d4d8" }, emphasis: { itemStyle: { color: "#DE141C" } }, z: 1 },
-			{ type: "scatter", name: "Inquiries", data: rows.map((row) => row.value), symbol: "circle", symbolSize: 8, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 2 }, z: 3 },
+			{ type: "scatter", name: "Inquiries", data: rows.map((row) => row.value > 0 ? row.value : null), symbol: "circle", symbolSize: 8, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 2 }, z: 3 },
 		],
 	};
 	return <div className="h-44"><EChart option={option} /></div>;
@@ -1525,7 +1532,11 @@ function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: stri
 			{ type: "text", left: "center", top: "36%", style: { text: conversionRate, fill: "#18181b", font: "600 22px sans-serif", textAlign: "center" } },
 			{ type: "text", left: "center", top: "50%", style: { text: "CONVERTED", fill: "#71717a", font: "10px sans-serif", textAlign: "center" } },
 		],
-		series: [{ type: "pie", name: "Lead status", radius: ["48%", "68%"], center: ["50%", "44%"], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false }, itemStyle: { borderColor: "#fff", borderWidth: 3 }, data: rows.map((row) => ({ name: row.label, value: row.value, itemStyle: { color: /closed.?won|reserved|sold|converted|complete/i.test(row.label) ? "#16a34a" : /closed.?lost|rejected/i.test(row.label) ? "#a1a1aa" : "#DE141C" } })) }],
+		series: [{ type: "pie", name: "Lead status", radius: ["48%", "68%"], center: ["50%", "44%"], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false }, itemStyle: { borderColor: "#fff", borderWidth: 3 }, data: rows.map((row) => {
+			const status = row.label.toLowerCase().replaceAll("_", " ");
+			const color = /closed won|sold|converted|complete|approved/.test(status) ? "#16a34a" : /lost|rejected|cancelled|inactive/.test(status) ? "#52525b" : /reserved|pending|review|scheduled|assigned/.test(status) ? "#f59e0b" : /contacted|in progress|qualified|negotiat/.test(status) ? "#DE141C" : /new/.test(status) ? "#171717" : "#a1a1aa";
+			return { name: row.label, value: row.value, itemStyle: { color } };
+		}) }],
 	};
 	return <div className="h-44"><EChart option={option} /></div>;
 }
@@ -1540,7 +1551,7 @@ function OverviewListingChart({ rows }: { rows: Array<{ title: string; views: nu
 		xAxis: { type: "category", data: rows.map((row) => compactChartLabel(row.title)), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 12 }, splitLine: { show: false } },
 		yAxis: [{ type: "value", show: false, min: 0, max: maxViews * 1.1 }, { type: "value", show: false, min: 0, max: Math.max(1, ...rows.map((row) => row.rate)) * 1.2 }],
 		series: [
-			{ type: "pictorialBar", name: "Views", symbol: "roundRect", symbolRepeat: "fixed", symbolSize: [16, 4], symbolMargin: 2, symbolBoundingData: maxViews, data: rows.map((row, index) => ({ value: row.views, itemStyle: { color: index === 0 ? "#DE141C" : "#e4e4e7" } })), z: 10 },
+			{ type: "pictorialBar", name: "Views", symbol: "roundRect", symbolRepeat: "fixed", symbolSize: [16, 4], symbolMargin: 2, symbolBoundingData: maxViews, data: rows.map((row) => ({ value: row.views, itemStyle: { color: "#DE141C" } })), z: 10 },
 			{ type: "line", name: "Inquiry rate", yAxisIndex: 1, data: rows.map((row) => row.rate), symbol: "circle", symbolSize: 5, lineStyle: { color: "#171717", width: 1.5 }, itemStyle: { color: "#171717", borderColor: "#fff", borderWidth: 1.5 }, z: 12 },
 		],
 	};
@@ -2711,10 +2722,10 @@ function AnalyticsPanel({
 							</div>
 
 							<div className="mt-4 grid grid-cols-2 gap-3">
-								<InfoCard compact label="Total shown" value={recommendationStats.total} />
-								<InfoCard compact label="Clicked" value={recommendationStats.clicked} />
-								<InfoCard compact label="CTR" value={`${clickThrough.toFixed(1)}%`} />
-								<InfoCard compact label="Fallback rate" value={`${fallbackRate.toFixed(1)}%`} />
+								<InfoCard compact label="Total shown" value={recommendationStats.total} hint="Recommendations" />
+								<InfoCard compact label="Clicked" value={recommendationStats.clicked} hint="Recommendation clicks" />
+								<InfoCard compact label="CTR" value={`${clickThrough.toFixed(1)}%`} hint="Click-through rate" />
+								<InfoCard compact label="Fallback rate" value={`${fallbackRate.toFixed(1)}%`} hint="Fallback matches" />
 							</div>
 						</div>
 					</div>
@@ -2863,11 +2874,11 @@ function AnalyticsPanel({
 								<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 									<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Engagement Detail</div>
 									<div className="mt-4 grid gap-3 sm:grid-cols-2">
-										<InfoCard label="Total views" value={selectedPropertyPerformance?.total_views ?? 0} hint="Property page views." />
-										<InfoCard label="Interactions" value={selectedPropertyPerformance?.total_interactions ?? selectedPropertyPerformance?.detail_opens ?? 0} hint="Gallery, map, inquiry, and recommendation interactions." />
-										<InfoCard label="Inquiries" value={selectedPropertyPerformance?.total_inquiries ?? selectedPropertyInquiries.length} hint="Submitted leads for this property." />
-										<InfoCard label="Avg. browse time" value={`${Math.round(selectedPropertyPerformance?.avg_dwell_seconds ?? 0)}s`} hint="Average recorded dwell time per property visit." />
-										<InfoCard label="Inquiry rate" value={`${selectedPropertyPerformance?.inquiry_rate_pct ?? 0}%`} hint="Inquiry conversion percentage." />
+						<InfoCard label="Total views" value={selectedPropertyPerformance?.total_views ?? 0} hint="Listing views" />
+						<InfoCard label="Interactions" value={selectedPropertyPerformance?.total_interactions ?? selectedPropertyPerformance?.detail_opens ?? 0} hint="Listing interactions" />
+						<InfoCard label="Inquiries" value={selectedPropertyPerformance?.total_inquiries ?? selectedPropertyInquiries.length} hint="Leads submitted" />
+						<InfoCard label="Avg. browse time" value={`${Math.round(selectedPropertyPerformance?.avg_dwell_seconds ?? 0)}s`} hint="Browse duration" />
+						<InfoCard label="Inquiry rate" value={`${selectedPropertyPerformance?.inquiry_rate_pct ?? 0}%`} hint="Views to inquiry" />
 									</div>
 									<div className="mt-4 rounded-lg border border-black/10 bg-zinc-50 p-3 text-sm text-black/60">
 										<div className="font-medium text-[#111111]">Recent property leads</div>
@@ -3880,27 +3891,20 @@ export default function AdminCms({
 			.slice(0, 5),
 		[workspace.listingPerformance],
 	);
-	const overviewInquiryTrend = useMemo(
-		() => {
-			if (selectedDateFilter) {
-				const relevant = workspace.dailyInquiryVolume.filter((row) => asText(row.inquiry_date) <= selectedDateFilter);
-				const rowsToUse = relevant.length ? relevant.slice(-8) : workspace.dailyInquiryVolume.slice(-8);
-				return rowsToUse.map((row) => ({
-					label: asText(row.inquiry_date).slice(5) || "day",
-					value: toNullableNumber(row.total_inquiries) ?? 0,
-				}));
-			}
-			return workspace.dailyInquiryVolume
-				.slice()
-				.reverse()
-				.slice(-8)
-				.map((row) => ({
-					label: asText(row.inquiry_date).slice(5) || "day",
-					value: toNullableNumber(row.total_inquiries) ?? 0,
-				}));
-		},
-		[workspace.dailyInquiryVolume, selectedDateFilter],
-	);
+	const overviewInquiryTrend = useMemo(() => {
+		const endDate = selectedDateFilter || utcDayKey();
+		const inquiryCounts = new Map<string, number>();
+		for (const row of workspace.dailyInquiryVolume) {
+			const date = asText(row.inquiry_date).slice(0, 10);
+			inquiryCounts.set(date, (inquiryCounts.get(date) ?? 0) + (toNullableNumber(row.total_inquiries) ?? 0));
+		}
+		return Array.from({ length: 7 }, (_, index) => {
+			const dateKey = shiftUtcDayKey(endDate, index - 6);
+			const date = new Date(`${dateKey}T00:00:00.000Z`);
+			const weekday = date.toLocaleDateString("en-PH", { weekday: "short", timeZone: "UTC" });
+			return { label: `${weekday} ${date.getUTCDate()}`, value: inquiryCounts.get(dateKey) ?? 0 };
+		});
+	}, [workspace.dailyInquiryVolume, selectedDateFilter]);
 	const overviewPipelineRows = useMemo(() => {
 		const counts = filteredInquiries.reduce((acc: Record<string, number>, inquiry) => {
 			const status = asText(inquiry.status || "new");
@@ -4595,7 +4599,6 @@ export default function AdminCms({
 										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
 												<span className="block font-medium">{analyticsOverviewItem.label}</span>
-												{isAnalyticsChildSection ? <span className="block truncate text-[11px] text-white/75">{activeNavItem?.label}</span> : null}
 										</span>
 									</button>
 									<div className="py-1">
@@ -4628,9 +4631,6 @@ export default function AdminCms({
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
 												<span className="block text-sm font-medium">{item.label}</span>
-												{activePrimary === "analytics" ? null : (
-													<span className={`block truncate text-[11px] ${active ? "text-white/75" : "text-zinc-400"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
-												)}
 											</span>
 										</button>
 										{activePrimary === "listings" && item.id === "properties" ? (
@@ -4902,10 +4902,10 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
-										<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High-intent or overdue leads." onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-										<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Assign these before follow-up slips." onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-										<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Listings not yet public." onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
-										<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Viewed listings below target rate." onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
+					<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High priority" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+					<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Needs assignment" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+					<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Not published" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
+					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
 								<div className="grid gap-3 xl:grid-cols-3">
