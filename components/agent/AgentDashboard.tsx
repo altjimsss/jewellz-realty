@@ -13,9 +13,11 @@ import {
 	Building2,
 	Building,
 	Camera,
+	CalendarDays,
 	CheckCheck,
 	ChevronRight,
 	Clock,
+	Download,
 	Globe,
 	Inbox,
 	LayoutDashboard,
@@ -46,6 +48,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { compressImageForUpload } from "@/lib/media/compress-image";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
+import { AgentAssistantSidebar } from "@/components/agent/AgentAssistantSidebar";
 import type { AgentChartRow } from "./AgentCharts";
 
 const AgentChartLoading = () => <div className="h-56 animate-pulse rounded-lg bg-zinc-100" aria-hidden="true" />;
@@ -286,6 +289,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 
 	const [notifications, setNotifications] = useState<AgentNotification[]>([]);
 	const [showNotifications, setShowNotifications] = useState(false);
+	const [showAgentAssistant, setShowAgentAssistant] = useState(true);
 	const [toastNotification, setToastNotification] = useState<AgentNotification | null>(null);
 
 	const [inquirySearch, setInquirySearch] = useState("");
@@ -634,6 +638,27 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			.eq("assigned_agent_id", agent.id)
 			.order("created_at", { ascending: false });
 		if (data) setInquiries(data as InquiryRow[]);
+	}
+
+	function exportAgentInquiries() {
+		const columns = ["buyer_name", "buyer_email", "buyer_phone", "property", "status", "priority", "created_at"];
+		const escapeCsv = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+		const rows = inquiries.map((inquiry) => [
+			inquiry.buyer_name,
+			inquiry.buyer_email,
+			inquiry.buyer_phone,
+			inquiry.properties?.title,
+			inquiry.status,
+			inquiry.priority,
+			inquiry.created_at,
+		]);
+		const csv = [columns, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+		const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = "agent-inquiries.csv";
+		anchor.click();
+		URL.revokeObjectURL(url);
 	}
 
 	async function handleAgentPhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -1134,25 +1159,27 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 								</div>
 							) : null}
 						</div>
+						<div className="hidden items-center gap-2 md:flex">
+							<div className="inline-flex h-8 items-center gap-1.5 border border-black/10 bg-white px-2.5 text-xs font-medium text-zinc-600">
+								<CalendarDays className="h-3.5 w-3.5" />
+								{new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date())}
+							</div>
+							<button type="button" onClick={exportAgentInquiries} className="inline-flex h-8 items-center gap-1 bg-[#111111] px-3 text-xs font-medium text-white transition hover:bg-black/85">
+								<Download className="h-3.5 w-3.5" />
+								Export CSV
+							</button>
+						</div>
 						<div className="relative ml-auto flex items-center gap-2 text-slate-600 md:ml-1">
-							<Link
-								href="/"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-white hover:text-[#0f172a] hover:border-slate-300"
-								title="Open public customer website in a new tab"
-							>
-								<Globe className="h-3.5 w-3.5 text-slate-500" />
-								<span>Website</span>
-								<ArrowUpRight className="h-3 w-3 text-slate-400" />
-							</Link>
+							<button type="button" onClick={() => { setShowAgentAssistant((current) => !current); setShowNotifications(false); setShowProfileMenu(false); }} aria-label="Toggle agent assistant" aria-expanded={showAgentAssistant} className={`flex h-8 w-8 items-center justify-center border border-black/10 transition ${showAgentAssistant ? "bg-[#111111] text-white" : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"}`} title={showAgentAssistant ? "Close agent assistant" : "Open agent assistant"}>
+								<MessageSquare className="h-4 w-4" />
+							</button>
 
-							<button type="button" aria-label="Notifications" aria-expanded={showNotifications} onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); }} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white transition-[background-color,border-color,color] hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 shadow-2xs" title="Notifications">
+							<button type="button" aria-label="Notifications" aria-expanded={showNotifications} onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); setShowAgentAssistant(false); }} className="relative flex h-8 w-8 items-center justify-center border border-black/10 bg-white transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40" title="Notifications">
 								<Bell className="h-4 w-4" />
 								{unreadCount > 0 ? <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#DE141C] px-1 text-[10px] font-bold text-white ring-2 ring-white">{unreadCount}</span> : null}
 							</button>
-							<button type="button" aria-label="Profile menu" aria-expanded={showProfileMenu} onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); }} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white transition-[background-color,border-color,color] hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 shadow-2xs" title={agent?.full_name}>
-								<UserCircle className="h-5 w-5" />
+							<button type="button" aria-label="Profile menu" aria-expanded={showProfileMenu} onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); setShowAgentAssistant(false); }} className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40" title={agent?.full_name}>
+								<UserCircle className="h-4 w-4" />
 							</button>
 
 							{showNotifications ? (
@@ -1215,8 +1242,10 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 						</div>
 					</header>
 
+					{showAgentAssistant ? <AgentAssistantSidebar /> : null}
+
 					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-5 lg:px-6">
-						<div className="mx-auto flex max-w-7xl flex-col gap-3">
+						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${showAgentAssistant ? "xl:pr-[292px]" : ""}`}>
 							<div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
 								{navGroups.map((group) => {
 									const Icon = group.icon;
