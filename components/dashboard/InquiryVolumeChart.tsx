@@ -18,16 +18,12 @@ export function InquiryVolumeChart({ rows = [] }: { rows?: InquiryVolumeRow[] })
 		}));
 
 	return (
-		<div className="h-64 rounded-lg border border-black/10 bg-white p-4">
+		<div className="h-44">
 			{chartRows.length ? (
 				<div className="h-full">
-					<div className="mb-3">
-						<div className="text-sm font-semibold text-[#111111]">Inquiry Volume</div>
-						<p className="text-xs text-black/45">Daily lead submissions over the latest period.</p>
-					</div>
-					<div className="h-[calc(100%-40px)]">
+					<div className="h-full">
 						<ResponsiveContainer width="100%" height="100%">
-							<AreaChart data={chartRows} margin={{ top: 8, right: 12, left: -18, bottom: 14 }}>
+							<AreaChart data={chartRows} margin={{ top: 8, right: 8, left: -22, bottom: 2 }}>
 								<defs>
 									<linearGradient id="inquiryVolumeFill" x1="0" y1="0" x2="0" y2="1">
 										<stop offset="5%" stopColor="#111111" stopOpacity={0.18} />
@@ -35,8 +31,8 @@ export function InquiryVolumeChart({ rows = [] }: { rows?: InquiryVolumeRow[] })
 									</linearGradient>
 								</defs>
 								<CartesianGrid vertical={false} stroke="#ececec" />
-								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
+								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} width={28} />
 								<Tooltip content={<NeutralTooltip />} cursor={{ stroke: "#d4d4d8", strokeDasharray: "4 4" }} />
 								<Area type="monotone" dataKey="inquiries" name="Inquiries" stroke="#111111" strokeWidth={2.5} fill="url(#inquiryVolumeFill)" activeDot={{ r: 5, fill: "#111111", stroke: "#ffffff", strokeWidth: 2 }} />
 							</AreaChart>

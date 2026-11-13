@@ -1546,15 +1546,24 @@ function AgentMetricsSummary({ agentId, agentEmail, agentPerformance }: { agentI
 function OverviewBars({ rows }: { rows: Array<{ label: string; value: number }> }) {
 	if (!rows.length) return <p className="flex h-44 items-center text-sm text-black/45">No inquiry data yet.</p>;
 	const option = {
-		animationDuration: 450,
-		grid: { top: 14, right: 12, bottom: 26, left: 12 },
-		tooltip: { trigger: "axis", axisPointer: { type: "line", lineStyle: { color: "#d4d4d8", type: "dashed" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ axisValueLabel: string; value: number }>) => `${items[0]?.axisValueLabel ?? ""}<br/><strong>${items[0]?.value ?? 0} inquiries</strong>` },
-		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 10, margin: 12 }, splitLine: { show: false } },
-		yAxis: { type: "value", show: false, min: 0, max: (value: { max: number }) => Math.max(1, value.max * 1.15), splitLine: { show: false } },
-		series: [
-			{ type: "bar", name: "Inquiry volume", data: rows.map((row) => row.value), barWidth: 2, itemStyle: { color: "#d4d4d8" }, emphasis: { itemStyle: { color: "#DE141C" } }, z: 1 },
-			{ type: "scatter", name: "Inquiries", data: rows.map((row) => row.value > 0 ? row.value : null), symbol: "circle", symbolSize: 8, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 2 }, z: 3 },
-		],
+		animationDuration: 500,
+		grid: { top: 12, right: 12, bottom: 24, left: 28 },
+		tooltip: { trigger: "axis", axisPointer: { type: "line", lineStyle: { color: "#d4d4d8", type: "dashed" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, borderRadius: 8, padding: [8, 10], textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ axisValueLabel: string; value: number }>) => `${items[0]?.axisValueLabel ?? ""}<br/><strong>${items[0]?.value ?? 0} inquiries</strong>` },
+		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 10, margin: 10, hideOverlap: true }, splitLine: { show: false } },
+		yAxis: { type: "value", min: 0, minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#a1a1aa", fontSize: 9, margin: 8 }, splitLine: { show: true, lineStyle: { color: "#f1f1f2" } } },
+		series: [{
+			type: "line",
+			name: "Inquiries",
+			data: rows.map((row) => row.value),
+			smooth: 0.25,
+			showSymbol: true,
+			symbol: "circle",
+			symbolSize: 6,
+			lineStyle: { color: "#DE141C", width: 2.5, cap: "round" },
+			itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 2 },
+			areaStyle: { color: "rgba(222, 20, 28, 0.08)" },
+			emphasis: { focus: "series", scale: 1.4 },
+		}],
 	};
 	return <div className="h-44"><EChart option={option} /></div>;
 }
@@ -2672,9 +2681,9 @@ function AnalyticsPanel({
 			) : null}
 
 			{showOverviewReport ? (
-				<div className="mb-6 grid gap-5 xl:grid-cols-12">
+				<div className="mb-6 grid items-start gap-4 xl:grid-cols-12">
 					{/* Lead Pipeline & Priority Distribution - 7 cols */}
-					<div className="portal-stat-card xl:col-span-7 flex flex-col justify-between p-4">
+					<div className="portal-stat-card h-fit min-w-0 xl:col-span-7 p-4">
 						<div>
 							<div className="flex items-start justify-between gap-3">
 								<div>
@@ -2685,7 +2694,7 @@ function AnalyticsPanel({
 								</span>
 							</div>
 
-							<div className="mt-3 h-44">
+							<div className="mt-3 h-40">
 								{pipelineChartRows.length ? (
 									<ResponsiveContainer width="100%" height="100%">
 										<BarChart data={pipelineChartRows} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
@@ -2734,15 +2743,15 @@ function AnalyticsPanel({
 					</div>
 
 					{/* Volume & Recommendation Analytics - 5 cols */}
-					<div className="xl:col-span-5 flex flex-col gap-5">
-						<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+					<div className="min-w-0 xl:col-span-5 flex flex-col gap-3">
+						<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
 							<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
 							<div className="mt-3">
 								<InquiryVolumeChart rows={inquiryVolumeRows} />
 							</div>
 						</div>
 
-						<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
+						<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
 							<div className="flex items-center justify-between">
 								<span className="text-sm font-semibold text-[#111111]">Recommendations</span>
 							</div>
@@ -4624,7 +4633,7 @@ export default function AdminCms({
 					</div>
 				</aside>
 
-				<aside aria-label="Section navigation" className={`portal-sidebar portal-secondary-sidebar bg-zinc-50 ${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
+				<aside aria-label="Section navigation" className={`portal-sidebar portal-secondary-sidebar bg-white ${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
 					<nav className="max-h-[calc(100vh-150px)] overflow-auto py-4">
 						<div className="border-b border-black/[0.06] px-4 pb-4 pt-1 text-sm font-semibold tracking-tight text-[#111111]">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">

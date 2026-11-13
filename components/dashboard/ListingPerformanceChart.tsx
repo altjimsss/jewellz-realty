@@ -28,17 +28,17 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 	const rateTickInterval = chartRows.length > 5 ? 2 : 0;
 
 	return (
-		<div className="rounded-lg border border-black/10 bg-white p-4">
+		<div>
 			{chartRows.length ? (
-				<div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+				<div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
 					<div>
-						<div className="mb-3 flex items-center justify-between gap-3">
+						<div className="mb-2 flex items-center justify-between gap-3">
 							<div>
 								<div className="text-sm font-semibold text-[#111111]">Listing Activity</div>
 								<p className="text-xs text-black/45">Views, detail opens, and inquiries by property.</p>
 							</div>
 						</div>
-						<div className="h-72">
+						<div className="h-52">
 						<ResponsiveContainer width="100%" height="100%">
 							<BarChart data={chartRows} margin={{ top: 8, right: 8, left: -18, bottom: 18 }} barGap={6}>
 								<CartesianGrid vertical={false} stroke="#ececec" />
@@ -54,11 +54,11 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 						</div>
 					</div>
 					<div>
-						<div className="mb-3">
+						<div className="mb-2">
 							<div className="text-sm font-semibold text-[#111111]">Inquiry Rate</div>
 							<p className="text-xs text-black/45">Conversion percentage per listing.</p>
 						</div>
-						<div className="h-72">
+						<div className="h-52">
 						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={chartRows} margin={{ top: 8, right: 12, left: -18, bottom: 24 }}>
 								<CartesianGrid vertical={false} stroke="#ececec" />
