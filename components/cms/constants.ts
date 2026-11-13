@@ -9,7 +9,6 @@ export const emptyWorkspace: Workspace = {
 	galleryItems: [],
 	careerJobs: [],
 	careerApplications: [],
-	partnerLogos: [],
 	siteStats: [],
 	settings: [],
 	listingPerformance: [],
@@ -33,7 +32,6 @@ export const emptySelection: SelectionState = {
 	galleryItems: null,
 	careerJobs: null,
 	careerApplications: null,
-	partnerLogos: null,
 	siteStats: null,
 	settings: null,
 };
@@ -189,14 +187,6 @@ export const careerApplicationFields: FieldSpec[] = [
 	{ name: "resume_url", label: "CV / Resume Link", type: "url" },
 	{ name: "message", label: "Message", type: "textarea", rows: 5 },
 	{ name: "admin_notes", label: "Admin Notes", type: "textarea", rows: 4 },
-];
-
-export const partnerLogoFields: FieldSpec[] = [
-	{ name: "name", label: "Name", type: "text" },
-	{ name: "logo_url", label: "Logo URL", type: "url" },
-	{ name: "website_url", label: "Website URL", type: "url" },
-	{ name: "sort_order", label: "Sort Order", type: "number" },
-	{ name: "is_active", label: "Active", type: "checkbox" },
 ];
 
 export const siteStatFields: FieldSpec[] = [

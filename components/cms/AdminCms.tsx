@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, Download, FileText, FolderTree, Home, ImagePlus, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -25,8 +25,8 @@ import { AgentsWorkspace } from "./AgentsWorkspace";
 import { DeveloperPartnersWorkspace } from "./DeveloperPartnersWorkspace";
 import { SettingsWorkspace } from "./SettingsWorkspace";
 import { AdminContentSkeleton } from "./AdminContentSkeleton";
-import { EntityEditor, InfoCard, SectionShell } from "./blocks";
-import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, partnerLogoFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, siteStatFields } from "./constants";
+import { EntityEditor, InfoCard, SectionShell, StatusBadge } from "./blocks";
+import { careerApplicationFields, careerJobFields, emptySelection, emptyWorkspace, galleryFields, projectFields, propertyCategoryOptions, propertyFields, propertySidebarCategoryOptions, siteStatFields } from "./constants";
 import type { CmsNavGroup, CmsPayload, CmsPrimary, CmsRow, CmsSection, FieldOption, FieldSpec, Role, SelectionState, Workspace } from "./types";
 import { asText, labelForRow } from "./utils";
 import { AdminCalendarWidget } from "./AdminCalendarWidget";
@@ -147,7 +147,7 @@ function localRegression(points: number[]) {
 	};
 }
 
-const analyticsColors = ["#111111", "#71717a", "#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
+const analyticsColors = ["#DE141C", "#2563eb", "#059669", "#d97706", "#7c3aed", "#0891b2", "#111111", "#71717a"];
 
 function numberAverage(values: number[]) {
 	const clean = values.filter((value) => Number.isFinite(value));
@@ -323,14 +323,31 @@ function hasMeaningfulChartValue<T extends Record<string, unknown>>(rows: T[], k
 }
 
 function AnalyticsChartCard({ title, description, isLive = true, children }: { title: string; description: string; isLive?: boolean; children: React.ReactNode }) {
+	const titleKey = title.toLowerCase();
+	const chartStyle = titleKey.includes("traffic") || titleKey.includes("source")
+		? { Icon: Globe, iconClass: "bg-blue-50 text-blue-700" }
+		: titleKey.includes("price") || titleKey.includes("asking")
+			? { Icon: CircleDollarSign, iconClass: "bg-amber-50 text-amber-700" }
+			: titleKey.includes("view") || titleKey.includes("property") || titleKey.includes("listing")
+				? { Icon: Building2, iconClass: "bg-cyan-50 text-cyan-800" }
+				: titleKey.includes("conversion") || titleKey.includes("inquiry") || titleKey.includes("funnel")
+					? { Icon: TrendingUp, iconClass: "bg-emerald-50 text-emerald-700" }
+					: titleKey.includes("session") || titleKey.includes("visitor") || titleKey.includes("bounce")
+						? { Icon: Activity, iconClass: "bg-violet-50 text-violet-700" }
+						: { Icon: BarChart3, iconClass: "bg-zinc-100 text-zinc-700" };
+	const ChartIcon = chartStyle.Icon;
 	return (
-		<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
+		<div className="border border-black/[0.08] bg-white p-5 shadow-none">
 			<div className="flex items-start justify-between gap-3">
-				<div>
-					<div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{title}</div>
-					<p className="mt-1 text-sm text-zinc-500">{description}</p>
+				<div className="flex min-w-0 items-start gap-3">
+					<span className={`grid h-9 w-9 shrink-0 place-items-center ${chartStyle.iconClass}`} aria-hidden="true"><ChartIcon className="h-4 w-4" /></span>
+					<div className="min-w-0">
+						<div className="text-sm font-semibold tracking-tight text-[#111111]">{title}</div>
+						<p className="mt-1 text-xs leading-5 text-zinc-500">{description}</p>
+					</div>
 				</div>
-				<span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ${isLive ? "bg-zinc-100 text-zinc-600 ring-zinc-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+				<span className={`inline-flex shrink-0 items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${isLive ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+					<span className={`h-1.5 w-1.5 ${isLive ? "bg-emerald-600" : "bg-amber-600"}`} />
 					{isLive ? "Live" : "Waiting"}
 				</span>
 			</div>
@@ -874,8 +891,8 @@ function AnalyticsVisualSuite({
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="visitors" name="Unique visitors" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
-								<Line type="monotone" dataKey="sessions" name="Sessions" stroke="#71717a" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+								<Line type="monotone" dataKey="visitors" name="Unique visitors" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 3, fill: "#DE141C" }} />
+								<Line type="monotone" dataKey="sessions" name="Sessions" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 4" dot={false} />
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No sessions have been recorded for the recent visitor window yet." />}
 					</AnalyticsChartCard>
@@ -896,7 +913,7 @@ function AnalyticsVisualSuite({
 								<XAxis type="number" hide />
 								<YAxis dataKey="title" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} width={138} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Bar dataKey="total_views" name="Views" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={14} />
+								<Bar dataKey="total_views" name="Views" fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No listing view counts yet. Property page tracking must write property_view events first." />}
 					</AnalyticsChartCard>
@@ -907,7 +924,7 @@ function AnalyticsVisualSuite({
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} unit="%" />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="bounceRate" name="Bounce rate" stroke="#71717a" strokeWidth={2.5} dot={false} />
+								<Line type="monotone" dataKey="bounceRate" name="Bounce rate" stroke="#d97706" strokeWidth={2.5} dot={false} />
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Bounce rate needs tracked sessions with page-view counts before it can be calculated." />}
 					</AnalyticsChartCard>
@@ -944,7 +961,7 @@ function AnalyticsVisualSuite({
 								{propertyAnalyticsRows.map(({ id, performance, title, category: propertyType, status, location }) => {
 									const isSelected = selectedProperty?.id === id;
 													return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-label={`Open analytics for ${title}`} aria-pressed={isSelected} className={`rounded-xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
-										<div className="flex items-start justify-between gap-3"><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-black/55">{status}</span></div>
+										<div className="flex items-start justify-between gap-3"><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><StatusBadge value={status} /></div>
 										<div className="mt-1 truncate text-xs text-black/45">{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div>
 														<div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-2.5 text-xs"><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span><span className="font-semibold text-[#DE141C]">View analytics →</span></div>
 									</button>;
@@ -1010,7 +1027,7 @@ function AnalyticsVisualSuite({
 								<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}m`} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="average" name="Average price" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="average" name="Average price" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
 								<Line type="monotone" dataKey="forecast" name="Next month forecast" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={false} />
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="Monthly price trends need listings with a numeric price and created_at date." />}
@@ -1055,7 +1072,7 @@ function AnalyticsVisualSuite({
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="rate" name="Actual conversion rate" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#111111" }} />
+								<Line type="monotone" dataKey="rate" name="Actual conversion rate" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
 								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#2563eb" }} />
 							</LineChart>
 						</ResponsiveContainer>
@@ -1068,7 +1085,7 @@ function AnalyticsVisualSuite({
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => Number(value).toFixed(1)} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="demand" name="Actual inquiries" stroke="#111111" strokeWidth={2.5} dot={{ r: 2, fill: "#111111" }} />
+								<Line type="monotone" dataKey="demand" name="Actual inquiries" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 2, fill: "#DE141C" }} />
 								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#2563eb" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#2563eb" }} />
 							</LineChart>
 						</ResponsiveContainer>
@@ -1527,7 +1544,7 @@ function OverviewPipelineBars({ rows }: { rows: Array<{ label: string; value: nu
 						<XAxis type="number" hide allowDecimals={false} />
 						<YAxis dataKey="label" type="category" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 11, fill: "#71717a" }} width={92} />
 						<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-						<Bar dataKey="value" name="Leads" fill="#111111" radius={[0, 6, 6, 0]} maxBarSize={16} />
+									<Bar dataKey="value" name="Leads" fill="#DE141C" radius={[0, 6, 6, 0]} maxBarSize={16} />
 					</BarChart>
 				</ResponsiveContainer>
 			) : (
@@ -1690,7 +1707,6 @@ function routeForSection(section: CmsSection) {
 		gallery: "/admin?section=gallery",
 		careerJobs: "/admin?section=careerJobs",
 		careerApplications: "/admin?section=careerApplications",
-		logos: "/admin?section=logos",
 		stats: "/admin?section=stats",
 		settings: "/admin/settings",
 		activityLogs: "/admin/settings?section=activityLogs",
@@ -2723,13 +2739,13 @@ function AnalyticsPanel({
 												key={priority}
 												className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold capitalize transition ${
 													isHigh
-														? "bg-black text-white"
+													? "bg-rose-50 text-rose-700"
 														: isMedium
-															? "bg-zinc-200 text-zinc-900"
-															: "bg-zinc-100 text-zinc-700"
+														? "bg-amber-50 text-amber-800"
+														: "bg-blue-50 text-blue-700"
 												}`}
 											>
-												<span className={`h-1.5 w-1.5 rounded-full ${isHigh ? "bg-red-400" : isMedium ? "bg-amber-400" : "bg-zinc-400"}`} />
+											<span className={`h-1.5 w-1.5 rounded-full ${isHigh ? "bg-rose-600" : isMedium ? "bg-amber-600" : "bg-blue-600"}`} />
 												{priority}: {count}
 											</span>
 										);
@@ -3061,7 +3077,7 @@ export default function AdminCms({
 	const [actionToast, setActionToast] = useState<ActionToast | null>(null);
 	const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 	const [selection, setSelection] = useState<SelectionState>({ ...emptySelection, properties: initialPropertyId });
-	const [descriptionFocusPropertyId, setDescriptionFocusPropertyId] = useState<string | null>(null);
+	const [propertyToOpenId, setPropertyToOpenId] = useState<string | null>(null);
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
 	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState(initialPropertyCategory);
@@ -3401,7 +3417,6 @@ export default function AdminCms({
 						{ id: "gallery", label: "Gallery", hint: `${workspace.galleryItems.length} items`, icon: FileText },
 						{ id: "careerJobs", label: "Career Cards", hint: `${workspace.careerJobs.length} roles`, icon: BriefcaseBusiness },
 						{ id: "careerApplications", label: "Applications", hint: `${workspace.careerApplications.length} received`, icon: Inbox },
-						{ id: "logos", label: "Partner Logos", hint: `${workspace.partnerLogos.length} logos`, icon: Building2 },
 						{ id: "stats", label: "Site Stats", hint: `${workspace.siteStats.length} counters`, icon: BarChart3 },
 					],
 				},
@@ -3418,7 +3433,7 @@ export default function AdminCms({
 		}
 
 		return groups;
-	}, [isAdmin, workspace.agents.length, workspace.careerApplications.length, workspace.careerJobs.length, workspace.developers.length, workspace.galleryItems.length, workspace.inquiries.length, workspace.partnerLogos.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length]);
+	}, [isAdmin, workspace.agents.length, workspace.careerApplications.length, workspace.careerJobs.length, workspace.developers.length, workspace.galleryItems.length, workspace.inquiries.length, workspace.projects.length, workspace.properties.length, workspace.siteStats.length]);
 	const navItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
 	const currentSection = navItems.some((item) => item.id === activeSection) ? activeSection : "overview";
 	const activeNavItem = navItems.find((item) => item.id === currentSection);
@@ -3512,7 +3527,7 @@ export default function AdminCms({
 		setActivePrimary("listings");
 		setActiveSection("properties");
 		setPropertyCategoryFilter("all");
-		setDescriptionFocusPropertyId(propertyId);
+		setPropertyToOpenId(propertyId);
 		setSelection((current) => ({ ...current, properties: propertyId }));
 		syncAdminUrl("/admin/listings");
 	}
@@ -3587,7 +3602,6 @@ export default function AdminCms({
 				galleryResult,
 				careerJobsResult,
 				careerApplicationsResult,
-				partnerLogosResult,
 				siteStatsResult,
 				settingsResult,
 				listingPerformanceResult,
@@ -3605,7 +3619,6 @@ export default function AdminCms({
 				supabaseBrowser.from("gallery_items").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("career_jobs").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("career_applications").select("*").order("created_at", { ascending: false }),
-				supabaseBrowser.from("partner_logos").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("site_stats").select("*").order("sort_order", { ascending: true }),
 				supabaseBrowser.from("system_settings").select("*").order("updated_at", { ascending: false }),
 				supabaseBrowser.from("mv_listing_performance").select("*"),
@@ -3624,7 +3637,6 @@ export default function AdminCms({
 			nextWorkspace.galleryItems = galleryResult.data ?? [];
 			nextWorkspace.careerJobs = careerJobsResult.data ?? [];
 			nextWorkspace.careerApplications = careerApplicationsResult.data ?? [];
-			nextWorkspace.partnerLogos = partnerLogosResult.data ?? [];
 			nextWorkspace.siteStats = siteStatsResult.data ?? [];
 			nextWorkspace.settings = settingsResult.data ?? [];
 			nextWorkspace.listingPerformance = listingPerformanceResult.data ?? [];
@@ -4549,14 +4561,6 @@ export default function AdminCms({
 		await saveEntity("career_applications", payload, currentRow);
 	}
 
-	async function savePartnerLogo(payload: CmsPayload, currentRow: CmsRow | null) {
-		if (!payload.name || !payload.logo_url) {
-			setMessage("Partner logos need name and logo_url.");
-			return;
-		}
-		await saveEntity("partner_logos", payload, currentRow);
-	}
-
 	async function saveSiteStat(payload: CmsPayload, currentRow: CmsRow | null) {
 		if (!payload.label) {
 			setMessage("Add a label for this homepage stat.");
@@ -4616,9 +4620,9 @@ export default function AdminCms({
 	}
 
 	return (
-		<main className="portal-canvas min-h-screen text-[#111111] selection:bg-[#DE141C]/15">
+		<main className="admin-square-ui portal-canvas min-h-screen text-[#111111] selection:bg-[#DE141C]/15">
 			<div className={`grid min-h-screen w-full transition-[grid-template-columns] duration-200 ${showSecondarySidebar ? "lg:grid-cols-[56px_220px_1fr]" : "lg:grid-cols-[56px_0px_1fr]"}`}>
-				<aside className="portal-sidebar hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
+				<aside className="portal-sidebar border-white/10 bg-[#171717] text-white hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.12)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
 						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-2xs ring-1 ring-black/10 transition hover:ring-black/20">
 							<Image src="/assets/logo-icon.png" alt="Jewellz Realty" width={32} height={32} className="h-8 w-8 object-contain" />
@@ -4632,7 +4636,7 @@ export default function AdminCms({
 										key={group.id}
 										type="button"
 										onClick={() => openPrimary(group)}
-										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-[#111111] text-white shadow-2xs" : "text-zinc-500 hover:bg-zinc-100 hover:text-[#111111]"}`}
+										className={`flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "bg-white text-[#111111] shadow-2xs" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -4642,10 +4646,10 @@ export default function AdminCms({
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-100 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
+						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/65 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
+						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/65 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-500/15 hover:text-red-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -5029,7 +5033,7 @@ export default function AdminCms({
 													<div className="flex items-start justify-between gap-3">
 														<div className="min-w-0">
 															<div className="truncate text-sm font-semibold text-[#111111]">{lead.buyer_name ?? lead.buyer_email}</div>
-															<div className="mt-1 truncate text-xs text-black/50">{lead.status ?? "new"} · {lead.buyer_email}</div>
+											<div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-black/50"><StatusBadge value={asText(lead.status ?? "new")} /><span className="truncate">{lead.buyer_email}</span></div>
 														</div>
 														<div className="flex shrink-0 flex-col items-end gap-1">
 															<LeadScoreBadge score={toNullableNumber(lead.lead_score)} />
@@ -5085,7 +5089,7 @@ export default function AdminCms({
 																<span className="sr-only">Open inquiry</span>
 															</button>
 															</td>
-															<td className="px-4 py-3 text-black/60">{inquiry.status ?? "new"}</td>
+										<td className="px-4 py-3"><StatusBadge value={asText(inquiry.status ?? "new")} /></td>
 															<td className="px-4 py-3 text-black/60">{inquiry.priority ?? "standard"}</td>
 															<td className="px-4 py-3 text-black/45">{relativeAge(inquiry.created_at)}</td>
 														</tr>
@@ -5117,7 +5121,7 @@ export default function AdminCms({
 									<PropertyWizard
 										rows={workspace.properties}
 										selectedId={selectedPropertyId}
-									descriptionFocusPropertyId={descriptionFocusPropertyId}
+										propertyToOpenId={propertyToOpenId}
 										fields={propertyEditorFields}
 										defaultValues={DEFAULT_PROPERTY_VALUES}
 										canEdit={canEditCatalog}
@@ -5190,7 +5194,7 @@ export default function AdminCms({
 															<td className="px-4 py-3 font-medium text-[#111111]">{property.title}</td>
 															<td className="px-4 py-3 text-black/60">{property.city ?? "n/a"}</td>
 															<td className="px-4 py-3 text-black/60">{property.price == null ? "n/a" : `₱${Number(property.price).toLocaleString()}`}</td>
-															<td className="px-4 py-3 text-black/60">{property.status ?? "draft"}</td>
+									<td className="px-4 py-3"><StatusBadge value={asText(property.status ?? "draft")} /></td>
 														</tr>
 													))}
 												</tbody>
@@ -5356,10 +5360,6 @@ export default function AdminCms({
 
 						{currentSection === "careerApplications" && isAdmin ? (
 							<EntityEditor title="Career Applications" description="Applications submitted from the public Careers page. Update status or admin notes here." rows={workspace.careerApplications} selectedId={selectedCareerApplicationId} fields={careerApplicationFields} canEdit={canEditContent} canCreate={false} rowLabel={(row) => asText(row.applicant_name || row.position_title || row.id)} rowMeta={(row) => `${row.position_title ?? "Applicant"} • ${row.status ?? "new"}`} onSelect={(row) => setSelection((current) => ({ ...current, careerApplications: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, careerApplications: null }))} onDelete={(row) => deleteEntity("career_applications", row)} onSubmit={saveCareerApplication} saveLabel="Save application" />
-						) : null}
-
-						{currentSection === "logos" && isAdmin ? (
-							<EntityEditor title="Partner Logos" description="Homepage logo strip for developer partners." rows={workspace.partnerLogos} selectedId={selection.partnerLogos} fields={partnerLogoFields} canEdit={canEditContent} rowLabel={labelForRow} rowMeta={(row) => `${row.sort_order ?? 0} • ${row.is_active ? "active" : "inactive"}`} onSelect={(row) => setSelection((current) => ({ ...current, partnerLogos: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, partnerLogos: null }))} onDelete={(row) => deleteEntity("partner_logos", row)} onSubmit={savePartnerLogo} />
 						) : null}
 
 						{currentSection === "stats" && isAdmin ? (

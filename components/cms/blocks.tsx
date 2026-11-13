@@ -1,5 +1,5 @@
 import { Fragment, FormEvent, useId, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Activity, Building2, Clock3, Eye, MessageSquare, Search, TrendingUp, Users } from "lucide-react";
 import type { CmsPayload, EditorProps, SectionProps } from "./types";
 import { asText, buildPayload, displayValue } from "./utils";
 
@@ -29,13 +29,46 @@ export function SectionShell({ title, description, children }: SectionProps) {
 export function InfoCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
 	const text = String(value);
 	const isLong = text.length > 14;
+	const labelKey = label.toLowerCase();
+	const metricStyle = labelKey.includes("inquiry") || labelKey.includes("lead") || labelKey.includes("engagement")
+		? { Icon: MessageSquare, iconClass: "bg-[#DE141C]/[0.08] text-[#B8101A]" }
+		: labelKey.includes("view") || labelKey.includes("visitor") || labelKey.includes("session")
+			? { Icon: Eye, iconClass: "bg-blue-50 text-blue-700" }
+			: labelKey.includes("rate") || labelKey.includes("conversion") || labelKey.includes("trend")
+				? { Icon: TrendingUp, iconClass: "bg-emerald-50 text-emerald-700" }
+				: labelKey.includes("time") || labelKey.includes("duration") || labelKey.includes("response") || labelKey.includes("dwell")
+					? { Icon: Clock3, iconClass: "bg-amber-50 text-amber-700" }
+					: labelKey.includes("agent") || labelKey.includes("profile") || labelKey.includes("user")
+						? { Icon: Users, iconClass: "bg-violet-50 text-violet-700" }
+						: labelKey.includes("property") || labelKey.includes("listing") || labelKey.includes("portfolio")
+							? { Icon: Building2, iconClass: "bg-cyan-50 text-cyan-800" }
+							: { Icon: Activity, iconClass: "bg-zinc-100 text-zinc-700" };
+	const MetricIcon = metricStyle.Icon;
 	return (
-		<div className="portal-stat-card min-w-0">
-			<div className="portal-stat-label truncate">{label}</div>
+		<div className="portal-stat-card min-w-0 border border-black/[0.08] bg-white shadow-none">
+			<div className="flex items-start justify-between gap-3">
+				<div className="portal-stat-label truncate pt-1">{label}</div>
+				<span className={`grid h-8 w-8 shrink-0 place-items-center ${metricStyle.iconClass}`} aria-hidden="true"><MetricIcon className="h-4 w-4" /></span>
+			</div>
 			<div className={`portal-stat-value break-all leading-tight ${isLong ? "text-lg" : ""}`}>{value}</div>
 			{hint ? <div className="portal-stat-hint line-clamp-2">{hint}</div> : null}
 		</div>
 	);
+}
+
+export function StatusBadge({ value }: { value: string }) {
+	const normalized = value.trim().toLowerCase().replace(/[_-]+/g, " ");
+	const tone = /published|active|visible|closed won|contacted|complete|approved|live/.test(normalized)
+		? { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-600" }
+		: /reserved|pending|review|medium|negotiat|scheduled/.test(normalized)
+			? { badge: "bg-amber-50 text-amber-800", dot: "bg-amber-600" }
+			: /sold|closed lost|rejected|inactive|hidden|high|urgent/.test(normalized)
+				? { badge: "bg-rose-50 text-rose-700", dot: "bg-rose-600" }
+				: /new|assigned|draft|low/.test(normalized)
+					? { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-600" }
+					: { badge: "bg-zinc-100 text-zinc-700", dot: "bg-zinc-500" };
+	const label = normalized.replace(/\b\w/g, (letter) => letter.toUpperCase()) || "Unknown";
+	return <span className={`inline-flex items-center gap-2 px-2 py-1 text-[10px] font-semibold leading-none ${tone.badge}`}><span className={`h-1.5 w-1.5 shrink-0 ${tone.dot}`} aria-hidden="true" />{label}</span>;
 }
 
 export function EntityEditor({

@@ -63,7 +63,6 @@ export type Workspace = {
 	galleryItems: CmsRow[];
 	careerJobs: CmsRow[];
 	careerApplications: CmsRow[];
-	partnerLogos: CmsRow[];
 	siteStats: CmsRow[];
 	settings: CmsRow[];
 	listingPerformance: CmsRow[];
@@ -87,7 +86,6 @@ export type SelectionState = {
 	galleryItems: string | null;
 	careerJobs: string | null;
 	careerApplications: string | null;
-	partnerLogos: string | null;
 	siteStats: string | null;
 	settings: string | null;
 };
@@ -113,7 +111,6 @@ export type CmsSection =
 	| "gallery"
 	| "careerJobs"
 	| "careerApplications"
-	| "logos"
 	| "stats"
 	| "settings"
 	| "activityLogs";
