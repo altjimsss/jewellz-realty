@@ -626,7 +626,7 @@ function FieldInput({
 	canEdit: boolean;
 	onChange: (name: string, val: string | boolean) => void;
 	onVideoUploadingChange?: (uploading: boolean) => void;
-	descriptionRef?: RefObject<HTMLTextAreaElement | null>;
+	descriptionRef?: RefObject<HTMLTextAreaElement>;
 }) {
 	if (field.name === "video_url") {
 		return (
@@ -749,7 +749,7 @@ export function PropertyWizard({
 	const [previewPayload, setPreviewPayload] = useState<CmsPayload | null>(null);
 	const formRef = useRef<HTMLFormElement | null>(null);
 	const sectionRef = useRef<HTMLElement | null>(null);
-	const descriptionFieldRef = useRef<HTMLTextAreaElement | null>(null);
+	const descriptionFieldRef = useRef<HTMLTextAreaElement>(null);
 	const focusDescriptionOnOpenRef = useRef(shouldFocusSelectedDescription);
 
 	const selectedRow = useMemo(
