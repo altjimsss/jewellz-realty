@@ -53,6 +53,7 @@
 
   .portal-header {
     border-color: rgb(var(--portal-border) / 0.85);
+    border-bottom: 1px solid rgb(var(--portal-border) / 0.75);
     background-color: rgb(var(--portal-surface) / 0.98);
     backdrop-filter: blur(12px);
   }
