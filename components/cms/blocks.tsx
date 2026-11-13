@@ -1,5 +1,5 @@
 import { Fragment, FormEvent, useId, useMemo, useRef, useState } from "react";
-import { Activity, Search } from "lucide-react";
+import { Activity, ArrowUpRight, Building2, Clock3, Eye, MessageSquare, Search, TrendingUp, Users } from "lucide-react";
 import type { CmsPayload, EditorProps, SectionProps } from "./types";
 import { asText, buildPayload, displayValue } from "./utils";
 
@@ -29,32 +29,52 @@ export function SectionShell({ title, description, children }: SectionProps) {
 export function InfoCard({ label, value, hint, compact = false }: { label: string; value: string | number; hint?: string; compact?: boolean }) {
 	const text = String(value);
 	const isLong = text.length > 14;
+	const labelKey = label.toLowerCase();
+	const MetricIcon = labelKey.includes("inquiry") || labelKey.includes("lead") || labelKey.includes("engagement")
+		? MessageSquare
+		: labelKey.includes("view") || labelKey.includes("visitor") || labelKey.includes("session")
+			? Eye
+			: labelKey.includes("rate") || labelKey.includes("conversion") || labelKey.includes("trend")
+				? TrendingUp
+				: labelKey.includes("time") || labelKey.includes("duration") || labelKey.includes("response") || labelKey.includes("dwell")
+					? Clock3
+					: labelKey.includes("agent") || labelKey.includes("profile") || labelKey.includes("user")
+						? Users
+						: labelKey.includes("property") || labelKey.includes("listing") || labelKey.includes("portfolio")
+							? Building2
+							: Activity;
 	return (
 		<div className={`portal-stat-card flex h-full min-w-0 flex-col ${compact ? "min-h-[104px] p-3" : "min-h-[132px]"}`}>
-			<div className="flex min-w-0 items-center justify-between gap-2">
-				<div className="portal-stat-label min-w-0 truncate">{label}</div>
-				<span className="portal-stat-badge">{compact ? "SUMMARY" : "STAT"}</span>
+			<div className="flex min-w-0 items-center gap-2">
+				<span className={`grid shrink-0 place-items-center bg-[#DE141C] text-white ${compact ? "h-6 w-6" : "h-7 w-7"}`} aria-hidden="true"><MetricIcon className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /></span>
+				<div className="portal-stat-label min-w-0 flex-1 truncate">{label}</div>
+				<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 			</div>
 			<div className={`portal-stat-value break-all leading-tight ${isLong ? "text-lg" : ""}`}>{value}</div>
-			{hint ? <div className="portal-stat-hint mt-auto truncate pt-1">{hint}</div> : null}
+			{hint ? <div className="portal-stat-hint mt-auto flex min-w-0 items-center gap-1.5 truncate pt-1"><span className="h-1.5 w-1.5 shrink-0 bg-[#DE141C]" aria-hidden="true" />{hint}</div> : null}
 		</div>
 	);
 }
 
-export function DashboardMetricCard({ label, value, hint, badge = "SUMMARY", onClick }: { Icon: typeof Activity; label: string; value: string | number; hint?: string; badge?: string; onClick?: () => void }) {
+export function DashboardMetricCard({ Icon, label, value, hint, progress, compact = false, onClick, ariaPressed }: { Icon: typeof Activity; label: string; value: string | number; hint?: string; progress?: number; compact?: boolean; onClick?: () => void; ariaPressed?: boolean }) {
+	const isLong = String(value).length > 18;
 	const content = (
 		<>
-			<div className="flex min-w-0 items-center justify-between gap-2">
-				<div className="portal-stat-label min-w-0 truncate">{label}</div>
-				<span className="portal-stat-badge">{badge}</span>
+			<div className="flex min-w-0 items-center gap-2">
+				<span className={`grid shrink-0 place-items-center bg-[#DE141C] text-white ${compact ? "h-6 w-6" : "h-7 w-7"}`} aria-hidden="true"><Icon className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /></span>
+				<div className="portal-stat-label min-w-0 flex-1 truncate">{label}</div>
+				<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 			</div>
-			<div className="portal-stat-value min-w-0 break-words">{value}</div>
-			{hint ? <p className="portal-stat-hint mt-auto truncate pt-1">{hint}</p> : null}
+			<div className={`portal-stat-value min-w-0 break-words ${isLong ? "text-base leading-5" : ""}`}>{value}</div>
+			<div className="mt-auto min-w-0 pt-1">
+				{progress != null ? <div className="mb-1.5 h-1 w-full overflow-hidden bg-zinc-100"><div className="h-full bg-[#DE141C] transition-[width] duration-500" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div> : null}
+				{hint ? <p className="portal-stat-hint flex min-w-0 items-center gap-1.5 truncate"><span className="h-1.5 w-1.5 shrink-0 bg-[#DE141C]" aria-hidden="true" />{hint}</p> : null}
+			</div>
 		</>
 	);
-	const className = "portal-stat-card flex h-full min-h-[132px] min-w-0 flex-col text-left";
+	const className = `portal-stat-card flex h-full min-w-0 flex-col text-left ${compact ? "min-h-[104px] p-3" : "min-h-[132px]"}`;
 	return onClick ? (
-		<button type="button" onClick={onClick} className={`${className} transition hover:border-black/15 hover:bg-zinc-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30`}>{content}</button>
+		<button type="button" onClick={onClick} aria-pressed={ariaPressed} className={`${className} transition hover:border-black/15 hover:bg-zinc-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30`}>{content}</button>
 	) : <div className={className}>{content}</div>;
 }
 
@@ -169,7 +189,7 @@ export function EntityEditor({
 						</div>
 						<span className="rounded-lg border border-black/[0.07] bg-white px-2 py-1 text-xs font-semibold tabular-nums text-black/55">{filteredRows.length}</span>
 						{canEdit && canCreate ? (
-							<button type="button" onClick={onCreateNew} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#DE141C] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#bf1018] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#DE141C]/20">
+							<button type="button" onClick={onCreateNew} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#111111] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/20">
 								<span className="text-base leading-none">+</span> New
 							</button>
 						) : null}
@@ -277,7 +297,7 @@ export function EntityEditor({
 								Preview property
 							</button>
 						) : (
-							<button form={formId} type="submit" disabled={!canEdit || isSaving} className="inline-flex h-10 items-center justify-center rounded-xl bg-[#DE141C] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#bf1018] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#DE141C]/20 disabled:cursor-not-allowed disabled:opacity-50">
+							<button form={formId} type="submit" disabled={!canEdit || isSaving} className="inline-flex h-10 items-center justify-center rounded-xl bg-[#111111] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:opacity-50">
 									{isSaving ? "Saving…" : selectedRow ? "Save changes" : saveLabel ?? "Save property"}
 							</button>
 						)}

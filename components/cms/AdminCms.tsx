@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, ArrowRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LayoutGrid, List as ListIcon, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -685,6 +685,8 @@ function AnalyticsVisualSuite({
 	const [propertySearch, setPropertySearch] = useState("");
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState("all");
 	const [propertyStatusFilter, setPropertyStatusFilter] = useState("all");
+	const [propertyListExpanded, setPropertyListExpanded] = useState(true);
+	const [propertyLayout, setPropertyLayout] = useState<"cards" | "list">("cards");
 	const propertyCategories = useMemo(() => Array.from(new Set(properties.map((property) => asText(property.category).trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [properties]);
 	const propertyAnalyticsRows = useMemo(() => {
 		const query = propertySearch.trim().toLowerCase();
@@ -951,13 +953,19 @@ function AnalyticsVisualSuite({
 
 			{category === "propertyPerformance" ? <div>
 				<div className="mb-5 overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
-					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/[0.07] bg-zinc-50/65 px-4 py-4 sm:px-5">
+					<div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.07] bg-zinc-50/65 px-4 py-3 sm:px-5">
 						<div>
 							<h3 className="text-sm font-semibold text-[#111111]">Website properties</h3>
-							<p className="mt-1 text-xs text-black/50">Search or filter the catalog, then select a property to open its dedicated analytics.</p>
+							<p className="mt-1 text-xs text-black/50">{propertyListExpanded ? "Search or filter the catalog, then select a property." : "Property analytics catalog is folded."}</p>
 						</div>
-						<span className="rounded-full border border-black/[0.07] bg-white px-2.5 py-1 text-xs font-semibold tabular-nums text-black/55">{propertyAnalyticsRows.length} of {properties.length}</span>
+						<div className="flex items-center gap-2">
+							<span className="rounded-full border border-black/[0.07] bg-white px-2.5 py-1 text-xs font-semibold tabular-nums text-black/55">{propertyAnalyticsRows.length} of {properties.length}</span>
+							<button type="button" aria-expanded={propertyListExpanded} aria-controls="analytics-properties-content" onClick={() => setPropertyListExpanded((expanded) => !expanded)} className="inline-flex h-8 items-center gap-1.5 border border-black/10 bg-white px-2.5 text-xs font-semibold text-black/70 transition hover:bg-zinc-100">
+								{propertyListExpanded ? "Fold" : "Expand"}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${propertyListExpanded ? "rotate-180" : ""}`} />
+							</button>
+						</div>
 					</div>
+					{propertyListExpanded ? <div id="analytics-properties-content">
 					<div className="grid gap-3 border-b border-black/[0.07] p-4 sm:grid-cols-[minmax(220px,1fr)_180px_160px] sm:items-end sm:px-5">
 						<label className="block">
 							<span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-black/45">Search properties</span>
@@ -972,20 +980,27 @@ function AnalyticsVisualSuite({
 							<select value={propertyStatusFilter} onChange={(event) => setPropertyStatusFilter(event.target.value)} className="h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none focus:border-[#DE141C]/40 focus:ring-4 focus:ring-[#DE141C]/[0.08]"><option value="all">All statuses</option>{Array.from(new Set(properties.map((property) => asText(property.status || property.publish_status || property.listing_status || "draft").toLowerCase()))).sort().map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}</select>
 						</label>
 					</div>
-					<div className="max-h-[460px] overflow-y-auto p-3 sm:p-4">
+					<div className="flex items-center justify-end border-b border-black/[0.06] px-3 py-2 sm:px-4">
+						<div role="group" aria-label="Property analytics layout" className="inline-flex border border-black/10 bg-white p-0.5">
+							<button type="button" aria-label="Card layout" aria-pressed={propertyLayout === "cards"} onClick={() => setPropertyLayout("cards")} className={`grid h-7 w-8 place-items-center transition ${propertyLayout === "cards" ? "bg-[#252525] text-white" : "text-black/50 hover:bg-zinc-100"}`}><LayoutGrid className="h-3.5 w-3.5" /></button>
+							<button type="button" aria-label="List layout" aria-pressed={propertyLayout === "list"} onClick={() => setPropertyLayout("list")} className={`grid h-7 w-8 place-items-center transition ${propertyLayout === "list" ? "bg-[#252525] text-white" : "text-black/50 hover:bg-zinc-100"}`}><ListIcon className="h-3.5 w-3.5" /></button>
+						</div>
+					</div>
+					<div className="max-h-[min(56vh,520px)] overflow-y-auto p-3 sm:p-4">
 						{propertyAnalyticsRows.length === 0 ? <div className="rounded-xl border border-dashed border-black/10 bg-zinc-50 px-4 py-8 text-center text-sm text-black/45">No properties match those filters.</div> : (
-							<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+							<div className={propertyLayout === "cards" ? "grid gap-2 md:grid-cols-2 xl:grid-cols-3" : "space-y-1"}>
 								{propertyAnalyticsRows.map(({ id, performance, title, category: propertyType, status, location }) => {
 									const isSelected = selectedProperty?.id === id;
-													return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-label={`Open analytics for ${title}`} aria-pressed={isSelected} className={`rounded-xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
-										<div className="flex items-start justify-between gap-3"><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><StatusBadge value={status} /></div>
-										<div className="mt-1 truncate text-xs text-black/45">{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div>
-														<div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-2.5 text-xs"><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span><span className="font-semibold text-[#DE141C]">View analytics →</span></div>
+										return <button key={id} type="button" onClick={() => onSelectPortfolioProperty(id)} aria-label={`Open analytics for ${title}`} aria-pressed={isSelected} className={`${propertyLayout === "cards" ? "rounded-xl p-3.5" : "flex items-center gap-3 px-3 py-2"} w-full border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${isSelected ? "border-[#DE141C]/25 bg-[#DE141C]/[0.035] ring-1 ring-inset ring-[#DE141C]/10" : "border-black/[0.07] bg-white hover:border-black/15 hover:bg-zinc-50/70"}`}>
+									<div className={`flex ${propertyLayout === "cards" ? "items-start justify-between gap-3" : "min-w-0 flex-1 items-center gap-3"}`}><span className="min-w-0 truncate text-sm font-semibold text-[#111111]">{title}</span><StatusBadge value={status} /></div>
+									<div className={`${propertyLayout === "cards" ? "mt-1" : "hidden sm:block"} truncate text-xs text-black/45`}>{[location, propertyType ? titleCase(propertyType) : ""].filter(Boolean).join(" · ") || "No location or category set"}</div>
+									<div className={`${propertyLayout === "cards" ? "mt-3 border-t border-black/[0.06] pt-2.5" : "ml-auto"} flex items-center gap-3 text-xs`}><span className="font-medium text-black/55">{performance?.total_views ?? 0} views</span><span className="font-medium text-black/45">{performance?.total_inquiries ?? 0} inquiries</span>{propertyLayout === "cards" ? <span className="ml-auto font-semibold text-[#DE141C]">View analytics →</span> : null}</div>
 									</button>;
 								})}
 							</div>
 						)}
 					</div>
+					</div> : null}
 				</div>
 				{selectedProperty ? (
 					<div id="property-performance-detail" ref={selectedPropertyDetailRef} tabIndex={-1} className="mb-5 scroll-mt-24 rounded-xl border border-black/10 bg-white p-4 outline-none sm:p-5">
@@ -1562,18 +1577,17 @@ function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: stri
 	return <div className="h-44"><EChart option={option} /></div>;
 }
 
-function OverviewListingChart({ rows }: { rows: Array<{ title: string; views: number; rate: number }> }) {
-	if (!rows.length) return <p className="flex h-44 items-center text-sm text-black/45">No listing analytics yet.</p>;
-	const maxViews = Math.max(1, ...rows.map((row) => row.views));
+function OverviewListingChart({ rows }: { rows: Array<{ label: string; views: number; inquiries: number }> }) {
 	const option = {
 		animationDuration: 450,
-		grid: { top: 12, right: 8, bottom: 38, left: 8 },
-		tooltip: { trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: "rgba(24,24,27,0.04)" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ seriesName: string; value: number; axisValue: string }>) => `${items[0]?.axisValue ?? ""}<br/>Views: <strong>${items[0]?.value ?? 0}</strong><br/>Inquiry rate: <strong>${items[1]?.value ?? 0}%</strong>` },
-		xAxis: { type: "category", data: rows.map((row) => compactChartLabel(row.title)), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 12 }, splitLine: { show: false } },
-		yAxis: [{ type: "value", show: false, min: 0, max: maxViews * 1.1 }, { type: "value", show: false, min: 0, max: Math.max(1, ...rows.map((row) => row.rate)) * 1.2 }],
+		grid: { top: 12, right: 10, bottom: 24, left: 28 },
+		tooltip: { trigger: "axis", axisPointer: { type: "line", lineStyle: { color: "#d4d4d8", type: "dashed" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ seriesName: string; value: number; axisValue: string }>) => `${items[0]?.axisValue ?? ""}<br/>Views: <strong>${items.find((item) => item.seriesName === "Views")?.value ?? 0}</strong><br/>Inquiries: <strong>${items.find((item) => item.seriesName === "Inquiries")?.value ?? 0}</strong>` },
+		legend: { top: 0, right: 0, icon: "circle", itemWidth: 7, itemHeight: 7, itemGap: 12, textStyle: { color: "#71717a", fontSize: 10 } },
+		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 10 }, splitLine: { show: false } },
+		yAxis: { type: "value", min: 0, minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9 }, splitLine: { show: true, lineStyle: { color: "#f0f0f0" } } },
 		series: [
-			{ type: "pictorialBar", name: "Views", symbol: "roundRect", symbolRepeat: "fixed", symbolSize: [16, 4], symbolMargin: 2, symbolBoundingData: maxViews, data: rows.map((row) => ({ value: row.views, itemStyle: { color: "#DE141C" } })), z: 10 },
-			{ type: "line", name: "Inquiry rate", yAxisIndex: 1, data: rows.map((row) => row.rate), symbol: "circle", symbolSize: 5, lineStyle: { color: "#171717", width: 1.5 }, itemStyle: { color: "#171717", borderColor: "#fff", borderWidth: 1.5 }, z: 12 },
+			{ type: "line", name: "Views", data: rows.map((row) => row.views), smooth: 0.25, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 5, lineStyle: { color: "#DE141C", width: 2.5 }, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 1.5 }, areaStyle: { color: "rgba(222,20,28,0.08)" }, z: 12 },
+			{ type: "line", name: "Inquiries", data: rows.map((row) => row.inquiries), smooth: 0.25, connectNulls: false, showSymbol: true, symbol: "circle", symbolSize: 5, lineStyle: { color: "#292929", width: 2 }, itemStyle: { color: "#292929", borderColor: "#fff", borderWidth: 1.5 }, z: 13 },
 		],
 	};
 	return <div className="h-44"><EChart option={option} /></div>;
@@ -1943,11 +1957,11 @@ function GalleryImageManager({ galleryItem, canEdit, onChanged, onRequestDelete 
 			<div className="mt-4 rounded-2xl border border-black/[0.08] bg-white p-4">
 				<label className="block">
 					<div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/50">Replace Photo</div>
-					<input type="file" accept="image/*" disabled={!canEdit || savingImage} onChange={handleFileChange} className="mt-2 block w-full rounded-xl border border-dashed border-black/15 bg-zinc-50 p-3 text-sm text-black/60 file:mr-4 file:rounded-lg file:border-0 file:bg-[#DE141C] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#bf1018] disabled:cursor-not-allowed disabled:opacity-60" />
+					<input type="file" accept="image/*" disabled={!canEdit || savingImage} onChange={handleFileChange} className="mt-2 block w-full rounded-xl border border-dashed border-black/15 bg-zinc-50 p-3 text-sm text-black/60 file:mr-4 file:rounded-lg file:border-0 file:bg-[#111111] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-black/80 disabled:cursor-not-allowed disabled:opacity-60" />
 				</label>
 				<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
 					<p className="text-xs text-black/45">{selectedFile ? selectedFile.name : "Choose a JPG, PNG, or WebP image."}</p>
-					<button type="button" onClick={uploadReplacementImage} disabled={!canEdit || savingImage || !selectedFile} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#DE141C] px-4 text-sm font-semibold text-white transition hover:bg-[#bf1018] disabled:cursor-not-allowed disabled:bg-black/20">
+					<button type="button" onClick={uploadReplacementImage} disabled={!canEdit || savingImage || !selectedFile} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#111111] px-4 text-sm font-semibold text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/20">
 						<UploadCloud className="h-4 w-4" />
 						{savingImage ? "Uploading..." : "Upload and replace"}
 					</button>
@@ -2564,40 +2578,33 @@ function AnalyticsPanel({
 				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
-							<div className="flex items-center justify-between">
-								<span className="portal-stat-label">Traffic Snapshot</span>
-								<span className="portal-stat-badge">7D</span>
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><Users className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Traffic Snapshot</span></span>
+								<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 							</div>
 							<div className="portal-stat-value">{weeklyVisitors.toLocaleString()}</div>
 						</div>
-						<p className="portal-stat-hint mt-3">Distinct visitors in the last 7 days.</p>
+						<p className="portal-stat-hint mt-3">Unique visitors · 7 days</p>
 					</div>
 
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
-							<div className="flex items-center justify-between">
-								<span className="portal-stat-label">Top Property</span>
-								<span className="portal-stat-badge">Most Viewed</span>
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><Building2 className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Top Property</span></span>
+								<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 							</div>
 							<div className="portal-stat-value mt-3 truncate text-base leading-6" title={topListing?.title || "No listing yet"}>
 								{topListing?.title || "No listing yet"}
 							</div>
 						</div>
-						<div className="mt-auto flex items-center gap-2 pt-2">
-							<span className="portal-stat-badge">
-								{topListing?.total_views ?? 0} views
-							</span>
-							<span className="portal-stat-badge">
-								{topListing?.total_inquiries ?? 0} inquiries
-							</span>
-						</div>
+						<p className="portal-stat-hint mt-auto truncate pt-1">{topListing?.total_views ?? 0} views · {topListing?.total_inquiries ?? 0} inquiries</p>
 					</div>
 
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
-							<div className="flex items-center justify-between">
-								<span className="portal-stat-label">Next-Day Demand</span>
-								<span className="portal-stat-badge">Forecast</span>
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><TrendingUp className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Next-Day Demand</span></span>
+								<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 							</div>
 							<div className="portal-stat-value">{nextDayForecast.toFixed(1)}</div>
 						</div>
@@ -2606,32 +2613,29 @@ function AnalyticsPanel({
 
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
-							<div className="flex items-center justify-between">
-								<span className="portal-stat-label">Conversion Funnel</span>
-								<span className="portal-stat-badge">Rate</span>
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><TrendingUp className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Conversion Funnel</span></span>
+								<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 							</div>
 							<div className="portal-stat-value">{funnelCompletionRate.toFixed(1)}%</div>
 						</div>
 						<div className="mt-3">
 							<div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-								<div className="h-full rounded-full bg-[#111111] transition-[width] duration-500" style={{ width: `${Math.min(Math.max(funnelCompletionRate * 5, 4), 100)}%` }} />
+								<div className="h-full rounded-full bg-[#DE141C] transition-[width] duration-500" style={{ width: `${Math.min(Math.max(funnelCompletionRate, 0), 100)}%` }} />
 							</div>
-							<p className="mt-1.5 text-[11px] text-black/45">View-to-inquiry funnel completion</p>
+							<p className="portal-stat-hint mt-1.5">Views to inquiry</p>
 						</div>
 					</div>
 
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
-							<div className="flex items-center justify-between">
-								<span className="portal-stat-label">Portfolio Velocity</span>
-								<span className="portal-stat-badge">Inventory</span>
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><Building2 className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Portfolio Velocity</span></span>
+								<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 							</div>
 							<div className="portal-stat-value text-2xl">{inquiries.length} Inquiries</div>
 						</div>
-						<div className="mt-3 border-t border-black/5 pt-2 text-xs text-black/55 flex items-center justify-between">
-							<span>{activeListings} Active listings</span>
-							<span className="font-semibold text-black/75">₱{(avgPropertyPrice / 1000000).toFixed(2)}M avg</span>
-						</div>
+						<p className="portal-stat-hint mt-3 truncate">{activeListings} active · ₱{(avgPropertyPrice / 1000000).toFixed(2)}M avg</p>
 					</div>
 				</div>
 			) : null}
@@ -2658,9 +2662,9 @@ function AnalyticsPanel({
 
 			{isAdmin && showOverviewReport ? (
 				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-3">
-					<DashboardMetricCard Icon={Globe} label="Top traffic source" value={trafficSources[0]?.source || "Direct"} hint={`${trafficSources[0]?.session_count ?? 0} sessions`} badge="TOP SOURCE" />
-					<DashboardMetricCard Icon={Users} label="Top converting agent" value={agentPerformance[0]?.agent_name || "Unassigned"} hint={`${agentPerformance[0]?.conversions ?? 0} conversions`} badge="TOP AGENT" />
-					<DashboardMetricCard Icon={Building2} label="Developer portfolio" value={developerPortfolio[0]?.company_name || "Partner Network"} hint={`${developerPortfolio[0]?.total_listings ?? 0} listings`} badge="PARTNERS" />
+					<DashboardMetricCard Icon={Globe} label="Top traffic source" value={trafficSources[0]?.source || "Direct"} hint={`${trafficSources[0]?.session_count ?? 0} sessions`} />
+					<DashboardMetricCard Icon={Users} label="Top converting agent" value={agentPerformance[0]?.agent_name || "Unassigned"} hint={`${agentPerformance[0]?.conversions ?? 0} conversions`} />
+					<DashboardMetricCard Icon={Building2} label="Developer portfolio" value={developerPortfolio[0]?.company_name || "Partner Network"} hint={`${developerPortfolio[0]?.total_listings ?? 0} listings`} />
 				</div>
 			) : null}
 
@@ -3939,16 +3943,29 @@ export default function AdminCms({
 			.slice(0, 5),
 		[filteredInquiries],
 	);
-	const listingPreviewRows = useMemo(
-		() => workspace.listingPerformance
-			.slice(0, 4)
-			.map((row) => ({
-				title: asText(row.title || "Untitled listing"),
-				views: toNullableNumber(row.total_views) ?? 0,
-				rate: toNullableNumber(row.inquiry_rate_pct) ?? 0,
-			})),
-		[workspace.listingPerformance],
-	);
+	const overviewListingTrend = useMemo(() => {
+		const endDate = selectedDateFilter || utcDayKey();
+		const startDate = shiftUtcDayKey(endDate, -6);
+		const viewTypes = new Set(["property_view", "page_view", "view", "listing_view"]);
+		const viewsByDate = new Map<string, number>();
+		const inquiriesByDate = new Map<string, number>();
+		for (const event of workspace.engagementEvents) {
+			const date = asText(event.created_at).slice(0, 10);
+			if (date < startDate || date > endDate || !viewTypes.has(asText(event.event_type))) continue;
+			viewsByDate.set(date, (viewsByDate.get(date) ?? 0) + 1);
+		}
+		for (const row of workspace.dailyInquiryVolume) {
+			const date = asText(row.inquiry_date).slice(0, 10);
+			if (date < startDate || date > endDate) continue;
+			inquiriesByDate.set(date, (inquiriesByDate.get(date) ?? 0) + (toNullableNumber(row.total_inquiries) ?? 0));
+		}
+		return Array.from({ length: 7 }, (_, index) => {
+			const dateKey = shiftUtcDayKey(startDate, index);
+			const date = new Date(`${dateKey}T00:00:00.000Z`);
+			const weekday = date.toLocaleDateString("en-PH", { weekday: "short", timeZone: "UTC" });
+			return { label: `${weekday} ${date.getUTCDate()}`, views: viewsByDate.get(dateKey) ?? 0, inquiries: inquiriesByDate.get(dateKey) ?? 0 };
+		});
+	}, [workspace.engagementEvents, workspace.dailyInquiryVolume, selectedDateFilter]);
 	function openInquiryForEditing(inquiryId: string) {
 		setActivePrimary("inquiries");
 		setActiveSection("inquiries");
@@ -4613,7 +4630,7 @@ export default function AdminCms({
 									<button
 										type="button"
 										onClick={() => openSection(analyticsOverviewItem.id)}
-										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-red-100 font-semibold text-red-800" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-[#B5121B] font-semibold text-white" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
@@ -4921,10 +4938,10 @@ export default function AdminCms({
 							<>
 								<div className="grid gap-3">
 									<div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
-					<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High priority" badge="PRIORITY" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-					<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Needs assignment" badge="QUEUE" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
-					<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Not published" badge="DRAFTS" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
-					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" badge="REVIEW" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
+					<DashboardMetricCard Icon={AlertCircle} label="Needs attention" value={urgentLeads.length} hint="High priority" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+					<DashboardMetricCard Icon={Users} label="Unassigned leads" value={unassignedLeads.length} hint="Needs assignment" onClick={() => { setActivePrimary("inquiries"); setActiveSection("inquiries"); syncAdminUrl("/admin/inquiries"); }} />
+					<DashboardMetricCard Icon={Building2} label="Draft listings" value={draftListings.length} hint="Not published" onClick={() => { setActivePrimary("listings"); setActiveSection("properties"); syncAdminUrl("/admin/listings"); }} />
+					<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Review conversion" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
 								<div className="grid gap-3 xl:grid-cols-3">
@@ -4938,7 +4955,7 @@ export default function AdminCms({
 									</div>
 									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
 										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Listing performance</h2><button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="text-xs font-semibold text-[#DE141C] hover:underline">Details</button></div>
-										<OverviewListingChart rows={listingPreviewRows} />
+										<OverviewListingChart rows={overviewListingTrend} />
 									</div>
 								</div>
 								</div>

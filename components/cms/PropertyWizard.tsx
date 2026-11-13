@@ -10,10 +10,13 @@ import {
 	ImageIcon,
 	ChevronLeft,
 	ChevronRight,
+	LayoutGrid,
+	List as ListIcon,
 	Check,
 	Plus,
 	Trash2,
 	Search,
+	SlidersHorizontal,
 	X,
 	Eye,
 	LandPlot,
@@ -737,6 +740,9 @@ export function PropertyWizard({
 }: PropertyWizardProps) {
 	const [search, setSearch] = useState("");
 	const [propertyListExpanded, setPropertyListExpanded] = useState(true);
+	const [propertyView, setPropertyView] = useState<"list" | "cards">("list");
+	const [categoryFilter, setCategoryFilter] = useState("all");
+	const [statusFilter, setStatusFilter] = useState("all");
 	const shouldOpenSelectedProperty = Boolean(selectedId && selectedId === propertyToOpenId);
 	const [wizardOpen, setWizardOpen] = useState(shouldOpenSelectedProperty);
 	const [currentStep, setCurrentStep] = useState(0);
@@ -960,15 +966,15 @@ export function PropertyWizard({
 
 	const filteredRows = useMemo(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return rows;
-		return rows.filter((row) =>
-			[rowLabel(row), rowMeta?.(row), asText(row.id)]
-				.filter(Boolean)
-				.join(" ")
-				.toLowerCase()
-				.includes(q),
-		);
-	}, [rows, search, rowLabel, rowMeta]);
+		return rows.filter((row) => {
+			const matchesSearch = !q || [rowLabel(row), rowMeta?.(row), asText(row.id)].filter(Boolean).join(" ").toLowerCase().includes(q);
+			const matchesCategory = categoryFilter === "all" || asText(row.category).trim().toLowerCase() === categoryFilter;
+			const matchesStatus = statusFilter === "all" || asText(row.status ?? "draft").trim().toLowerCase() === statusFilter;
+			return matchesSearch && matchesCategory && matchesStatus;
+		});
+	}, [rows, search, rowLabel, rowMeta, categoryFilter, statusFilter]);
+	const propertyCategories = useMemo(() => Array.from(new Set(rows.map((row) => asText(row.category).trim().toLowerCase()).filter(Boolean))).sort(), [rows]);
+	const propertyStatuses = useMemo(() => Array.from(new Set(rows.map((row) => asText(row.status ?? "draft").trim().toLowerCase()).filter(Boolean))).sort(), [rows]);
 
 	const handleFieldChange = useCallback((name: string, val: string | boolean) => {
 		if (name === "slug") setSlugManuallyEdited(true);
@@ -1400,7 +1406,7 @@ export function PropertyWizard({
 								<button
 									type="button"
 									onClick={openWizardForNew}
-										className="inline-flex h-8 shrink-0 items-center gap-1.5 bg-[#111111] px-3 text-xs font-semibold text-white transition hover:bg-[#DE141C]"
+										className="inline-flex h-8 shrink-0 items-center gap-1.5 bg-[#111111] px-3 text-xs font-semibold text-white transition hover:bg-black/80"
 								>
 									<Plus className="h-3.5 w-3.5" />
 									Add property
@@ -1410,19 +1416,37 @@ export function PropertyWizard({
 
 						{propertyListExpanded ? <div id="property-list-content">
 						<div className="border-b border-black/10 px-4 py-2.5">
-							<div className="relative">
-								<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
-								<input
-									type="search"
-									value={search}
-									onChange={(e) => setSearch(e.target.value)}
-									placeholder="Search properties…"
-									className="h-9 w-full rounded-xl border border-black/10 bg-zinc-50 pl-9 pr-3 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/25 focus:bg-white"
-								/>
+							<div className="flex flex-wrap items-center gap-2">
+								<div className="relative min-w-[180px] flex-1">
+									<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+									<input
+										type="search"
+										value={search}
+										onChange={(e) => setSearch(e.target.value)}
+										placeholder="Search properties…"
+										className="h-9 w-full border border-black/10 bg-zinc-50 pl-9 pr-3 text-xs text-[#111111] outline-none transition placeholder:text-black/35 focus:border-black/25 focus:bg-white"
+									/>
+								</div>
+								<label className="relative inline-flex h-9 items-center gap-1.5 border border-black/10 bg-white px-2.5 text-black/45" title="Filter properties">
+									<SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+									<span className="sr-only">Category filter</span>
+									<select aria-label="Filter properties by category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="max-w-28 appearance-none bg-transparent pr-1 text-xs font-medium text-[#111111] outline-none">
+										<option value="all">All types</option>
+										{propertyCategories.map((category) => <option key={category} value={category}>{category.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())}</option>)}
+									</select>
+								</label>
+								<select aria-label="Filter properties by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 max-w-32 border border-black/10 bg-white px-2.5 text-xs font-medium text-[#111111] outline-none focus:border-black/25">
+									<option value="all">All statuses</option>
+									{propertyStatuses.map((status) => <option key={status} value={status}>{status.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())}</option>)}
+								</select>
+								<div role="group" aria-label="Property view style" className="inline-flex h-9 border border-black/10 bg-white p-0.5">
+									<button type="button" aria-label="List view" aria-pressed={propertyView === "list"} onClick={() => setPropertyView("list")} className={`grid w-8 place-items-center transition ${propertyView === "list" ? "bg-[#252525] text-white" : "text-black/50 hover:bg-zinc-100"}`}><ListIcon className="h-4 w-4" /></button>
+									<button type="button" aria-label="Card view" aria-pressed={propertyView === "cards"} onClick={() => setPropertyView("cards")} className={`grid w-8 place-items-center transition ${propertyView === "cards" ? "bg-[#252525] text-white" : "text-black/50 hover:bg-zinc-100"}`}><LayoutGrid className="h-4 w-4" /></button>
+								</div>
 							</div>
 						</div>
 
-						<div className="max-h-[260px] overflow-y-auto p-2">
+						<div className={`overflow-y-auto p-2 ${propertyView === "list" ? "max-h-[min(56vh,520px)]" : "max-h-[min(68vh,620px)]"}`}>
 							{filteredRows.length === 0 ? (
 								<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/10 py-16 text-center">
 									<Building2 className="mb-3 h-10 w-10 text-black/20" />
@@ -1439,7 +1463,7 @@ export function PropertyWizard({
 									)}
 								</div>
 							) : (
-								<div className="space-y-1">
+								<div className={propertyView === "list" ? "space-y-1" : "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"}>
 									{filteredRows.map((row) => {
 										const id = asText(row.id);
 										const isActive = id === asText(selectedId);
@@ -1463,23 +1487,25 @@ export function PropertyWizard({
 												onClick={() => openWizardForRow(row)}
 												aria-pressed={isActive}
 												aria-label={`Open ${rowLabel(row)} in the property editor`}
-												className={`group relative isolate grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border px-3 py-2 text-left transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 sm:grid-cols-[minmax(0,1fr)_auto_auto] ${isActive ? "border-[#DE141C]/50 bg-red-50/60" : "border-transparent hover:border-black/10 hover:bg-zinc-50"}`}
+												className={`group relative isolate w-full border text-left transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 ${propertyView === "list" ? "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]" : "flex min-h-[164px] flex-col gap-3 overflow-hidden p-4"} ${isActive ? "border-[#DE141C]/50 bg-red-50/60" : "border-black/10 hover:border-black/25 hover:bg-zinc-50"}`}
 											>
 											<div
 												aria-hidden="true"
-												className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center opacity-[0.06]"
-												style={cardImage ? { backgroundImage: `url("${cardImage.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}")` } : undefined}
+												className={`pointer-events-none absolute inset-0 -z-10 bg-cover bg-center ${propertyView === "cards" && cardImage ? "opacity-100" : "hidden"}`}
+												style={cardImage ? { backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.45) 28%, rgba(255,255,255,0.94) 72%, #fff 100%), url("${cardImage.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}")` } : undefined}
 											/>
-												<div className="flex min-w-0 items-center gap-3">
-													<span className={`grid h-9 w-9 shrink-0 place-items-center text-white transition-colors ${isActive ? "bg-[#DE141C]" : "bg-[#252525] group-hover:bg-[#DE141C]"}`}><CategoryIcon className="h-4 w-4" strokeWidth={1.8} /></span>
+											{propertyView === "cards" && badge && badge !== "none" ? <span className="absolute right-3 top-3 bg-[#111111]/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{badge}</span> : null}
+												<div className={`flex min-w-0 ${propertyView === "list" ? "items-center gap-3" : "items-start gap-3"}`}>
+													<span className={`grid shrink-0 place-items-center text-white transition-colors ${propertyView === "list" ? "h-9 w-9" : "h-10 w-10"} ${isActive ? "bg-[#DE141C]" : "bg-[#252525] group-hover:bg-[#DE141C]"}`}><CategoryIcon className="h-4 w-4" strokeWidth={1.8} /></span>
 													<span className="min-w-0">
 														<span className="flex min-w-0 items-center gap-2">
 															<span className="truncate text-sm font-semibold tracking-tight text-[#111111]">{rowLabel(row)}</span>
-															{badge && badge !== "none" ? <span className="hidden shrink-0 bg-zinc-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-black/55 sm:inline-flex">{badge}</span> : null}
+															{propertyView === "list" && badge && badge !== "none" ? <span className="hidden shrink-0 bg-zinc-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-black/55 sm:inline-flex">{badge}</span> : null}
 														</span>
 														{rowMeta ? <span className="mt-0.5 block truncate text-[11px] leading-4 text-black/50">{rowMeta(row)}</span> : null}
 													</span>
 												</div>
+												<div className={propertyView === "list" ? "contents" : "mt-auto flex w-full items-center justify-between border-t border-black/[0.07] pt-3"}>
 												<div className="flex items-center justify-end">
 													<span
 														className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-semibold capitalize ${statusClass}`}
@@ -1489,10 +1515,11 @@ export function PropertyWizard({
 													</span>
 												</div>
 													{row.price != null && (
-													<span className="hidden text-sm font-semibold tabular-nums text-[#111111] sm:inline">
+													<span className={`${propertyView === "list" ? "hidden sm:inline" : "inline"} text-sm font-semibold tabular-nums text-[#111111]`}>
 															₱{Number(row.price).toLocaleString()}
 														</span>
 													)}
+												</div>
 											</button>
 										);
 									})}

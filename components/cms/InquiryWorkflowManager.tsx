@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+	AlertCircle,
 	ArrowRight,
+	ArrowUpRight,
 	Calendar,
+	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
 	Clock,
@@ -15,6 +18,7 @@ import {
 	Search,
 	Sparkles,
 	User,
+	Users,
 	X,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -559,7 +563,7 @@ export function InquiryWorkflowManager({
 					}}
 					className="portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
 				>
-					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Total leads</div><span className="portal-stat-badge">ALL</span></div>
+					<div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><Users className="h-3.5 w-3.5" /></span><div className="portal-stat-label min-w-0 flex-1 truncate">Total leads</div><ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" /></div>
 					<div className="portal-stat-value">{summaryStats.total}</div>
 					<div className="portal-stat-hint mt-auto">All inquiry records</div>
 				</button>
@@ -570,7 +574,7 @@ export function InquiryWorkflowManager({
 					aria-pressed={quickFilter === "high_intent"}
 					className={`portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "high_intent" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">High intent</div><span className="portal-stat-badge">PRIORITY</span></div>
+					<div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><AlertCircle className="h-3.5 w-3.5" /></span><div className="portal-stat-label min-w-0 flex-1 truncate">High intent</div><ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" /></div>
 					<div className="portal-stat-value">{summaryStats.highIntent}</div>
 					<div className="portal-stat-hint mt-auto">Priority follow-up</div>
 				</button>
@@ -581,7 +585,7 @@ export function InquiryWorkflowManager({
 					aria-pressed={quickFilter === "unassigned"}
 					className={`portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "unassigned" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Unassigned</div><span className="portal-stat-badge">QUEUE</span></div>
+					<div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><Users className="h-3.5 w-3.5" /></span><div className="portal-stat-label min-w-0 flex-1 truncate">Unassigned</div><ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" /></div>
 					<div className="portal-stat-value">{summaryStats.unassigned}</div>
 					<div className="portal-stat-hint mt-auto">Awaiting an agent</div>
 				</button>
@@ -592,7 +596,7 @@ export function InquiryWorkflowManager({
 					aria-pressed={quickFilter === "stale"}
 					className={`portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${quickFilter === "stale" ? "border-[#DE141C]/50" : ""}`}
 				>
-					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Overdue (&gt;24h)</div><span className="portal-stat-badge">24H+</span></div>
+					<div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><Clock className="h-3.5 w-3.5" /></span><div className="portal-stat-label min-w-0 flex-1 truncate">Overdue (&gt;24h)</div><ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" /></div>
 					<div className="portal-stat-value">{summaryStats.overdue}</div>
 					<div className="portal-stat-hint mt-auto">Needs a response</div>
 				</button>
@@ -603,7 +607,7 @@ export function InquiryWorkflowManager({
 					aria-pressed={statusFilter === "closed_won"}
 					className="portal-stat-card flex min-h-[124px] w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30"
 				>
-					<div className="flex items-center justify-between gap-2"><div className="portal-stat-label">Won / reserved</div><span className="portal-stat-badge">CLOSED</span></div>
+					<div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><CheckCircle2 className="h-3.5 w-3.5" /></span><div className="portal-stat-label min-w-0 flex-1 truncate">Won / reserved</div><ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" /></div>
 					<div className="portal-stat-value">{summaryStats.won}</div>
 					<div className="portal-stat-hint mt-auto">Successful outcomes</div>
 				</button>
@@ -1789,7 +1793,7 @@ function LeadInspectorDrawer({
 							type="button"
 							disabled={savingAction || !noteText.trim()}
 							onClick={onAddNote}
-							className="inline-flex h-8 items-center justify-center rounded-lg bg-[#DE141C] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b80f15] disabled:cursor-not-allowed disabled:opacity-50"
+							className="inline-flex h-8 items-center justify-center rounded-lg bg-[#111111] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{savingAction ? "Saving..." : "Post Activity"}
 						</button>

@@ -9,7 +9,7 @@ const inputClass =
 "mt-2 w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-sm text-[#111111] outline-none transition placeholder:text-black/35 focus:border-[#DE141C]/50 focus:ring-4 focus:ring-[#DE141C]/10 disabled:bg-zinc-50 disabled:text-black/45";
 const labelClass = "text-sm font-medium text-[#111111]";
 const primaryButton =
-	"inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#DE141C] px-4 text-sm font-semibold text-white shadow-sm shadow-red-900/10 transition hover:bg-[#bf1018] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#DE141C]/20 disabled:cursor-not-allowed disabled:bg-black/20";
+	"inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#111111] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/20";
 
 type ValueKind = "boolean" | "number" | "text";
 
