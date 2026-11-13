@@ -9,7 +9,6 @@ import {
 	BarChart3,
 	Building,
 	Building2,
-	CalendarDays,
 	ChevronRight,
 	ExternalLink,
 	Inbox,
@@ -27,13 +26,12 @@ import {
 } from "lucide-react";
 import { ListingPerformanceChart } from "@/components/dashboard/ListingPerformanceChart";
 import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
-import { DeveloperAppointmentCalendar, type DeveloperAppointment } from "@/components/developer/DeveloperAppointmentCalendar";
 import { DashboardBarChart, DashboardDonut, DashboardTrendChart, type DashboardChartRow } from "@/components/dashboard/DashboardCharts";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-type SectionId = "overview" | "properties" | "projects" | "appointments" | "performance" | "inquiries" | "profile" | "security";
+type SectionId = "overview" | "properties" | "projects" | "performance" | "inquiries" | "profile" | "security";
 
-const DEVELOPER_SECTIONS: SectionId[] = ["overview", "properties", "projects", "appointments", "performance", "inquiries", "profile", "security"];
+const DEVELOPER_SECTIONS: SectionId[] = ["overview", "properties", "projects", "performance", "inquiries", "profile", "security"];
 
 function isDeveloperSection(value: string | undefined): value is SectionId {
 	return DEVELOPER_SECTIONS.includes(value as SectionId);
@@ -123,7 +121,6 @@ const SECTION_META: Record<SectionId, { title: string; subtitle: string }> = {
 	overview: { title: "Overview", subtitle: "A read-only snapshot of your portfolio performance." },
 	properties: { title: "Properties", subtitle: "Every unit linked to your developer account." },
 	projects: { title: "Master Projects", subtitle: "Developments your company is marketing with Jewellz Realty." },
-	appointments: { title: "Appointments", subtitle: "Confirmed customer appointments for your properties." },
 	performance: { title: "Performance", subtitle: "Listing views, engagement, and inquiry conversion." },
 	inquiries: { title: "Buyer Inquiries", subtitle: "Leads generated across your listings." },
 	profile: { title: "Company Profile", subtitle: "Your public partner profile details." },
@@ -258,8 +255,6 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	const [properties, setProperties] = useState<PropertyItem[]>([]);
 	const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
 	const [performance, setPerformance] = useState<ListingPerformanceItem[]>([]);
-	const [appointments, setAppointments] = useState<DeveloperAppointment[]>([]);
-	const [appointmentsError, setAppointmentsError] = useState("");
 	const [statusMessage, setStatusMessage] = useState("");
 	const [showAccountMenu, setShowAccountMenu] = useState(false);
 
@@ -368,26 +363,11 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						perfRows = (perfData as ListingPerformanceItem[]) ?? [];
 					}
 
-					let appointmentRows: DeveloperAppointment[] = [];
-					let appointmentLoadError = "";
-					const accessToken = sessionResult.session?.access_token;
-					if (accessToken) {
-						const appointmentResponse = await fetch("/api/developer/appointments", {
-							headers: { Authorization: `Bearer ${accessToken}` },
-							cache: "no-store",
-						});
-						const appointmentResult = await appointmentResponse.json().catch(() => ({}));
-						if (appointmentResponse.ok) appointmentRows = (appointmentResult.appointments as DeveloperAppointment[]) ?? [];
-						else appointmentLoadError = appointmentResult.error ?? "Confirmed appointments could not be loaded.";
-					}
-
 					if (isMounted) {
 						setProjects((projectRows as ProjectItem[]) ?? []);
 						setProperties(propList);
 						setInquiries(inquiryRows);
 						setPerformance(perfRows);
-						setAppointments(appointmentRows);
-						setAppointmentsError(appointmentLoadError);
 					}
 				}
 
@@ -451,7 +431,6 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 			items: [
 				{ id: "properties" as SectionId, label: "Properties", hint: `${properties.length} units`, icon: Building2 },
 				{ id: "projects" as SectionId, label: "Master Projects", hint: `${projects.length} developments`, icon: Building },
-				{ id: "appointments" as SectionId, label: "Appointments", hint: `${appointments.length} confirmed`, icon: CalendarDays },
 			],
 		},
 		{
@@ -931,19 +910,6 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 		);
 	}
 
-	function renderAppointments() {
-		return (
-			<div className="flex flex-col gap-3">
-				{appointmentsError ? (
-					<div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
-						{appointmentsError} Refresh the portal to try again.
-					</div>
-				) : null}
-				<DeveloperAppointmentCalendar appointments={appointments} />
-			</div>
-		);
-	}
-
 	function renderSecurity() {
 		return (
 			<div className="grid gap-3 lg:grid-cols-2">
@@ -985,7 +951,6 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 		overview: renderOverview,
 		properties: renderProperties,
 		projects: renderProjects,
-		appointments: renderAppointments,
 		performance: renderPerformance,
 		inquiries: renderInquiries,
 		profile: renderProfile,

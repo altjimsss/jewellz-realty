@@ -49,6 +49,7 @@ import { compressImageForUpload } from "@/lib/media/compress-image";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
 import { AgentAssistantSidebar } from "@/components/agent/AgentAssistantSidebar";
+import { AgentAppointmentCalendar, type AgentAppointment } from "@/components/agent/AgentAppointmentCalendar";
 import type { AgentChartRow } from "./AgentCharts";
 
 const AgentChartLoading = () => <div className="h-56 animate-pulse rounded-lg bg-zinc-100" aria-hidden="true" />;
@@ -62,6 +63,7 @@ type SectionId =
 	| "inquiries"
 	| "pipeline"
 	| "activity"
+	| "appointments"
 	| "listings"
 	| "listingInsights"
 	| "performance"
@@ -69,7 +71,7 @@ type SectionId =
 	| "profile"
 	| "security";
 
-const AGENT_SECTIONS: SectionId[] = ["overview", "inquiries", "pipeline", "activity", "listings", "listingInsights", "performance", "trends", "profile", "security"];
+const AGENT_SECTIONS: SectionId[] = ["overview", "inquiries", "pipeline", "activity", "appointments", "listings", "listingInsights", "performance", "trends", "profile", "security"];
 
 function isAgentSection(value: string | undefined): value is SectionId {
 	return AGENT_SECTIONS.includes(value as SectionId);
@@ -280,6 +282,8 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	const [inquiries, setInquiries] = useState<InquiryRow[]>([]);
 	const [properties, setProperties] = useState<PropertyRow[]>([]);
 	const [timeline, setTimeline] = useState<TimelineRow[]>([]);
+	const [appointments, setAppointments] = useState<AgentAppointment[]>([]);
+	const [appointmentsError, setAppointmentsError] = useState("");
 	const [statusMessage, setStatusMessage] = useState("");
 
 	const [activeSection, setActiveSection] = useState<SectionId>(() => (isAgentSection(initialSection) ? initialSection : "overview"));
@@ -391,6 +395,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				const inqList = (inquiryData as InquiryRow[]) ?? [];
 				setInquiries(inqList);
 				setProperties((propertyData as PropertyRow[]) ?? []);
+				void reloadAgentAppointments();
 
 				const readKey = `agent_read_inquiries_${currentAgent.id}`;
 				let readIds: string[] = [];
@@ -638,6 +643,22 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 			.eq("assigned_agent_id", agent.id)
 			.order("created_at", { ascending: false });
 		if (data) setInquiries(data as InquiryRow[]);
+		void reloadAgentAppointments();
+	}
+
+	async function reloadAgentAppointments() {
+		const { data } = await supabaseBrowser.auth.getSession();
+		const token = data.session?.access_token;
+		if (!token) return;
+		try {
+			const response = await fetch("/api/agent/appointments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+			const result = await response.json().catch(() => ({})) as { appointments?: AgentAppointment[]; error?: string };
+			if (!response.ok) throw new Error(result.error ?? "Could not load appointments.");
+			setAppointments(result.appointments ?? []);
+			setAppointmentsError("");
+		} catch (error) {
+			setAppointmentsError(error instanceof Error ? error.message : "Could not load appointments.");
+		}
 	}
 
 	function exportAgentInquiries() {
@@ -967,6 +988,12 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				],
 			},
 			{
+				id: "appointments",
+				label: "Appointments",
+				icon: CalendarDays,
+				items: [{ id: "appointments", label: "Appointment Calendar", hint: `${appointments.length} scheduled`, icon: CalendarDays }],
+			},
+			{
 				id: "listings",
 				label: "Listings",
 				icon: Building2,
@@ -994,7 +1021,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				],
 			},
 		],
-		[inquiries.length, properties.length, stats.active, timeline.length],
+		[appointments.length, inquiries.length, properties.length, stats.active, timeline.length],
 	);
 
 	const activeGroup = useMemo(() => navGroups.find((group) => group.items.some((item) => item.id === activeSection)) ?? navGroups[0], [navGroups, activeSection]);
@@ -1004,6 +1031,10 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 		if (id === "inquiries") return inquiries.length ? String(inquiries.length) : null;
 		if (id === "listings") return properties.length ? String(properties.length) : null;
 		if (id === "activity") return timeline.length ? String(timeline.length) : null;
+		if (id === "appointments") {
+			const pending = appointments.filter((appointment) => appointment.status === "requested").length;
+			return pending ? String(pending) : null;
+		}
 		return null;
 	};
 
@@ -1052,6 +1083,7 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 									>
 										<Icon className="h-4 w-4" />
 										{group.id === "leads" && unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#DE141C]" /> : null}
+										{group.id === "appointments" && appointments.some((appointment) => appointment.status === "requested") ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 bg-amber-400" /> : null}
 									</button>
 								);
 							})}
@@ -1747,6 +1779,13 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 							) : null}
 
 							{/* ── PROFILE ────────────────────────────────────────────── */}
+							{activeSection === "appointments" ? (
+								<div className="space-y-3">
+									{appointmentsError ? <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{appointmentsError} Refresh to try again.</div> : null}
+									<AgentAppointmentCalendar appointments={appointments} onAppointmentsChange={setAppointments} />
+								</div>
+							) : null}
+
 							{activeSection === "profile" ? (
 								<div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
 									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">

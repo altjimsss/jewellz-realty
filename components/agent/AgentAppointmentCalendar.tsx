@@ -1,0 +1,155 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, ShieldCheck, X } from "lucide-react";
+import { supabaseBrowser } from "@/lib/supabase/client";
+
+export type AgentAppointment = {
+  id: string;
+  inquiry_id: string | null;
+  property_id: string | null;
+  property_title: string;
+  buyer_name: string;
+  appointment_type: string;
+  scheduled_at: string;
+  status: "requested" | "confirmed";
+  location: string | null;
+};
+
+const TZ = "Asia/Manila";
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function dateKey(value: Date | string) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value instanceof Date ? value : new Date(value));
+  const part = (name: string) => parts.find((entry) => entry.type === name)?.value ?? "";
+  return part("year") + "-" + part("month") + "-" + part("day");
+}
+
+function formatDate(key: string, options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat("en", { ...options, timeZone: "UTC" }).format(new Date(key + "T00:00:00Z"));
+}
+
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: TZ }).format(new Date(value));
+}
+
+export function AgentAppointmentCalendar({ appointments, onAppointmentsChange }: { appointments: AgentAppointment[]; onAppointmentsChange: (items: AgentAppointment[]) => void }) {
+  const today = useMemo(() => dateKey(new Date()), []);
+  const [year, month] = today.split("-").map(Number);
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(Date.UTC(year, month - 1, 1)));
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [confirming, setConfirming] = useState<AgentAppointment | null>(null);
+  const [ready, setReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const byDate = useMemo(() => {
+    const map = new Map<string, AgentAppointment[]>();
+    appointments.forEach((item) => {
+      const key = dateKey(item.scheduled_at);
+      map.set(key, [...(map.get(key) ?? []), item]);
+    });
+    return map;
+  }, [appointments]);
+  const cells = useMemo(() => {
+    const firstDay = new Date(Date.UTC(visibleMonth.getUTCFullYear(), visibleMonth.getUTCMonth(), 1)).getUTCDay();
+    const offset = (firstDay + 6) % 7;
+    const count = new Date(Date.UTC(visibleMonth.getUTCFullYear(), visibleMonth.getUTCMonth() + 1, 0)).getUTCDate();
+    return Array.from({ length: 42 }, (_, i) => {
+      const day = i - offset + 1;
+      if (day < 1 || day > count) return null;
+      return visibleMonth.getUTCFullYear() + "-" + String(visibleMonth.getUTCMonth() + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+    });
+  }, [visibleMonth]);
+  const dayAppointments = byDate.get(selectedDate) ?? [];
+  const pending = appointments.filter((item) => item.status === "requested").length;
+  const prefix = visibleMonth.getUTCFullYear() + "-" + String(visibleMonth.getUTCMonth() + 1).padStart(2, "0") + "-";
+  const monthCount = appointments.filter((item) => dateKey(item.scheduled_at).startsWith(prefix)).length;
+
+  function moveMonth(amount: number) {
+    setVisibleMonth((current) => new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + amount, 1)));
+    setSelectedDate("");
+  }
+
+  async function confirmAppointment() {
+    if (!confirming || !ready || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const { data } = await supabaseBrowser.auth.getSession();
+      const response = await fetch("/api/agent/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(data.session?.access_token ? { Authorization: "Bearer " + data.session.access_token } : {}) },
+        body: JSON.stringify({ appointmentId: confirming.id }),
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; appointment?: AgentAppointment };
+      if (!response.ok || !result.appointment) throw new Error(result.error ?? "Could not confirm the appointment.");
+      onAppointmentsChange(appointments.map((item) => item.id === confirming.id ? { ...item, ...result.appointment } : item));
+      setConfirming(null);
+      setReady(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not confirm the appointment.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <section className="border border-black/10 bg-white">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center bg-[#DE141C] text-white"><CalendarDays className="h-4 w-4" /></span>
+            <div><h2 className="text-sm font-semibold">Customer appointments</h2><p className="mt-0.5 text-xs text-black/50">Review requests and track confirmed meetings</p></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={pending ? "bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800" : "bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"}>{pending ? pending + " need review" : "All reviewed"}</span>
+            <span className="text-xs text-black/45">{monthCount} this month</span>
+            <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="grid h-8 w-8 place-items-center border border-black/10 hover:bg-zinc-50"><ChevronLeft className="h-4 w-4" /></button>
+            <strong className="min-w-32 text-center text-sm font-semibold">{new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" }).format(visibleMonth)}</strong>
+            <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="grid h-8 w-8 place-items-center border border-black/10 hover:bg-zinc-50"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+        </header>
+        <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(270px,0.75fr)]">
+          <div className="p-3 sm:p-4">
+            <div className="grid grid-cols-7 border-l border-t border-black/10">
+              {WEEKDAYS.map((name) => <div key={name} className="border-b border-r border-black/10 bg-zinc-50 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-black/50">{name}</div>)}
+              {cells.map((key, index) => {
+                const total = key ? byDate.get(key)?.length ?? 0 : 0;
+                const active = key === selectedDate;
+                const cellClass = "flex min-h-[60px] flex-col items-start border-b border-r border-black/10 p-1.5 text-left transition sm:min-h-[72px] sm:p-2 " + (!key ? "bg-zinc-50/50 " : "hover:bg-red-50/60 ") + (active ? "bg-red-50 ring-1 ring-inset ring-[#DE141C]" : "bg-white");
+                return <button key={key ?? "empty-" + index} type="button" disabled={!key} onClick={() => key && setSelectedDate(key)} className={cellClass}>
+                  {key ? <span className={key === today ? "grid h-6 w-6 place-items-center bg-[#111111] text-xs font-semibold text-white" : "text-xs font-medium text-black/75"}>{Number(key.slice(-2))}</span> : null}
+                  {total ? <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#B5121B]"><span className="h-1.5 w-1.5 bg-[#DE141C]" />{total}<span className="hidden sm:inline"> {total === 1 ? "appointment" : "appointments"}</span></span> : null}
+                </button>;
+              })}
+            </div>
+          </div>
+          <aside className="border-t border-black/10 p-4 lg:border-l lg:border-t-0">
+            <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">{selectedDate ? formatDate(selectedDate, { weekday: "long", month: "long", day: "numeric" }) : "Select a day"}</h3>{selectedDate === today ? <span className="bg-zinc-100 px-2 py-1 text-[10px] font-medium text-black/60">Today</span> : null}</div>
+            {dayAppointments.length ? <div className="space-y-2">{dayAppointments.map((item) => <article key={item.id} className="border border-black/10 p-3">
+              <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{item.buyer_name}</p><p className="mt-0.5 truncate text-xs text-black/55">{item.property_title}</p></div><span className={item.status === "confirmed" ? "shrink-0 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700" : "shrink-0 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800"}>{item.status === "confirmed" ? "Confirmed" : "Needs review"}</span></div>
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-black/60"><span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{formatTime(item.scheduled_at)}</span><span>{item.appointment_type.replaceAll("_", " ")}</span></div>
+              {item.location ? <p className="mt-2 flex items-start gap-1 text-[11px] text-black/55"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{item.location}</p> : null}
+              {item.status === "requested" ? <button type="button" onClick={() => { setConfirming(item); setReady(false); setError(""); }} className="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-black/85"><CheckCircle2 className="h-3.5 w-3.5" />Review & confirm</button> : null}
+            </article>)}</div> : <div className="border border-dashed border-black/10 px-3 py-8 text-center"><CalendarDays className="mx-auto h-5 w-5 text-black/30" /><p className="mt-2 text-xs font-medium text-black/60">No appointments on this date</p><p className="mt-1 text-[11px] text-black/40">Choose a day with an appointment marker to review it.</p></div>}
+          </aside>
+        </div>
+      </section>
+      {confirming ? <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setConfirming(null); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="agent-confirm-appointment-title" className="w-full max-w-md border border-black/10 bg-white p-5 shadow-xl">
+          <div className="flex items-start justify-between gap-4"><div><span className="grid h-9 w-9 place-items-center bg-[#DE141C] text-white"><ShieldCheck className="h-4 w-4" /></span><h2 id="agent-confirm-appointment-title" className="mt-3 text-lg font-semibold">Confirm this appointment?</h2><p className="mt-1 text-xs leading-5 text-black/55">Review the booking and verify the arrangements with the customer before confirming.</p></div><button type="button" onClick={() => setConfirming(null)} disabled={saving} aria-label="Close confirmation" className="grid h-8 w-8 place-items-center border border-black/10 text-black/55 hover:bg-zinc-50"><X className="h-4 w-4" /></button></div>
+          <dl className="mt-4 grid grid-cols-[90px_1fr] gap-x-3 gap-y-2 border-y border-black/10 py-3 text-xs">
+            <dt className="text-black/45">Customer</dt><dd className="font-medium">{confirming.buyer_name}</dd>
+            <dt className="text-black/45">Property</dt><dd className="font-medium">{confirming.property_title}</dd>
+            <dt className="text-black/45">Date & time</dt><dd className="font-medium">{formatDate(dateKey(confirming.scheduled_at), { month: "long", day: "numeric", year: "numeric" })} · {formatTime(confirming.scheduled_at)}</dd>
+            <dt className="text-black/45">Location</dt><dd className="font-medium">{confirming.location || "Not specified"}</dd>
+            <dt className="text-black/45">Meeting type</dt><dd className="font-medium capitalize">{confirming.appointment_type.replaceAll("_", " ")}</dd>
+          </dl>
+          <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-xs leading-5 text-black/70"><input type="checkbox" checked={ready} onChange={(event) => setReady(event.target.checked)} className="mt-1 accent-[#DE141C]" /><span>I verified the date and time with the customer, and the meeting location or call details are ready.</span></label>
+          {error ? <p role="alert" className="mt-3 border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{error}</p> : null}
+          <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setConfirming(null)} disabled={saving} className="h-9 border border-black/10 px-4 text-xs font-medium hover:bg-zinc-50">Back</button><button type="button" onClick={() => void confirmAppointment()} disabled={!ready || saving} className="h-9 bg-[#111111] px-4 text-xs font-semibold text-white hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40">{saving ? "Confirming..." : "Confirm appointment"}</button></div>
+        </section>
+      </div> : null}
+    </>
+  );
+}
