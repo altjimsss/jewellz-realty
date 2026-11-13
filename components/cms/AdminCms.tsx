@@ -325,25 +325,25 @@ function hasMeaningfulChartValue<T extends Record<string, unknown>>(rows: T[], k
 function AnalyticsChartCard({ title, description, isLive = true, children }: { title: string; description: string; isLive?: boolean; children: React.ReactNode }) {
 	const titleKey = title.toLowerCase();
 	const chartStyle = titleKey.includes("traffic") || titleKey.includes("source")
-		? { Icon: Globe, iconClass: "bg-zinc-100 text-zinc-700" }
+		? { Icon: Globe }
 		: titleKey.includes("price") || titleKey.includes("asking")
-			? { Icon: CircleDollarSign, iconClass: "bg-amber-50 text-amber-700" }
+			? { Icon: CircleDollarSign }
 			: titleKey.includes("view") || titleKey.includes("property") || titleKey.includes("listing")
-				? { Icon: Building2, iconClass: "bg-zinc-100 text-zinc-700" }
+				? { Icon: Building2 }
 				: titleKey.includes("conversion") || titleKey.includes("inquiry") || titleKey.includes("funnel")
-					? { Icon: TrendingUp, iconClass: "bg-red-50 text-[#DE141C]" }
+					? { Icon: TrendingUp }
 					: titleKey.includes("session") || titleKey.includes("visitor") || titleKey.includes("bounce")
-						? { Icon: Activity, iconClass: "bg-zinc-100 text-zinc-700" }
-						: { Icon: BarChart3, iconClass: "bg-zinc-100 text-zinc-700" };
+						? { Icon: Activity }
+						: { Icon: BarChart3 };
 	const ChartIcon = chartStyle.Icon;
 	return (
 		<div className="border border-black/[0.08] bg-white p-5 shadow-none">
 			<div className="flex items-start justify-between gap-3">
 				<div className="flex min-w-0 items-start gap-3">
-					<span className={`grid h-9 w-9 shrink-0 place-items-center ${chartStyle.iconClass}`} aria-hidden="true"><ChartIcon className="h-4 w-4" /></span>
+					<span className="grid h-9 w-9 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><ChartIcon className="h-4 w-4" /></span>
 					<div className="min-w-0">
 						<div className="text-sm font-semibold tracking-tight text-[#111111]">{title}</div>
-						<p className="mt-1 text-xs leading-5 text-zinc-500">{description}</p>
+						<p className="mt-1 line-clamp-1 text-[11px] leading-4 text-zinc-500">{description}</p>
 					</div>
 				</div>
 				<span className={`inline-flex shrink-0 items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${isLive ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
@@ -513,7 +513,7 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 				</div>
 			</div>
 
-			{!aiEnabled ? <p className="mt-2 text-[11px] text-white/45">AI narrative is off — deterministic metrics only, no AI tokens are used.</p> : null}
+			{!aiEnabled ? <p className="mt-2 text-[11px] text-white/45">AI narrative is off.</p> : null}
 
 			<div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
 				{metrics.map((metric) => (
@@ -525,17 +525,17 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 				))}
 			</div>
 
-			{aiEnabled && state.loading ? <p className="mt-4 text-sm text-white/60">Building the AI report from tracked sessions, inquiries, listings, and recommendation data...</p> : null}
-			{aiEnabled && state.error ? <p className="mt-4 text-sm text-red-300">{state.error} Showing deterministic model output only.</p> : null}
+			{aiEnabled && state.loading ? <p className="mt-4 text-sm text-white/60">Generating report...</p> : null}
+			{aiEnabled && state.error ? <p className="mt-4 text-sm text-red-300">{state.error}</p> : null}
 
 			{aiEnabled && report ? (
 				<div className="mt-4 space-y-4 rounded-xl border border-white/10 bg-white/5 p-3">
-					<p className="text-sm leading-6 text-white/75">{report.executiveSummary}</p>
+					<p className="line-clamp-3 text-sm leading-6 text-white/75">{report.executiveSummary}</p>
 					{report.predictiveInsights.length ? (
 						<div>
 							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">{narrativeHeadingByCategory[category]}</p>
 							<ul className="mt-1.5 space-y-1 text-sm leading-6 text-white/70">
-								{report.predictiveInsights.map((item) => <li key={item}>• {item}</li>)}
+								{report.predictiveInsights.slice(0, 3).map((item) => <li key={item} className="line-clamp-2">• {item}</li>)}
 							</ul>
 						</div>
 					) : null}
@@ -544,7 +544,7 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 							<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">Recommended actions</p>
 							<div className="mt-1.5 grid gap-2 md:grid-cols-3">
 								{report.recommendedActions.slice(0, 3).map((action) => (
-									<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
+									<div key={action} className="line-clamp-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
 								))}
 							</div>
 						</div>
@@ -557,10 +557,10 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 				</div>
 			) : null}
 
-			<p className="mt-4 text-sm leading-6 text-white/70">{insight}</p>
+			<p className="line-clamp-3 mt-4 text-xs leading-5 text-white/70">{insight}</p>
 			<div className="mt-3 grid gap-2 md:grid-cols-3">
 				{actions.map((action) => (
-					<div key={action} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
+					<div key={action} className="line-clamp-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-5 text-white/70">{action}</div>
 				))}
 			</div>
 			{aiEnabled && report?.narrativeSource && state.generatedAt ? <p className="mt-3 text-[11px] text-white/40">Stored {new Date(state.generatedAt).toLocaleString()}</p> : null}
@@ -1498,80 +1498,53 @@ function AgentMetricsSummary({ agentId, agentEmail, agentPerformance }: { agentI
 }
 
 function OverviewBars({ rows }: { rows: Array<{ label: string; value: number }> }) {
-	return (
-		<div className="h-40 border-b border-black/10">
-			{rows.length ? (
-				<div className="h-full">
-					<ResponsiveContainer width="100%" height="100%">
-						<LineChart data={rows} margin={{ top: 8, right: 12, left: -24, bottom: 0 }}>
-							<CartesianGrid vertical={false} stroke="#ececec" />
-							<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} />
-							<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} />
-							<Tooltip content={<OverviewTrendTooltip />} cursor={{ stroke: "#d4d4d8", strokeDasharray: "4 4" }} />
-							<Line type="monotone" dataKey="value" name="Inquiries" stroke="#111111" strokeWidth={2.5} dot={{ r: 3, fill: "#ffffff", stroke: "#111111", strokeWidth: 2 }} activeDot={{ r: 5, fill: "#111111", stroke: "#ffffff", strokeWidth: 2 }} />
-						</LineChart>
-					</ResponsiveContainer>
-				</div>
-			) : (
-				<p className="flex h-full items-center text-sm text-black/45">No chart data yet.</p>
-			)}
-		</div>
-	);
+	if (!rows.length) return <p className="flex h-44 items-center text-sm text-black/45">No inquiry data yet.</p>;
+	const option = {
+		animationDuration: 450,
+		grid: { top: 14, right: 12, bottom: 26, left: 12 },
+		tooltip: { trigger: "axis", axisPointer: { type: "line", lineStyle: { color: "#d4d4d8", type: "dashed" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ axisValueLabel: string; value: number }>) => `${items[0]?.axisValueLabel ?? ""}<br/><strong>${items[0]?.value ?? 0} inquiries</strong>` },
+		xAxis: { type: "category", data: rows.map((row) => row.label), boundaryGap: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 10, margin: 12 }, splitLine: { show: false } },
+		yAxis: { type: "value", show: false, min: 0, max: (value: { max: number }) => Math.max(1, value.max * 1.15), splitLine: { show: false } },
+		series: [
+			{ type: "bar", name: "Inquiry volume", data: rows.map((row) => row.value), barWidth: 2, itemStyle: { color: "#d4d4d8" }, emphasis: { itemStyle: { color: "#DE141C" } }, z: 1 },
+			{ type: "scatter", name: "Inquiries", data: rows.map((row) => row.value), symbol: "circle", symbolSize: 8, itemStyle: { color: "#DE141C", borderColor: "#fff", borderWidth: 2 }, z: 3 },
+		],
+	};
+	return <div className="h-44"><EChart option={option} /></div>;
 }
 
-function OverviewTrendTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string }>; label?: string }) {
-	if (!active || !payload?.length) return null;
-	return (
-		<div className="rounded-md border border-black/10 bg-white px-3 py-2 text-xs shadow-lg">
-			<div className="mb-1 font-semibold text-[#111111]">{label}</div>
-			{payload.map((item) => (
-				<div key={item.name} className="flex items-center justify-between gap-4 text-black/60">
-					<span>{item.name}</span>
-					<span className="font-medium text-[#111111]">{item.value}</span>
-				</div>
-			))}
-		</div>
-	);
-}
-
-function OverviewPipelineBars({ rows }: { rows: Array<{ label: string; value: number }> }) {
-	return (
-		<div className="h-44">
-			{rows.length ? (
-				<ResponsiveContainer width="100%" height="100%">
-					<BarChart data={rows} layout="vertical" margin={{ top: 4, right: 10, left: -8, bottom: 4 }}>
-						<CartesianGrid horizontal={false} stroke="#ececec" />
-						<XAxis type="number" hide allowDecimals={false} />
-						<YAxis dataKey="label" type="category" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 11, fill: "#71717a" }} width={92} />
-						<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-									<Bar dataKey="value" name="Leads" fill="#DE141C" radius={[0, 6, 6, 0]} maxBarSize={16} />
-					</BarChart>
-				</ResponsiveContainer>
-			) : (
-				<p className="text-sm text-black/45">No pipeline activity yet.</p>
-			)}
-		</div>
-	);
+function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: string; value: number }>; closedCount: number }) {
+	if (!rows.length) return <p className="flex h-44 items-center text-sm text-black/45">No pipeline activity yet.</p>;
+	const total = rows.reduce((sum, row) => sum + row.value, 0);
+	const conversionRate = total ? `${((closedCount / total) * 100).toFixed(1)}%` : "0%";
+	const option = {
+		animationDuration: 450,
+		tooltip: { trigger: "item", backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (item: { name: string; value: number; percent: number }) => `${titleCase(item.name)}<br/><strong>${item.value}</strong> leads · ${item.percent}%` },
+		legend: { bottom: 0, left: "center", icon: "circle", itemWidth: 7, itemHeight: 7, itemGap: 12, textStyle: { color: "#71717a", fontSize: 10 }, formatter: (value: string) => titleCase(value) },
+		graphic: [
+			{ type: "text", left: "center", top: "36%", style: { text: conversionRate, fill: "#18181b", font: "600 22px sans-serif", textAlign: "center" } },
+			{ type: "text", left: "center", top: "50%", style: { text: "CONVERTED", fill: "#71717a", font: "10px sans-serif", textAlign: "center" } },
+		],
+		series: [{ type: "pie", name: "Lead status", radius: ["48%", "68%"], center: ["50%", "44%"], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false }, itemStyle: { borderColor: "#fff", borderWidth: 3 }, data: rows.map((row) => ({ name: row.label, value: row.value, itemStyle: { color: /closed.?won|reserved|sold|converted|complete/i.test(row.label) ? "#16a34a" : /closed.?lost|rejected/i.test(row.label) ? "#a1a1aa" : "#DE141C" } })) }],
+	};
+	return <div className="h-44"><EChart option={option} /></div>;
 }
 
 function OverviewListingChart({ rows }: { rows: Array<{ title: string; views: number; rate: number }> }) {
-	return (
-		<div className="h-56">
-			{rows.length ? (
-				<ResponsiveContainer width="100%" height="100%">
-					<BarChart data={rows} margin={{ top: 8, right: 8, left: -22, bottom: 18 }}>
-						<CartesianGrid vertical={false} stroke="#ececec" />
-						<XAxis dataKey="title" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} tickFormatter={(value) => compactChartLabel(asText(value))} />
-						<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} />
-						<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-						<Bar dataKey="views" name="Views" fill="#111111" radius={[6, 6, 0, 0]} maxBarSize={28} />
-					</BarChart>
-				</ResponsiveContainer>
-			) : (
-				<p className="flex h-full items-center text-sm text-black/45">No listing analytics yet.</p>
-			)}
-		</div>
-	);
+	if (!rows.length) return <p className="flex h-44 items-center text-sm text-black/45">No listing analytics yet.</p>;
+	const maxViews = Math.max(1, ...rows.map((row) => row.views));
+	const option = {
+		animationDuration: 450,
+		grid: { top: 12, right: 8, bottom: 38, left: 8 },
+		tooltip: { trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: "rgba(24,24,27,0.04)" } }, backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (items: Array<{ seriesName: string; value: number; axisValue: string }>) => `${items[0]?.axisValue ?? ""}<br/>Views: <strong>${items[0]?.value ?? 0}</strong><br/>Inquiry rate: <strong>${items[1]?.value ?? 0}%</strong>` },
+		xAxis: { type: "category", data: rows.map((row) => compactChartLabel(row.title)), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#71717a", fontSize: 9, interval: 0, margin: 12 }, splitLine: { show: false } },
+		yAxis: [{ type: "value", show: false, min: 0, max: maxViews * 1.1 }, { type: "value", show: false, min: 0, max: Math.max(1, ...rows.map((row) => row.rate)) * 1.2 }],
+		series: [
+			{ type: "pictorialBar", name: "Views", symbol: "roundRect", symbolRepeat: "fixed", symbolSize: [16, 4], symbolMargin: 2, symbolBoundingData: maxViews, data: rows.map((row, index) => ({ value: row.views, itemStyle: { color: index === 0 ? "#DE141C" : "#e4e4e7" } })), z: 10 },
+			{ type: "line", name: "Inquiry rate", yAxisIndex: 1, data: rows.map((row) => row.rate), symbol: "circle", symbolSize: 5, lineStyle: { color: "#171717", width: 1.5 }, itemStyle: { color: "#171717", borderColor: "#fff", borderWidth: 1.5 }, z: 12 },
+		],
+	};
+	return <div className="h-44"><EChart option={option} /></div>;
 }
 
 function CmsChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string }>; label?: string | number }) {
@@ -2654,42 +2627,10 @@ function AnalyticsPanel({
 			) : null}
 
 			{isAdmin && showOverviewReport ? (
-				<div className="mb-6 grid gap-3.5 sm:grid-cols-3">
-					<div className="group rounded-xl border border-black/10 bg-zinc-50/70 p-4 transition duration-200 hover:bg-white hover:border-black/20 hover:shadow-xs">
-						<div className="flex items-center justify-between">
-							<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Traffic Acquisition</span>
-							<span className="rounded-md bg-white border border-black/10 px-2 py-0.5 text-[10px] font-medium text-black/70">Top Channel</span>
-						</div>
-						<div className="mt-2.5 flex items-baseline gap-2">
-							<span className="text-base font-semibold capitalize text-[#111111] truncate">{trafficSources[0]?.source || "Direct"}</span>
-							<span className="text-xs font-semibold text-black/45">({trafficSources[0]?.session_count ?? 0} sessions)</span>
-						</div>
-						<p className="mt-1 text-xs text-black/50">Primary visitor entry point across analytics channels.</p>
-					</div>
-
-					<div className="group rounded-xl border border-black/10 bg-zinc-50/70 p-4 transition duration-200 hover:bg-white hover:border-black/20 hover:shadow-xs">
-						<div className="flex items-center justify-between">
-							<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Agent Performance</span>
-							<span className="rounded-md bg-white border border-black/10 px-2 py-0.5 text-[10px] font-medium text-black/70">Lead Response</span>
-						</div>
-						<div className="mt-2.5 flex items-baseline gap-2">
-							<span className="text-base font-semibold text-[#111111] truncate">{agentPerformance[0]?.agent_name || "Unassigned"}</span>
-							<span className="text-xs font-semibold text-black/45">({agentPerformance[0]?.conversions ?? 0} won)</span>
-						</div>
-						<p className="mt-1 text-xs text-black/50">Top converting representative with assigned buyer requests.</p>
-					</div>
-
-					<div className="group rounded-xl border border-black/10 bg-zinc-50/70 p-4 transition duration-200 hover:bg-white hover:border-black/20 hover:shadow-xs">
-						<div className="flex items-center justify-between">
-							<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Developer Partner</span>
-							<span className="rounded-md bg-white border border-black/10 px-2 py-0.5 text-[10px] font-medium text-black/70">Portfolio</span>
-						</div>
-						<div className="mt-2.5 flex items-baseline gap-2">
-							<span className="text-base font-semibold text-[#111111] truncate">{developerPortfolio[0]?.company_name || "Partner Network"}</span>
-							<span className="text-xs font-semibold text-black/45">({developerPortfolio[0]?.total_listings ?? 0} units)</span>
-						</div>
-						<p className="mt-1 text-xs text-black/50">Active developer catalog footprint in market catalog.</p>
-					</div>
+				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-3">
+					<DashboardMetricCard Icon={Globe} label="Top traffic source" value={trafficSources[0]?.source || "Direct"} hint={`${trafficSources[0]?.session_count ?? 0} sessions`} />
+					<DashboardMetricCard Icon={Users} label="Top converting agent" value={agentPerformance[0]?.agent_name || "Unassigned"} hint={`${agentPerformance[0]?.conversions ?? 0} conversions`} />
+					<DashboardMetricCard Icon={Building2} label="Developer portfolio" value={developerPortfolio[0]?.company_name || "Partner Network"} hint={`${developerPortfolio[0]?.total_listings ?? 0} listings`} />
 				</div>
 			) : null}
 
@@ -2700,8 +2641,7 @@ function AnalyticsPanel({
 						<div>
 							<div className="flex items-start justify-between gap-3">
 								<div>
-									<div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Pipeline Distribution</div>
-									<h3 className="mt-1 text-sm font-semibold text-[#111111]">Lead Conversion Pipeline</h3>
+								<h3 className="text-sm font-semibold text-[#111111]">Lead pipeline</h3>
 								</div>
 								<span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-black/70">
 									{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)} Total Leads
@@ -2727,7 +2667,6 @@ function AnalyticsPanel({
 						<div className="mt-5 border-t border-black/5 pt-4">
 							<div className="flex items-center justify-between">
 								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Priority Distribution</span>
-								<span className="text-[11px] text-black/40">Inquiry Urgency</span>
 							</div>
 							<div className="mt-2.5 flex flex-wrap gap-2">
 								{Object.entries(priorityCounts).length ? (
@@ -2760,7 +2699,7 @@ function AnalyticsPanel({
 					{/* Volume & Recommendation Analytics - 5 cols */}
 					<div className="xl:col-span-5 flex flex-col gap-5">
 						<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
-							<div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Inquiry Volume</div>
+							<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
 							<div className="mt-3">
 								<InquiryVolumeChart rows={inquiryVolumeRows} />
 							</div>
@@ -2768,27 +2707,14 @@ function AnalyticsPanel({
 
 						<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">Recommendation Engine</span>
-								<span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-black/60">Vector Match</span>
+								<span className="text-sm font-semibold text-[#111111]">Recommendations</span>
 							</div>
 
 							<div className="mt-4 grid grid-cols-2 gap-3">
-								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
-									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">Total Shown</div>
-									<div className="mt-1 text-xl font-semibold text-[#111111]">{recommendationStats.total}</div>
-								</div>
-								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
-									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">Clicked</div>
-									<div className="mt-1 text-xl font-semibold text-[#111111]">{recommendationStats.clicked}</div>
-								</div>
-								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
-									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">CTR %</div>
-									<div className="mt-1 text-xl font-semibold text-[#111111]">{clickThrough.toFixed(1)}%</div>
-								</div>
-								<div className="rounded-lg border border-black/5 bg-zinc-50/80 p-3">
-									<div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">Fallback Rate</div>
-									<div className="mt-1 text-xl font-semibold text-[#111111]">{fallbackRate.toFixed(1)}%</div>
-								</div>
+								<InfoCard compact label="Total shown" value={recommendationStats.total} />
+								<InfoCard compact label="Clicked" value={recommendationStats.clicked} />
+								<InfoCard compact label="CTR" value={`${clickThrough.toFixed(1)}%`} />
+								<InfoCard compact label="Fallback rate" value={`${fallbackRate.toFixed(1)}%`} />
 							</div>
 						</div>
 					</div>
@@ -4636,7 +4562,7 @@ export default function AdminCms({
 										key={group.id}
 										type="button"
 										onClick={() => openPrimary(group)}
-										className={`relative flex h-10 w-10 items-center justify-center transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:bg-[#DE141C] bg-white text-[#111111] shadow-2xs" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
+										className={`relative flex h-10 w-10 items-center justify-center transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "bg-white text-[#DE141C] shadow-2xs" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
 										title={group.label}
 									>
 										<Icon className="h-4 w-4" />
@@ -4656,23 +4582,23 @@ export default function AdminCms({
 				</aside>
 
 				<aside aria-label="Section navigation" className={`portal-sidebar portal-secondary-sidebar bg-zinc-50 ${showSecondarySidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b transition-[width] duration-200 shadow-[1px_0_3px_rgba(15,23,42,0.02)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r`}>
-					<nav className="max-h-[calc(100vh-150px)] overflow-auto px-3 py-5">
-						<div className="px-2 pb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{activeNavGroup?.label ?? "Dashboard"}</div>
+					<nav className="max-h-[calc(100vh-150px)] overflow-auto py-4">
+						<div className="border-b border-black/[0.06] px-4 pb-4 pt-1 text-sm font-semibold tracking-tight text-[#111111]">{activeNavGroup?.label ?? "Dashboard"}</div>
 						<div className="space-y-1">
 							{activePrimary === "analytics" && analyticsOverviewItem && AnalyticsOverviewIcon ? (
 								<div>
 									<button
 										type="button"
 										onClick={() => openSection(analyticsOverviewItem.id)}
-										className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+											className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${currentSection === analyticsOverviewItem.id || isAnalyticsChildSection ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 									>
 										<AnalyticsOverviewIcon className="h-4 w-4 shrink-0" />
-										<span className="min-w-0 flex-1">
-											<span className="block text-sm font-medium">{analyticsOverviewItem.label}</span>
-											<span className="block truncate text-[11px] text-zinc-500">{isAnalyticsChildSection ? activeNavItem?.label : "Performance summary"}</span>
+											<span className="min-w-0 flex-1">
+												<span className="block font-medium">{analyticsOverviewItem.label}</span>
+												{isAnalyticsChildSection ? <span className="block truncate text-[11px] text-white/75">{activeNavItem?.label}</span> : null}
 										</span>
 									</button>
-									<div className="border-l-2 border-transparent py-1 pl-8 pr-2">
+									<div className="py-1">
 										{analyticsChildItems.map((item, index) => {
 											const active = currentSection === item.id;
 											return (
@@ -4680,7 +4606,7 @@ export default function AdminCms({
 													key={item.id}
 													type="button"
 													onClick={() => openSection(item.id)}
-													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${index ? "mt-1" : ""} ${active ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+											className={`relative w-full px-7 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${index ? "mt-0.5" : ""} ${active ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													{item.label}
 												</button>
@@ -4697,22 +4623,22 @@ export default function AdminCms({
 										<button
 											type="button"
 											onClick={() => openSection(item.id)}
-											className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${active ? "bg-white text-[#111111] shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
+										className={`relative flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${active ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-600 hover:bg-white hover:text-[#111111]"}`}
 										>
 											<ItemIcon className="h-4 w-4 shrink-0" />
 											<span className="min-w-0 flex-1">
 												<span className="block text-sm font-medium">{item.label}</span>
 												{activePrimary === "analytics" ? null : (
-													<span className={`block truncate text-[11px] ${active ? "text-zinc-500" : "text-zinc-400"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
+													<span className={`block truncate text-[11px] ${active ? "text-white/75" : "text-zinc-400"}`}>{item.id === "properties" ? selectedCategoryLabel : item.hint}</span>
 												)}
 											</span>
 										</button>
 										{activePrimary === "listings" && item.id === "properties" ? (
-											<div className="border-l-2 border-transparent py-1 pl-8 pr-2">
+													<div className="py-1">
 												<button
 													type="button"
 													onClick={() => openPropertyCategory("all")}
-													className={`relative w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === "all" ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+														className={`relative w-full px-7 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${propertyCategoryFilter === "all" ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 												>
 													All Categories
 												</button>
@@ -4721,7 +4647,7 @@ export default function AdminCms({
 														key={option.value}
 														type="button"
 														onClick={() => openPropertyCategory(option.value)}
-														className={`relative mt-1 w-full rounded-lg px-2 py-1.5 pl-3 text-left text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${propertyCategoryFilter === option.value ? "bg-white font-medium text-[#111111] shadow-xs before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-[#DE141C]" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
+															className={`relative mt-0.5 w-full px-7 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/40 ${propertyCategoryFilter === option.value ? "bg-[#DE141C] font-semibold text-white" : "text-zinc-500 hover:bg-white hover:text-[#111111]"}`}
 													>
 														{option.label}
 													</button>
@@ -4855,10 +4781,7 @@ export default function AdminCms({
 										<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
 									<div className="portal-popover absolute right-0 top-9 z-[70] w-80 p-4 text-sm sm:w-96">
 											<div className="flex items-center justify-between border-b border-black/10 pb-3">
-												<div>
-											<div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">Notifications</div>
-											<div className="text-xs text-slate-600">Live agent activity & pipeline updates</div>
-												</div>
+											<h2 className="text-sm font-semibold text-[#111111]">Notifications</h2>
 												{adminNotifications.length > 0 && (
 													<button
 														type="button"
@@ -4875,8 +4798,8 @@ export default function AdminCms({
 
 											<div className="mt-3 max-h-80 overflow-y-auto space-y-2 pr-1">
 												{adminNotifications.length === 0 ? (
-													<div className="py-6 text-center text-xs text-slate-600">
-														No recent agent activity. Updates will appear here live when agents make progress.
+													<div className="py-8 text-center text-xs text-zinc-500">
+														You’re all caught up.
 													</div>
 												) : (
 													adminNotifications.map((n) => (
@@ -4890,15 +4813,13 @@ export default function AdminCms({
 																<span className="text-xs font-bold text-[#111111] group-hover:text-[#DE141C]">{n.title}</span>
 																<span className="shrink-0 text-[10px] text-slate-600">{formatRelativeTime(n.timestamp)}</span>
 															</span>
-															<span className="mt-0.5 block text-xs text-black/70">{n.message}</span>
-															{n.propertyTitle ? <span className="mt-0.5 block truncate text-[11px] text-slate-600">Listing: {n.propertyTitle}</span> : null}
-															{n.note ? <span className="mt-1.5 block rounded-lg border border-black/5 bg-white p-1.5 text-[11px] italic text-black/60">&ldquo;{n.note}&rdquo;</span> : null}
+																<span className="mt-0.5 block line-clamp-1 text-xs text-black/65">{n.message}</span>
 														</button>
 													))
 												)}
 											</div>
 
-											<div className="mt-3 border-t border-black/10 pt-2.5 text-[11px] text-black/50 space-y-1">
+											<div className="hidden mt-3 border-t border-black/10 pt-2.5 text-[11px] text-black/50 space-y-1">
 												<p>• {workspace.inquiries.filter((item) => item.status === "new").length} uncontacted leads awaiting review.</p>
 												<p>• {workspace.properties.filter((item) => item.status === "draft").length} draft properties not yet public.</p>
 											</div>
@@ -4987,21 +4908,23 @@ export default function AdminCms({
 										<DashboardMetricCard Icon={TrendingUp} label="Low inquiry listings" value={lowPerformingListings.length} hint="Viewed listings below target rate." onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} />
 									</div>
 
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
-										<div className="flex items-start justify-between gap-3">
-											<div>
-												<div className="text-sm font-semibold text-[#111111]">Inquiry Trend</div>
-												<p className="mt-1 text-xs text-black/45">Latest daily lead volume from the analytics view.</p>
-											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">View report</button>
-										</div>
-										<div className="mt-3">
-											<OverviewBars rows={overviewInquiryTrend} />
-										</div>
+								<div className="grid gap-3 xl:grid-cols-3">
+									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
+										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Inquiry trend</h2><button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="text-xs font-semibold text-[#DE141C] hover:underline">Report</button></div>
+										<OverviewBars rows={overviewInquiryTrend} />
+									</div>
+									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
+										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Conversion rate</h2><span className="text-xs text-zinc-500">{stats.closedCount} closed</span></div>
+										<OverviewPipelineBars rows={overviewPipelineRows} closedCount={stats.closedCount} />
+									</div>
+									<div className="min-w-0 border border-black/10 bg-white p-4 shadow-xs">
+										<div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-[#111111]">Listing performance</h2><button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="text-xs font-semibold text-[#DE141C] hover:underline">Details</button></div>
+										<OverviewListingChart rows={listingPreviewRows} />
 									</div>
 								</div>
+								</div>
 
-								<div className="grid gap-3 xl:grid-cols-[0.95fr_1.05fr]">
+								<div className="grid gap-3 xl:grid-cols-2">
 									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 										<div className="flex items-center justify-between gap-3">
 											<div>
@@ -5029,21 +4952,7 @@ export default function AdminCms({
 										</div>
 									</div>
 
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
-										<div className="flex items-start justify-between gap-3">
-											<div>
-												<div className="text-sm font-semibold text-[#111111]">Pipeline Health</div>
-												<p className="mt-1 text-xs text-black/45">Status distribution across visible leads.</p>
-											</div>
-											<div className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 ring-1 ring-zinc-200">{stats.closedCount} closed</div>
-										</div>
-										<div className="mt-4">
-											<OverviewPipelineBars rows={overviewPipelineRows} />
-										</div>
-									</div>
-								</div>
 
-								<div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
 									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 										<div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
 											<div>
@@ -5083,18 +4992,6 @@ export default function AdminCms({
 										</div>
 									</div>
 
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
-										<div className="flex items-center justify-between gap-3">
-											<div>
-												<div className="text-sm font-semibold text-[#111111]">Listing Performance</div>
-												<p className="mt-1 text-xs text-black/45">Quick view of views and inquiry rate.</p>
-											</div>
-											<button type="button" onClick={() => { setActivePrimary("analytics"); setActiveSection("analytics"); syncAdminUrl("/admin?section=analytics"); }} className="rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-zinc-50 hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Full chart</button>
-										</div>
-										<div className="mt-4">
-											<OverviewListingChart rows={listingPreviewRows} />
-										</div>
-									</div>
 								</div>
 							</>
 						) : null}

@@ -26,29 +26,29 @@ export function SectionShell({ title, description, children }: SectionProps) {
 	);
 }
 
-export function InfoCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+export function InfoCard({ label, value, hint, compact = false }: { label: string; value: string | number; hint?: string; compact?: boolean }) {
 	const text = String(value);
 	const isLong = text.length > 14;
 	const labelKey = label.toLowerCase();
 	const metricStyle = labelKey.includes("inquiry") || labelKey.includes("lead") || labelKey.includes("engagement")
-		? { Icon: MessageSquare, iconClass: "bg-red-50 text-[#DE141C]" }
+		? { Icon: MessageSquare }
 		: labelKey.includes("view") || labelKey.includes("visitor") || labelKey.includes("session")
-			? { Icon: Eye, iconClass: "bg-zinc-100 text-zinc-700" }
+			? { Icon: Eye }
 			: labelKey.includes("rate") || labelKey.includes("conversion") || labelKey.includes("trend")
-				? { Icon: TrendingUp, iconClass: "bg-emerald-50 text-emerald-700" }
+				? { Icon: TrendingUp }
 				: labelKey.includes("time") || labelKey.includes("duration") || labelKey.includes("response") || labelKey.includes("dwell")
-					? { Icon: Clock3, iconClass: "bg-amber-50 text-amber-700" }
+					? { Icon: Clock3 }
 					: labelKey.includes("agent") || labelKey.includes("profile") || labelKey.includes("user")
-						? { Icon: Users, iconClass: "bg-zinc-100 text-zinc-700" }
+						? { Icon: Users }
 						: labelKey.includes("property") || labelKey.includes("listing") || labelKey.includes("portfolio")
-							? { Icon: Building2, iconClass: "bg-zinc-100 text-zinc-700" }
-							: { Icon: Activity, iconClass: "bg-zinc-100 text-zinc-700" };
+							? { Icon: Building2 }
+							: { Icon: Activity };
 	const MetricIcon = metricStyle.Icon;
 	return (
-		<div className="portal-stat-card flex h-full min-h-[132px] min-w-0 flex-col border border-black/[0.08] bg-white shadow-none">
+		<div className={`portal-stat-card flex h-full min-w-0 flex-col border border-black/[0.08] bg-white shadow-none ${compact ? "min-h-[104px] p-3" : "min-h-[132px]"}`}>
 			<div className="flex items-start justify-between gap-3">
 				<div className="portal-stat-label truncate pt-1">{label}</div>
-				<span className={`grid h-8 w-8 shrink-0 place-items-center ${metricStyle.iconClass}`} aria-hidden="true"><MetricIcon className="h-4 w-4" /></span>
+				<span className="grid h-8 w-8 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><MetricIcon className="h-4 w-4" /></span>
 			</div>
 			<div className={`portal-stat-value break-all leading-tight ${isLong ? "text-lg" : ""}`}>{value}</div>
 			{hint ? <div className="portal-stat-hint mt-auto line-clamp-2 pt-1">{hint}</div> : null}
@@ -56,17 +56,21 @@ export function InfoCard({ label, value, hint }: { label: string; value: string 
 	);
 }
 
-export function DashboardMetricCard({ Icon, label, value, hint, onClick }: { Icon: typeof Activity; label: string; value: string | number; hint: string; onClick: () => void }) {
-	return (
-		<button type="button" onClick={onClick} className="portal-stat-card flex h-full min-h-[132px] min-w-0 flex-col text-left transition hover:border-black/15 hover:bg-zinc-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30">
+export function DashboardMetricCard({ Icon, label, value, hint, onClick }: { Icon: typeof Activity; label: string; value: string | number; hint?: string; onClick?: () => void }) {
+	const content = (
+		<>
 			<div className="flex items-start justify-between gap-3">
 				<div className="portal-stat-label truncate pt-1">{label}</div>
-				<span className="grid h-8 w-8 shrink-0 place-items-center bg-red-50 text-[#DE141C]" aria-hidden="true"><Icon className="h-4 w-4" /></span>
+				<span className="grid h-8 w-8 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Icon className="h-4 w-4" /></span>
 			</div>
-			<div className="portal-stat-value">{value}</div>
-			<p className="portal-stat-hint mt-auto pt-1">{hint}</p>
-		</button>
+			<div className="portal-stat-value min-w-0 break-words">{value}</div>
+			{hint ? <p className="portal-stat-hint mt-auto pt-1">{hint}</p> : null}
+		</>
 	);
+	const className = "portal-stat-card flex h-full min-h-[132px] min-w-0 flex-col text-left";
+	return onClick ? (
+		<button type="button" onClick={onClick} className={`${className} transition hover:border-black/15 hover:bg-zinc-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30`}>{content}</button>
+	) : <div className={className}>{content}</div>;
 }
 
 export function StatusBadge({ value }: { value: string }) {
