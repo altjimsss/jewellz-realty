@@ -11,7 +11,12 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "Jewellz Realty",
-  description: "AI-Driven Real Estate Platform"
+  description: "AI-Driven Real Estate Platform",
+  icons: {
+    icon: "/assets/admin-emblem.webp",
+    shortcut: "/assets/admin-emblem.webp",
+    apple: "/assets/admin-emblem.webp",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
