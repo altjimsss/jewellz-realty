@@ -18,13 +18,17 @@ async function getAgent(request: Request) {
 
 async function attachPropertyTitles(rows: Array<Record<string, unknown>>) {
   const propertyIds = [...new Set(rows.map((row) => row.property_id).filter((id): id is string => typeof id === "string"))];
-  if (!propertyIds.length) return rows.map((row) => ({ ...row, property_title: "General inquiry" }));
+  if (!propertyIds.length) return rows.map((row) => ({ ...row, property_title: "General inquiry", appointment_type: "site_viewing" }));
   const { data: properties } = await supabaseServer.from("properties").select("id, title").in("id", propertyIds);
   const titles = new Map((properties ?? []).map((property) => [property.id, property.title]));
-  return rows.map((row) => ({ ...row, property_title: titles.get(String(row.property_id ?? "")) ?? "General inquiry" }));
+  return rows.map((row) => ({
+    ...row,
+    property_title: titles.get(String(row.property_id ?? "")) ?? "General inquiry",
+    appointment_type: "site_viewing",
+  }));
 }
 
-const APPOINTMENT_FIELDS = "id, inquiry_id, property_id, buyer_name, appointment_type, scheduled_at, status, location";
+const APPOINTMENT_FIELDS = "id, inquiry_id, property_id, buyer_name, scheduled_at, status, location";
 
 export async function GET(request: Request) {
   const auth = await getAgent(request);
