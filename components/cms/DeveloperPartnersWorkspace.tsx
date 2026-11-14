@@ -553,10 +553,10 @@ function AccountPanel({ developer, defaultEmail, onReload }: { developer: CmsRow
 		setBusy(true);
 		setMessage(`Sending password reset to ${target}...`);
 		try {
-			const { error } = await supabaseBrowser.auth.resetPasswordForEmail(target, {
-				redirectTo: `${window.location.origin}/reset-password?next=/developer`,
-			});
-			setMessage(error ? `Error: ${error.message}` : `Password reset email sent to ${target}.`);
+			const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
+			const response = await fetch("/api/admin/role-password-reset", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ email: target, role: "developer" }) });
+			const result = await response.json().catch(() => ({})) as { error?: string };
+			setMessage(response.ok ? `Password reset email sent to ${target}.` : `Error: ${result.error ?? "Could not send reset email."}`);
 		} catch {
 			setMessage("Failed to send password reset.");
 		} finally {

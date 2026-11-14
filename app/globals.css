@@ -12,6 +12,11 @@
   to { width: 100%; }
 }
 
+@keyframes jewellz-confetti {
+  0% { transform: translateY(-5vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(108vh) rotate(780deg); opacity: 0; }
+}
+
 .hero-progress-fill {
   width: 0;
   animation: hero-progress linear forwards;

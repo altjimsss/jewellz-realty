@@ -1,4 +1,5 @@
 import type { Property } from "@/types/property";
+import { rankRelatedProperties } from "@/lib/property-relevance";
 import { normalizeImageUrl } from "@/lib/image-url";
 import { supabaseServer } from "./server";
 
@@ -419,9 +420,9 @@ function toDbCategory(category: string | null | undefined) {
  */
 export async function getRelatedProperties(
 	propertyId: string,
-	options: { category?: string; limit?: number } = {},
+	options: { category?: string; limit?: number; source?: Property } = {},
 ) {
-	const { category, limit = 3 } = options;
+	const { limit = 3, source } = options;
 
 	let query = supabaseServer
 		.from("properties")
@@ -429,14 +430,7 @@ export async function getRelatedProperties(
 		.eq("status", "published")
 		.neq("id", propertyId)
 		.order("created_at", { ascending: false })
-		.limit(limit);
-
-	// Categories are stored as raw lowercase values ("condo", "house", ...) while
-	// property.type is title-cased ("Condo"), so normalize before filtering.
-	const dbCategory = toDbCategory(category);
-	if (dbCategory) {
-		query = query.eq("category", dbCategory);
-	}
+		.limit(200);
 
 	const { data, error } = await query;
 
@@ -445,21 +439,6 @@ export async function getRelatedProperties(
 		return [];
 	}
 
-	// If a category filter returned too few results, top up with any published listings.
-	if (dbCategory && data && data.length < limit) {
-		const { data: extra, error: extraError } = await supabaseServer
-			.from("properties")
-			.select("*, property_images(storage_url, sort_order, is_cover), developer_partners(company_name)")
-			.eq("status", "published")
-			.neq("id", propertyId)
-			.order("created_at", { ascending: false })
-			.limit(limit - data.length);
-
-		if (!extraError && extra) {
-			const seen = new Set(data.map((row) => row.id));
-			data.push(...extra.filter((row) => !seen.has(row.id)));
-		}
-	}
-
-	return (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
+	const candidates = (data ?? []).map((row) => mapPropertyRow(row as PropertyRow));
+	return source ? rankRelatedProperties(source, candidates, limit) : candidates.slice(0, limit);
 }

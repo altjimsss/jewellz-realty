@@ -178,7 +178,7 @@ async function callOpenRouter(
 			Authorization: `Bearer ${apiKey}`,
 			"Content-Type": "application/json",
 			"HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-			"X-Title": "Jewellz Realty",
+			"X-Title": "J'WELLZ REALTY",
 		},
 		body: JSON.stringify(bodyPayload),
 		signal,

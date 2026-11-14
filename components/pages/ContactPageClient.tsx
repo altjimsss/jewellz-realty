@@ -34,7 +34,7 @@ export default function ContactPage() {
 	}
 
 	function openMailFallback() {
-		const subject = encodeURIComponent(formState.subject || `Jewellz Realty inquiry from ${formState.name || "website visitor"}`);
+		const subject = encodeURIComponent(formState.subject || `J'WELLZ REALTY inquiry from ${formState.name || "website visitor"}`);
 		const body = encodeURIComponent(
 			[`Name: ${formState.name}`, `Email: ${formState.email}`, `Phone: ${formState.phone}`, "", formState.message].join("\n")
 		);

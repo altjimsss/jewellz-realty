@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS public.career_applications (
   applicant_name TEXT NOT NULL,
   applicant_email TEXT NOT NULL,
   applicant_phone TEXT,
+  school_name TEXT,
+  course_program TEXT,
   referral TEXT,
   subject TEXT,
   resume_url TEXT,

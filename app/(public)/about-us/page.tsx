@@ -12,8 +12,8 @@ import { getPublicAboutPageContent } from "@/lib/supabase/content";
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
-  title: "About Us | Jewellz Realty",
-  description: "Learn about Jewellz Realty, our brokerage team, values, and real estate services.",
+  title: "About Us | J'WELLZ REALTY",
+  description: "Learn about J'WELLZ REALTY, our brokerage team, values, and real estate services.",
 };
 export const dynamic = "force-dynamic";
 
@@ -73,7 +73,7 @@ export default async function AboutUsPage() {
                 <SafeImage
                   src={about.heroImageUrl}
                   fallbackSrc="/assets/housebanner1.webp"
-                  alt="Jewellz Realty property showcase"
+                  alt="J'WELLZ REALTY property showcase"
                   width={1100}
                   height={820}
                   className="h-auto w-full rounded-[18px] object-cover shadow-[0_12px_38px_rgba(0,0,0,0.08)]"

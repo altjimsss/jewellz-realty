@@ -109,7 +109,7 @@ function groupGalleryItems(items: CmsGalleryItem[]): Option[] {
 
   return Array.from(grouped.entries()).map(([section, sectionItems]) => ({
     title: titleCase(section),
-    description: `${titleCase(section)} from Jewellz Realty`,
+    description: `${titleCase(section)} from J'WELLZ REALTY`,
     cover: sectionItems[0]?.imageUrl ?? "",
     icon: iconForSection(section),
     photos: dedupePhotos(sectionItems.map((item) => ({
@@ -188,7 +188,7 @@ const OPTIONS: Option[] = [
     ],
   },
   {
-    title: "Jewellz Realty",
+    title: "J'WELLZ REALTY",
     description: "People-first real estate team",
     cover: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80",
     icon: <FaBuilding size={16} />,

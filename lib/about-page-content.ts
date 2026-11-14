@@ -20,31 +20,22 @@ export type AboutPageContent = {
 };
 
 export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
-	eyebrow: "About Us",
-	subtitle: "Redefining the way people discover property.",
-	title: "Discover Jewellz Realty",
-	introduction: "Jewellz Realty helps buyers and investors find the right property with less friction and more confidence. We combine curated listings, responsive support, and thoughtful presentation so every step feels clear and professional.",
+	eyebrow: "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP.",
+	subtitle: "Change the Dream Property",
+	title: "Discover J'WELLZ REALTY",
+	introduction: "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP. helps buyers and investors explore property opportunities with clear information, curated listings, and responsive support throughout their search.",
 	ctaLabel: "Contact Us",
 	ctaUrl: "/contact",
 	heroImageUrl: "/assets/housebanner1.webp",
-	stats: [
-		{ value: "5.6M+", label: "Downloads" },
-		{ value: "3.2+", label: "Active Users" },
-		{ value: "4.9", label: "Ratings" },
-		{ value: "60+", label: "Team Members" },
-	],
+	stats: [],
 	highlights: [
-		{ title: "Why Choose Jewellz Realty?", description: "We pair curated listings with clear guidance so buyers can move confidently from browsing to booking to closing." },
+		{ title: "Why Choose J'WELLZ REALTY?", description: "We pair property listings with clear guidance so buyers can move confidently from browsing to booking and beyond." },
 		{ title: "Our Vision", description: "To make property discovery feel simple, modern, and trustworthy for every Filipino family and investor." },
 		{ title: "Our Team", description: "A hands-on group of agents, advisors, and support staff focused on quick responses and a better client experience." },
 	],
-	teamHeading: "Our Leadership",
-	teamDescription: "The executives guiding the vision and direction of Jewellz Realty.",
-	teamMembers: [
-		{ name: "Tom Cruise", role: "Founder & Chairman", imageUrl: "/assets/broker.webp", twitterUrl: "", instagramUrl: "", linkedinUrl: "" },
-		{ name: "Emma Watson", role: "Managing Director", imageUrl: "/assets/bannerprofessional.webp", twitterUrl: "", instagramUrl: "", linkedinUrl: "" },
-		{ name: "Will Smith", role: "Product Designer", imageUrl: "/assets/bannerconsult.webp", twitterUrl: "", instagramUrl: "", linkedinUrl: "" },
-	],
+	teamHeading: "",
+	teamDescription: "",
+	teamMembers: [],
 };
 
 function textValue(value: unknown, fallback: string) {

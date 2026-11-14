@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-	title: "Jewellz Realty | Premium Properties in the Philippines",
-	description: "Browse Jewellz Realty listings, featured properties, developer projects, and real estate services.",
+	title: "J'WELLZ REALTY | Premium Properties in the Philippines",
+	description: "Browse J'WELLZ REALTY listings, featured properties, developer projects, and real estate services.",
 };
 
 function getNextManilaMidnight(now = new Date()) {

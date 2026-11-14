@@ -168,7 +168,7 @@ export default function Page({
     title: property.title,
     price: formatPHPWhole(property.price),
     status: property.category ?? (property.featured ? "Featured" : "Hot Pick"),
-    location: property.location ?? "Jewellz Realty",
+    location: property.location ?? "J'WELLZ REALTY",
     area: property.areaSqm ? `${property.areaSqm.toLocaleString("en-PH")} sqm` : "View Details",
     bedroom: property.beds ?? 0,
     bathroom: property.baths ?? 0,
@@ -331,7 +331,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
         <div className="absolute left-14 top-11 hidden items-start gap-4 lg:flex">
           <div>
             <p className="font-bold text-[#7F7F7F]">DISCOVER YOUR</p>
-            <h1 className="text-5xl font-bold leading-[0.92] text-white">DREAM<br />PROPERTY</h1>
+            <h1 className="max-w-[11ch] text-4xl font-bold leading-[0.98] tracking-[-0.04em] text-white sm:text-5xl">J&apos;WELLZ REALTY LIFE CHANGING</h1>
           </div>
           <SparkleSvg className="mt-1 h-auto w-[120px] shrink-0" />
         </div>
@@ -505,7 +505,7 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               <div className="relative">
                 <div>
                 <p className="text-[12px] font-bold leading-none tracking-[0.08em] text-[#5F5F63]">DISCOVER YOUR</p>
-                <h1 className="mt-1 text-[40px] font-bold leading-[0.95] text-white">DREAM<br />PROPERTY</h1>
+                <h1 className="mt-1 max-w-[12ch] text-[clamp(28px,8vw,40px)] font-bold leading-[0.98] tracking-[-0.04em] text-white">J&apos;WELLZ REALTY LIFE CHANGING</h1>
                 </div>
                 <SparkleSvg showExtra className="pointer-events-none absolute -right-[145px] top-1 h-auto w-[132px]" />
               </div>

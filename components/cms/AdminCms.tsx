@@ -1760,7 +1760,7 @@ function PropertyPublicPreview({ payload, currentRow, imageUrls }: { payload: Cm
 			nearbyGroups={nearbyGroups}
 			relatedProperties={fallbackRelatedProperties}
 			backHref="#"
-			developerName={asText(currentRow?.developer_id) || "Jewellz Realty"}
+			developerName={asText(currentRow?.developer_id) || "J'WELLZ REALTY"}
 			previewMode
 		/>
 	);
@@ -4672,9 +4672,9 @@ export default function AdminCms({
 			<main className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 text-[#0f172a]">
 				<div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-sm text-center">
 					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center">
-						<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={64} height={64} className="h-16 w-16 object-contain" />
+						<Image src="/assets/admin-emblem.webp" alt="J'WELLZ REALTY" width={64} height={64} className="h-16 w-16 object-contain" />
 					</div>
-					<div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/45">Jewellz Realty Portal</div>
+					<div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/45">J'WELLZ REALTY Portal</div>
 					<h1 className="mt-2 text-2xl font-bold tracking-tight text-[#111111]">Sign In Required</h1>
 					<p className="mt-2 text-xs leading-relaxed text-black/55">
 						Your session has expired or authentication is required to access the executive workspace.
@@ -4701,7 +4701,7 @@ export default function AdminCms({
 				<aside aria-label="Primary navigation" className="portal-sidebar portal-primary-rail border-white/10 bg-[#171717] text-white hidden border-r py-3 shadow-[1px_0_3px_rgba(15,23,42,0.12)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-5">
 						<div className="flex h-10 w-10 items-center justify-center">
-							<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
+							<Image src="/assets/admin-emblem.webp" alt="J'WELLZ REALTY" width={36} height={36} className="h-9 w-9 object-contain" />
 						</div>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {

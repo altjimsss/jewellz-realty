@@ -158,7 +158,7 @@ export function ResetPasswordPage() {
 					<div className="flex items-center gap-2">
 						<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
 						<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#111111]">
-							Jewellz Realty
+							J'WELLZ REALTY
 						</p>
 					</div>
 					<Link href="/login" className="text-xs font-semibold text-black/50 hover:text-black">

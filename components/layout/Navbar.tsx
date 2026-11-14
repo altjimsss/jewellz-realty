@@ -44,10 +44,10 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 	return (
 		<nav className="sticky inset-x-0 top-0 z-[5000] border-b border-[#EAE7E3] bg-white/95 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-8 xl:px-12">
 			<div className="mx-auto flex max-w-[1200px] items-center">
-				<Link href="/" className="hidden min-w-[170px] items-center lg:flex" aria-label="Jewellz Realty Home">
+				<Link href="/" className="hidden min-w-[170px] items-center lg:flex" aria-label="J'WELLZ REALTY Home">
 					<Image
 						src="/assets/jewellz-logo.webp"
-						alt="Jewellz Realty Logo"
+						alt="J'WELLZ REALTY Logo"
 						width={220}
 						height={56}
 						priority
@@ -55,10 +55,10 @@ export function Navbar({ links, fontClassName = "" }: NavbarProps) {
 					/>
 				</Link>
 				<div className="flex w-full items-center gap-2 lg:hidden">
-					<Link href="/" className="-ml-4 shrink-0 sm:w-[180px]" aria-label="Jewellz Realty Home">
+					<Link href="/" className="-ml-4 shrink-0 sm:w-[180px]" aria-label="J'WELLZ REALTY Home">
 						<Image
 							src="/assets/jewellz-logo.webp"
-							alt="Jewellz Realty Logo"
+							alt="J'WELLZ REALTY Logo"
 							width={180}
 							height={40}
 							priority

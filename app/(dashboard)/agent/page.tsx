@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AgentDashboard from "@/components/agent/AgentDashboard";
 
 export const metadata: Metadata = {
-	title: "Agent Portal | Jewellz Realty",
+	title: "Agent Portal | J'WELLZ REALTY",
 	description: "Manage your assigned property inquiries, buyer leads, and profile.",
 };
 

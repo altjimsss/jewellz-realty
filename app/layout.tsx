@@ -10,12 +10,15 @@ import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "Jewellz Realty",
-  description: "AI-Driven Real Estate Platform",
+  title: { default: "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP.", template: "%s | J'WELLZ REALTY" },
+  description: "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP. — Change the Dream Property.",
   icons: {
-    icon: "/assets/admin-emblem.webp",
-    shortcut: "/assets/admin-emblem.webp",
-    apple: "/assets/admin-emblem.webp",
+    icon: [
+      { url: "/favicon-16.png?v=2", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32.png?v=2", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/favicon-32.png?v=2",
+    apple: [{ url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
   },
 };
 

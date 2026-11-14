@@ -206,6 +206,32 @@ export function InquiryWorkflowManager({
 	const [targetStatus, setTargetStatus] = useState("");
 	const [savingAction, setSavingAction] = useState(false);
 	const [statusBanner, setStatusBanner] = useState("");
+	const [celebration, setCelebration] = useState(false);
+	const celebrateClosedWon = useCallback(() => {
+		setCelebration(true);
+		window.setTimeout(() => setCelebration(false), 2600);
+		try {
+			const AudioClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+			if (!AudioClass) return;
+			const audio = new AudioClass();
+			[523.25, 659.25, 783.99].forEach((frequency, index) => {
+				const oscillator = audio.createOscillator(); const gain = audio.createGain();
+				oscillator.frequency.value = frequency;
+				gain.gain.setValueAtTime(0.0001, audio.currentTime + index * 0.11);
+				gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + index * 0.11 + 0.025);
+				gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + index * 0.11 + 0.28);
+				oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(audio.currentTime + index * 0.11); oscillator.stop(audio.currentTime + index * 0.11 + 0.3);
+			});
+			window.setTimeout(() => void audio.close(), 900);
+		} catch { /* Sound may be blocked; keep the visual celebration. */ }
+	}, []);
+	const notifyAgent = useCallback(async (inquiryId: string, previousStatus: string, event: string) => {
+		const { data } = await supabaseBrowser.auth.getSession();
+		const token = data.session?.access_token;
+		if (!token) return;
+		const response = await fetch("/api/agent-notifications", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ inquiryId, previousStatus, event }) });
+		if (!response.ok) console.error("[agent notification] failed", await response.text().catch(() => ""));
+	}, []);
 
 
 	// Load Global Timeline on mount or reload
@@ -418,6 +444,8 @@ export function InquiryWorkflowManager({
 			setSavingAction(false);
 			return;
 		}
+		if (next !== currentStatus) void notifyAgent(inquiryId, currentStatus, "pipeline status changed");
+		if (next === "closed_won" && currentStatus !== "closed_won") celebrateClosedWon();
 
 		// Insert automatic timeline record
 		await supabaseBrowser.from("inquiry_timeline").insert({
@@ -454,6 +482,7 @@ export function InquiryWorkflowManager({
 			setSavingAction(false);
 			return;
 		}
+		if (newAgentId && asText(targetInquiry?.assigned_agent_id) !== newAgentId) void notifyAgent(inquiryId, asText(targetInquiry?.status), "assignment");
 
 		// Log to agent_assignments
 		if (newAgentId) {
@@ -517,7 +546,7 @@ export function InquiryWorkflowManager({
 			}
 		}
 
-		await Promise.all([
+		const [inquiryUpdate] = await Promise.all([
 			supabaseBrowser.from("inquiries").update(updatePayload).eq("id", selectedInquiry.id),
 			supabaseBrowser.from("inquiry_timeline").insert({
 				inquiry_id: selectedInquiry.id,
@@ -527,6 +556,15 @@ export function InquiryWorkflowManager({
 				note: fullNote,
 			}),
 		]);
+		if (inquiryUpdate.error) {
+			setSavingAction(false);
+			setStatusBanner(`Error: ${inquiryUpdate.error.message}`);
+			return;
+		}
+		if (targetStatus && targetStatus !== selectedInquiry.status) {
+			void notifyAgent(asText(selectedInquiry.id), asText(selectedInquiry.status), "pipeline status changed");
+			if (targetStatus === "closed_won" && selectedInquiry.status !== "closed_won") celebrateClosedWon();
+		}
 
 		setNoteText("");
 		setSavingAction(false);
@@ -545,6 +583,7 @@ export function InquiryWorkflowManager({
 
 	return (
 		<div className="space-y-4">
+			{celebration ? <div aria-live="polite" aria-label="Congratulations on closing the deal" className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">{Array.from({ length: 32 }, (_, index) => <span key={index} className="absolute top-[-12px] h-3 w-2 animate-[jewellz-confetti_2.4s_ease-out_forwards]" style={{ left: `${(index * 37) % 100}%`, backgroundColor: ["#DE141C", "#E9B44C", "#1B8A5A", "#6C63FF"][index % 4], animationDelay: `${(index % 8) * 0.06}s`, transform: `rotate(${index * 29}deg)` }} />)}</div> : null}
 
 			{/* Status Banner */}
 			{statusBanner ? (

@@ -250,8 +250,8 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
       id: createId(),
       role: "assistant",
       content: property
-        ? `Hey there! 👋 I'm Jewel, your Jewellz Realty guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`
-        : "Hey there! 👋 I'm Jewel, your Jewellz Realty property guide. Ask me to find a listing, compare properties, or share details about a home, condo, or lot.",
+        ? `Hey there! 👋 I'm Jewel, your J'WELLZ REALTY guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`
+        : "Hey there! 👋 I'm Jewel, your J'WELLZ REALTY property guide. Ask me to find a listing, compare properties, or share details about a home, condo, or lot.",
       actions: [],
     },
   ]);

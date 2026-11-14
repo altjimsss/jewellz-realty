@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Jewellz Realty",
-  description: "Learn more about Jewellz Realty.",
+  title: "About J'WELLZ REALTY",
+  description: "Learn more about J'WELLZ REALTY.",
 };
 
 export default function Page() {

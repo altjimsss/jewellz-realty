@@ -39,7 +39,7 @@ export function ServiceShowcase() {
     <section className="grid gap-5 px-4 pb-8 pt-6 sm:gap-8 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-28">
       <div className="md:hidden">
         <h2 className="mb-2 text-[22px] font-semibold leading-tight tracking-[-0.025em]">
-          Welcome to <span className="text-[#DE141C]">Jewellz Realty</span>
+          Welcome to <span className="text-[#DE141C]">J'WELLZ REALTY</span>
         </h2>
         <p className="max-w-[38ch] text-[13px] leading-[1.6] text-[#4B4B4B]">
           We help buyers, sellers, and investors make confident decisions with reliable market guidance and end-to-end support.
@@ -85,7 +85,7 @@ export function ServiceShowcase() {
       </div>
       <div>
         <h2 className="mb-3 hidden text-3xl font-semibold md:block">
-          Welcome to <span className="text-[#DE141C]">Jewellz Realty</span>
+          Welcome to <span className="text-[#DE141C]">J'WELLZ REALTY</span>
         </h2>
         <p className="mb-6 hidden text-sm leading-7 md:block">
           We help buyers, sellers, and investors make confident decisions with reliable market guidance and end-to-end support.

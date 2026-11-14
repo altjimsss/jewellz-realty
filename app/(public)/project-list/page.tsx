@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-	title: "Project List | Jewellz Realty",
-	description: "Explore published condos, houses, lots, farms, memorial properties, and developer projects from Jewellz Realty.",
+	title: "Project List | J'WELLZ REALTY",
+	description: "Explore published condos, houses, lots, farms, memorial properties, and developer projects from J'WELLZ REALTY.",
 };
 
 type PageProps = {

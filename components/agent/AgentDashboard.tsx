@@ -274,12 +274,13 @@ function StatCard({ label, value, hint, icon: Icon }: { label: string; value: Re
 	return <PortalScorecard label={label} value={value} hint={hint} Icon={Icon} />;
 }
 
-export default function AgentDashboard({ initialSection }: { initialSection?: string }) {
+export default function AgentDashboard({ initialSection, initialInquiryId }: { initialSection?: string; initialInquiryId?: string }) {
 	const router = useRouter();
 	const [loading, setLoading] = useState(true);
 	const [userEmail, setUserEmail] = useState("");
 	const [agent, setAgent] = useState<AgentProfile | null>(null);
 	const [inquiries, setInquiries] = useState<InquiryRow[]>([]);
+	const deepLinkedInquiryOpened = useRef(false);
 	const [properties, setProperties] = useState<PropertyRow[]>([]);
 	const [timeline, setTimeline] = useState<TimelineRow[]>([]);
 	const [appointments, setAppointments] = useState<AgentAppointment[]>([]);
@@ -304,6 +305,16 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 	const [updatingInquiry, setUpdatingInquiry] = useState(false);
 	const selfUpdatedInquiriesRef = useRef<Map<string, number>>(new Map());
 	const knownInquiryIdsRef = useRef<Set<string>>(new Set());
+	useEffect(() => {
+		if (!initialInquiryId || deepLinkedInquiryOpened.current) return;
+		const inquiry = inquiries.find((item) => item.id === initialInquiryId);
+		if (!inquiry) return;
+		deepLinkedInquiryOpened.current = true;
+		setEditingInquiry(inquiry);
+		setEditStatus(inquiry.status || "new");
+		setEditNotes(inquiry.buyer_message || "");
+		setActiveSection("inquiries");
+	}, [initialInquiryId, inquiries]);
 
 	const [profileForm, setProfileForm] = useState<Partial<AgentProfile>>({});
 	const [savingProfile, setSavingProfile] = useState(false);
@@ -1066,8 +1077,8 @@ export default function AgentDashboard({ initialSection }: { initialSection?: st
 				{/* Primary icon rail */}
 				<aside className="portal-sidebar portal-primary-rail hidden border-r py-3 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
-						<Link href="/" className="flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-80" title="Jewellz Realty — Go to website">
-							<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
+						<Link href="/" className="flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-80" title="J'WELLZ REALTY — Go to website">
+							<Image src="/assets/admin-emblem.webp" alt="J'WELLZ REALTY" width={36} height={36} className="h-9 w-9 object-contain" />
 						</Link>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {

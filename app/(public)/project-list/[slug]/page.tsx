@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PropertyDetailContent } from "@/components/properties/PropertyDetailContent";
 import { getPropertyPlaceholderImage } from "@/lib/property-placeholder-image";
+import { rankRelatedProperties } from "@/lib/property-relevance";
 
 import { getCachedNearbyPlaceGroups, saveNearbyPlaceGroups } from "@/lib/nearby-cache";
 import { fetchNearbyPlacesFromMapTiles, geocodeLocation, nearbyCategories } from "@/lib/nearby-places";
@@ -22,8 +23,8 @@ type PageProps = {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-	title: "Property Details | Jewellz Realty",
-	description: "View property details, nearby places, recommendations, and inquiry options from Jewellz Realty.",
+	title: "Property Details | J'WELLZ REALTY",
+	description: "View property details, nearby places, recommendations, and inquiry options from J'WELLZ REALTY.",
 };
 
 export default async function PropertyDetailPage({ params }: PageProps) {
@@ -43,7 +44,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 	const propertyWithCoordinates = coordinates ? { ...property, coordinates } : property;
 
 	const [relatedProperties, cachedNearbyGroups] = await Promise.all([
-		getSupabaseRelatedProperties(property.id, { category: property.type, limit: 3 }),
+		getSupabaseRelatedProperties(property.id, { category: property.type, limit: 3, source: property }),
 		getCachedNearbyPlaceGroups(property.id),
 	]);
 
@@ -64,7 +65,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
 	const fallbackRelatedProperties = relatedProperties.length
 		? relatedProperties
-		: getSampleRelatedProperties(property.slug, 3);
+		: rankRelatedProperties(property, getSampleRelatedProperties(property.slug, 200), 3);
 	const galleryImages =
 		property.images?.length
 			? property.images

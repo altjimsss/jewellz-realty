@@ -42,7 +42,8 @@ export function Footer() {
 		<footer className="bg-[#0F0F10] px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-28">
 			<div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
 				<div className="col-span-2 min-w-0 md:col-span-1">
-					<h3 className="text-xl font-bold tracking-[-0.025em] sm:text-3xl">Jewellz Realty</h3>
+					<h3 className="text-xl font-bold tracking-[-0.025em] sm:text-3xl">J&apos;WELLZ REALTY</h3>
+					<p className="mt-1 text-xs font-medium text-white/80">Change the Dream Property</p>
 					<p className="mt-2 max-w-sm text-left text-xs leading-5 text-white/70 sm:mt-3 sm:text-sm sm:leading-6">
 						Your trusted real estate partner for buying, selling, and investing in premium but affordable properties.
 					</p>
@@ -82,7 +83,7 @@ export function Footer() {
 								href={social.href}
 								target="_blank"
 								rel="noopener noreferrer"
-								aria-label={`Jewellz Realty on ${social.label}`}
+								aria-label={`J'WELLZ REALTY on ${social.label}`}
 								title={social.label}
 								className="grid h-8 w-8 place-items-center rounded-sm border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9"
 							>
@@ -143,7 +144,7 @@ export function Footer() {
 
 				{/* Copyright & Legal */}
 				<div className="flex flex-col items-start gap-3 text-left text-[10px] leading-relaxed text-white/55 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
-					<p>© {new Date().getFullYear()} Jewellz Realty. All rights reserved. Licensed Real Estate Brokerage.</p>
+					<p>© {new Date().getFullYear()} J&apos;WELLZ REALTY MARKETING AND DEVELOPMENT CORP. All rights reserved.</p>
 					<div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-white/50 sm:gap-4">
 						<Link href="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link>
 						<span className="text-white/20">•</span>

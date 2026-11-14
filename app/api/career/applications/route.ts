@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
+import { adminNotificationEmail, sendBrandedEmail } from "@/lib/email-notifications";
 
 function text(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
@@ -22,6 +23,8 @@ export async function POST(request: Request) {
 		applicant_name: text(body?.name),
 		applicant_email: email,
 		applicant_phone: text(body?.phone) || null,
+		school_name: text(body?.school) || null,
+		course_program: text(body?.course) || null,
 		referral: text(body?.referral) || null,
 		subject: text(body?.subject) || null,
 		resume_url: text(body?.cv) || null,
@@ -59,6 +62,15 @@ export async function POST(request: Request) {
 	if (error) {
 		return NextResponse.json({ error: error.message }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
+	const adminEmail = adminNotificationEmail();
+	if (adminEmail) {
+		void sendBrandedEmail({
+			to: adminEmail,
+				subject: `${/\bOJT\b|intern/i.test(payload.position_title) ? "New OJT / Internship Application" : "New Job Application"} – ${payload.position_title} | J'WELLZ REALTY`,
+				heading: `${/\bOJT\b|intern/i.test(payload.position_title) ? "New OJT / internship application" : "New job application"}`,
+				details: [["Application type", /\bOJT\b|intern/i.test(payload.position_title) ? "OJT / Internship" : "Job Application"], ["Applicant", payload.applicant_name], ["Email", payload.applicant_email], ["Contact number", payload.applicant_phone], ["Position", payload.position_title], ["School / University", payload.school_name], ["Course / Program", payload.course_program], ["Referral", payload.referral], ["Message", payload.message], ["Resume", payload.resume_url]],
+		}).catch((sendError) => console.error("[career application notification]", sendError));
+	} else console.warn("[career application notification] ADMIN_NOTIFICATION_EMAIL is not configured");
 
 	return NextResponse.json({ ok: true, applicationId: data?.id }, { headers: rateLimitHeaders(limiter) });
 }

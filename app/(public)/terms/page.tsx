@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-	title: "Terms & Conditions | Jewellz Realty",
-	description: "Terms for using the Jewellz Realty website and property information.",
+	title: "Terms & Conditions | J'WELLZ REALTY",
+	description: "Terms for using the J'WELLZ REALTY website and property information.",
 };
 
 const sections = [
 	{
 		title: "Website information",
-		body: "Property descriptions, prices, availability, images, maps, and other listing information are provided for general information and may change. Contact Jewellz Realty to confirm current details before making a decision.",
+		body: "Property descriptions, prices, availability, images, maps, and other listing information are provided for general information and may change. Contact J'WELLZ REALTY to confirm current details before making a decision.",
 	},
 	{
 		title: "Inquiries and viewing requests",
-		body: "Submitting an inquiry or appointment request sends a request to Jewellz Realty; it does not by itself create a sale, reservation, agency relationship, or confirmed appointment. A team member will contact you to confirm the next steps.",
+		body: "Submitting an inquiry or appointment request sends a request to J'WELLZ REALTY; it does not by itself create a sale, reservation, agency relationship, or confirmed appointment. A team member will contact you to confirm the next steps.",
 	},
 	{
 		title: "Acceptable use",
@@ -24,7 +24,7 @@ const sections = [
 	},
 	{
 		title: "Website content",
-		body: "Unless otherwise stated, the site's text, design, branding, and original materials belong to Jewellz Realty or their respective rights holders. Do not copy or reuse them in a way that violates applicable rights.",
+		body: "Unless otherwise stated, the site's text, design, branding, and original materials belong to J'WELLZ REALTY or their respective rights holders. Do not copy or reuse them in a way that violates applicable rights.",
 	},
 	{
 		title: "Contact",
@@ -35,7 +35,7 @@ const sections = [
 export default function TermsPage() {
 	return (
 		<main className="mx-auto min-h-[60vh] max-w-4xl px-5 py-12 sm:py-16">
-			<p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Jewellz Realty</p>
+			<p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#DE141C]">J'WELLZ REALTY</p>
 			<h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#181A20] sm:text-4xl">Terms &amp; Conditions</h1>
 			<p className="mt-4 max-w-2xl text-sm leading-6 text-black/60">These terms cover use of this website and its property information, inquiry forms, and digital features.</p>
 			<div className="mt-9 divide-y divide-black/10 border-y border-black/10">

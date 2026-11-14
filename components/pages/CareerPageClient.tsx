@@ -64,8 +64,9 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 	const backdropPointerDown = useRef(false);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [form, setForm] = useState({
-		name: "", email: "", phone: "", referral: "", subject: "", message: "",
+		name: "", email: "", phone: "", referral: "", subject: "", message: "", school: "", course: "",
 	});
+	const isOjtApplication = /\bOJT\b|intern/i.test(`${job.title} ${job.badge}`);
 	const [cvFile, setCvFile] = useState<File | null>(null);
 	const [errors, setErrors] = useState<ApplicationErrors>({});
 	const [status, setStatus] = useState("");
@@ -148,7 +149,7 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 			}
 
 			setStatus("Application submitted. Our admin team can now review it in the dashboard.");
-			setForm({ name: "", email: "", phone: "", referral: "", subject: "", message: "" });
+			setForm({ name: "", email: "", phone: "", referral: "", subject: "", message: "", school: "", course: "" });
 			setCvFile(null);
 			setErrors({});
 			if (fileInputRef.current) fileInputRef.current.value = "";
@@ -216,6 +217,10 @@ function ApplicationModal({ job, onClose }: { job: Job; onClose: () => void }) {
 							);
 						})}
 					</div>
+					{isOjtApplication ? <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+						<input aria-label="School or university" type="text" placeholder="School / University" value={form.school} onChange={(event) => setForm((current) => ({ ...current, school: event.target.value }))} className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white" />
+						<input aria-label="Course or program" type="text" placeholder="Course / Program" value={form.course} onChange={(event) => setForm((current) => ({ ...current, course: event.target.value }))} className="h-10 rounded-md border border-black/5 bg-zinc-100 px-3.5 text-[12.5px] outline-none placeholder:text-black/35 focus:border-[#DE141C]/35 focus:bg-white" />
+					</div> : null}
 
 					{/* Row 2 */}
 					<div className="mt-2.5 grid grid-cols-2 gap-2.5">
@@ -411,13 +416,13 @@ export default function CareerPage() {
 
 					{/* Sidebar */}
 					<aside className="border-b border-black/10 pb-10 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-12">
-						<SectionHeader title={"Career"} subtitle={"Start Your Journey with Jewellz Realty"} />
+						<SectionHeader title={"Career"} subtitle={"Start Your Journey with J'WELLZ REALTY"} />
 
 						<h2 className="mt-4 max-w-xl text-[clamp(2.05rem,3.7vw,3.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-[#111111]">
 							Build your career with us.
 						</h2>
 						<p className="mt-3 text-justify text-[12px] leading-[1.75] text-black/55">
-							Join one of the country&apos;s leading real estate companies. Jewellz Realty believes in the value of every team member and the contributions they bring. We provide a competitive salary, growth opportunities, and a supportive work environment.
+							Join one of the country&apos;s leading real estate companies. J'WELLZ REALTY believes in the value of every team member and the contributions they bring. We provide a competitive salary, growth opportunities, and a supportive work environment.
 						</p>
 						<p className="mt-3 text-justify text-[12px] leading-[1.75] text-black/55">
 							Send your resume and cover letter to{" "}

@@ -120,7 +120,7 @@ type ListingPerformanceItem = {
 const SECTION_META: Record<SectionId, { title: string; subtitle: string }> = {
 	overview: { title: "Overview", subtitle: "A read-only snapshot of your portfolio performance." },
 	properties: { title: "Properties", subtitle: "Every unit linked to your developer account." },
-	projects: { title: "Master Projects", subtitle: "Developments your company is marketing with Jewellz Realty." },
+	projects: { title: "Master Projects", subtitle: "Developments your company is marketing with J'WELLZ REALTY." },
 	performance: { title: "Performance", subtitle: "Listing views, engagement, and inquiry conversion." },
 	inquiries: { title: "Buyer Inquiries", subtitle: "Leads generated across your listings." },
 	profile: { title: "Company Profile", subtitle: "Your public partner profile details." },
@@ -513,7 +513,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					</div>
 					<h1 className="mt-4 text-lg font-semibold text-[#111111]">No developer profile linked</h1>
 					<p className="mt-2 text-xs leading-relaxed text-black/55">
-						Your account is not yet connected to a developer partner record. Please contact the Jewellz Realty admin to link your company.
+						Your account is not yet connected to a developer partner record. Please contact the J'WELLZ REALTY admin to link your company.
 					</p>
 					<button type="button" onClick={handleSignOut} className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#111111] px-5 text-xs font-semibold text-white transition hover:bg-black/85">
 						Sign out
@@ -891,7 +891,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					</div>
 
 					<p className="mt-6 rounded-lg border border-dashed border-black/10 bg-zinc-50 p-3.5 text-xs text-zinc-500 leading-relaxed">
-						Your partner profile is managed by the Jewellz Realty admin team. Contact them to request any updates.
+						Your partner profile is managed by the J'WELLZ REALTY admin team. Contact them to request any updates.
 					</p>
 				</div>
 
@@ -963,8 +963,8 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				{/* Primary icon rail */}
 				<aside className="portal-sidebar portal-primary-rail hidden border-r py-3 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:items-center lg:justify-between">
 					<div className="flex flex-col items-center gap-4">
-						<Link href="/" className="flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-80" title="Jewellz Realty">
-							<Image src="/assets/admin-emblem.webp" alt="Jewellz Realty" width={36} height={36} className="h-9 w-9 object-contain" />
+						<Link href="/" className="flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-80" title="J'WELLZ REALTY">
+							<Image src="/assets/admin-emblem.webp" alt="J'WELLZ REALTY" width={36} height={36} className="h-9 w-9 object-contain" />
 						</Link>
 						<div className="flex flex-col gap-2">
 							{navGroups.map((group) => {

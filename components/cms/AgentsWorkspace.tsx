@@ -653,10 +653,10 @@ function AgentAccountPanel({ email }: { email: string }) {
 		setBusy(true);
 		setMessage(`Sending password reset to ${email}...`);
 		try {
-			const { error } = await supabaseBrowser.auth.resetPasswordForEmail(email, {
-				redirectTo: `${window.location.origin}/reset-password?next=/agent`,
-			});
-			setMessage(error ? `Error: ${error.message}` : `Password reset email sent to ${email}.`);
+			const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
+			const response = await fetch("/api/admin/role-password-reset", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ email, role: "agent" }) });
+			const result = await response.json().catch(() => ({})) as { error?: string };
+			setMessage(response.ok ? `Password reset email sent to ${email}.` : `Error: ${result.error ?? "Could not send reset email."}`);
 		} catch {
 			setMessage("Failed to send password reset.");
 		} finally {

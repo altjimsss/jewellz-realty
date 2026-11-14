@@ -27,7 +27,7 @@ type PropertyDetailContentProps = {
 
 function getComputedDescription(property: Property) {
 	if (property.description) return property.description;
-	if (property.type === "Farm") return "Contact Jewellz Realty for verified information about this farm property, including land details, access, and availability.";
+	if (property.type === "Farm") return "Contact J'WELLZ REALTY for verified information about this farm property, including land details, access, and availability.";
 
 	if (property.type === "Lot") {
 		return "A spacious lot in a prime location, ideal for residential or investment use. Flexible for custom builds with good access to roads, utilities, and nearby community essentials.";
@@ -339,7 +339,7 @@ export function PropertyDetailContent({
 
 				<div className="order-4 min-w-0 space-y-4 lg:mt-4">
 					<InquireCard previewMode={previewMode} property={property} />
-					{property.type === "Farm" ? <p className="text-right text-sm text-black/45">Contact Jewellz Realty for farm listing details.</p> : <p className="text-right text-sm text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>}
+					{property.type === "Farm" ? <p className="text-right text-sm text-black/45">Contact J'WELLZ REALTY for farm listing details.</p> : <p className="text-right text-sm text-black/45">This property is brought to you by: {property.developerName ?? developerName}</p>}
 				</div>
 				</div>
 			</div>

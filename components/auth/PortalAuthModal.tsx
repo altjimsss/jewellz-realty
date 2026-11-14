@@ -317,7 +317,7 @@ function PortalAuthModalContent({
 				<div className="flex items-center gap-2">
 					<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
 					<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#DE141C]">
-						Jewellz Realty Portals
+						J'WELLZ REALTY Portals
 					</p>
 				</div>
 

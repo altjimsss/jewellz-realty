@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-	title: "Privacy Policy | Jewellz Realty",
-	description: "How Jewellz Realty uses information submitted through this website.",
+	title: "Privacy Policy | J'WELLZ REALTY",
+	description: "How J'WELLZ REALTY uses information submitted through this website.",
 };
 
 const sections = [
@@ -24,7 +24,7 @@ const sections = [
 	},
 	{
 		title: "Sharing and retention",
-		body: "Inquiry and appointment details are available to the Jewellz Realty personnel who handle those requests. We retain information for as long as needed to respond, operate the service, meet business obligations, and protect the website. We do not sell personal information.",
+		body: "Inquiry and appointment details are available to the J'WELLZ REALTY personnel who handle those requests. We retain information for as long as needed to respond, operate the service, meet business obligations, and protect the website. We do not sell personal information.",
 	},
 	{
 		title: "Your choices and requests",
@@ -35,9 +35,9 @@ const sections = [
 export default function PrivacyPage() {
 	return (
 		<main className="mx-auto min-h-[60vh] max-w-4xl px-5 py-12 sm:py-16">
-			<p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#DE141C]">Jewellz Realty</p>
+			<p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#DE141C]">J'WELLZ REALTY</p>
 			<h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#181A20] sm:text-4xl">Privacy Policy</h1>
-			<p className="mt-4 max-w-2xl text-sm leading-6 text-black/60">This notice explains what information this website handles and why. It applies when you browse the site or contact Jewellz Realty through it.</p>
+			<p className="mt-4 max-w-2xl text-sm leading-6 text-black/60">This notice explains what information this website handles and why. It applies when you browse the site or contact J'WELLZ REALTY through it.</p>
 			<div className="mt-9 divide-y divide-black/10 border-y border-black/10">
 				{sections.map((section) => (
 					<section key={section.title} className="py-5">
