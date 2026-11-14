@@ -218,8 +218,8 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
     if (heroSearchFilters.location) params.set("location", heroSearchFilters.location);
     if (heroSearchFilters.subLocation) params.set("subLocation", heroSearchFilters.subLocation);
     if (heroSearchFilters.status) params.set("status", STATUS_QUERY_VALUES[heroSearchFilters.status] ?? heroSearchFilters.status);
-    if (heroSearchFilters.beds) params.set("beds", heroSearchFilters.beds);
-    if (heroSearchFilters.baths) params.set("baths", heroSearchFilters.baths);
+    if (heroSearchFilters.beds) params.set("beds", heroSearchFilters.beds.includes("+") ? heroSearchFilters.beds : heroSearchFilters.beds + "+");
+    if (heroSearchFilters.baths) params.set("baths", heroSearchFilters.baths.includes("+") ? heroSearchFilters.baths : heroSearchFilters.baths + "+");
     if (safePriceMax > 0 && safePriceMax < 850000) params.set("priceMax", String(safePriceMax));
 
     const query = params.toString();

@@ -384,9 +384,10 @@ type ProjectListPageClientProps = {
 	initialFilters?: Partial<PropertyFiltersState> & {
 		category?: string;
 	};
+	locationOptions?: Array<{ province: string; municipality: string }>;
 };
 
-export function ProjectListPageClient({ properties, initialFilters = {} }: ProjectListPageClientProps) {
+export function ProjectListPageClient({ properties, initialFilters = {}, locationOptions = [] }: ProjectListPageClientProps) {
 	const normalizedInitialFilters = mergeNaturalLanguageFilters({
 		keyword: initialFilters.keyword?.trim() ?? "",
 		lookingFor: initialFilters.lookingFor?.trim() ?? "",
@@ -406,6 +407,15 @@ export function ProjectListPageClient({ properties, initialFilters = {} }: Proje
 	const [appliedFilters, setAppliedFilters] = useState<PropertyFiltersState>(normalizedInitialFilters);
 	const [hasSearched, setHasSearched] = useState(hasInitialFilters);
 	const searchIntentRequest = useRef(0);
+
+	// Derive province list and filtered municipality list from DB-sourced locationOptions
+	const provinceOptions: string[] = [...new Map(locationOptions.map((item) => [item.province.trim().toLowerCase(), item.province.trim()])).values()]
+		.sort((a, b) => a.localeCompare(b));
+	const municipalityOptions: string[] = [...new Map(
+		locationOptions
+			.filter((item) => item.province.trim().toLowerCase() === draftFilters.location.trim().toLowerCase())
+			.map((item) => [item.municipality.trim().toLowerCase(), item.municipality.trim()]),
+	).values()].sort((a, b) => a.localeCompare(b));
 
 	function submitSearch() {
 		const enrichedFilters = mergeNaturalLanguageFilters(draftFilters, properties);

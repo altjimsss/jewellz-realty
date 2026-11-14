@@ -18,12 +18,14 @@ type PropertyFiltersProps = {
 	value: PropertyFiltersState;
 	onChange: (next: PropertyFiltersState) => void;
 	onSubmit?: () => void;
+	locationOptions?: string[];
+	subLocationOptions?: string[];
 };
 
 const LOOKING_FOR_OPTIONS = ["", "Condo", "House", "Lot", "Farm", "Memorial"];
-const LOCATION_OPTIONS = ["", "Batangas", "Cavite", "Laguna", "Metro Manila", "Tagaytay", "Nuvali"];
-const SUBLOCATION_OPTIONS = ["", "Lipa", "Nuvali", "Tagaytay", "Alabang"];
 const STATUS_OPTIONS = ["", "For Sale", "Pre-Selling", "Ready for Occupancy"];
+const BEDS_OPTIONS = ["", "1+", "2+", "3+", "4+"];
+const BATHS_OPTIONS = ["", "1+", "2+", "3+", "4+"];
 
 const LABEL_CLASS = "block text-[10px] font-semibold uppercase tracking-[0.16em] text-black/40";
 const INPUT_CLASS = "mt-1 h-6 w-full border-none bg-transparent text-[13px] font-medium text-[#161311] outline-none placeholder:text-black/25";
@@ -172,9 +174,11 @@ function FilterSelect({ value, options, placeholder, onChange, ariaLabel, compac
 	);
 }
 
-export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersProps) {
+export function PropertyFilters({ value, onChange, onSubmit, locationOptions = [], subLocationOptions = [] }: PropertyFiltersProps) {
 	const [showPhoneFilters, setShowPhoneFilters] = useState(false);
-	const activePhoneFilterCount = [value.lookingFor, value.location, value.subLocation, value.priceMin, value.priceMax, value.status].filter(Boolean).length;
+	const activePhoneFilterCount = [value.lookingFor, value.location, value.subLocation, value.priceMin, value.priceMax, value.status, value.beds, value.baths].filter(Boolean).length;
+	const dynamicLocationOptions = ["", ...locationOptions];
+	const dynamicSubLocationOptions = ["", ...subLocationOptions];
 
 	return (
 		<form
@@ -191,6 +195,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 				}
 			`}</style>
 
+			{/* ── DESKTOP ── lg+ */}
 			<div className="hidden lg:flex lg:flex-wrap lg:items-stretch lg:gap-y-5">
 				<div className={`min-w-[150px] flex-[1.35] ${padY} pr-4`}>
 					<p className={LABEL_CLASS}>Search</p>
@@ -222,22 +227,22 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 					<div className="mt-1">
 						<FilterSelect
 							value={value.location}
-							options={LOCATION_OPTIONS}
+							options={dynamicLocationOptions}
 							placeholder="Any province"
 							ariaLabel="Location"
-							onChange={(next) => onChange({ ...value, location: next })}
+							onChange={(next) => onChange({ ...value, location: next, subLocation: "" })}
 						/>
 					</div>
 				</div>
 
 				<div className={`min-w-[128px] flex-1 border-l border-[#EAE4DE] ${padY} ${padX}`}>
-					<p className={LABEL_CLASS}>Sub-location</p>
+					<p className={LABEL_CLASS}>City / Area</p>
 					<div className="mt-1">
 						<FilterSelect
 							value={value.subLocation}
-							options={SUBLOCATION_OPTIONS}
-							placeholder="Any area"
-							ariaLabel="Sub-location"
+							options={dynamicSubLocationOptions}
+							placeholder={value.location ? "Any city" : "Select province first"}
+							ariaLabel="City / Area"
 							onChange={(next) => onChange({ ...value, subLocation: next })}
 						/>
 					</div>
@@ -266,7 +271,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 					</div>
 				</div>
 
-				<div className={`min-w-[124px] flex-1 border-l border-[#EAE4DE] ${padY} ${padX}`}>
+				<div className={`min-w-[120px] flex-1 border-l border-[#EAE4DE] ${padY} ${padX}`}>
 					<p className={LABEL_CLASS}>Status</p>
 					<div className="mt-1">
 						<FilterSelect
@@ -275,6 +280,32 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							placeholder="Any status"
 							ariaLabel="Status"
 							onChange={(next) => onChange({ ...value, status: next })}
+						/>
+					</div>
+				</div>
+
+				<div className={`min-w-[88px] flex-[0.75] border-l border-[#EAE4DE] ${padY} ${padX}`}>
+					<p className={LABEL_CLASS}>Beds</p>
+					<div className="mt-1">
+						<FilterSelect
+							value={value.beds}
+							options={BEDS_OPTIONS}
+							placeholder="Any"
+							ariaLabel="Beds"
+							onChange={(next) => onChange({ ...value, beds: next })}
+						/>
+					</div>
+				</div>
+
+				<div className={`min-w-[88px] flex-[0.75] border-l border-[#EAE4DE] ${padY} ${padX}`}>
+					<p className={LABEL_CLASS}>Baths</p>
+					<div className="mt-1">
+						<FilterSelect
+							value={value.baths}
+							options={BATHS_OPTIONS}
+							placeholder="Any"
+							ariaLabel="Baths"
+							onChange={(next) => onChange({ ...value, baths: next })}
 						/>
 					</div>
 				</div>
@@ -290,6 +321,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 				</button>
 			</div>
 
+			{/* ── TABLET ── sm → lg */}
 			<div className="hidden items-stretch sm:block lg:hidden">
 				<div className="grid grid-cols-2 gap-px border border-[#EAE4DE] bg-[#EAE4DE] md:grid-cols-3">
 					<div className="bg-white p-4">
@@ -321,22 +353,22 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 						<div className="mt-1">
 							<FilterSelect
 								value={value.location}
-								options={LOCATION_OPTIONS}
+								options={dynamicLocationOptions}
 								placeholder="Any province"
 								ariaLabel="Location"
 								compact
-								onChange={(next) => onChange({ ...value, location: next })}
+								onChange={(next) => onChange({ ...value, location: next, subLocation: "" })}
 							/>
 						</div>
 					</div>
 					<div className="bg-white p-4">
-						<p className={LABEL_CLASS}>Sub-location</p>
+						<p className={LABEL_CLASS}>City / Area</p>
 						<div className="mt-1">
 							<FilterSelect
 								value={value.subLocation}
-								options={SUBLOCATION_OPTIONS}
-								placeholder="Any area"
-								ariaLabel="Sub-location"
+								options={dynamicSubLocationOptions}
+								placeholder={value.location ? "Any city" : "Select province first"}
+								ariaLabel="City / Area"
 								compact
 								onChange={(next) => onChange({ ...value, subLocation: next })}
 							/>
@@ -377,6 +409,32 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							/>
 						</div>
 					</div>
+					<div className="bg-white p-4">
+						<p className={LABEL_CLASS}>Beds</p>
+						<div className="mt-1">
+							<FilterSelect
+								value={value.beds}
+								options={BEDS_OPTIONS}
+								placeholder="Any"
+								ariaLabel="Beds"
+								compact
+								onChange={(next) => onChange({ ...value, beds: next })}
+							/>
+						</div>
+					</div>
+					<div className="bg-white p-4">
+						<p className={LABEL_CLASS}>Baths</p>
+						<div className="mt-1">
+							<FilterSelect
+								value={value.baths}
+								options={BATHS_OPTIONS}
+								placeholder="Any"
+								ariaLabel="Baths"
+								compact
+								onChange={(next) => onChange({ ...value, baths: next })}
+							/>
+						</div>
+					</div>
 				</div>
 				<button
 					type="submit"
@@ -387,6 +445,7 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 				</button>
 			</div>
 
+			{/* ── MOBILE ── < sm */}
 			<div className="py-[clamp(10px,1.4vw,14px)] sm:hidden">
 				<div className="flex items-stretch gap-2">
 					<div className="flex h-11 min-w-0 flex-1 items-center border border-[#EAE4DE] bg-white px-3">
@@ -441,22 +500,22 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 							<div className="mt-1">
 								<FilterSelect
 									value={value.location}
-									options={LOCATION_OPTIONS}
+									options={dynamicLocationOptions}
 									placeholder="Any province"
 									ariaLabel="Location"
 									compact
-									onChange={(next) => onChange({ ...value, location: next })}
+									onChange={(next) => onChange({ ...value, location: next, subLocation: "" })}
 								/>
 							</div>
 						</div>
 						<div className="bg-white p-3">
-							<p className={LABEL_CLASS}>Sub-location</p>
+							<p className={LABEL_CLASS}>City / Area</p>
 							<div className="mt-1">
 								<FilterSelect
 									value={value.subLocation}
-									options={SUBLOCATION_OPTIONS}
-									placeholder="Any area"
-									ariaLabel="Sub-location"
+									options={dynamicSubLocationOptions}
+									placeholder={value.location ? "Any city" : "Select province first"}
+									ariaLabel="City / Area"
 									compact
 									onChange={(next) => onChange({ ...value, subLocation: next })}
 								/>
@@ -472,6 +531,32 @@ export function PropertyFilters({ value, onChange, onSubmit }: PropertyFiltersPr
 									ariaLabel="Status"
 									compact
 									onChange={(next) => onChange({ ...value, status: next })}
+								/>
+							</div>
+						</div>
+						<div className="bg-white p-3">
+							<p className={LABEL_CLASS}>Beds</p>
+							<div className="mt-1">
+								<FilterSelect
+									value={value.beds}
+									options={BEDS_OPTIONS}
+									placeholder="Any"
+									ariaLabel="Beds"
+									compact
+									onChange={(next) => onChange({ ...value, beds: next })}
+								/>
+							</div>
+						</div>
+						<div className="bg-white p-3">
+							<p className={LABEL_CLASS}>Baths</p>
+							<div className="mt-1">
+								<FilterSelect
+									value={value.baths}
+									options={BATHS_OPTIONS}
+									placeholder="Any"
+									ariaLabel="Baths"
+									compact
+									onChange={(next) => onChange({ ...value, baths: next })}
 								/>
 							</div>
 						</div>
