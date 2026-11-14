@@ -609,6 +609,8 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 							setDraftFilters(next);
 						}}
 						onSubmit={submitSearch}
+						locationOptions={provinceOptions}
+						subLocationOptions={municipalityOptions}
 					/>
 				</div>
 			</section>
