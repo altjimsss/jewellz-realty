@@ -184,6 +184,7 @@ export function extractBasicSearchIntent(searchText: string): PropertySearchInte
 
 export async function extractSemanticSearchIntent(searchText: string): Promise<PropertySearchIntent> {
 	const intent = extractBasicSearchIntent(searchText);
+	if (process.env.VERCEL === "1") return intent;
 	try {
 		const { generatePropertyEmbedding } = await import("@/lib/ai/property-embeddings");
 		const queryEmbedding = await generatePropertyEmbedding(searchText);

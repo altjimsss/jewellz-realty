@@ -700,6 +700,7 @@ async function persistRecommendations(recommendations: AiRecommendation[], body:
 		property_id: recommendation.id,
 		reason: recommendation.reason,
 		confidence: recommendation.confidence ?? null,
+		similarity_score: Number(((recommendation.confidence ?? 50) / 100).toFixed(4)),
 		is_fallback: !["ai", "semantic-vector", "semantic-local"].includes(source),
 		was_clicked: false,
 		generated_at: new Date().toISOString(),
@@ -800,10 +801,12 @@ export async function POST(request: Request) {
 		}
 	}
 
-	const vectorRecommendations = await getVectorRecommendations(category, filters, candidates).catch((error) => {
-		console.warn("Vector recommendations unavailable; using local semantic ranking.", error);
-		return [];
-	});
+	const vectorRecommendations = process.env.VERCEL === "1"
+		? []
+		: await getVectorRecommendations(category, filters, candidates).catch((error) => {
+			console.warn("Vector recommendations unavailable; using local semantic ranking.", error);
+			return [];
+		});
 
 	if (vectorRecommendations.length > 0) {
 		return NextResponse.json({

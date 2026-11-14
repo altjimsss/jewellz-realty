@@ -19,6 +19,7 @@ function sourceFromPayload(source: string, utmSource: string, referrer: string) 
 
 function eventTypeCandidates(eventType: string) {
 	if (eventType === "property_view") return ["property_view", "page_view", "view", "listing_view"];
+	if (eventType === "recommendation_click") return ["recommendation_click", "property_click", "click", "page_view", "view"];
 	if (eventType === "detail_open") return ["detail_open", "property_detail_open", "property_open", "property_click", "click", "page_view", "view"];
 	if (eventType === "property_dwell_time") return ["property_dwell_time", "page_view", "view"];
 	if (eventType.startsWith("property_gallery_")) return [eventType, "property_click", "click", "page_view", "view"];

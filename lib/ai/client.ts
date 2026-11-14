@@ -25,10 +25,14 @@ const DEFAULT_GROQ_MODELS = [
 ];
 
 const DEFAULT_OPENROUTER_MODELS = [
+	"openrouter/free",
+];
+
+const RETIRED_OPENROUTER_FREE_MODELS = new Set([
 	"z-ai/glm-4.5-air:free",
 	"openai/gpt-oss-120b:free",
 	"nvidia/nemotron-3-super-120b-a12b:free",
-];
+]);
 
 function parseModels(envValue?: string): string[] {
 	if (!envValue) return [];
@@ -73,7 +77,7 @@ export function getOpenRouterModels(caller?: string): string[] {
 		...parseModels(specificEnv),
 		...parseModels(process.env.OPENROUTER_RECOMMENDATION_MODEL),
 		...DEFAULT_OPENROUTER_MODELS,
-	];
+	].map((model) => RETIRED_OPENROUTER_FREE_MODELS.has(model) ? "openrouter/free" : model);
 
 	return configured.filter((model, index, all) => all.indexOf(model) === index);
 }
@@ -129,10 +133,10 @@ async function callGroq(
 		bodyPayload.response_format = { type: "json_object" };
 	}
 
-	// For structured-output callers (recommendations), disable reasoning entirely
-	// so the model returns JSON directly without <think>…</think> overhead.
+	// For structured-output callers, keep reasoning effort low to preserve JSON output.
 	if (options.caller === "recommendations") {
-		bodyPayload.reasoning_effort = "none";
+		// GPT-OSS and Qwen models reject "none"; low works across both.
+		bodyPayload.reasoning_effort = "low";
 	}
 
 	const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {

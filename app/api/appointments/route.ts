@@ -479,6 +479,7 @@ export async function POST(request: Request) {
 			subject: "New Appointment Booking – J'WELLZ REALTY",
 			heading: "New appointment request",
 			details: [["Customer", buyerName], ["Email", buyerEmail], ["Contact number", buyerPhone], ["Property", propertyTitle || propertySlug], ["Preferred date and time", scheduledAt], ["Notes", text(body?.notes)]],
+			action: { label: "Open admin portal", url: `${(process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "")}/admin/inquiries` },
 	}).catch((error) => console.error("[appointments notification]", error));
 	return NextResponse.json({ ok: true, inquiryId: inquiry.id, appointmentId: appointment.id }, { headers: rateLimitHeaders(limiter) });
 }

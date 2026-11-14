@@ -4,7 +4,13 @@ import nodemailer from "nodemailer";
 const COMPANY = "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP.";
 const TAGLINE = "Change the Dream Property";
 
-type EmailMessage = { to: string; subject: string; heading: string; details: Array<[string, string | null | undefined]> };
+type EmailMessage = {
+	to: string;
+	subject: string;
+	heading: string;
+	details: Array<[string, string | null | undefined]>;
+	action?: { label: string; url: string };
+};
 
 function escapeHtml(value: string) {
 	return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
@@ -68,13 +74,20 @@ export async function sendBrandedEmail(message: EmailMessage) {
 
 function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage) {
 	const details = message.details.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;padding:9px;border-bottom:1px solid #eee">${escapeHtml(label)}</th><td style="padding:9px;border-bottom:1px solid #eee">${renderDetail(label, value)}</td></tr>`).join("");
+	let action = "";
+	if (message.action) {
+		try {
+			const url = new URL(message.action.url);
+			if (url.protocol === "https:") action = `<p style="margin:24px 0 0"><a href="${escapeHtml(url.toString())}" style="display:inline-block;background:#b8101a;color:#fff;padding:13px 20px;border-radius:6px;text-decoration:none;font-weight:700">${escapeHtml(message.action.label)}</a></p>`;
+		} catch { /* Ignore invalid action URLs. */ }
+	}
 	let banner = "";
 	try {
 		const site = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "");
 		if (site.protocol === "https:") banner = `<img src="${escapeHtml(new URL("/assets/jwells-email-banner.png", site).toString())}" alt="J’WELLZ Realty Marketing &amp; Development Corporation — Life Changing" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"/>`;
 	} catch { /* The text header remains if no public site URL is configured. */ }
 	const header = banner || `<div style="background:#b8101a;padding:22px;color:white"><strong>${COMPANY}</strong><div style="font-size:12px;margin-top:6px">${TAGLINE}</div></div>`;
-	return `<div style="font:15px Arial,sans-serif;color:#171717;max-width:640px;margin:auto">${header}<main style="padding:24px"><h1 style="font-size:22px">${escapeHtml(message.heading)}</h1><table style="border-collapse:collapse;width:100%">${details}</table></main></div>`;
+	return `<div style="font:15px Arial,sans-serif;color:#171717;max-width:640px;margin:auto">${header}<main style="padding:24px"><h1 style="font-size:22px">${escapeHtml(message.heading)}</h1><table style="border-collapse:collapse;width:100%">${details}</table>${action}</main></div>`;
 }
 
 export async function sendActiveAdminNotification(message: Omit<EmailMessage, "to">) {

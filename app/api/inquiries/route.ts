@@ -4,6 +4,7 @@ import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { verifyRecaptchaToken } from "@/lib/recaptcha";
 import { supabaseServer } from "@/lib/supabase/server";
 import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
+import { sendActiveAdminNotification } from "@/lib/email-notifications";
 
 function text(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
@@ -176,6 +177,13 @@ export async function POST(request: Request) {
 	if (insertResult.error) {
 		return NextResponse.json({ error: insertResult.error.message }, { status: 422, headers: rateLimitHeaders(limiter) });
 	}
+	const siteOrigin = (process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "");
+	void sendActiveAdminNotification({
+		subject: "New Customer Inquiry – J'WELLZ REALTY",
+		heading: "A new customer inquiry was received",
+		details: [["Customer", buyerName], ["Email", buyerEmail], ["Contact number", buyerPhone], ["Message", buyerMessage], ["Inquiry ID", insertResult.data?.id]],
+		action: { label: "Open admin portal", url: `${siteOrigin}/admin/inquiries` },
+	}).catch((notificationError) => console.error("[inquiry notification]", notificationError));
 
 	return NextResponse.json({ ok: true, inquiryId: insertResult.data?.id }, { headers: rateLimitHeaders(limiter) });
 }

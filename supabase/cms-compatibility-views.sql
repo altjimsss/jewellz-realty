@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS recommendations (
   property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
   reason TEXT,
   confidence NUMERIC(5,2),
+  similarity_score NUMERIC(5,4) NOT NULL DEFAULT 0.5,
   source TEXT NOT NULL DEFAULT 'ai',
   is_fallback BOOLEAN NOT NULL DEFAULT FALSE,
   was_clicked BOOLEAN NOT NULL DEFAULT FALSE,
