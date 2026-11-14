@@ -68,12 +68,13 @@ export async function sendBrandedEmail(message: EmailMessage) {
 
 function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage) {
 	const details = message.details.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;padding:9px;border-bottom:1px solid #eee">${escapeHtml(label)}</th><td style="padding:9px;border-bottom:1px solid #eee">${renderDetail(label, value)}</td></tr>`).join("");
-	let logo = "";
+	let banner = "";
 	try {
 		const site = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "");
-		if (site.protocol === "https:") logo = `<img src="${escapeHtml(new URL("/assets/logo-icon.png", site).toString())}" alt="J'WELLZ REALTY" width="38" height="38" style="vertical-align:middle;margin-right:10px"/>`;
-	} catch { /* The wordmark remains if no public site URL is configured. */ }
-	return `<div style="font:15px Arial,sans-serif;color:#171717;max-width:640px;margin:auto"><div style="background:#b8101a;padding:22px;color:white">${logo}<strong>${COMPANY}</strong><div style="font-size:12px;margin-top:6px">${TAGLINE}</div></div><main style="padding:24px"><h1 style="font-size:22px">${escapeHtml(message.heading)}</h1><table style="border-collapse:collapse;width:100%">${details}</table></main></div>`;
+		if (site.protocol === "https:") banner = `<img src="${escapeHtml(new URL("/assets/jwells-email-banner.png", site).toString())}" alt="J’WELLZ Realty Marketing &amp; Development Corporation — Life Changing" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"/>`;
+	} catch { /* The text header remains if no public site URL is configured. */ }
+	const header = banner || `<div style="background:#b8101a;padding:22px;color:white"><strong>${COMPANY}</strong><div style="font-size:12px;margin-top:6px">${TAGLINE}</div></div>`;
+	return `<div style="font:15px Arial,sans-serif;color:#171717;max-width:640px;margin:auto">${header}<main style="padding:24px"><h1 style="font-size:22px">${escapeHtml(message.heading)}</h1><table style="border-collapse:collapse;width:100%">${details}</table></main></div>`;
 }
 
 export async function sendActiveAdminNotification(message: Omit<EmailMessage, "to">) {

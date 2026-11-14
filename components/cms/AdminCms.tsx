@@ -1602,7 +1602,7 @@ function OverviewPipelineBars({ rows, closedCount }: { rows: Array<{ label: stri
 	const option = {
 		animationDuration: 450,
 		tooltip: { trigger: "item", backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, textStyle: { color: "#18181b", fontSize: 11 }, formatter: (item: { name: string; value: number; percent: number }) => `${titleCase(item.name)}<br/><strong>${item.value}</strong> leads · ${item.percent}%` },
-		legend: { bottom: 0, left: "center", icon: "circle", itemWidth: 7, itemHeight: 7, itemGap: 12, textStyle: { color: "#71717a", fontSize: 10 }, formatter: (value: string) => titleCase(value) },
+		legend: { show: false },
 		graphic: [
 			{ type: "text", left: "center", top: "36%", style: { text: conversionRate, fill: "#18181b", font: "600 22px sans-serif", textAlign: "center" } },
 			{ type: "text", left: "center", top: "50%", style: { text: "CONVERTED", fill: "#71717a", font: "10px sans-serif", textAlign: "center" } },
