@@ -43,7 +43,7 @@ export function Footer() {
 			<div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
 				<div className="col-span-2 min-w-0 md:col-span-1">
 					<h3 className="text-xl font-bold tracking-[-0.025em] sm:text-3xl">J&apos;WELLZ REALTY</h3>
-					<p className="mt-1 text-xs font-medium text-white/80">Change the Dream Property</p>
+					<p className="mt-1 text-xs font-medium text-white/80">Marketing and development corporation</p>
 					<p className="mt-2 max-w-sm text-left text-xs leading-5 text-white/70 sm:mt-3 sm:text-sm sm:leading-6">
 						Your trusted real estate partner for buying, selling, and investing in premium but affordable properties.
 					</p>
