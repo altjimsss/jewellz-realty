@@ -1,3 +1,5 @@
+import { supabaseServer } from "@/lib/supabase/server";
+
 const COMPANY = "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP.";
 const TAGLINE = "Change the Dream Property";
 
@@ -43,6 +45,21 @@ export async function sendBrandedEmail(message: EmailMessage) {
 	return true;
 }
 
-export function adminNotificationEmail() {
-	return process.env.ADMIN_NOTIFICATION_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+export async function sendActiveAdminNotification(message: Omit<EmailMessage, "to">) {
+	const { data: admins, error } = await supabaseServer
+		.from("profiles")
+		.select("email")
+		.eq("role", "admin")
+		.eq("is_active", true);
+	if (error) {
+		console.error("[admin email notification] could not load active admin recipients", error.message);
+		return false;
+	}
+	const recipients = [...new Set((admins ?? []).map((admin) => admin.email?.trim().toLowerCase()).filter((email): email is string => Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))];
+	if (recipients.length === 0) {
+		console.warn("[admin email notification] no active admin profiles with valid email addresses");
+		return false;
+	}
+	const results = await Promise.allSettled(recipients.map((to) => sendBrandedEmail({ ...message, to })));
+	return results.some((result) => result.status === "fulfilled" && result.value);
 }

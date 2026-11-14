@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { verifyRecaptchaToken } from "@/lib/recaptcha";
 import { supabaseServer } from "@/lib/supabase/server";
-import { adminNotificationEmail, sendBrandedEmail } from "@/lib/email-notifications";
+import { sendActiveAdminNotification } from "@/lib/email-notifications";
 import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
 
 function text(value: unknown) {
@@ -475,14 +475,10 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const adminEmail = adminNotificationEmail();
-	if (adminEmail) {
-		void sendBrandedEmail({
-			to: adminEmail,
+	void sendActiveAdminNotification({
 			subject: "New Appointment Booking – J'WELLZ REALTY",
 			heading: "New appointment request",
 			details: [["Customer", buyerName], ["Email", buyerEmail], ["Contact number", buyerPhone], ["Property", propertyTitle || propertySlug], ["Preferred date and time", scheduledAt], ["Notes", text(body?.notes)]],
-		}).catch((error) => console.error("[appointments notification]", error));
-	} else console.warn("[appointments notification] ADMIN_NOTIFICATION_EMAIL is not configured");
+	}).catch((error) => console.error("[appointments notification]", error));
 	return NextResponse.json({ ok: true, inquiryId: inquiry.id, appointmentId: appointment.id }, { headers: rateLimitHeaders(limiter) });
 }
