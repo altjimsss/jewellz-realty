@@ -302,7 +302,7 @@ function PortalAuthModalContent({
 			aria-modal="true"
 			aria-labelledby="portal-modal-title"
 		>
-			<div className="relative flex h-[650px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-x-hidden overflow-y-auto rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
+			<div className="relative flex h-[680px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
 				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#FBE7EA]" />
 				<div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-[#FBE7EA]" />
 				{/* Top Close Button */}
