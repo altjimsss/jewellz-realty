@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
+import { AuthFeedbackIndicator } from "@/components/auth/AuthFeedbackIndicator";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { PORTAL_ROLE_MAP, type PortalRole } from "@/components/auth/PortalAuthModal";
 
@@ -321,9 +322,7 @@ function LoginForm() {
 					<div aria-hidden="true" className="absolute inset-0 z-0 bg-white/70" />
 				</>
 			) : null}
-			<section className="relative z-10 flex h-[680px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
-				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#FBE7EA]" />
-				<div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-[#FBE7EA]" />
+			<section className="relative z-10 flex h-[640px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
 				<div className="relative z-10 flex min-h-0 flex-1 flex-col">
 				<div className="mt-1 flex h-10 shrink-0 items-center justify-between gap-3">
 					<div className="flex min-w-0 items-center gap-3">
@@ -336,7 +335,8 @@ function LoginForm() {
 						<button type="button" aria-label="Developer portal" title="Developer" aria-pressed={activeRole === "developer"} onClick={() => { setActiveRole("developer"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "developer" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}><svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M6 20V5l6-2 6 2v15M9 8h.01M15 8h.01M9 12h.01M15 12h.01M10 20v-4h4v4" /></svg></button>
 						<button type="button" aria-label="Admin portal" title="Admin" aria-pressed={activeRole === "admin"} onClick={() => { setActiveRole("admin"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "admin" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}><svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg></button>
 					</div>
-					<Link href="/" className="text-xs font-semibold text-black/50 hover:text-black">
+					<Link href="/" aria-label="Return to website" title="Return to website" className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-white/80 text-[0px] text-black/55 transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]">
+						<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h9a7 7 0 0 1 0 14h-2" /></svg>
 						← Back to site
 					</Link>
 				</div>
@@ -394,10 +394,6 @@ function LoginForm() {
 				</div>
 				<p className="mt-1 shrink-0 text-sm tracking-[-0.02em] text-[#73778B]">{isForgotPassword ? "We'll email a reset link." : "Welcome back! Please sign in to continue."}</p>
 
-				<div aria-live="polite" className="mt-2 h-9 shrink-0 overflow-hidden">
-					{message ? <div className={`flex h-9 items-center rounded-lg border px-3 text-xs font-medium leading-4 ${message.type === "error" ? "border-red-200 bg-red-50 text-red-800" : message.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-blue-200 bg-blue-50 text-blue-800"}`}><span className="line-clamp-2">{message.text}</span></div> : null}
-				</div>
-
 				{isForgotPassword ? (
 					<form onSubmit={handleForgotPassword} className="mt-3 space-y-3">
 						<label className="block">
@@ -414,7 +410,10 @@ function LoginForm() {
 							/>
 						</label>
 
-						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+						<div className="flex items-center gap-3">
+							<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+							<AuthFeedbackIndicator message={message} loading={loading} />
+						</div>
 
 						<div className="flex flex-col gap-2 pt-1">
 							<button
@@ -501,7 +500,10 @@ function LoginForm() {
 							</div>
 						</label>
 
-						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+						<div className="flex items-center gap-3">
+							<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+							<AuthFeedbackIndicator message={message} loading={loading} />
+						</div>
 
 						<div className="flex flex-col gap-2 pt-2">
 							<button

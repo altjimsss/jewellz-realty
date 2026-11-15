@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
+import { AuthFeedbackIndicator } from "@/components/auth/AuthFeedbackIndicator";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export type PortalRole = "agent" | "developer" | "admin";
@@ -302,9 +303,7 @@ function PortalAuthModalContent({
 			aria-modal="true"
 			aria-labelledby="portal-modal-title"
 		>
-			<div className="relative flex h-[680px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
-				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#FBE7EA]" />
-				<div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-[#FBE7EA]" />
+			<div className="relative flex h-[640px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
 				{/* Top Close Button */}
 				<button
 					type="button"
@@ -351,23 +350,6 @@ function PortalAuthModalContent({
 					{isForgotPassword ? "We’ll email a reset link." : "Welcome back! Please sign in to continue."}
 				</p>
 
-				{/* Message Banner */}
-				<div aria-live="polite" className="mt-2 h-9 shrink-0 overflow-hidden">
-				{message ? (
-					<div
-						className={`flex h-9 items-center rounded-lg border px-3 text-xs font-medium leading-4 ${
-							message.type === "error"
-								? "border-red-200 bg-red-50 text-red-800"
-								: message.type === "success"
-									? "border-emerald-200 bg-emerald-50 text-emerald-800"
-									: "border-blue-200 bg-blue-50 text-blue-800"
-						}`}
-					>
-						<span className="line-clamp-2">{message.text}</span>
-					</div>
-				) : null}
-				</div>
-
 				{/* Forms */}
 				{isForgotPassword ? (
 					<form onSubmit={handleForgotPassword} className="mt-3 space-y-3">
@@ -388,7 +370,10 @@ function PortalAuthModalContent({
 							</div>
 						</label>
 
-						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+						<div className="flex items-center gap-3">
+							<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+							<AuthFeedbackIndicator message={message} loading={loading} />
+						</div>
 
 						<div className="flex flex-col gap-2 pt-1">
 							<button
@@ -479,7 +464,10 @@ function PortalAuthModalContent({
 							</div>
 						</label>
 
-						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+						<div className="flex items-center gap-3">
+							<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+							<AuthFeedbackIndicator message={message} loading={loading} />
+						</div>
 
 						<div className="flex flex-col gap-1.5 pt-1">
 							<button
