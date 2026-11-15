@@ -10,13 +10,11 @@ export function FloatingPropertyChat({ property, previewMode = false }: { proper
 
 	return (
 		<div>
-			{open ? (
-				<div className="chat-panel-enter fixed inset-x-3 bottom-24 z-[5600] sm:left-auto sm:right-5 sm:w-[380px]">
-					<div className="overflow-hidden rounded-2xl shadow-[0_20px_70px_rgba(17,17,17,0.16)]">
-						<PropertyChatAssistant property={property} previewMode={previewMode} />
-					</div>
+			<div hidden={!open} className="chat-panel-enter fixed inset-x-3 bottom-24 z-[5600] sm:left-auto sm:right-5 sm:w-[380px]">
+				<div className="overflow-hidden rounded-2xl shadow-[0_20px_70px_rgba(17,17,17,0.16)]">
+					<PropertyChatAssistant property={property} previewMode={previewMode} />
 				</div>
-			) : null}
+			</div>
 
 			<button
 				type="button"

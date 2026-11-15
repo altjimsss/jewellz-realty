@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, SendHorizontal, UserRound } from "lucide-react";
+import { Bot, RotateCcw, SendHorizontal, UserRound } from "lucide-react";
 import type { Property } from "@/types/property";
 import type { PropertyChatMessage, PropertyChatResponse } from "@/lib/property-chat";
+import { getOrCreateVisitorId } from "@/lib/session";
 
 type ChatAction =
   | { type: "book-appointment" }
@@ -27,12 +28,49 @@ const quickPrompts = [
   { label: "Viewing", prompt: "How can I book a viewing?" },
 ];
 
+const CHAT_STORAGE_PREFIX = "jewellz.property_chat.v1";
+const CHAT_INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+const MAX_SAVED_MESSAGES = 40;
+
 function createId() {
   try {
     return crypto.randomUUID();
   } catch {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
+}
+
+function createWelcomeMessage(property?: Property): ChatMessage {
+	return {
+		id: createId(),
+		role: "assistant",
+		content: property
+			? `Hi! I'm Jewel, your J'WELLZ REALTY guide for ${property.title}. Ask about this property, nearby places, or booking a viewing.`
+			: "Hi! I'm Jewel, your J'WELLZ REALTY property guide. Ask me to find a listing, compare properties, or learn about a home, condo, or lot.",
+		actions: [],
+	};
+}
+
+function parseSavedConversation(value: string | null) {
+	if (!value) return null;
+	try {
+		const saved = JSON.parse(value) as { updatedAt?: unknown; messages?: unknown };
+		if (typeof saved.updatedAt !== "number" || Date.now() - saved.updatedAt >= CHAT_INACTIVITY_LIMIT_MS || !Array.isArray(saved.messages)) return null;
+		const messages = saved.messages.flatMap((item): ChatMessage[] => {
+			if (!item || typeof item !== "object") return [];
+			const candidate = item as Record<string, unknown>;
+			if ((candidate.role !== "assistant" && candidate.role !== "user") || typeof candidate.content !== "string" || typeof candidate.id !== "string") return [];
+			return [{
+				id: candidate.id,
+				role: candidate.role,
+				content: candidate.content,
+				actions: Array.isArray(candidate.actions) ? candidate.actions as ChatAction[] : [],
+			}];
+		}).slice(-MAX_SAVED_MESSAGES);
+		return messages.length ? { messages, updatedAt: saved.updatedAt } : null;
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -242,22 +280,81 @@ function ChatBubbleText({ text }: { text: string }) {
 }
 
 export function PropertyChatAssistant({ property, previewMode = false }: PropertyChatAssistantProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: createId(),
-      role: "assistant",
-      content: property
-        ? `Hi! I'm Jewel, your J'WELLZ REALTY guide for ${property.title}. Ask about this property, nearby places, or booking a viewing.`
-        : "Hi! I'm Jewel, your J'WELLZ REALTY property guide. Ask me to find a listing, compare properties, or learn about a home, condo, or lot.",
-      actions: [],
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(property)]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [conversationReady, setConversationReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const storageKeyRef = useRef("");
+  const messagesRef = useRef(messages);
+  const skipNextPersistRef = useRef(false);
+
+  messagesRef.current = messages;
+
+  useEffect(() => {
+	let storageKey = "";
+	try {
+		storageKey = `${CHAT_STORAGE_PREFIX}:${getOrCreateVisitorId()}`;
+		storageKeyRef.current = storageKey;
+		const stored = parseSavedConversation(window.localStorage.getItem(storageKey));
+		if (stored) {
+			setMessages(stored.messages);
+		} else {
+			window.localStorage.removeItem(storageKey);
+			setMessages([createWelcomeMessage(property)]);
+		}
+	} catch {
+		setConversationReady(true);
+		return;
+	}
+	setConversationReady(true);
+
+	function syncConversation(event: StorageEvent) {
+		if (event.key !== storageKey) return;
+		const next = parseSavedConversation(event.newValue);
+		const nextMessages = next?.messages ?? [createWelcomeMessage(property)];
+		if (JSON.stringify(nextMessages) === JSON.stringify(messagesRef.current)) return;
+		skipNextPersistRef.current = true;
+		setMessages(nextMessages);
+	}
+
+	window.addEventListener("storage", syncConversation);
+	return () => window.removeEventListener("storage", syncConversation);
+  }, [property]);
+
+  useEffect(() => {
+	if (!conversationReady || !storageKeyRef.current) return;
+	if (skipNextPersistRef.current) {
+		skipNextPersistRef.current = false;
+		return;
+	}
+	const savedMessages = messages.filter((message) => !message.isLoading).slice(-MAX_SAVED_MESSAGES);
+	try {
+		window.localStorage.setItem(storageKeyRef.current, JSON.stringify({ updatedAt: Date.now(), messages: savedMessages }));
+	} catch {
+		// Keep the chat usable if browser storage is unavailable or full.
+	}
+  }, [conversationReady, messages]);
+
+  useEffect(() => {
+	if (!conversationReady) return;
+	const timeout = window.setTimeout(() => {
+		setMessages([createWelcomeMessage(property)]);
+		setInput("");
+		setAnnouncement("Conversation reset after inactivity.");
+	}, CHAT_INACTIVITY_LIMIT_MS);
+	return () => window.clearTimeout(timeout);
+  }, [conversationReady, messages, property]);
 
   const history = messages.slice(-8);
+
+  function startNewConversation() {
+	const welcome = createWelcomeMessage(property);
+	setMessages([welcome]);
+	setInput("");
+	setAnnouncement("Started a new conversation.");
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -265,7 +362,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
 
   async function handleSend(nextMessage: string) {
     const trimmedMessage = nextMessage.trim();
-    if (!trimmedMessage || isSending || previewMode) return;
+    if (!trimmedMessage || isSending || previewMode || !conversationReady) return;
 
     setInput("");
     setIsSending(true);
@@ -333,6 +430,16 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                 {isSending ? "Jewel is thinking..." : "Online | Here to help"}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={startNewConversation}
+              disabled={isSending || !conversationReady}
+              aria-label="Start a new chat"
+              title="Start a new chat"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[#737373] transition-colors hover:bg-[#F3F3F4] hover:text-[#DE141C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RotateCcw aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            </button>
           </div>
         </div>
 
@@ -390,7 +497,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                 {messages.length === 1 && messageIndex === 0 && message.role === "assistant" && !message.isLoading ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {quickPrompts.map(({ label, prompt }) => (
-                      <button key={label} type="button" title={prompt} onClick={() => void handleSend(prompt)} disabled={isSending || previewMode} className="rounded-md border border-[#E5E5E7] bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#555555] transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 disabled:cursor-not-allowed disabled:opacity-50">{label}</button>
+                      <button key={label} type="button" title={prompt} onClick={() => void handleSend(prompt)} disabled={isSending || previewMode || !conversationReady} className="rounded-md border border-[#E5E5E7] bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#555555] transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 disabled:cursor-not-allowed disabled:opacity-50">{label}</button>
                     ))}
                   </div>
                 ) : null}
@@ -420,11 +527,11 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
               className="h-10 w-full rounded-lg border border-[#E0E0E3] bg-white px-3 text-sm text-[#222222] placeholder:text-[#929292] focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/15 focus-visible:outline-none"
               aria-label="Message Jewel"
               placeholder={property ? "Ask about this property..." : "Ask Jewel about a property..."}
-              disabled={isSending || previewMode}
+              disabled={isSending || previewMode || !conversationReady}
             />
             <button
               type="submit"
-              disabled={isSending || previewMode || !input.trim()}
+              disabled={isSending || previewMode || !conversationReady || !input.trim()}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#DE141C] text-white transition-colors hover:bg-[#C4121A] disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Send message"
             >
