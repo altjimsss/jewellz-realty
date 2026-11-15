@@ -273,7 +273,7 @@ function PriorityPill({ priority }: { priority?: string | null }) {
 }
 
 function StatCard({ label, value, hint, icon: Icon }: { label: string; value: ReactNode; hint: string; accent?: boolean; icon?: typeof LayoutDashboard }) {
-	return <PortalScorecard label={label} value={value} hint={hint} Icon={Icon} />;
+	return <PortalScorecard label={label} value={value} hint={hint} Icon={Icon} compact />;
 }
 
 export default function AgentDashboard({ initialSection, initialInquiryId }: { initialSection?: string; initialInquiryId?: string }) {
@@ -304,6 +304,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 	const [inquirySearch, setInquirySearch] = useState("");
 	const [inquiryStatusFilter, setInquiryStatusFilter] = useState("all");
+	const [pipelineStageFilter, setPipelineStageFilter] = useState("all");
 	const [editingInquiry, setEditingInquiry] = useState<InquiryRow | null>(null);
 	const [editStatus, setEditStatus] = useState("new");
 	const [editNotes, setEditNotes] = useState("");
@@ -1371,8 +1372,8 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 					{showAgentAssistant ? <AgentAssistantSidebar onClose={() => setShowAgentAssistant(false)} /> : null}
 
-					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-5 lg:px-6">
-						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${showAgentAssistant ? "xl:pr-[292px]" : ""}`}>
+					<div className="flex-1 overflow-auto bg-transparent px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
+						<div className={`mx-auto flex max-w-7xl flex-col gap-2 sm:gap-3 transition-[padding] duration-200 ${showAgentAssistant ? "xl:pr-[292px]" : ""}`}>
 							<div className="flex flex-wrap items-end justify-between gap-3">
 								<div>
 									<div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">
@@ -1417,15 +1418,15 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 										</div>
 									) : null}
 
-									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+									<div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
 										<StatCard label="Total leads" value={stats.total} hint={`${stats.newLeads} awaiting first contact`} icon={Inbox} />
 										<StatCard label="Active pipeline" value={stats.active} hint="Contacted, viewing or negotiating" accent icon={Target} />
 										<StatCard label="Reserved / closed" value={stats.won} hint={`${stats.lost} lost deals`} icon={CheckCheck} />
 										<StatCard label="Conversion rate" value={`${stats.conversion}%`} hint={`${stats.responseRate}% response rate`} icon={TrendingUp} />
 									</div>
 
-									<div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="grid gap-2 sm:gap-3 xl:grid-cols-[1.4fr_1fr]">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="flex items-start justify-between gap-3">
 												<div>
 													<div className="text-sm font-semibold text-[#111111]">Lead volume (last 14 days)</div>
@@ -1435,15 +1436,15 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											</div>
 											<div className="mt-3"><AgentTrendChart rows={trendRows} name="Leads" /></div>
 										</div>
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Pipeline distribution</div>
 											<p className="mt-1 text-xs text-zinc-500">Leads by current stage.</p>
 											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} emptyLabel="No leads assigned yet" emptyHint="Your pipeline fills up as Admin assigns leads to you." /></div>
 										</div>
 									</div>
 
-									<div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="grid gap-2 sm:gap-3 xl:grid-cols-[1.4fr_1fr]">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="flex items-center justify-between gap-3">
 												<div>
 													<div className="text-sm font-semibold text-[#111111]">Recent leads</div>
@@ -1453,8 +1454,8 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											</div>
 											<div className="mt-3 space-y-2">
 												{inquiries.length === 0 ? <p className="rounded-lg bg-zinc-50 px-3 py-4 text-sm text-zinc-500">No inquiries assigned yet.</p> : null}
-												{inquiries.slice(0, 5).map((inq) => (
-													<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-left shadow-2xs transition hover:border-black/20 hover:bg-zinc-50/80 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+												{inquiries.slice(0, 5).map((inq, index) => (
+													<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className={`w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-left shadow-2xs transition hover:border-black/20 hover:bg-zinc-50/80 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 ${index >= 3 ? "hidden sm:block" : ""}`}>
 														<div className="flex items-start justify-between gap-3">
 															<div className="min-w-0">
 																<div className="truncate text-sm font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
@@ -1467,20 +1468,20 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											</div>
 										</div>
 
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Agent card preview</div>
 											<p className="mt-1 text-xs text-zinc-500">How clients see you on the public site.</p>
-											<div className="mt-4 flex flex-col items-center text-center">
+											<div className="mt-3 flex flex-row items-center gap-3 text-left sm:mt-4 sm:flex-col sm:text-center">
 												{agent?.photo_url ? (
-													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-20 w-20 rounded-full border border-black/10 object-cover shadow-2xs" fallbackContent={<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} />
+													<SafeImage src={agent.photo_url} alt={agent.full_name} width={80} height={80} className="h-14 w-14 shrink-0 rounded-full border border-black/10 object-cover shadow-2xs sm:h-20 sm:w-20" fallbackContent={<div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#111111] text-base font-bold text-white sm:h-20 sm:w-20 sm:text-xl">{agent.full_name?.charAt(0) ?? "A"}</div>} />
 												) : (
-													<div className="grid h-20 w-20 place-items-center rounded-full bg-[#111111] text-xl font-bold text-white shadow-2xs">{agent?.full_name?.charAt(0) ?? "A"}</div>
+													<div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#111111] text-base font-bold text-white shadow-2xs sm:h-20 sm:w-20 sm:text-xl">{agent?.full_name?.charAt(0) ?? "A"}</div>
 												)}
-												<div className="mt-3 text-base font-semibold text-[#111111]">{agent?.full_name}</div>
-												<div className="text-xs font-semibold text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
-												<div className="mt-1 text-[11px] text-zinc-500">License: {agent?.license_number || "PRC Accredited"}</div>
-												{agent?.bio ? <p className="mt-3 line-clamp-3 text-xs leading-5 text-zinc-600">{agent.bio}</p> : null}
-												<button type="button" onClick={() => openSection("profile")} className="mt-4 w-full rounded-lg border border-black/10 py-2 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Edit public details</button>
+												<div className="min-w-0"><div className="mt-0 text-sm font-semibold text-[#111111] sm:mt-3 sm:text-base">{agent?.full_name}</div>
+												<div className="truncate text-xs font-semibold text-[#DE141C]">{agent?.specialization || "Licensed Real Estate Agent"}</div>
+												<div className="mt-1 text-[11px] text-zinc-500">License: {agent?.license_number || "PRC Accredited"}</div></div>
+												{agent?.bio ? <p className="mt-3 hidden line-clamp-3 text-xs leading-5 text-zinc-600 sm:block">{agent.bio}</p> : null}
+												<button type="button" onClick={() => openSection("profile")} className="ml-auto mt-2 shrink-0 rounded-lg border border-black/10 px-3 py-2 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 sm:mt-4 sm:w-full">Edit profile</button>
 											</div>
 										</div>
 									</div>
@@ -1489,7 +1490,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 							{/* ── INQUIRIES ──────────────────────────────────────────── */}
 							{activeSection === "inquiries" ? (
-								<div className="space-y-3">
+								<div className="space-y-2 sm:space-y-3">
 									<div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
 										<input
 											type="search"
@@ -1510,7 +1511,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 									</div>
 
 									{editingInquiry ? (
-										<div className="rounded-xl border border-[#DE141C]/30 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-[#DE141C]/30 bg-white p-3 shadow-xs sm:p-5">
 											<div className="flex items-center justify-between border-b border-black/10 pb-3">
 												<div>
 													<div className="text-[10px] font-semibold uppercase tracking-wider text-[#DE141C]">Updating lead status</div>
@@ -1574,18 +1575,18 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 										<div className="divide-y divide-black/10 md:hidden">
 											{filteredInquiries.length === 0 ? <p className="px-4 py-10 text-center text-sm text-zinc-500">No inquiries match your filters.</p> : filteredInquiries.map((inq) => (
-												<article key={inq.id} className="space-y-3 p-4">
+												<article key={inq.id} className="space-y-2 p-3">
 													<div className="flex min-w-0 items-start justify-between gap-3">
 														<div className="min-w-0"><h3 className="truncate text-sm font-semibold text-[#111111]">{inq.buyer_name || "Buyer"}</h3><p className="mt-0.5 break-all text-xs text-zinc-500">{inq.buyer_email || inq.buyer_phone || "No contact details"}</p></div>
 														<StatusPill status={inq.status} />
 													</div>
-													<div className="rounded-lg bg-zinc-50 px-3 py-2.5">
+													<div className="rounded-lg bg-zinc-50 px-2.5 py-2">
 														<p className="truncate text-xs font-medium text-[#111111]">{inq.properties?.title ?? "General inquiry"}</p>
-														<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500"><span>{inq.properties?.city ?? (inq.properties?.title ? "Batangas" : "No property selected")}</span><span>{formatDate(inq.created_at)}</span><PriorityPill priority={inq.priority} /></div>
+														<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-500"><span>{inq.properties?.city ?? (inq.properties?.title ? "Batangas" : "No property selected")}</span><span aria-hidden="true">·</span><span>{formatDate(inq.created_at)}</span><PriorityPill priority={inq.priority} /></div>
 													</div>
-													<div className="grid grid-cols-2 gap-2">
-														{["new", "assigned"].includes(inq.status ?? "") ? <button type="button" onClick={() => void handleQuickContact(inq, "manual")} className="min-h-10 border border-emerald-200 bg-emerald-50 px-2 text-xs font-semibold text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40">Mark contacted</button> : <span />}
-														<button type="button" onClick={() => openInquiryEditor(inq)} className="min-h-10 bg-[#111111] px-3 text-xs font-semibold text-white transition hover:bg-[#DE141C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">Review lead</button>
+													<div className="flex justify-end gap-2">
+														{["new", "assigned"].includes(inq.status ?? "") ? <button type="button" onClick={() => void handleQuickContact(inq, "manual")} className="min-h-9 border border-emerald-200 bg-emerald-50 px-3 text-[11px] font-semibold text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40">Mark contacted</button> : null}
+														<button type="button" onClick={() => openInquiryEditor(inq)} className="min-h-9 bg-[#111111] px-3 text-[11px] font-semibold text-white transition hover:bg-[#DE141C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">Review lead</button>
 													</div>
 												</article>
 												))}
@@ -1645,51 +1646,40 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 							{/* ── PIPELINE ───────────────────────────────────────────── */}
 							{activeSection === "pipeline" ? (
-								<div className="space-y-3">
-									<div className="grid gap-3 sm:grid-cols-3">
+								<div className="space-y-2 sm:space-y-3">
+									<div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
 										<StatCard label="Active deals" value={stats.active} hint="In active conversation" accent />
 										<StatCard label="Open leads" value={stats.open} hint="Not yet closed" />
-										<StatCard label="Pipeline value" value={formatCurrency(stats.pipelineValue)} hint="Sum of lead listing prices" />
+										<div className="col-span-2 xl:col-span-1"><StatCard label="Pipeline value" value={formatCurrency(stats.pipelineValue)} hint="Sum of lead listing prices" /></div>
 									</div>
-									<div className="flex gap-3 overflow-x-auto pb-2">
-										{STATUS_ORDER.map((status) => {
-											const meta = statusMeta(status);
-											const items = inquiries.filter((inq) => (inq.status ?? "new") === status);
-											return (
-												<div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-black/10 bg-white shadow-xs">
-													<div className="flex items-center justify-between gap-2 border-b border-black/10 px-3.5 py-2.5">
-														<div className="flex items-center gap-2">
-															<span className="h-2.5 w-2.5 rounded-full ring-2 ring-white shadow-2xs" style={{ background: meta.dot }} />
-															<span className="text-xs font-semibold uppercase tracking-wider text-zinc-700">{meta.label}</span>
-														</div>
-														<span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 tabular-nums">{items.length}</span>
-													</div>
-													<div className="flex max-h-[520px] flex-col gap-2 overflow-y-auto p-2.5">
-														{items.length === 0 ? <p className="px-2 py-6 text-center text-xs text-zinc-400">No leads</p> : null}
-														{items.map((inq) => (
-															<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="rounded-lg border border-black/10 bg-white p-3 text-left shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/25 hover:shadow-xs active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
-																<div className="truncate text-xs font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</div>
-																<div className="mt-1 truncate text-[11px] text-zinc-500">{inq.properties?.title ?? "General inquiry"}</div>
-																<div className="mt-2.5 flex items-center justify-between gap-2">
-																	<PriorityPill priority={inq.priority} />
-																	<span className="text-[10px] text-zinc-400 tabular-nums">{formatTimeAgo(inq.created_at)}</span>
-																</div>
-															</button>
-														))}
-													</div>
-												</div>
-											);
-										})}
+									<div className="space-y-2">
+										<div className="flex items-center justify-between gap-3 rounded-lg border border-black/10 bg-white px-3 py-2.5">
+											<label htmlFor="agent-pipeline-stage" className="text-xs font-semibold text-[#111111]">Show leads by stage</label>
+											<select id="agent-pipeline-stage" value={pipelineStageFilter} onChange={(event) => setPipelineStageFilter(event.target.value)} className="min-h-10 max-w-[58%] border border-black/10 bg-white px-2.5 text-xs font-medium text-[#111111] focus:border-[#DE141C] focus:outline-none focus:ring-2 focus:ring-[#DE141C]/20">
+												<option value="all">All stages ({inquiries.length})</option>
+												{STATUS_ORDER.map((stage) => <option key={stage} value={stage}>{statusMeta(stage).label} ({inquiries.filter((inq) => (inq.status ?? "new") === stage).length})</option>)}
+											</select>
+										</div>
+										{(() => {
+											const visibleInquiries = inquiries.filter((inq) => pipelineStageFilter === "all" || (inq.status ?? "new") === pipelineStageFilter);
+											return visibleInquiries.length ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{visibleInquiries.map((inq) => (
+												<button key={inq.id} type="button" onClick={() => openInquiryEditor(inq)} className="flex min-w-0 items-center gap-3 border border-black/10 bg-white px-3 py-2.5 text-left transition hover:border-[#DE141C]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">
+													<span className="h-9 w-1 shrink-0" style={{ background: statusMeta(inq.status).dot }} />
+													<span className="min-w-0 flex-1"><span className="flex min-w-0 items-center justify-between gap-2"><span className="truncate text-xs font-semibold text-[#111111]">{inq.buyer_name || "Anonymous buyer"}</span><span className="shrink-0 text-[10px] text-zinc-400">{formatTimeAgo(inq.created_at)}</span></span><span className="mt-0.5 block truncate text-[11px] text-zinc-500">{inq.properties?.title ?? "General inquiry"}</span><span className="mt-1 flex items-center gap-2"><StatusPill status={inq.status} /><PriorityPill priority={inq.priority} /></span></span>
+													<ChevronRight className="h-4 w-4 shrink-0 text-black/35" />
+												</button>
+											))}</div> : <p className="rounded-lg border border-dashed border-black/15 bg-white px-4 py-8 text-center text-xs text-zinc-500">No leads in this stage yet.</p>;
+										})()}
 									</div>
 								</div>
 							) : null}
 
 							{/* ── ACTIVITY ───────────────────────────────────────────── */}
 							{activeSection === "activity" ? (
-								<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+								<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 									<div className="text-sm font-semibold text-[#111111]">Activity history</div>
 									<p className="mt-1 text-xs text-zinc-500">Status changes recorded across your assigned leads.</p>
-									<div className="mt-5 space-y-3">
+									<div className="mt-3 space-y-2 sm:mt-5 sm:space-y-3">
 										{timeline.length === 0 ? <p className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-sm text-zinc-500">No activity recorded yet.</p> : null}
 										{timeline.map((event, index) => {
 											const related = inquiries.find((inq) => inq.id === event.inquiry_id);
@@ -1718,11 +1708,11 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 							{/* ── LISTINGS ───────────────────────────────────────────── */}
 							{activeSection === "listings" ? (
-								<div className="space-y-3">
-									<div className="grid gap-3 sm:grid-cols-3">
+								<div className="space-y-2 sm:space-y-3">
+									<div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
 										<StatCard label="Assigned listings" value={properties.length} hint="Properties tagged to you" icon={Building2} />
 										<StatCard label="Published" value={stats.publishedListings} hint="Live on the public site" />
-										<StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" />
+										<div className="col-span-2 xl:col-span-1"><StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" /></div>
 									</div>
 									{properties.length === 0 ? (
 										<div className="rounded-xl border border-dashed border-black/15 bg-white py-16 text-center shadow-xs">
@@ -1730,7 +1720,19 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											<p className="mt-1 text-xs text-zinc-500">The brokerage admin can assign property listings to your account in the CMS.</p>
 										</div>
 									) : (
-										<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+										<>
+										<div className="space-y-2 md:hidden">
+											{properties.map((prop) => (
+												<article key={prop.id} className="flex min-w-0 items-center gap-3 border border-black/10 bg-white p-2.5">
+													<div className="relative h-16 w-20 shrink-0 overflow-hidden bg-zinc-100">
+														<SafeImage src={prop.featured_image_url || prop.images?.[0]} alt={prop.title} fill sizes="80px" className="object-cover" fallbackContent={<div className="grid h-full w-full place-items-center text-[10px] text-zinc-400">No photo</div>} />
+													</div>
+													<div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><span className="text-[9px] font-bold uppercase tracking-wider text-[#DE141C]">{prop.category || "Residential"}</span><span className="text-[9px] text-zinc-400">·</span><span className="truncate text-[9px] font-medium uppercase text-zinc-500">{prop.status || "Published"}</span></div><h3 className="mt-0.5 truncate text-xs font-semibold text-[#111111]">{prop.title}</h3><p className="truncate text-[10px] text-zinc-500">{prop.city ?? "Batangas"}, {prop.province ?? "Philippines"}</p><p className="mt-0.5 truncate text-xs font-bold text-[#111111]">{formatCurrency(prop.price)}</p></div>
+													<Link href={`/project-list/${prop.slug}`} target="_blank" aria-label={`View ${prop.title}`} className="grid h-10 w-10 shrink-0 place-items-center border border-black/10 text-black/65"><ArrowUpRight className="h-4 w-4" /></Link>
+												</article>
+											))}
+										</div>
+										<div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-3">
 											{properties.map((prop) => (
 												<div key={prop.id} className="group flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-black/20 hover:shadow-md">
 													<div className="relative aspect-[16/10] w-full bg-zinc-100 overflow-hidden">
@@ -1756,26 +1758,27 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 												</div>
 											))}
 										</div>
+										</>
 									)}
 								</div>
 							) : null}
 
 							{/* ── LISTING INSIGHTS ───────────────────────────────────── */}
 							{activeSection === "listingInsights" ? (
-								<div className="space-y-3">
-									<div className="grid gap-3 sm:grid-cols-4">
+								<div className="space-y-2 sm:space-y-3">
+									<div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
 										<StatCard label="Listings" value={properties.length} hint="Total assigned" />
 										<StatCard label="Published" value={stats.publishedListings} hint="Live visible units" />
 										<StatCard label="Avg price" value={formatCurrency(properties.length ? Math.round(listingValue / properties.length) : 0)} hint="Across your listings" />
 										<StatCard label="Portfolio value" value={formatCurrency(listingValue)} hint="Combined asking price" />
 									</div>
-									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Portfolio by category</div>
 											<p className="mt-1 text-xs text-zinc-500">How your listings break down by category.</p>
 											<div className="mt-3"><AgentDonut rows={categoryRows} centerLabel="Listings" centerValue={properties.length} emptyLabel="No listings to show" emptyHint="Assigned listings will break down here by category." /></div>
 										</div>
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Listings by status</div>
 											<p className="mt-1 text-xs text-zinc-500">Publication status of your portfolio.</p>
 											<div className="mt-3"><AgentBarChart rows={listingStatusRows} name="Listings" horizontal /></div>
@@ -1783,7 +1786,10 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 									</div>
 									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
 										<div className="border-b border-black/10 px-4 py-3 text-sm font-semibold text-[#111111]">Listing breakdown</div>
-										<div className="overflow-x-auto">
+										<div className="divide-y divide-black/10 md:hidden">
+											{properties.length ? properties.map((prop) => <div key={prop.id} className="flex min-w-0 items-center justify-between gap-3 px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-semibold text-[#111111]">{prop.title}</p><p className="mt-0.5 truncate text-[10px] capitalize text-zinc-500">{prop.category ?? "Uncategorized"} · {prop.status ?? "published"}</p></div><span className="shrink-0 text-xs font-semibold tabular-nums text-[#111111]">{formatCurrency(prop.price)}</span></div>) : <p className="px-4 py-8 text-center text-xs text-zinc-500">No listings assigned.</p>}
+										</div>
+										<div className="hidden overflow-x-auto md:block">
 											<table className="min-w-full text-left text-xs">
 												<thead className="border-b border-black/10 bg-zinc-50/80 font-semibold uppercase tracking-wider text-[11px] text-zinc-500">
 													<tr>
@@ -1812,32 +1818,32 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 							{/* ── PERFORMANCE ────────────────────────────────────────── */}
 							{activeSection === "performance" ? (
-								<div className="space-y-3">
-									<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+								<div className="space-y-2 sm:space-y-3">
+									<div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
 										<StatCard label="Total leads" value={stats.total} hint="All-time assigned" icon={Inbox} />
 										<StatCard label="Response rate" value={`${stats.responseRate}%`} hint="Leads you engaged with" />
 										<StatCard label="Conversion rate" value={`${stats.conversion}%`} hint="Lead to closed ratio" icon={TrendingUp} />
 										<StatCard label="Closed deals" value={stats.won} hint={`${stats.lost} lost`} icon={CheckCheck} />
 									</div>
-									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Engagement funnel</div>
 											<p className="mt-1 text-xs text-zinc-500">How leads progress through your pipeline.</p>
 											<div className="mt-4"><AgentFunnel rows={funnelRows} /></div>
 										</div>
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Leads by stage</div>
 											<p className="mt-1 text-xs text-zinc-500">Current distribution of your pipeline.</p>
 											<div className="mt-3"><AgentBarChart rows={statusRows} name="Leads" horizontal /></div>
 										</div>
 									</div>
-									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Leads by priority</div>
 											<p className="mt-1 text-xs text-zinc-500">Focus on high and urgent leads first.</p>
 											<div className="mt-3"><AgentBarChart rows={priorityRows} name="Leads" horizontal /></div>
 										</div>
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Weekly lead rhythm</div>
 											<p className="mt-1 text-xs text-zinc-500">Which weekdays generate the most leads.</p>
 											<div className="mt-3"><AgentBarChart rows={weekdayRows} name="Leads" /></div>
@@ -1848,24 +1854,24 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 							{/* ── TRENDS ─────────────────────────────────────────────── */}
 							{activeSection === "trends" ? (
-								<div className="space-y-3">
-									<div className="grid gap-3 sm:grid-cols-3">
+								<div className="space-y-2 sm:space-y-3">
+									<div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
 										<StatCard label="Leads (14 days)" value={trendRows.reduce((sum, row) => sum + row.value, 0)} hint="Recent lead flow" icon={TrendingUp} />
 										<StatCard label="Leads (30 days)" value={monthTrendRows.reduce((sum, row) => sum + row.value, 0)} hint="Last month" />
 										<StatCard label="Avg per day" value={(monthTrendRows.reduce((sum, row) => sum + row.value, 0) / 30).toFixed(1)} hint="30-day average" />
 									</div>
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 										<div className="text-sm font-semibold text-[#111111]">Lead volume (last 30 days)</div>
 										<p className="mt-1 text-xs text-zinc-500">Daily count of inquiries assigned to you.</p>
 										<div className="mt-3"><AgentTrendChart rows={monthTrendRows} name="Leads" /></div>
 									</div>
-									<div className="grid gap-3 xl:grid-cols-2">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Leads by weekday</div>
 											<p className="mt-1 text-xs text-zinc-500">All-time distribution across the week.</p>
 											<div className="mt-3"><AgentBarChart rows={weekdayRows} name="Leads" /></div>
 										</div>
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<div className="text-sm font-semibold text-[#111111]">Stage mix</div>
 											<p className="mt-1 text-xs text-zinc-500">Share of leads in each pipeline stage.</p>
 											<div className="mt-3"><AgentDonut rows={statusRows} centerLabel="Leads" centerValue={stats.total} emptyLabel="No leads assigned yet" emptyHint="Your pipeline fills up as Admin assigns leads to you." /></div>
@@ -1883,8 +1889,8 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 							) : null}
 
 							{activeSection === "profile" ? (
-								<div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+								<div className="grid gap-2 sm:gap-3 xl:grid-cols-[1.5fr_1fr]">
+								<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 										<div className="border-b border-black/10 pb-3">
 											<h2 className="text-sm font-semibold text-[#111111]">Profile & credentials</h2>
 											<p className="mt-1 text-xs text-zinc-500">Manage your public credentials, biography, and contact links.</p>
@@ -1907,7 +1913,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											</div>
 
 											{/* Agent Photo Upload Card */}
-											<div className="rounded-xl border border-black/10 bg-zinc-50/80 p-4">
+											<div className="rounded-xl border border-black/10 bg-zinc-50/80 p-3 sm:p-4">
 												<div className="flex flex-wrap items-center justify-between gap-2">
 													<div>
 														<span className="text-xs font-semibold uppercase tracking-wider text-[#111111]">Profile Photo (PNG/JPG)</span>
@@ -1946,7 +1952,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 														</div>
 													)}
 
-													<div className="flex flex-1 flex-col gap-2 min-w-[220px]">
+												<div className="flex min-w-0 flex-1 flex-col gap-2">
 														<div className="flex items-center gap-2">
 															<input
 																ref={agentPhotoInputRef}
@@ -2012,8 +2018,8 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											</button>
 										</form>
 									</div>
-									<div className="space-y-3">
-										<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="space-y-2 sm:space-y-3">
+										<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 											<h2 className="text-sm font-semibold text-[#111111]">Public preview</h2>
 											<div className="mt-4 flex flex-col items-center text-center">
 												{(profileForm.photo_url || agent?.photo_url) ? (
@@ -2031,12 +2037,12 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 							) : null}
 
 							{/* ── SECURITY ───────────────────────────────────────────── */}
-							{activeSection === "security" ? (
-								<div className="grid gap-3 xl:grid-cols-2">
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+			{activeSection === "security" ? (
+				<div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
+									<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 										<h2 className="text-sm font-semibold text-[#111111]">Account security</h2>
 										<p className="mt-1 text-xs text-zinc-500">Your authentication credentials and access.</p>
-										<div className="mt-5 space-y-3">
+										<div className="mt-3 space-y-2 sm:mt-5 sm:space-y-3">
 											<div>
 												<span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Sign-in email</span>
 												<div className="mt-0.5 break-all text-xs font-medium text-[#111111]">{userEmail || "—"}</div>
@@ -2053,10 +2059,10 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 							<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="w-full rounded-lg bg-[#111111] py-2.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 										</div>
 									</div>
-									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
+									<div className="rounded-xl border border-black/10 bg-white p-3 shadow-xs sm:p-5">
 										<h2 className="text-sm font-semibold text-[#111111]">Workspace at a glance</h2>
 										<p className="mt-1 text-xs text-zinc-500">Your current workload.</p>
-										<div className="mt-5 space-y-3">
+									<div className="mt-3 space-y-2 sm:mt-5 sm:space-y-3">
 											<div className="flex items-center justify-between rounded-lg border border-black/10 px-3.5 py-2.5 transition hover:bg-zinc-50/70">
 												<span className="flex items-center gap-2 text-xs text-zinc-600"><Inbox className="h-4 w-4 text-zinc-400" />Assigned leads</span>
 												<span className="text-sm font-semibold text-[#111111] tabular-nums">{stats.total}</span>

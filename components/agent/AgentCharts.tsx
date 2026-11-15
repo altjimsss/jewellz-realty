@@ -41,7 +41,7 @@ function AgentChartTooltip({ active, payload, label }: { active?: boolean; paylo
 
 export function AgentTrendChart({ rows, name = "Leads", color = "#111111" }: { rows: AgentChartRow[]; name?: string; color?: string }) {
 	return (
-		<div className="h-56">
+		<div className="h-44 sm:h-56">
 			{rows.length ? (
 				<ResponsiveContainer width="100%" height="100%">
 					<AreaChart data={rows} margin={{ top: 8, right: 12, left: -24, bottom: 0 }}>
@@ -52,10 +52,10 @@ export function AgentTrendChart({ rows, name = "Leads", color = "#111111" }: { r
 							</linearGradient>
 						</defs>
 						<CartesianGrid vertical={false} stroke="#ececec" />
-						<XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} />
+						<XAxis dataKey="label" tickLine={false} axisLine={false} interval={rows.length > 14 ? 5 : "preserveStartEnd"} minTickGap={12} tick={{ fontSize: 9, fill: "#71717a" }} />
 						<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} />
 						<Tooltip content={<AgentChartTooltip />} cursor={{ stroke: "#d4d4d8", strokeDasharray: "4 4" }} />
-						<Area type="monotone" dataKey="value" name={name} stroke={color} strokeWidth={2.5} fill={`url(#agent-trend-${name})`} dot={{ r: 3, fill: "#ffffff", stroke: color, strokeWidth: 2 }} activeDot={{ r: 5, fill: color, stroke: "#ffffff", strokeWidth: 2 }} />
+						<Area type="monotone" dataKey="value" name={name} stroke={color} strokeWidth={2.5} fill={`url(#agent-trend-${name})`} dot={rows.length <= 14 ? { r: 3, fill: "#ffffff", stroke: color, strokeWidth: 2 } : false} activeDot={{ r: 5, fill: color, stroke: "#ffffff", strokeWidth: 2 }} />
 					</AreaChart>
 				</ResponsiveContainer>
 			) : (
@@ -67,10 +67,10 @@ export function AgentTrendChart({ rows, name = "Leads", color = "#111111" }: { r
 
 export function AgentBarChart({ rows, name = "Value", horizontal = false, color = "#111111" }: { rows: AgentChartRow[]; name?: string; horizontal?: boolean; color?: string }) {
 	if (!rows.length) {
-		return <p className="flex h-44 items-center text-sm text-black/45">No data yet.</p>;
+		return <p className="flex h-36 items-center text-sm text-black/45 sm:h-44">No data yet.</p>;
 	}
 	return (
-		<div className={horizontal ? "h-44" : "h-56"}>
+		<div className={horizontal ? "h-40 sm:h-44" : "h-48 sm:h-56"}>
 			<ResponsiveContainer width="100%" height="100%">
 				{horizontal ? (
 					<BarChart data={rows} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
@@ -116,7 +116,7 @@ export function AgentDonut({
 
 	if (!data.length) {
 		return (
-			<div className="flex h-48 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/10 bg-zinc-50 px-6 text-center">
+			<div className="flex h-36 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/10 bg-zinc-50 px-4 text-center sm:h-48 sm:px-6">
 				<p className="text-xs font-semibold text-black/50">{emptyLabel}</p>
 				<p className="text-[11px] text-black/35">{emptyHint}</p>
 			</div>
@@ -124,11 +124,11 @@ export function AgentDonut({
 	}
 
 	return (
-		<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-			<div className="relative h-44 w-44 shrink-0 self-center">
+		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+			<div className="relative h-36 w-36 shrink-0 self-center sm:h-44 sm:w-44">
 				<ResponsiveContainer width="100%" height="100%">
 					<PieChart>
-						<Pie data={data} dataKey="value" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={2} stroke="none">
+						<Pie data={data} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="84%" paddingAngle={2} stroke="none">
 							{data.map((row, index) => (
 								<Cell key={row.label} fill={row.color ?? AGENT_CHART_PALETTE[index % AGENT_CHART_PALETTE.length]} />
 							))}
@@ -141,11 +141,11 @@ export function AgentDonut({
 					{centerLabel ? <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">{centerLabel}</span> : null}
 				</div>
 			</div>
-			<div className="min-w-0 flex-1 space-y-1.5">
+			<div className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-1.5 sm:flex sm:flex-col sm:gap-1.5">
 				{data.map((row, index) => {
 					const percent = total ? Math.round((row.value / total) * 100) : 0;
 					return (
-						<div key={row.label} className="flex items-center justify-between gap-3 text-xs">
+						<div key={row.label} className="flex min-w-0 items-center justify-between gap-1.5 text-[11px] sm:gap-3 sm:text-xs">
 							<span className="flex min-w-0 items-center gap-2 text-black/65">
 								<span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: row.color ?? AGENT_CHART_PALETTE[index % AGENT_CHART_PALETTE.length] }} />
 								<span className="truncate capitalize">{row.label.replaceAll("_", " ")}</span>
@@ -164,7 +164,7 @@ export function AgentDonut({
 export function AgentFunnel({ rows }: { rows: AgentChartRow[] }) {
 	const max = Math.max(1, ...rows.map((row) => row.value));
 	if (!rows.length) {
-		return <p className="flex h-44 items-center text-sm text-black/45">No funnel data yet.</p>;
+		return <p className="flex h-36 items-center text-sm text-black/45 sm:h-44">No funnel data yet.</p>;
 	}
 	return (
 		<div className="space-y-3">
