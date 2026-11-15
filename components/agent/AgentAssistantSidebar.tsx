@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, Send, UserCircle } from "lucide-react";
+import { Bot, Send, UserCircle, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type ChatMessage = { id: string; role: "assistant" | "user"; text: string; loading?: boolean };
 
-export function AgentAssistantSidebar() {
+export function AgentAssistantSidebar({ onClose }: { onClose?: () => void }) {
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{ id: "welcome", role: "assistant", text: "Ask about your assigned leads, follow-up priorities, conversion, or listing interest." },
 	]);
@@ -43,8 +43,8 @@ export function AgentAssistantSidebar() {
 	}
 
 	return (
-		<aside className="fixed right-0 top-14 z-30 flex h-[calc(100vh-3.5rem)] w-[276px] flex-col border-l border-black/10 bg-white max-xl:bottom-0 max-xl:top-auto max-xl:h-[min(72vh,620px)] max-xl:border-t max-xl:border-l-0">
-			<header className="border-b border-black/10 bg-white px-3 py-4">
+		<aside className="fixed inset-x-0 bottom-0 z-40 flex h-[min(72dvh,620px)] w-full flex-col border-t border-black/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_32px_rgba(0,0,0,0.14)] sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[min(420px,calc(100vw-2rem))] sm:border sm:pb-0 xl:top-14 xl:right-0 xl:bottom-0 xl:h-[calc(100vh-3.5rem)] xl:w-[276px] xl:border-t-0 xl:border-r-0 xl:border-b-0 xl:border-l xl:shadow-none">
+			<header className="flex shrink-0 items-center justify-between border-b border-black/10 bg-white px-4 py-3 sm:px-3 sm:py-4">
 				<div className="flex items-center gap-2">
 					<span className="grid h-7 w-7 place-items-center bg-[#111111] text-white"><Bot className="h-4 w-4" /></span>
 					<div className="min-w-0">
@@ -52,6 +52,7 @@ export function AgentAssistantSidebar() {
 						<p className="text-[11px] text-black/45">{thinking ? "Reviewing your pipeline..." : "Ready to help"}</p>
 					</div>
 				</div>
+				<button type="button" onClick={onClose} aria-label="Close agent assistant" className="grid h-10 w-10 shrink-0 place-items-center border border-black/10 text-black/60 transition hover:bg-zinc-50 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 xl:hidden"><X className="h-4 w-4" /></button>
 			</header>
 			<div className="min-h-0 flex-1 overflow-y-auto bg-white p-3" aria-live="polite">
 				<div className="space-y-3">

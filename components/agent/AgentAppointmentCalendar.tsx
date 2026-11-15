@@ -160,13 +160,13 @@ export function AgentAppointmentCalendar({ appointments, assignedInquiries, onAp
             <span className="grid h-9 w-9 place-items-center bg-[#DE141C] text-white"><CalendarDays className="h-4 w-4" /></span>
             <div><h2 className="text-sm font-semibold">Customer appointments</h2><p className="mt-0.5 text-xs text-black/50">Review requests and track confirmed meetings</p></div>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={openAddAppointment} disabled={!assignedInquiries.length} className="inline-flex h-8 items-center gap-1.5 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Add appointment</button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <button type="button" onClick={openAddAppointment} disabled={!assignedInquiries.length} className="inline-flex h-10 items-center gap-1.5 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8"><Plus className="h-3.5 w-3.5" />Add appointment</button>
             <span className={pending ? "bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800" : "bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"}>{pending ? pending + " need review" : "All reviewed"}</span>
             <span className="text-xs text-black/45">{monthCount} this month</span>
-            <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="grid h-8 w-8 place-items-center border border-black/10 hover:bg-zinc-50"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month" className="grid h-10 w-10 place-items-center border border-black/10 hover:bg-zinc-50 sm:h-8 sm:w-8"><ChevronLeft className="h-4 w-4" /></button>
             <strong className="min-w-32 text-center text-sm font-semibold">{new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" }).format(visibleMonth)}</strong>
-            <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="grid h-8 w-8 place-items-center border border-black/10 hover:bg-zinc-50"><ChevronRight className="h-4 w-4" /></button>
+            <button type="button" onClick={() => moveMonth(1)} aria-label="Next month" className="grid h-10 w-10 place-items-center border border-black/10 hover:bg-zinc-50 sm:h-8 sm:w-8"><ChevronRight className="h-4 w-4" /></button>
           </div>
         </header>
         <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(270px,0.75fr)]">
@@ -198,8 +198,8 @@ export function AgentAppointmentCalendar({ appointments, assignedInquiries, onAp
           </aside>
         </div>
       </section>
-      {addOpen ? <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !newSaving) setAddOpen(false); }}>
-        <form onSubmit={createAppointment} role="dialog" aria-modal="true" aria-labelledby="agent-add-appointment-title" className="w-full max-w-lg border border-black/10 bg-white p-5 shadow-xl">
+      {addOpen ? <div className="fixed inset-0 z-[80] flex items-end justify-center overflow-y-auto bg-black/35 p-0 sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !newSaving) setAddOpen(false); }}>
+        <form onSubmit={createAppointment} role="dialog" aria-modal="true" aria-labelledby="agent-add-appointment-title" className="my-auto max-h-[100dvh] w-full overflow-y-auto border border-black/10 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl sm:max-h-[min(90dvh,680px)] sm:max-w-lg sm:rounded-xl sm:p-5">
           <div className="flex items-start justify-between gap-4"><div><span className="grid h-9 w-9 place-items-center bg-[#DE141C] text-white"><CalendarDays className="h-4 w-4" /></span><h2 id="agent-add-appointment-title" className="mt-3 text-lg font-semibold">Add customer appointment</h2><p className="mt-1 text-xs leading-5 text-black/55">Choose an assigned inquiry and enter the agreed meeting details.</p></div><button type="button" onClick={() => setAddOpen(false)} disabled={newSaving} aria-label="Close appointment form" className="grid h-8 w-8 place-items-center border border-black/10 text-black/55 hover:bg-zinc-50"><X className="h-4 w-4" /></button></div>
           {assignedInquiries.length ? <div className="mt-4 space-y-3">
             <label className="block text-xs font-medium text-black/65">Customer inquiry<select required value={leadId} onChange={(event) => setLeadId(event.target.value)} className="mt-1.5 h-10 w-full border border-black/10 bg-white px-3 text-sm text-black outline-none focus:border-black/40">

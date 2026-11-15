@@ -23,6 +23,7 @@ import {
 	LayoutDashboard,
 	Loader2,
 	LogOut,
+	Menu,
 	Mail,
 	MapPin,
 	MessageSquare,
@@ -291,12 +292,14 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 
 	const [activeSection, setActiveSection] = useState<SectionId>(() => (isAgentSection(initialSection) ? initialSection : "overview"));
 	const [showSidebar, setShowSidebar] = useState(true);
+	const [showMobileNav, setShowMobileNav] = useState(false);
+	const mobileNavRef = useRef<HTMLElement | null>(null);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [headerSearch, setHeaderSearch] = useState("");
 
 	const [notifications, setNotifications] = useState<AgentNotification[]>([]);
 	const [showNotifications, setShowNotifications] = useState(false);
-	const [showAgentAssistant, setShowAgentAssistant] = useState(true);
+	const [showAgentAssistant, setShowAgentAssistant] = useState(false);
 	const [toastNotification, setToastNotification] = useState<AgentNotification | null>(null);
 
 	const [inquirySearch, setInquirySearch] = useState("");
@@ -326,6 +329,43 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 	const agentPhotoInputRef = useRef<HTMLInputElement>(null);
 
 	const unreadCount = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
+
+	useEffect(() => {
+		if (window.matchMedia("(min-width: 1280px)").matches) setShowAgentAssistant(true);
+	}, []);
+
+	useEffect(() => {
+		if (!showMobileNav) return;
+		const previousOverflow = document.body.style.overflow;
+		const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		document.body.style.overflow = "hidden";
+		const drawer = mobileNavRef.current;
+		drawer?.querySelector<HTMLElement>("button[data-drawer-close]")?.focus();
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") {
+				setShowMobileNav(false);
+				return;
+			}
+			if (event.key !== "Tab" || !drawer) return;
+			const focusable = [...drawer.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+			if (!focusable.length) return;
+			const first = focusable[0];
+			const last = focusable[focusable.length - 1];
+			if (event.shiftKey && document.activeElement === first) {
+				event.preventDefault();
+				last.focus();
+			} else if (!event.shiftKey && document.activeElement === last) {
+				event.preventDefault();
+				first.focus();
+			}
+		}
+		window.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.body.style.overflow = previousOverflow;
+			window.removeEventListener("keydown", onKeyDown);
+			previousFocus?.focus();
+		};
+	}, [showMobileNav]);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -1054,6 +1094,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 	const openSection = useCallback((section: SectionId) => {
 		setActiveSection(section);
 		setShowSidebar(true);
+		setShowMobileNav(false);
 		setShowNotifications(false);
 		setShowProfileMenu(false);
 		syncSectionUrl(section);
@@ -1116,7 +1157,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 				</aside>
 
 				{/* Secondary navigation */}
-				<aside className={`portal-sidebar portal-secondary-sidebar bg-white ${showSidebar ? "block" : "hidden lg:block lg:w-0 lg:overflow-hidden"} border-b lg:sticky lg:top-0 lg:block lg:h-screen lg:border-b-0 lg:border-r`}>
+				<aside className={`portal-sidebar portal-secondary-sidebar hidden bg-white ${showSidebar ? "lg:block" : "lg:w-0 lg:overflow-hidden"} lg:sticky lg:top-0 lg:h-screen lg:border-r`}>
 					<nav className="flex max-h-[60vh] flex-col overflow-auto py-3 lg:max-h-[calc(100vh-96px)]">
 						<div className="px-4 pb-3 text-sm font-semibold text-[#111111]">{activeGroup.label}</div>
 						<div>
@@ -1165,7 +1206,8 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 				{/* Main column */}
 				<section className="flex min-w-0 flex-col bg-transparent">
 					<header className="portal-header sticky top-0 z-20 flex h-14 items-center gap-3 px-4 md:px-6">
-						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:text-[#0f172a] hover:bg-slate-50" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
+						<button type="button" onClick={() => { setShowMobileNav(true); setShowAgentAssistant(false); setShowNotifications(false); setShowProfileMenu(false); }} className="grid h-11 w-11 shrink-0 place-items-center border border-black/10 bg-white text-[#111111] lg:hidden" aria-label="Open agent navigation" aria-expanded={showMobileNav} aria-controls="agent-mobile-navigation"><Menu className="h-5 w-5" /></button>
+						<button type="button" onClick={() => setShowSidebar((current) => !current)} className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-[#0f172a] lg:flex" title={showSidebar ? "Hide sidebar" : "Show sidebar"}>
 							{showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
 						</button>
 						<div className="hidden min-w-0 flex-1 items-center gap-2 text-xs text-slate-400 md:flex">
@@ -1215,20 +1257,20 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 							</button>
 						</div>
 						<div className="relative ml-auto flex items-center gap-2 text-slate-600 md:ml-1">
-							<button type="button" onClick={() => { setShowAgentAssistant((current) => !current); setShowNotifications(false); setShowProfileMenu(false); }} aria-label="Toggle agent assistant" aria-expanded={showAgentAssistant} className={`flex h-8 w-8 items-center justify-center border border-black/10 transition ${showAgentAssistant ? "bg-[#111111] text-white" : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"}`} title={showAgentAssistant ? "Close agent assistant" : "Open agent assistant"}>
+							<button type="button" onClick={() => { setShowAgentAssistant((current) => !current); setShowNotifications(false); setShowProfileMenu(false); }} aria-label="Toggle agent assistant" aria-expanded={showAgentAssistant} className={`flex h-11 w-11 items-center justify-center border border-black/10 transition md:h-8 md:w-8 ${showAgentAssistant ? "bg-[#111111] text-white" : "bg-white text-zinc-600 hover:bg-zinc-50 hover:text-[#111111]"}`} title={showAgentAssistant ? "Close agent assistant" : "Open agent assistant"}>
 								<MessageSquare className="h-4 w-4" />
 							</button>
 
-							<button type="button" aria-label="Notifications" aria-expanded={showNotifications} onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); setShowAgentAssistant(false); }} className="relative flex h-8 w-8 items-center justify-center border border-black/10 bg-white transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40" title="Notifications">
+							<button type="button" aria-label="Notifications" aria-expanded={showNotifications} onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); setShowAgentAssistant(false); }} className="relative flex h-11 w-11 items-center justify-center border border-black/10 bg-white transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 md:h-8 md:w-8" title="Notifications">
 								<Bell className="h-4 w-4" />
 								{unreadCount > 0 ? <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#DE141C] px-1 text-[10px] font-bold text-white ring-2 ring-white">{unreadCount}</span> : null}
 							</button>
-							<button type="button" aria-label="Profile menu" aria-expanded={showProfileMenu} onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); setShowAgentAssistant(false); }} className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40" title={agent?.full_name}>
+							<button type="button" aria-label="Profile menu" aria-expanded={showProfileMenu} onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); setShowAgentAssistant(false); }} className="flex h-11 w-11 items-center justify-center border border-black/10 bg-white transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40 md:h-8 md:w-8" title={agent?.full_name}>
 								<UserCircle className="h-4 w-4" />
 							</button>
 
 							{showNotifications ? (
-								<div className="portal-popover absolute right-0 top-12 z-30 w-80 p-4 text-sm sm:w-96">
+								<div className="portal-popover absolute right-0 top-12 z-30 w-[min(24rem,calc(100vw-1.5rem))] p-4 text-sm">
 									<div className="flex items-center justify-between border-b border-slate-100 pb-2">
 											<div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-600">Notifications</div>
 										{notifications.length > 0 ? (
@@ -1268,7 +1310,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 							) : null}
 
 							{showProfileMenu ? (
-								<div className="portal-popover absolute right-0 top-12 z-30 w-64 p-4 text-sm">
+								<div className="portal-popover absolute right-0 top-12 z-30 w-[min(16rem,calc(100vw-1.5rem))] p-4 text-sm">
 									<div className="font-semibold text-[#0f172a]">{agent?.full_name ?? "Agent"}</div>
 									<div className="mt-0.5 truncate text-xs text-slate-500">{userEmail}</div>
 									<div className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">{agent?.license_number || "Licensed Agent"}</div>
@@ -1287,27 +1329,50 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 						</div>
 					</header>
 
-					{showAgentAssistant ? <AgentAssistantSidebar /> : null}
+					{showMobileNav ? (
+						<div className="fixed inset-0 z-[70] lg:hidden">
+							<div aria-hidden="true" onClick={() => setShowMobileNav(false)} className="absolute inset-0 bg-black/40" />
+							<aside ref={mobileNavRef} id="agent-mobile-navigation" role="dialog" aria-modal="true" aria-label="Agent navigation" tabIndex={-1} className="absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] flex-col border-r border-black/10 bg-white shadow-2xl">
+								<div className="flex shrink-0 items-center justify-between border-b border-black/10 px-4 py-4">
+									<div className="flex min-w-0 items-center gap-3">
+										<Image src="/assets/admin-emblem.webp" alt="" aria-hidden="true" width={40} height={40} className="h-10 w-10 object-contain" />
+										<div className="min-w-0 leading-tight"><p className="truncate text-sm font-bold tracking-tight text-[#111111]">J'WELLZ REALTY</p><p className="mt-1 text-[9px] font-bold tracking-[0.2em] text-[#DE141C]">AGENT PORTAL</p></div>
+									</div>
+									<button type="button" data-drawer-close onClick={() => setShowMobileNav(false)} aria-label="Close navigation menu" className="grid h-11 w-11 shrink-0 place-items-center border border-black/10 text-black/60 hover:bg-zinc-50"><X className="h-4 w-4" /></button>
+								</div>
+								<nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3" aria-label="Agent portal sections">
+									{navGroups.map((group) => {
+										const GroupIcon = group.icon;
+										return <div key={group.id} className="mb-4 last:mb-0">
+											<div className="flex items-center gap-2 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-black/45"><GroupIcon className="h-3.5 w-3.5" />{group.label}</div>
+											{group.items.map((item) => {
+												const Icon = item.icon;
+												const active = activeSection === item.id;
+												const badge = badgeFor(item.id);
+												return <button key={item.id} type="button" onClick={() => openSection(item.id)} aria-current={active ? "page" : undefined} className={`flex min-h-11 w-full items-center gap-3 px-3 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DE141C]/50 ${active ? "bg-[#DE141C] font-semibold text-white" : "text-black/70 hover:bg-zinc-50 hover:text-[#DE141C]"}`}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 truncate">{item.label}</span>{badge ? <span className={`px-2 py-0.5 text-[10px] font-semibold ${active ? "bg-white/15 text-white" : "bg-zinc-100 text-zinc-600"}`}>{badge}</span> : null}</button>;
+											})}
+										</div>;
+									})}
+								</nav>
+								<div className="shrink-0 border-t border-black/10 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+									<div className="mb-3 flex min-w-0 items-center gap-2.5">
+										{agent?.photo_url ? <SafeImage src={agent.photo_url} alt={agent.full_name} width={36} height={36} className="h-9 w-9 shrink-0 rounded-full border border-black/10 object-cover" fallbackContent={<div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#111111] text-xs font-bold text-white">{agent.full_name?.charAt(0) ?? "A"}</div>} /> : <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#111111] text-xs font-bold text-white">{agent?.full_name?.charAt(0) ?? "A"}</div>}
+										<div className="min-w-0"><p className="truncate text-xs font-semibold text-[#111111]">{agent?.full_name || "Agent"}</p><p className="truncate text-[11px] text-black/45">{agent?.license_number || "Licensed Agent"}</p></div>
+									</div>
+									<div className="grid grid-cols-2 gap-2">
+										<Link href="/" onClick={() => setShowMobileNav(false)} className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-black/10 px-2 text-xs font-semibold text-black/70"><Globe className="h-3.5 w-3.5" />Website</Link>
+										<button type="button" onClick={() => { setShowMobileNav(false); void reloadInquiries(); }} className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-black/10 px-2 text-xs font-semibold text-black/70"><RefreshCw className="h-3.5 w-3.5" />Refresh</button>
+										<button type="button" onClick={() => { setShowMobileNav(false); setShowSignOutConfirmation(true); }} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 bg-[#111111] px-3 text-xs font-semibold text-white"><LogOut className="h-3.5 w-3.5" />Sign out</button>
+									</div>
+								</div>
+							</aside>
+						</div>
+					) : null}
+
+					{showAgentAssistant ? <AgentAssistantSidebar onClose={() => setShowAgentAssistant(false)} /> : null}
 
 					<div className="flex-1 overflow-auto bg-transparent px-3 py-4 sm:px-5 lg:px-6">
 						<div className={`mx-auto flex max-w-7xl flex-col gap-3 transition-[padding] duration-200 ${showAgentAssistant ? "xl:pr-[292px]" : ""}`}>
-							<div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
-								{navGroups.map((group) => {
-									const Icon = group.icon;
-									const active = activeGroup.id === group.id;
-									return (
-										<button
-											key={group.id}
-											type="button"
-											onClick={() => openSection(group.items[0].id)}
-											className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active ? "border-[#111111] bg-[#111111] text-white" : "border-black/10 bg-white text-black/65"}`}
-										>
-											<Icon className="h-3.5 w-3.5" />
-											{group.label}
-										</button>
-									);
-								})}
-							</div>
 							<div className="flex flex-wrap items-end justify-between gap-3">
 								<div>
 									<div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">
@@ -1319,11 +1384,11 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 									</h1>
 								</div>
 								<div className="flex items-center gap-2">
-									<button type="button" onClick={() => openSection("inquiries")} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+									<button type="button" onClick={() => openSection("inquiries")} className="inline-flex h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50 sm:h-8">
 										<Inbox className="h-3.5 w-3.5" />
 										Leads ({inquiries.length})
 									</button>
-									<button type="button" onClick={() => void reloadInquiries()} className="inline-flex h-8 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50">
+									<button type="button" onClick={() => void reloadInquiries()} className="inline-flex h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-medium text-[#111111] transition hover:bg-zinc-50 sm:h-8">
 										<RefreshCw className="h-3.5 w-3.5" />
 										Refresh
 									</button>
@@ -1507,7 +1572,25 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 									) : null}
 
 									<div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
-										<div className="overflow-x-auto">
+										<div className="divide-y divide-black/10 md:hidden">
+											{filteredInquiries.length === 0 ? <p className="px-4 py-10 text-center text-sm text-zinc-500">No inquiries match your filters.</p> : filteredInquiries.map((inq) => (
+												<article key={inq.id} className="space-y-3 p-4">
+													<div className="flex min-w-0 items-start justify-between gap-3">
+														<div className="min-w-0"><h3 className="truncate text-sm font-semibold text-[#111111]">{inq.buyer_name || "Buyer"}</h3><p className="mt-0.5 break-all text-xs text-zinc-500">{inq.buyer_email || inq.buyer_phone || "No contact details"}</p></div>
+														<StatusPill status={inq.status} />
+													</div>
+													<div className="rounded-lg bg-zinc-50 px-3 py-2.5">
+														<p className="truncate text-xs font-medium text-[#111111]">{inq.properties?.title ?? "General inquiry"}</p>
+														<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500"><span>{inq.properties?.city ?? (inq.properties?.title ? "Batangas" : "No property selected")}</span><span>{formatDate(inq.created_at)}</span><PriorityPill priority={inq.priority} /></div>
+													</div>
+													<div className="grid grid-cols-2 gap-2">
+														{["new", "assigned"].includes(inq.status ?? "") ? <button type="button" onClick={() => void handleQuickContact(inq, "manual")} className="min-h-10 border border-emerald-200 bg-emerald-50 px-2 text-xs font-semibold text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40">Mark contacted</button> : <span />}
+														<button type="button" onClick={() => openInquiryEditor(inq)} className="min-h-10 bg-[#111111] px-3 text-xs font-semibold text-white transition hover:bg-[#DE141C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/40">Review lead</button>
+													</div>
+												</article>
+												))}
+										</div>
+										<div className="hidden overflow-x-auto md:block">
 											<table className="min-w-full text-left text-xs">
 												<thead className="border-b border-black/10 bg-zinc-50/80 font-semibold uppercase tracking-wider text-[11px] text-zinc-500">
 													<tr>
