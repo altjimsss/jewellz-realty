@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -320,13 +321,20 @@ function LoginForm() {
 					<div aria-hidden="true" className="absolute inset-0 z-0 bg-white/70" />
 				</>
 			) : null}
-			<section className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white p-8 shadow-[0_20px_70px_rgba(17,17,17,0.08)]">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
-						<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#DE141C]">
-							J'WELLZ REALTY
-						</p>
+			<section className="relative z-10 flex h-[680px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
+				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#FBE7EA]" />
+				<div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-[#FBE7EA]" />
+				<div className="relative z-10 flex min-h-0 flex-1 flex-col">
+				<div className="mt-1 flex h-10 shrink-0 items-center justify-between gap-3">
+					<div className="flex min-w-0 items-center gap-3">
+						<Image src="/assets/admin-emblem.webp" alt="" aria-hidden="true" width={40} height={40} className="h-9 w-9 shrink-0 object-contain" />
+						<span aria-hidden="true" className="h-8 w-px shrink-0 bg-zinc-300" />
+						<div className="min-w-0 leading-tight"><p className="truncate text-[13px] font-bold tracking-tight text-[#202334]">J'WELLZ REALTY</p><p className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#73778B]">{activeRole.toUpperCase()} PORTAL</p></div>
+					</div>
+					<div role="group" aria-label="Choose sign-in portal" className="flex shrink-0 items-center gap-0.5 rounded-xl border border-[#E4E5EA] bg-white/85 p-1">
+						<button type="button" aria-label="Agent portal" title="Agent" aria-pressed={activeRole === "agent"} onClick={() => { setActiveRole("agent"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "agent" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}><svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></svg></button>
+						<button type="button" aria-label="Developer portal" title="Developer" aria-pressed={activeRole === "developer"} onClick={() => { setActiveRole("developer"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "developer" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}><svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M6 20V5l6-2 6 2v15M9 8h.01M15 8h.01M9 12h.01M15 12h.01M10 20v-4h4v4" /></svg></button>
+						<button type="button" aria-label="Admin portal" title="Admin" aria-pressed={activeRole === "admin"} onClick={() => { setActiveRole("admin"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "admin" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}><svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg></button>
 					</div>
 					<Link href="/" className="text-xs font-semibold text-black/50 hover:text-black">
 						← Back to site
@@ -334,7 +342,7 @@ function LoginForm() {
 				</div>
 
 				{/* Role Tabs */}
-				<div className="mt-4 flex rounded-xl border border-black/10 bg-zinc-100/80 p-1">
+				<div className="hidden">
 					<button
 						type="button"
 						onClick={() => {
@@ -379,35 +387,21 @@ function LoginForm() {
 					</button>
 				</div>
 
-				<div className="mt-5">
-					<h1 className="text-2xl font-bold tracking-tight text-[#111111]">
-						{isForgotPassword ? "Reset Password" : currentConfig.title}
+				<div className="mt-5 min-h-10 shrink-0">
+					<h1 className="truncate text-[27px] font-bold leading-tight tracking-[-0.045em] text-[#202334] sm:text-3xl">
+						{isForgotPassword ? "Reset password" : <>{activeRole === "developer" ? "Developer" : activeRole === "admin" ? "Admin" : "Agent"} <span className="text-[#DE141C]">Sign In</span></>}
 					</h1>
-					<p className="mt-1 text-xs leading-5 text-black/60">
-						{isForgotPassword
-							? "Enter your registered email address to receive password reset instructions."
-							: currentConfig.subtitle}
-					</p>
+				</div>
+				<p className="mt-1 shrink-0 text-sm tracking-[-0.02em] text-[#73778B]">{isForgotPassword ? "We'll email a reset link." : "Welcome back! Please sign in to continue."}</p>
+
+				<div aria-live="polite" className="mt-2 h-9 shrink-0 overflow-hidden">
+					{message ? <div className={`flex h-9 items-center rounded-lg border px-3 text-xs font-medium leading-4 ${message.type === "error" ? "border-red-200 bg-red-50 text-red-800" : message.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-blue-200 bg-blue-50 text-blue-800"}`}><span className="line-clamp-2">{message.text}</span></div> : null}
 				</div>
 
-				{message ? (
-					<div
-						className={`mt-4 rounded-xl border p-3 text-xs font-medium leading-5 ${
-							message.type === "error"
-								? "border-red-200 bg-red-50 text-red-800"
-								: message.type === "success"
-									? "border-emerald-200 bg-emerald-50 text-emerald-800"
-									: "border-blue-200 bg-blue-50 text-blue-800"
-						}`}
-					>
-						{message.text}
-					</div>
-				) : null}
-
 				{isForgotPassword ? (
-					<form onSubmit={handleForgotPassword} className="mt-5 space-y-4">
+					<form onSubmit={handleForgotPassword} className="mt-3 space-y-3">
 						<label className="block">
-							<span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/55">
+							<span className="mb-1.5 block text-xs font-semibold text-[#202334]">
 								Email Address
 							</span>
 							<input
@@ -416,7 +410,7 @@ function LoginForm() {
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder={currentConfig.placeholder}
-								className="h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm text-[#111111] outline-none transition focus:border-[#DE141C]"
+								className="h-11 w-full rounded-xl border border-[#DDE0E8] bg-white px-3.5 text-sm text-[#202334] outline-none transition placeholder:text-[#A0A5B4] focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/10"
 							/>
 						</label>
 
@@ -426,7 +420,7 @@ function LoginForm() {
 							<button
 								type="submit"
 								disabled={loading}
-								className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#DE141C] text-xs font-semibold text-white shadow-sm transition hover:bg-[#b80f15] disabled:opacity-50"
+								className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#DE141C] text-sm font-semibold text-white transition hover:bg-[#b80f15] disabled:opacity-50"
 							>
 								{loading ? "Sending link..." : "Send Reset Link"}
 							</button>
@@ -443,9 +437,9 @@ function LoginForm() {
 						</div>
 					</form>
 				) : (
-					<form onSubmit={handlePasswordSignIn} autoComplete="off" className="mt-5 space-y-3.5">
+					<form onSubmit={handlePasswordSignIn} autoComplete="off" className="mt-3 space-y-3">
 						<label className="block">
-							<span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/55">
+							<span className="mb-1.5 block text-xs font-semibold text-[#202334]">
 								Email Address
 							</span>
 							<input
@@ -456,13 +450,13 @@ function LoginForm() {
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder={currentConfig.placeholder}
-								className="h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm text-[#111111] outline-none transition focus:border-[#DE141C]"
+								className="h-11 w-full rounded-xl border border-[#DDE0E8] bg-white px-3.5 text-sm text-[#202334] outline-none transition placeholder:text-[#A0A5B4] focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/10"
 							/>
 						</label>
 
 						<label className="block">
 							<div className="mb-1 flex items-center justify-between">
-								<span className="text-xs font-semibold uppercase tracking-[0.16em] text-black/55">
+								<span className="text-xs font-semibold text-[#202334]">
 									Password
 								</span>
 								<button
@@ -471,7 +465,7 @@ function LoginForm() {
 										setIsForgotPassword(true);
 										setMessage(null);
 									}}
-									className="text-[11px] font-medium text-[#DE141C] hover:underline"
+									className="text-xs font-semibold text-[#C4121A] transition hover:text-[#9E0E15] hover:underline"
 								>
 									Forgot password?
 								</button>
@@ -485,12 +479,12 @@ function LoginForm() {
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="••••••••"
-									className="h-11 w-full rounded-xl border border-black/10 bg-white pl-3.5 pr-10 text-sm text-[#111111] outline-none transition focus:border-[#DE141C]"
+									className="h-11 w-full rounded-xl border border-[#DDE0E8] bg-white pl-3.5 pr-11 text-sm text-[#202334] outline-none transition placeholder:text-[#A0A5B4] focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/10"
 								/>
 								<button
 									type="button"
 									onClick={() => setShowPassword(!showPassword)}
-									className="absolute right-3 top-1/2 -translate-y-1/2 text-black/40 hover:text-black"
+								className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-black/40 transition hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]"
 									aria-label={showPassword ? "Hide password" : "Show password"}
 								>
 									{showPassword ? (
@@ -513,7 +507,7 @@ function LoginForm() {
 							<button
 								type="submit"
 								disabled={loading}
-								className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#DE141C] text-xs font-semibold text-white shadow-sm transition hover:bg-[#b80f15] disabled:cursor-not-allowed disabled:opacity-50"
+								className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#DE141C] text-sm font-semibold text-white transition hover:bg-[#b80f15] disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{loading ? "Signing in..." : "Sign In to Workspace"}
 							</button>
@@ -522,7 +516,7 @@ function LoginForm() {
 								type="button"
 								disabled={loading}
 								onClick={handleMagicLink}
-								className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-black/10 bg-white text-xs font-medium text-[#111111] transition hover:bg-black/5 disabled:opacity-50"
+								className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-[#E4E5EA] bg-white text-sm font-medium text-[#202334] transition hover:bg-zinc-50 disabled:opacity-50"
 							>
 								Send Magic Link Instead
 							</button>
@@ -530,11 +524,12 @@ function LoginForm() {
 					</form>
 				)}
 
-				<div className="mt-6 flex items-center justify-center gap-1.5 border-t border-black/5 pt-3 text-[11px] text-black/45">
+				<div className="mt-auto flex items-center justify-center gap-1.5 border-t border-black/5 pt-3 text-[11px] text-black/45">
 					<svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
 						<path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
 					</svg>
 					<span>Secured by Supabase Encrypted Authentication</span>
+				</div>
 				</div>
 			</section>
 		</main>
