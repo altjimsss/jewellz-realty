@@ -2474,12 +2474,6 @@ function AnalyticsPanel({
 		return acc;
 	}, {});
 
-	const priorityCounts = inquiries.reduce((acc: Record<string, number>, item) => {
-		const priority = asText(item.priority || "unclassified");
-		acc[priority] = (acc[priority] ?? 0) + 1;
-		return acc;
-	}, {});
-
 	const recommendationStats = (() => {
 		if (!recommendations.length) return { total: 0, clicked: 0, fallback: 0 };
 		const total = recommendations.length;
@@ -2764,7 +2758,7 @@ function AnalyticsPanel({
 
 			{showOverviewReport ? (
 				<div className="mb-6 grid items-start gap-4 xl:grid-cols-12">
-					{/* Lead Pipeline & Priority Distribution - 7 cols */}
+					{/* Lead Pipeline - 7 cols */}
 					<div className="portal-stat-card h-fit min-w-0 xl:col-span-7 p-4">
 						<div>
 							<div className="flex items-start justify-between gap-3">
@@ -2788,38 +2782,6 @@ function AnalyticsPanel({
 										</BarChart>
 									</ResponsiveContainer>
 								) : <p className="text-sm text-black/45 py-12 text-center">No inquiry activity recorded yet.</p>}
-							</div>
-						</div>
-
-						{/* Priority Split */}
-						<div className="mt-5 border-t border-black/5 pt-4">
-							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">Priority Distribution</span>
-							</div>
-							<div className="mt-2.5 flex flex-wrap gap-2">
-								{Object.entries(priorityCounts).length ? (
-									Object.entries(priorityCounts).map(([priority, count]) => {
-										const isHigh = priority.toLowerCase() === "high";
-										const isMedium = priority.toLowerCase() === "medium";
-										return (
-											<span
-												key={priority}
-												className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold capitalize transition ${
-													isHigh
-																		? "bg-red-50 text-[#DE141C]"
-														: isMedium
-														? "bg-amber-50 text-amber-800"
-																		: "bg-zinc-100 text-zinc-700"
-												}`}
-											>
-																<span className={`h-1.5 w-1.5 rounded-full ${isHigh ? "bg-[#DE141C]" : isMedium ? "bg-amber-600" : "bg-zinc-500"}`} />
-												{priority}: {count}
-											</span>
-										);
-									})
-								) : (
-									<span className="text-xs text-black/45">No priority tags recorded</span>
-								)}
 							</div>
 						</div>
 					</div>
