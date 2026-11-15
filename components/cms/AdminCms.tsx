@@ -2757,9 +2757,9 @@ function AnalyticsPanel({
 			) : null}
 
 			{showOverviewReport ? (
-				<div className="mb-6 grid items-start gap-4 xl:grid-cols-12">
-					{/* Lead Pipeline - 7 cols */}
-					<div className="portal-stat-card h-fit min-w-0 xl:col-span-7 p-4">
+				<div className="mb-6 grid items-start gap-4">
+					{/* Lead Pipeline */}
+					<div className="portal-stat-card h-fit min-w-0 p-4">
 						<div>
 							<div className="flex items-start justify-between gap-3">
 								<div>
@@ -2786,8 +2786,7 @@ function AnalyticsPanel({
 						</div>
 					</div>
 
-					{/* Volume & Recommendation Analytics - 5 cols */}
-					<div className="min-w-0 xl:col-span-5 flex flex-col gap-3">
+					<div className="grid min-w-0 gap-4 lg:grid-cols-2">
 						<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
 							<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
 							<div className="mt-3">
@@ -2795,12 +2794,12 @@ function AnalyticsPanel({
 							</div>
 						</div>
 
-						<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
+						<div className="min-w-0 rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
 							<div className="flex items-center justify-between">
 								<span className="text-sm font-semibold text-[#111111]">Recommendations</span>
 							</div>
 
-							<div className="mt-4 grid grid-cols-2 gap-3">
+							<div className="mt-4 grid grid-cols-4 gap-2 overflow-x-auto">
 								<InfoCard compact label="Total shown" value={recommendationStats.total} hint="Recommendations" />
 								<InfoCard compact label="Clicked" value={recommendationStats.clicked} hint="Recommendation clicks" />
 								<InfoCard compact label="CTR" value={`${clickThrough.toFixed(1)}%`} hint="Click-through rate" />
