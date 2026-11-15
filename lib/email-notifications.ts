@@ -1,9 +1,12 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { getSettingValues } from "@/lib/system-settings";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import nodemailer from "nodemailer";
 
 const COMPANY = "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP.";
 const TAGLINE = "Change the Dream Property";
+const EMAIL_BANNER_CID = "jwells-email-banner@jewellzrealty";
 
 type EmailMessage = {
 	to: string;
@@ -99,6 +102,12 @@ export async function sendBrandedEmail(message: EmailMessage) {
 
 	const senderAddress = from.match(/<([^>]+)>/)?.[1]?.trim() ?? from.trim();
 	const isGmail = /^[^\s@]+@gmail\.com$/i.test(senderAddress) || Boolean(gmailUser);
+	const bannerPath = path.join(process.cwd(), "public", "assets", "jwells-email-banner.jpg");
+	const bannerBytes = await readFile(bannerPath).catch((error) => {
+		console.warn("[email notification] banner image unavailable", error);
+		return null;
+	});
+	const text = buildEmailText(message);
 
 	if (isGmail) {
 		if (!gmailUser || !gmailAppPassword) {
@@ -120,7 +129,9 @@ export async function sendBrandedEmail(message: EmailMessage) {
 				from: effectiveFrom,
 				to: message.to,
 				subject: message.subject,
-				html: buildEmailHtml(message),
+				text,
+				html: buildEmailHtml(message, Boolean(bannerBytes)),
+				attachments: bannerBytes ? [{ filename: "jwells-email-banner.jpg", content: bannerBytes, contentType: "image/jpeg", cid: EMAIL_BANNER_CID }] : [],
 			});
 			return true;
 		} catch (error) {
@@ -134,11 +145,12 @@ export async function sendBrandedEmail(message: EmailMessage) {
 		return false;
 	}
 
-	const html = buildEmailHtml(message);
+	const html = buildEmailHtml(message, Boolean(bannerBytes));
+	const bannerAttachment = bannerBytes ? { filename: "jwells-email-banner.jpg", content: bannerBytes.toString("base64"), content_type: "image/jpeg", content_id: EMAIL_BANNER_CID } : null;
 	const response = await fetch("https://api.resend.com/emails", {
 		method: "POST",
 		headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-		body: JSON.stringify({ from, to: [message.to], subject: message.subject, html }),
+		body: JSON.stringify({ from, to: [message.to], subject: message.subject, html, text, ...(bannerAttachment ? { attachments: [bannerAttachment] } : {}) }),
 	});
 
 	if (!response.ok) {
@@ -149,7 +161,13 @@ export async function sendBrandedEmail(message: EmailMessage) {
 	return true;
 }
 
-export function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage) {
+export function buildEmailText(message: Omit<EmailMessage, "to"> | EmailMessage) {
+	const details = message.details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`).join("\n");
+	const action = message.action ? `\n\n${message.action.label}: ${message.action.url}` : "";
+	return `${COMPANY}\n${TAGLINE}\n\n${message.heading}\n\n${details}${action}\n\nAutomated notification from J'WELLZ REALTY.`;
+}
+
+export function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage, includeBanner = false) {
 	const details = message.details.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;padding:9px;border-bottom:1px solid #eee">${escapeHtml(label)}</th><td style="padding:9px;border-bottom:1px solid #eee">${renderDetail(label, value)}</td></tr>`).join("");
 	let action = "";
 	if (message.action) {
@@ -158,11 +176,7 @@ export function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage)
 			if (url.protocol === "https:") action = `<p style="margin:24px 0 0"><a href="${escapeHtml(url.toString())}" style="display:inline-block;background:#b8101a;color:#fff;padding:13px 20px;border-radius:6px;text-decoration:none;font-weight:700">${escapeHtml(message.action.label)}</a></p>`;
 		} catch { /* Ignore invalid action URLs. */ }
 	}
-	let banner = "";
-	try {
-		const site = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "");
-		if (site.protocol === "https:") banner = `<img src="${escapeHtml(new URL("/assets/jwells-email-banner.png", site).toString())}" alt="J’WELLZ Realty Marketing &amp; Development Corporation — Life Changing" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"/>`;
-	} catch { /* The text header remains if no public site URL is configured. */ }
+	const banner = includeBanner ? `<img src="cid:${EMAIL_BANNER_CID}" alt="J'WELLZ Realty Marketing and Development Corporation" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"/>` : "";
 	const header = banner || `<div style="background:#b8101a;padding:22px;color:white"><strong>${COMPANY}</strong><div style="font-size:12px;margin-top:6px">${TAGLINE}</div></div>`;
 	return `<div style="font:15px Arial,sans-serif;color:#171717;max-width:640px;margin:auto">${header}<main style="padding:24px"><h1 style="font-size:22px">${escapeHtml(message.heading)}</h1><table style="border-collapse:collapse;width:100%">${details}</table>${action}</main></div>`;
 }
