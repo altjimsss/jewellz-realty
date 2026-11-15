@@ -313,8 +313,14 @@ function LoginForm() {
 	}
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(222,20,28,0.07),_transparent_35%),linear-gradient(180deg,#fdf5f5_0%,#ffffff_100%)] px-6 py-12 text-[#111111]">
-			<section className="relative w-full max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white p-8 shadow-[0_20px_70px_rgba(17,17,17,0.08)]">
+		<main className={`relative isolate flex min-h-screen items-center justify-center px-6 py-12 text-[#111111] ${isExpired ? "bg-white" : "bg-[radial-gradient(circle_at_top,_rgba(222,20,28,0.07),_transparent_35%),linear-gradient(180deg,#fdf5f5_0%,#ffffff_100%)]"}`}>
+			{isExpired ? (
+				<>
+					<div aria-hidden="true" className="absolute inset-0 z-0 bg-[url('/assets/session-timeout-bg.png')] bg-cover bg-center" />
+					<div aria-hidden="true" className="absolute inset-0 z-0 bg-white/70" />
+				</>
+			) : null}
+			<section className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white p-8 shadow-[0_20px_70px_rgba(17,17,17,0.08)]">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<span className="h-2 w-2 rounded-full bg-[#DE141C]" />

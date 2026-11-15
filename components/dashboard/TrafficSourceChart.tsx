@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 type TrafficSourceRow = {
 	source?: string;
@@ -34,7 +34,6 @@ export function TrafficSourceChart({ rows = [] }: { rows?: TrafficSourceRow[] })
 									{chartRows.map((row, index) => <Cell key={row.name} fill={colors[index % colors.length]} />)}
 								</Pie>
 								<Tooltip content={<NeutralTooltip />} />
-								<Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: "#52525b" }} />
 							</PieChart>
 						</ResponsiveContainer>
 						</div>

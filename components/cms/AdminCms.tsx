@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LayoutGrid, List as ListIcon, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
@@ -1130,7 +1130,6 @@ function AnalyticsVisualSuite({
 						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={conversionRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
-								<Legend verticalAlign="top" height={28} />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
@@ -1143,7 +1142,6 @@ function AnalyticsVisualSuite({
 						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
-								<Legend verticalAlign="top" height={28} />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => Number(value).toFixed(1)} />
 								<Tooltip content={<CmsChartTooltip />} />

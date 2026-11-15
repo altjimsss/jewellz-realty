@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type ListingPerformanceRow = {
 	property_id?: string;
@@ -48,7 +48,6 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 									<XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#a1a1aa" }} allowDecimals={false} />
 									<YAxis type="category" dataKey="name" width={100} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} />
 									<Tooltip content={<NeutralTooltip />} cursor={{ fill: "rgba(0,0,0,0.035)" }} />
-									<Legend verticalAlign="bottom" height={24} content={<NeutralLegend />} />
 									<Bar dataKey="views" name="Views" fill="#DE141C" radius={[0, 4, 4, 0]} maxBarSize={10} />
 									<Bar dataKey="interactions" name="Interactions" fill="#737373" radius={[0, 4, 4, 0]} maxBarSize={10} />
 									<Bar dataKey="inquiries" name="Inquiries" fill="#252525" radius={[0, 4, 4, 0]} maxBarSize={10} />
@@ -88,20 +87,6 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 
 function compactLabel(value: string, maxLength = 12) {
 	return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
-}
-
-function NeutralLegend({ payload }: { payload?: Array<{ value?: string; color?: string }> }) {
-	if (!payload?.length) return null;
-	return (
-		<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-3 text-xs text-black/55">
-			{payload.map((item) => (
-				<div key={item.value} className="inline-flex items-center gap-2 whitespace-nowrap">
-					<span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color ?? "#111111" }} />
-					<span>{item.value}</span>
-				</div>
-			))}
-		</div>
-	);
 }
 
 function NeutralTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string; payload?: { fullName?: string; dwellSeconds?: number } }>; label?: string }) {
