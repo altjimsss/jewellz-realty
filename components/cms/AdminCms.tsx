@@ -2789,47 +2789,10 @@ function AnalyticsPanel({
 					</div>
 
 					<div className="grid items-start gap-4">
-					{/* Lead Pipeline */}
-					<div className="portal-stat-card h-fit min-w-0 p-4">
-						<div>
-							<div className="flex items-start justify-between gap-3">
-								<div>
-								<h3 className="text-sm font-semibold text-[#111111]">Lead pipeline</h3>
-								</div>
-								<span className="portal-stat-badge">
-									{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)} Total Leads
-								</span>
-							</div>
-
-							<div className="mt-3 h-40">
-								{pipelineChartRows.length ? (
-									<ResponsiveContainer width="100%" height="100%">
-										<BarChart data={pipelineChartRows} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
-											<CartesianGrid vertical={false} stroke="#f4f4f5" />
-											<XAxis dataKey="label" tickLine={false} axisLine={false} tickFormatter={(value) => asText(value).replaceAll("_", " ")} tick={{ fontSize: 10, fill: "#71717a" }} interval={0} />
-											<YAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} allowDecimals={false} width={34} />
-											<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-											<Bar dataKey="value" name="Leads" fill="#DE141C" radius={[4, 4, 0, 0]} maxBarSize={28} />
-										</BarChart>
-									</ResponsiveContainer>
-								) : <p className="text-sm text-black/45 py-12 text-center">No inquiry activity recorded yet.</p>}
-							</div>
-						</div>
-					</div>
-
-					<div className="grid min-w-0 gap-4 lg:grid-cols-2">
-						<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
-							<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
-							<div className="mt-3">
-								<InquiryVolumeChart rows={inquiryVolumeRows} />
-							</div>
-						</div>
-
 						<div className="min-w-0 rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
 							<div className="flex items-center justify-between">
 								<span className="text-sm font-semibold text-[#111111]">Recommendations</span>
 							</div>
-
 							<div className="mt-4 grid grid-cols-4 gap-2 overflow-x-auto">
 								<InfoCard compact label="Total shown" value={recommendationStats.total} hint="Recommendations" />
 								<InfoCard compact label="Clicked" value={recommendationStats.clicked} hint="Recommendation clicks" />
@@ -2837,8 +2800,41 @@ function AnalyticsPanel({
 								<InfoCard compact label="Fallback rate" value={`${fallbackRate.toFixed(1)}%`} hint="Fallback matches" />
 							</div>
 						</div>
+
+						<div className="grid min-w-0 gap-4 lg:grid-cols-2">
+							<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
+								<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
+								<div className="mt-3">
+									<InquiryVolumeChart rows={inquiryVolumeRows} />
+								</div>
+							</div>
+
+							<div className="portal-stat-card h-fit min-w-0 p-4">
+								<div className="flex items-center justify-between gap-3">
+									<span className="text-sm font-semibold text-[#111111]">Lead pipeline</span>
+									<span className="portal-stat-badge">{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)} Total Leads</span>
+								</div>
+								<div className="relative mt-2 h-52">
+									{pipelineChartRows.length ? (
+										<>
+											<ResponsiveContainer width="100%" height="100%">
+												<PieChart>
+													<Pie data={pipelineChartRows} dataKey="value" nameKey="label" innerRadius="52%" outerRadius="78%" paddingAngle={3} stroke="none">
+														{pipelineChartRows.map((row, index) => <Cell key={row.label} fill={analyticsColors[index % analyticsColors.length]} />)}
+													</Pie>
+													<Tooltip content={<CmsChartTooltip />} />
+												</PieChart>
+											</ResponsiveContainer>
+											<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+												<span className="text-xl font-semibold leading-none tabular-nums text-[#111111]">{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0).toLocaleString()}</span>
+												<span className="mt-1 text-[9px] font-medium uppercase tracking-wide text-black/45">leads</span>
+											</div>
+										</>
+									) : <p className="flex h-full items-center justify-center text-sm text-black/45">No inquiry activity recorded yet.</p>}
+								</div>
+							</div>
+						</div>
 					</div>
-				</div>
 				</div>
 			) : null}
 
