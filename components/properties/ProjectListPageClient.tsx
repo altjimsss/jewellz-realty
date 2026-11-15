@@ -48,8 +48,14 @@ const SEARCH_STOP_WORDS = new Set([
 	"a",
 	"an",
 	"and",
+	"any",
 	"are",
+	"by",
 	"cheap",
+	"close",
+	"could",
+	"do",
+	"does",
 	"affordable",
 	"budget",
 	"find",
@@ -67,7 +73,11 @@ const SEARCH_STOP_WORDS = new Set([
 	"show",
 	"small",
 	"the",
+	"there",
 	"to",
+	"what",
+	"which",
+	"where",
 	"want",
 ]);
 
@@ -711,7 +721,13 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 					)
 				) : (
 					<div className="mt-7">
-						<p className="text-center text-sm text-black/55">No properties matched your search. Try a different keyword, location, or category.</p>
+						<p className="text-center text-sm text-black/55">
+							{recommendedProperties.length > 0
+								? "No exact listing matched every word, so here are properties selected from your search intent."
+								: aiRecommendationStatus === "loading" || aiRecommendationStatus === "idle"
+									? "Looking for properties that fit your request..."
+									: "No close matches found. Try a different keyword, location, or category."}
+						</p>
 						{activeCategory === "Farm" ? (
 							<div className="mx-auto mt-5 max-w-md rounded-xl border border-black/10 bg-[#FAF8F5] p-5 text-center">
 								<p className="text-sm font-semibold text-black">Looking for a farm property?</p>
