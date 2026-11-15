@@ -2776,7 +2776,19 @@ function AnalyticsPanel({
 			) : null}
 
 			{showOverviewReport ? (
-				<div className="mb-6 grid items-start gap-4">
+				<div className="mb-6 space-y-4">
+					<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
+						<div className="mb-3 flex items-center gap-3 border-b border-black/[0.06] pb-3">
+							<span className="grid h-9 w-9 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Building2 className="h-4 w-4" /></span>
+							<div>
+								<h2 className="text-base font-semibold tracking-tight text-[#111111]">Listing performance</h2>
+								<p className="mt-1 text-xs text-black/45">Compare views, interactions, and inquiry conversion across your top listings.</p>
+							</div>
+						</div>
+						<ListingPerformanceChart rows={listingChartRows} />
+					</div>
+
+					<div className="grid items-start gap-4">
 					{/* Lead Pipeline */}
 					<div className="portal-stat-card h-fit min-w-0 p-4">
 						<div>
@@ -2827,20 +2839,11 @@ function AnalyticsPanel({
 						</div>
 					</div>
 				</div>
+				</div>
 			) : null}
 
 			{isAdmin && showOverviewReport ? (
 				<div className="grid gap-5">
-					<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
-						<div className="mb-3 border-b border-black/[0.06] pb-3">
-							<h2 className="text-base font-semibold tracking-tight text-[#111111]">Listing performance</h2>
-							<p className="mt-1 text-xs text-black/45">Compare views, interactions, and inquiry conversion across your top listings.</p>
-						</div>
-						<div>
-							<ListingPerformanceChart rows={listingChartRows} />
-						</div>
-					</div>
-
 					<div className="rounded-xl border border-black/10 bg-white p-5 transition duration-200 hover:border-black/20">
 						<PeakEngagementChart events={engagementEvents} />
 					</div>

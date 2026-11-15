@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Activity, TrendingUp } from "lucide-react";
 
 type ListingPerformanceRow = {
 	property_id?: string;
@@ -35,7 +36,8 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 			{chartRows.length ? (
 				<div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
 					<div>
-						<div className="mb-2 flex items-center justify-between gap-3">
+						<div className="mb-2 flex items-center gap-2.5">
+							<span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Activity className="h-3.5 w-3.5" /></span>
 							<div>
 								<div className="text-sm font-semibold text-[#111111]">Listing Activity</div>
 								<p className="text-xs text-black/45">Views, detail opens, and inquiries by property.</p>
@@ -56,9 +58,12 @@ export function ListingPerformanceChart({ rows = [] }: { rows?: ListingPerforman
 						</div>
 					</div>
 					<div>
-						<div className="mb-2">
+						<div className="mb-2 flex items-center gap-2.5">
+							<span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><TrendingUp className="h-3.5 w-3.5" /></span>
+							<div>
 							<div className="text-sm font-semibold text-[#111111]">Inquiry Rate</div>
 							<p className="text-xs text-black/45">Conversion percentage per listing.</p>
+							</div>
 						</div>
 						<div className="h-52">
 							{hasInquiryConversions ? (
