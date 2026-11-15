@@ -302,9 +302,8 @@ function PortalAuthModalContent({
 			aria-modal="true"
 			aria-labelledby="portal-modal-title"
 		>
-			<div className="relative h-[590px] max-h-[calc(100dvh-24px)] w-full max-w-[490px] overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
-				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[#FBE7EA]" />
-				<div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full border-[36px] border-white/60" />
+			<div className="relative h-[590px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
+				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#FBE7EA]" />
 				<div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-[#FBE7EA]" />
 				{/* Top Close Button */}
 				<button
@@ -319,22 +318,15 @@ function PortalAuthModalContent({
 				</button>
 
 				<div className="relative z-10 flex h-full flex-col overflow-y-auto">
-				{/* Brand */}
-				<div className="mt-1 flex h-10 shrink-0 items-center gap-3 pr-11">
-					<Image src="/assets/admin-emblem.webp" alt="" aria-hidden="true" width={40} height={40} className="h-9 w-9 object-contain" />
-					<span aria-hidden="true" className="h-8 w-px bg-zinc-300" />
-					<div className="leading-tight">
-						<p className="text-[13px] font-bold tracking-tight text-[#202334]">J'WELLZ REALTY</p>
-						<p className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#73778B]">{activeRoleLabel.toUpperCase()} PORTAL</p>
-					</div>
-				</div>
-
-				{/* Title and compact icon-only portal switcher */}
-				<div className="mt-6 flex min-h-10 shrink-0 items-center justify-between gap-2">
-					<div className="min-w-0">
-						<h2 id="portal-modal-title" className="truncate text-[27px] font-bold leading-tight tracking-[-0.045em] text-[#202334] sm:text-3xl">
-							{isForgotPassword ? "Reset password" : <>{activeRoleLabel} <span className="text-[#DE141C]">Sign In</span></>}
-						</h2>
+				{/* Brand and portal switcher */}
+				<div className="mt-1 flex h-10 shrink-0 items-center justify-between gap-3 pr-11">
+					<div className="flex min-w-0 items-center gap-3">
+						<Image src="/assets/admin-emblem.webp" alt="" aria-hidden="true" width={40} height={40} className="h-9 w-9 shrink-0 object-contain" />
+						<span aria-hidden="true" className="h-8 w-px shrink-0 bg-zinc-300" />
+						<div className="min-w-0 leading-tight">
+							<p className="truncate text-[13px] font-bold tracking-tight text-[#202334]">J'WELLZ REALTY</p>
+							<p className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#73778B]">{activeRoleLabel.toUpperCase()} PORTAL</p>
+						</div>
 					</div>
 					<div role="group" aria-label="Choose sign-in portal" className="flex shrink-0 items-center gap-0.5 rounded-xl border border-[#E4E5EA] bg-white/85 p-1">
 						<button type="button" aria-label="Agent portal" title="Agent" aria-pressed={activeRole === "agent"} onClick={() => { setActiveRole("agent"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "agent" ? "bg-[#FCEDEF] text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
@@ -347,6 +339,13 @@ function PortalAuthModalContent({
 							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg>
 						</button>
 					</div>
+				</div>
+
+				{/* Title */}
+				<div className="mt-5 min-h-10 shrink-0">
+					<h2 id="portal-modal-title" className="truncate text-[27px] font-bold leading-tight tracking-[-0.045em] text-[#202334] sm:text-3xl">
+						{isForgotPassword ? "Reset password" : <>{activeRoleLabel} <span className="text-[#DE141C]">Sign In</span></>}
+					</h2>
 				</div>
 				<p className="mt-1 shrink-0 text-sm tracking-[-0.02em] text-[#73778B]">
 					{isForgotPassword ? "We’ll email a reset link." : "Welcome back! Please sign in to continue."}
