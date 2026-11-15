@@ -107,7 +107,7 @@ export function InquireCard({ previewMode = false, property }: { previewMode?: b
           </svg>
           <div>
             <p className="text-sm font-semibold text-black">{isFarm ? "Ask about this farm" : "Inquire Us"}</p>
-            <p className="text-[11px] text-black/45">{isFarm ? "Request verified listing details from our team" : "Let&apos;s connect and inquire about the property"}</p>
+            <p className="text-[11px] text-black/45">{isFarm ? "Request verified listing details from our team" : "Let’s connect and inquire about the property"}</p>
           </div>
         </div>
         <svg

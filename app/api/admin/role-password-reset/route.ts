@@ -14,8 +14,10 @@ export async function POST(request: Request) {
 	if (!email || !["agent", "developer"].includes(role ?? "")) return NextResponse.json({ error: "A valid account role and email are required." }, { status: 400 });
 	const { data: target, error } = await supabaseServer.from("profiles").select("id").eq("email", email).eq("role", role).eq("is_active", true).maybeSingle();
 	if (error || !target) return NextResponse.json({ error: `No active ${role} login account matches that email.` }, { status: 404 });
+	const resetUrl = new URL("/reset-password", request.url);
+	resetUrl.searchParams.set("next", role === "agent" ? "/agent" : "/developer");
 	const { error: resetError } = await supabaseServer.auth.resetPasswordForEmail(email, {
-		redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin}/reset-password?next=${role === "agent" ? "/agent" : "/developer"}`,
+		redirectTo: resetUrl.toString(),
 	});
 	if (resetError) return NextResponse.json({ error: resetError.message }, { status: 422 });
 	return NextResponse.json({ ok: true });

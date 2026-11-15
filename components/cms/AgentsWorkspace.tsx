@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Mail, Plus, RefreshCw, Shield, Trash2, Upload, UserRound, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, Mail, Plus, RefreshCw, Shield, Trash2, Upload, UserRound, X } from "lucide-react";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { CmsPayload, CmsRow } from "./types";
@@ -627,7 +627,7 @@ function AgentEditor({ row, canEdit, loginEmail, metrics, onDelete, onSubmit }: 
 				</label>
 			</div>
 
-			{loginEmail ? <AgentAccountPanel email={loginEmail} /> : null}
+			{loginEmail ? <AgentAccountPanel email={loginEmail} canEdit={canEdit} /> : null}
 
 			{metrics}
 
@@ -641,9 +641,12 @@ function AgentEditor({ row, canEdit, loginEmail, metrics, onDelete, onSubmit }: 
 	);
 }
 
-function AgentAccountPanel({ email }: { email: string }) {
+function AgentAccountPanel({ email, canEdit }: { email: string; canEdit: boolean }) {
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState("");
+	const [showPasswordForm, setShowPasswordForm] = useState(false);
+	const [password, setPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
 
 	async function sendReset() {
 		if (!email) {
@@ -664,12 +667,47 @@ function AgentAccountPanel({ email }: { email: string }) {
 		}
 	}
 
+	async function updatePassword(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		if (password.length < 8) {
+			setMessage("Use a password with at least 8 characters.");
+			return;
+		}
+		if (password !== confirmPassword) {
+			setMessage("The passwords do not match.");
+			return;
+		}
+		setBusy(true);
+		setMessage("");
+		try {
+			const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
+			const response = await fetch("/api/admin/agent-password", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+				body: JSON.stringify({ email, password }),
+			});
+			const result = await response.json().catch(() => ({})) as { error?: string };
+			if (!response.ok) {
+				setMessage(result.error ?? "Could not update the agent password.");
+				return;
+			}
+			setPassword("");
+			setConfirmPassword("");
+			setShowPasswordForm(false);
+			setMessage(`Password updated for ${email}.`);
+		} catch {
+			setMessage("Could not update the password. Check your connection and try again.");
+		} finally {
+			setBusy(false);
+		}
+	}
+
 	return (
 		<div className="rounded-lg border border-black/10 bg-white p-4">
 			<div className="flex flex-wrap items-start justify-between gap-2">
 				<div>
 					<div className="text-sm font-semibold text-[#111111]">Login account</div>
-					<p className="text-xs text-black/50">The email this agent uses to sign in to their dashboard.</p>
+					<p className="text-xs text-black/50">Manage this agent’s sign-in password.</p>
 				</div>
 				<Pill tone="emerald">
 					<CheckCircle2 className="h-3 w-3" /> Account active
@@ -681,18 +719,26 @@ function AgentAccountPanel({ email }: { email: string }) {
 					<Mail className="h-3.5 w-3.5 shrink-0" />
 					<span className="break-all">{email}</span>
 				</div>
-				<button
-					type="button"
-					onClick={sendReset}
-					disabled={busy}
-					className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-900 transition hover:bg-emerald-50 disabled:opacity-50"
-				>
-					<RefreshCw className="h-3 w-3" />
-					{busy ? "Sending..." : "Send password reset"}
-				</button>
+				<div className="flex flex-wrap gap-2">
+					<button type="button" onClick={() => { setShowPasswordForm((shown) => !shown); setMessage(""); }} disabled={!canEdit || busy} className="inline-flex items-center gap-1.5 rounded-md bg-[#DE141C] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#bd1118] disabled:opacity-50">
+						<KeyRound className="h-3 w-3" /> {showPasswordForm ? "Cancel" : "Set password"}
+					</button>
+					<button type="button" onClick={sendReset} disabled={busy || !canEdit} className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-900 transition hover:bg-emerald-50 disabled:opacity-50">
+						<RefreshCw className="h-3 w-3" /> {busy ? "Working..." : "Email reset link"}
+					</button>
+				</div>
 			</div>
+			{showPasswordForm ? (
+				<form onSubmit={updatePassword} className="mt-3 grid gap-3 rounded-lg border border-black/10 bg-zinc-50 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+					<label className="block text-xs font-medium text-black/60">New password<input required minLength={8} autoComplete="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} /></label>
+					<label className="block text-xs font-medium text-black/60">Confirm password<input required minLength={8} autoComplete="new-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={inputClass} /></label>
+					<button type="submit" disabled={busy || !canEdit} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-[#111111] px-3 text-xs font-medium text-white disabled:opacity-50">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}{busy ? "Saving..." : "Update password"}</button>
+					<p className="text-[11px] text-black/45 sm:col-span-3">The new password is set immediately. Share it with the agent through a secure channel.</p>
+				</form>
+			) : null}
 
-			{message ? <p className="mt-3 text-[11px] text-black/60">{message}</p> : <p className="mt-3 flex items-center gap-1 text-[11px] text-black/45"><Shield className="h-3 w-3" /> Only the agent can set their own password.</p>}
+			<p className="mt-3 flex items-center gap-1 text-[11px] text-black/45"><Shield className="h-3 w-3 shrink-0" /> Password changes are restricted to admins. The current password is never shown.</p>
+			{message ? <p className="mt-2 text-[11px] text-black/60" role="status" aria-live="polite">{message}</p> : null}
 			{!email ? <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-700"><AlertCircle className="h-3 w-3" /> No profile is linked to this agent yet.</p> : null}
 		</div>
 	);
