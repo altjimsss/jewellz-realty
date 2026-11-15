@@ -302,14 +302,14 @@ function PortalAuthModalContent({
 			aria-modal="true"
 			aria-labelledby="portal-modal-title"
 		>
-			<div className="relative h-[590px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
+			<div className="relative flex h-[650px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-x-hidden overflow-y-auto rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
 				<div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#FBE7EA]" />
 				<div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-[#FBE7EA]" />
 				{/* Top Close Button */}
 				<button
 					type="button"
 					onClick={onClose}
-					className="absolute right-4 top-4 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/80 text-black/55 transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] focus-visible:ring-offset-2 sm:right-5 sm:top-5"
+					className="absolute right-4 top-[30px] z-20 grid h-9 w-9 place-items-center rounded-full bg-white/80 text-black/55 transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] focus-visible:ring-offset-2 sm:right-5"
 					aria-label="Close portal sign in modal"
 				>
 					<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -317,7 +317,7 @@ function PortalAuthModalContent({
 					</svg>
 				</button>
 
-				<div className="relative z-10 flex h-full flex-col overflow-y-auto">
+				<div className="relative z-10 flex min-h-0 flex-1 flex-col">
 				{/* Brand and portal switcher */}
 				<div className="mt-1 flex h-10 shrink-0 items-center justify-between gap-3 pr-11">
 					<div className="flex min-w-0 items-center gap-3">
@@ -329,13 +329,13 @@ function PortalAuthModalContent({
 						</div>
 					</div>
 					<div role="group" aria-label="Choose sign-in portal" className="flex shrink-0 items-center gap-0.5 rounded-xl border border-[#E4E5EA] bg-white/85 p-1">
-						<button type="button" aria-label="Agent portal" title="Agent" aria-pressed={activeRole === "agent"} onClick={() => { setActiveRole("agent"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "agent" ? "bg-[#FCEDEF] text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
+						<button type="button" aria-label="Agent portal" title="Agent" aria-pressed={activeRole === "agent"} onClick={() => { setActiveRole("agent"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "agent" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
 							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>
 						</button>
-						<button type="button" aria-label="Developer portal" title="Developer" aria-pressed={activeRole === "developer"} onClick={() => { setActiveRole("developer"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "developer" ? "bg-[#FCEDEF] text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
+						<button type="button" aria-label="Developer portal" title="Developer" aria-pressed={activeRole === "developer"} onClick={() => { setActiveRole("developer"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "developer" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
 							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M6 20V5l6-2 6 2v15M9 8h.01M15 8h.01M9 12h.01M15 12h.01M10 20v-4h4v4" /></svg>
 						</button>
-						<button type="button" aria-label="Admin portal" title="Admin" aria-pressed={activeRole === "admin"} onClick={() => { setActiveRole("admin"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "admin" ? "bg-[#FCEDEF] text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
+						<button type="button" aria-label="Admin portal" title="Admin" aria-pressed={activeRole === "admin"} onClick={() => { setActiveRole("admin"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "admin" ? "bg-[#DE141C] text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
 							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg>
 						</button>
 					</div>
