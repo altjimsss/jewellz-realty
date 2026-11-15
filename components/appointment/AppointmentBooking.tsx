@@ -540,6 +540,7 @@ export function AppointmentBooking() {
                 </svg>
                 <p className="text-[12.5px] leading-[1.65] text-black/50">
                   {isRescheduled ? "Your updated appointment is pending agent confirmation." : <>Please allow <span className="font-medium text-black">1–2 business days</span> for an agent to review your request. Our team will follow up with you.</>}
+                  <span className="mt-1 block">If you haven’t received an update after a few business days, please check your spam or junk folder.</span>
                 </p>
               </div>
 
