@@ -288,7 +288,7 @@ function PortalAuthModalContent({
 
 	return (
 		<div
-			className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#111111]/70 p-3 backdrop-blur-md transition-opacity duration-200 sm:p-6"
+			className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65 p-3 transition-opacity duration-200 sm:p-6"
 			onMouseDown={(e) => {
 				backdropPointerDown.current = e.target === e.currentTarget;
 			}}
@@ -300,8 +300,7 @@ function PortalAuthModalContent({
 			aria-modal="true"
 			aria-labelledby="portal-modal-title"
 		>
-			<div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/70 bg-white p-5 shadow-[0_32px_100px_-24px_rgba(0,0,0,0.65)] sm:p-7">
-				<div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#DE141C] via-[#f26345] to-[#DE141C]" />
+			<div className="relative flex h-[540px] max-h-[calc(100dvh-24px)] w-full max-w-[420px] flex-col overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl sm:p-5">
 				{/* Top Close Button */}
 				<button
 					type="button"
@@ -314,80 +313,32 @@ function PortalAuthModalContent({
 					</svg>
 				</button>
 
-				{/* Brand */}
-				<div className="flex min-h-9 items-center gap-2.5 pr-10">
-					<span className="grid h-8 w-8 place-items-center rounded-xl bg-[#DE141C] text-[11px] font-extrabold tracking-tight text-white shadow-sm">JZ</span>
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">Team access</p>
-						<p className="text-xs font-bold tracking-wide text-[#171717]">J'WELLZ REALTY</p>
+				{/* Title and compact icon-only portal switcher */}
+				<div className="mt-7 flex min-h-10 items-center justify-between gap-2 pr-11">
+					<div className="min-w-0">
+						<h2 id="portal-modal-title" className="truncate text-xl font-semibold tracking-tight text-[#111111]">
+							{isForgotPassword ? "Reset password" : `${activeRole === "developer" ? "Developer" : activeRole === "admin" ? "Admin" : "Agent"} sign in`}
+						</h2>
+						{isForgotPassword ? <p className="mt-0.5 text-xs text-black/50">We’ll email a reset link.</p> : null}
+					</div>
+					<div role="group" aria-label="Choose sign-in portal" className="flex shrink-0 items-center gap-1 rounded-lg border border-zinc-200 p-1">
+						<button type="button" aria-label="Agent portal" title="Agent" aria-pressed={activeRole === "agent"} onClick={() => { setActiveRole("agent"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "agent" ? "bg-zinc-100 text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
+							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>
+						</button>
+						<button type="button" aria-label="Developer portal" title="Developer" aria-pressed={activeRole === "developer"} onClick={() => { setActiveRole("developer"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "developer" ? "bg-zinc-100 text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
+							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M6 20V5l6-2 6 2v15M9 8h.01M15 8h.01M9 12h.01M15 12h.01M10 20v-4h4v4" /></svg>
+						</button>
+						<button type="button" aria-label="Admin portal" title="Admin" aria-pressed={activeRole === "admin"} onClick={() => { setActiveRole("admin"); setMessage(null); }} className={`grid h-8 w-8 place-items-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] ${activeRole === "admin" ? "bg-zinc-100 text-[#DE141C]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"}`}>
+							<svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg>
+						</button>
 					</div>
 				</div>
 
-				{/* Role Tabs */}
-				<div className="mt-5 flex rounded-2xl bg-[#F4F3F1] p-1.5">
-					<button
-						type="button"
-						aria-pressed={activeRole === "agent"}
-						onClick={() => {
-							setActiveRole("agent");
-							setMessage(null);
-						}}
-						className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-							activeRole === "agent"
-								? "bg-white text-[#111111] shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
-								: "text-black/55 hover:text-black"
-						}`}
-					>
-						Agent
-					</button>
-					<button
-						type="button"
-						aria-pressed={activeRole === "developer"}
-						onClick={() => {
-							setActiveRole("developer");
-							setMessage(null);
-						}}
-						className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-							activeRole === "developer"
-								? "bg-white text-[#111111] shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
-								: "text-black/55 hover:text-black"
-						}`}
-					>
-						Developer
-					</button>
-					<button
-						type="button"
-						aria-pressed={activeRole === "admin"}
-						onClick={() => {
-							setActiveRole("admin");
-							setMessage(null);
-						}}
-						className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-							activeRole === "admin"
-								? "bg-white text-[#111111] shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
-								: "text-black/55 hover:text-black"
-						}`}
-					>
-						Admin
-					</button>
-				</div>
-
-				{/* Header Titles */}
-				<div className="mt-6">
-					<h2 id="portal-modal-title" className="text-[26px] font-bold tracking-[-0.04em] text-[#111111]">
-						{isForgotPassword ? "Reset password" : `${activeRole === "developer" ? "Developer" : activeRole === "admin" ? "Admin" : "Agent"} sign in`}
-					</h2>
-					<p className="mt-1 text-sm leading-5 text-black/55">
-						{isForgotPassword
-							? "We’ll email you a reset link."
-							: "Sign in to continue to your workspace."}
-					</p>
-				</div>
-
 				{/* Message Banner */}
+				<div aria-live="polite" className="mt-2 h-9 shrink-0 overflow-hidden">
 				{message ? (
 					<div
-						className={`mt-4 rounded-xl border p-3 text-xs font-medium leading-5 ${
+						className={`flex h-9 items-center rounded-lg border px-3 text-xs font-medium leading-4 ${
 							message.type === "error"
 								? "border-red-200 bg-red-50 text-red-800"
 								: message.type === "success"
@@ -395,13 +346,14 @@ function PortalAuthModalContent({
 									: "border-blue-200 bg-blue-50 text-blue-800"
 						}`}
 					>
-						{message.text}
+						<span className="line-clamp-2">{message.text}</span>
 					</div>
 				) : null}
+				</div>
 
 				{/* Forms */}
 				{isForgotPassword ? (
-					<form onSubmit={handleForgotPassword} className="mt-5 space-y-4">
+					<form onSubmit={handleForgotPassword} className="mt-3 space-y-3">
 						<label className="block">
 							<span className="mb-1.5 block text-xs font-semibold text-black/65">
 								Email
@@ -412,7 +364,7 @@ function PortalAuthModalContent({
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder="name@company.com"
-								className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 text-sm text-[#111111] outline-none transition placeholder:text-zinc-400 focus:border-[#DE141C] focus:bg-white focus:ring-4 focus:ring-[#DE141C]/10"
+								className="h-10 w-full rounded-lg border border-zinc-200 bg-zinc-50/70 px-3.5 text-sm text-[#111111] outline-none transition placeholder:text-zinc-400 focus:border-[#DE141C] focus:bg-white focus:ring-2 focus:ring-[#DE141C]/10"
 							/>
 						</label>
 
@@ -422,7 +374,7 @@ function PortalAuthModalContent({
 							<button
 								type="submit"
 								disabled={loading}
-								className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#DE141C] text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(222,20,28,0.8)] transition hover:bg-[#b80f15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] focus-visible:ring-offset-2 disabled:opacity-50"
+								className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#DE141C] text-sm font-semibold text-white transition hover:bg-[#b80f15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] focus-visible:ring-offset-2 disabled:opacity-50"
 							>
 								{loading ? "Sending link…" : "Send reset link"}
 							</button>
@@ -439,7 +391,7 @@ function PortalAuthModalContent({
 						</div>
 					</form>
 				) : (
-					<form onSubmit={handlePasswordSignIn} autoComplete="off" className="mt-5 space-y-3.5">
+					<form onSubmit={handlePasswordSignIn} autoComplete="off" className="mt-3 space-y-3">
 						<label className="block">
 							<span className="mb-1.5 block text-xs font-semibold text-black/65">
 								Email
@@ -452,7 +404,7 @@ function PortalAuthModalContent({
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder="name@company.com"
-								className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 text-sm text-[#111111] outline-none transition placeholder:text-zinc-400 focus:border-[#DE141C] focus:bg-white focus:ring-4 focus:ring-[#DE141C]/10"
+								className="h-10 w-full rounded-lg border border-zinc-200 bg-zinc-50/70 px-3.5 text-sm text-[#111111] outline-none transition placeholder:text-zinc-400 focus:border-[#DE141C] focus:bg-white focus:ring-2 focus:ring-[#DE141C]/10"
 							/>
 						</label>
 
@@ -481,7 +433,7 @@ function PortalAuthModalContent({
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="••••••••"
-									className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/70 pl-4 pr-11 text-sm text-[#111111] outline-none transition placeholder:text-zinc-400 focus:border-[#DE141C] focus:bg-white focus:ring-4 focus:ring-[#DE141C]/10"
+									className="h-10 w-full rounded-lg border border-zinc-200 bg-zinc-50/70 pl-3.5 pr-11 text-sm text-[#111111] outline-none transition placeholder:text-zinc-400 focus:border-[#DE141C] focus:bg-white focus:ring-2 focus:ring-[#DE141C]/10"
 								/>
 								<button
 									type="button"
@@ -505,11 +457,11 @@ function PortalAuthModalContent({
 
 						<ReCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
-						<div className="flex flex-col gap-2 pt-2">
+						<div className="flex flex-col gap-1.5 pt-1">
 							<button
 								type="submit"
 								disabled={loading}
-								className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#DE141C] text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(222,20,28,0.8)] transition hover:bg-[#b80f15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+								className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#DE141C] text-sm font-semibold text-white transition hover:bg-[#b80f15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{loading ? "Signing in…" : "Sign in"}
 							</button>
@@ -518,7 +470,7 @@ function PortalAuthModalContent({
 								type="button"
 								disabled={loading}
 								onClick={handleSendMagicLink}
-								className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium text-black/55 transition hover:bg-black/[0.035] hover:text-black disabled:opacity-50"
+								className="inline-flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium text-black/55 transition hover:bg-black/[0.035] hover:text-black disabled:opacity-50"
 							>
 								Email me a sign-in link
 							</button>
@@ -526,7 +478,7 @@ function PortalAuthModalContent({
 					</form>
 				)}
 
-				<div className="mt-5 flex items-center justify-center gap-1.5 border-t border-black/[0.06] pt-4 text-[11px] text-black/40">
+				<div className="mt-auto flex items-center justify-center gap-1.5 border-t border-black/[0.06] pt-3 text-[11px] text-black/40">
 					<svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
 						<path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
 					</svg>
