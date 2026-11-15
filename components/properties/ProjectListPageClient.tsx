@@ -407,6 +407,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 	const [appliedFilters, setAppliedFilters] = useState<PropertyFiltersState>(normalizedInitialFilters);
 	const [hasSearched, setHasSearched] = useState(hasInitialFilters);
 	const searchIntentRequest = useRef(0);
+	const categoryOnlySearch = activeCategory !== "All" && Object.values(appliedFilters).every((value) => !value.trim());
 
 	// Derive province list and filtered municipality list from DB-sourced locationOptions
 	const provinceOptions: string[] = [...new Map(locationOptions.map((item) => [item.province.trim().toLowerCase(), item.province.trim()])).values()]
@@ -665,7 +666,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 											property={property}
 											href={`/project-list/${property.slug}`}
 											aiReason={ai?.reason}
-											aiConfidence={ai?.confidence}
+											aiConfidence={categoryOnlySearch ? 100 : ai?.confidence}
 										/>
 									);
 								})}
@@ -682,7 +683,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 													property={property}
 													href={`/project-list/${property.slug}`}
 													aiReason={ai?.reason}
-													aiConfidence={ai?.confidence}
+													aiConfidence={categoryOnlySearch ? 100 : ai?.confidence}
 												/>
 											);
 										})}
@@ -701,7 +702,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 											property={property}
 											href={`/project-list/${property.slug}`}
 											aiReason={ai?.reason}
-											aiConfidence={ai?.confidence}
+											aiConfidence={categoryOnlySearch ? 100 : ai?.confidence}
 										/>
 									);
 								})}

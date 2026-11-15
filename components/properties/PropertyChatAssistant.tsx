@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { Bot, SendHorizontal, UserRound } from "lucide-react";
 import type { Property } from "@/types/property";
 import type { PropertyChatMessage, PropertyChatResponse } from "@/lib/property-chat";
 
@@ -22,12 +22,9 @@ type PropertyChatAssistantProps = {
 };
 
 const quickPrompts = [
-  "What schools are nearby? 🏫",
-  "Is there a hospital close by? 🏥",
-  "Compare with similar properties",
-  "Good for a small family? 👨‍👩‍👧",
-  "Is this still available?",
-  "What should I ask before booking?",
+  { label: "Nearby", prompt: "What schools, hospitals, and shops are nearby?" },
+  { label: "Compare", prompt: "Compare this with similar properties." },
+  { label: "Viewing", prompt: "How can I book a viewing?" },
 ];
 
 function createId() {
@@ -250,14 +247,13 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
       id: createId(),
       role: "assistant",
       content: property
-        ? `Hey there! 👋 I'm Jewel, your J'WELLZ REALTY guide for this listing. Ask me anything about ${property.title} — nearby spots, how it compares to similar properties, viewing steps, you name it!`
-        : "Hey there! 👋 I'm Jewel, your J'WELLZ REALTY property guide. Ask me to find a listing, compare properties, or share details about a home, condo, or lot.",
+        ? `Hi! I'm Jewel, your J'WELLZ REALTY guide for ${property.title}. Ask about this property, nearby places, or booking a viewing.`
+        : "Hi! I'm Jewel, your J'WELLZ REALTY property guide. Ask me to find a listing, compare properties, or learn about a home, condo, or lot.",
       actions: [],
     },
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [status, setStatus] = useState<string>("Jewel is ready to help.");
   const [announcement, setAnnouncement] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -273,7 +269,6 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
 
     setInput("");
     setIsSending(true);
-    setStatus("Jewel is thinking…");
     setAnnouncement("Jewel is thinking.");
 
     const userMessage: ChatMessage = {
@@ -294,7 +289,6 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
       const payload = await fetchPropertyPrompt(property, trimmedMessage, [...history, userMessage]);
       const rawContent = payload.content || payload.fallbackReply;
       const { text, actions } = parseActions(rawContent);
-      setStatus("Jewel is ready.");
       setAnnouncement(`Jewel replied: ${text}`);
       setMessages((current) =>
         current.map((message) =>
@@ -314,7 +308,6 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
             : message
         )
       );
-      setStatus("Jewel encountered an issue.");
     } finally {
       setIsSending(false);
     }
@@ -323,57 +316,48 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
   return (
     <>
       {/* ── Chat Widget ── */}
-      <div className="flex h-[540px] max-h-[72vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white">
+      <div className="flex h-[540px] max-h-[72vh] flex-col overflow-hidden rounded-2xl border border-[#E5E5E7] bg-white">
         {/* Header */}
-        <div className="border-b border-black/8 bg-[#f5f5f5] px-3.5 py-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <Image
-                src="/assets/chaticon.svg"
-                alt="Jade AI"
-                width={36}
-                height={36}
-                className="h-9 w-9 shrink-0 rounded-xl border border-black/10 bg-white p-1"
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#f5f5f5] bg-emerald-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-semibold text-black">Jewel</p>
-                <span className="rounded-full bg-emerald-50 px-1.5 py-px text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-600">
-                  AI Guide
-                </span>
+        <div className="border-b border-[#ECECEF] bg-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#DE141C] text-white">
+              <Bot aria-hidden="true" className="h-5 w-5" strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold tracking-tight text-[#191919]">Jewel</p>
+                <span className="rounded bg-[#FDEBED] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-[#B5121B]">AI guide</span>
               </div>
-              <p className="text-[10.5px] text-black/60">{status}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#737373]">
+                <span className={`h-1.5 w-1.5 rounded-full ${isSending ? "animate-pulse bg-[#DE141C]" : "bg-emerald-500"}`} />
+                {isSending ? "Jewel is thinking..." : "Online | Here to help"}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Messages */}
         <div
-          className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-[#fafafa] to-white p-3.5"
+          className="min-h-0 flex-1 overflow-y-auto bg-[#F7F7F8] p-4"
         >
-          <div className="space-y-3.5">
-            {messages.map((message) => (
+          <div className="space-y-4">
+            {messages.map((message, messageIndex) => (
               <div
                 key={message.id}
-                className={`flex items-end gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex gap-2.5 ${message.role === "user" ? "items-end justify-end" : "items-start justify-start"}`}
               >
                 {message.role === "assistant" && (
-                  <Image
-                    src="/assets/chatbot.svg"
-                    alt="Jewel"
-                    width={26}
-                    height={26}
-                    className="mb-0.5 h-[26px] w-[26px] shrink-0 rounded-full object-cover"
-                  />
+                  <span className="mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#DE141C] text-white">
+                    <Bot aria-label="Jewel" className="h-4 w-4" strokeWidth={2.1} />
+                  </span>
                 )}
 
+                <div className={message.role === "assistant" ? "flex max-w-[85%] flex-col items-start" : "max-w-[85%]"}>
                 <div
-                  className={`max-w-[85%] rounded-[16px] px-3.5 py-2.5 ${
+                  className={`max-w-full rounded-[16px] px-3.5 py-2.5 ${
                     message.role === "user"
-                      ? "rounded-br-[4px] bg-[#DE141C] text-white"
-                      : "rounded-bl-[4px] border border-black/[0.08] bg-white text-black/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                      ? "rounded-br-[5px] bg-[#DE141C] text-white"
+                      : "rounded-bl-[5px] border border-[#ECECEF] bg-white text-[#303030]"
                   }`}
                 >
                   {message.isLoading ? (
@@ -399,18 +383,19 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
                       )}
                     </>
                   ) : (
-                    <p className="text-[12px] leading-[1.55]">{message.content}</p>
+                    <p className="text-[12px] leading-[1.6]">{message.content}</p>
                   )}
                 </div>
 
-                {message.role === "user" && (
-                  <div className="mb-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-black/80 text-white">
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
-                      <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                      <path d="M5 19a7 7 0 0114 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                    </svg>
+                {messages.length === 1 && messageIndex === 0 && message.role === "assistant" && !message.isLoading ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {quickPrompts.map(({ label, prompt }) => (
+                      <button key={label} type="button" title={prompt} onClick={() => void handleSend(prompt)} disabled={isSending || previewMode} className="rounded-md border border-[#E5E5E7] bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#555555] transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 disabled:cursor-not-allowed disabled:opacity-50">{label}</button>
+                    ))}
                   </div>
-                )}
+                ) : null}
+                </div>
+                {message.role === "user" && <span className="mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#222222] text-white"><UserRound aria-label="You" className="h-4 w-4" strokeWidth={2} /></span>}
               </div>
             ))}
             <div ref={bottomRef} />
@@ -419,21 +404,7 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
         <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-black/[0.07] bg-[#f5f5f5] p-2.5">
-          {/* Quick prompts */}
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                onClick={() => handleSend(prompt)}
-                disabled={isSending || previewMode}
-                className="shrink-0 whitespace-nowrap rounded-full border border-black/10 bg-white px-2.5 py-1 text-[10.5px] font-medium text-black/55 transition hover:border-[#DE141C]/30 hover:bg-red-50/40 hover:text-[#DE141C] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
+        <div className="shrink-0 border-t border-[#ECECEF] bg-white p-3">
 
           {/* Input */}
           <form
@@ -446,21 +417,18 @@ export function PropertyChatAssistant({ property, previewMode = false }: Propert
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-base text-black/80 placeholder:text-black/40 focus:border-[#DE141C]/45 focus:ring-2 focus:ring-[#DE141C]/20 focus-visible:outline-none"
+              className="h-10 w-full rounded-lg border border-[#E0E0E3] bg-white px-3 text-sm text-[#222222] placeholder:text-[#929292] focus:border-[#DE141C] focus:ring-2 focus:ring-[#DE141C]/15 focus-visible:outline-none"
               aria-label="Message Jewel"
-              placeholder="Ask Jewel anything about this property…"
+              placeholder={property ? "Ask about this property..." : "Ask Jewel about a property..."}
               disabled={isSending || previewMode}
             />
             <button
               type="submit"
               disabled={isSending || previewMode || !input.trim()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DE141C] text-white transition hover:bg-[#c51018] disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#DE141C] text-white transition-colors hover:bg-[#C4121A] disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Send message"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M3 11.9L20.4 4.6 13.1 22l-1.8-7.5L3 11.9z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                <path d="M20.4 4.6L11.3 14.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
+              <SendHorizontal aria-hidden="true" className="h-4 w-4 fill-white" strokeWidth={2.2} />
             </button>
           </form>
         </div>
