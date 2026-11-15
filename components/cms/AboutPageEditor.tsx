@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
-import { ExternalLink, Plus, Save, Trash2 } from "lucide-react";
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { ExternalLink, ImagePlus, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { ABOUT_PAGE_CONTENT_KEY, parseAboutPageContent, type AboutHighlight, type AboutPageContent, type AboutStat, type AboutTeamMember } from "@/lib/about-page-content";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { SafeImage } from "@/components/ui/SafeImage";
 import type { CmsPayload, CmsRow } from "./types";
 
 type AboutPageEditorProps = {
@@ -19,6 +21,7 @@ export function AboutPageEditor({ row, canEdit, onSubmit, onDelete }: AboutPageE
 	const [content, setContent] = useState<AboutPageContent>(() => parseAboutPageContent(row?.value));
 	const [saving, setSaving] = useState(false);
 	const [status, setStatus] = useState("");
+	const [uploadingMember, setUploadingMember] = useState<number | null>(null);
 
 	function updateContent<K extends keyof AboutPageContent>(key: K, value: AboutPageContent[K]) {
 		setContent((current) => ({ ...current, [key]: value }));
@@ -32,6 +35,43 @@ export function AboutPageEditor({ row, canEdit, onSubmit, onDelete }: AboutPageE
 	}
 	function updateTeamMember(index: number, value: AboutTeamMember) {
 		setContent((current) => ({ ...current, teamMembers: current.teamMembers.map((item, itemIndex) => itemIndex === index ? value : item) }));
+	}
+
+	async function uploadTeamPhoto(index: number, event: ChangeEvent<HTMLInputElement>) {
+		const file = event.target.files?.[0];
+		event.target.value = "";
+		if (!file) return;
+		if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+			setStatus("Choose a JPG, PNG, WebP, or GIF image.");
+			return;
+		}
+		if (file.size > 10 * 1024 * 1024) {
+			setStatus("Choose an image smaller than 10 MB.");
+			return;
+		}
+
+		setUploadingMember(index);
+		setStatus("Uploading leadership photo...");
+		try {
+			const safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-|-$/g, "") || "team-photo";
+			const filePath = `about/team/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+			const { error } = await supabaseBrowser.storage.from("property-images").upload(filePath, file, {
+				cacheControl: "3600",
+				contentType: file.type,
+				upsert: false,
+			});
+			if (error) {
+				setStatus(`Photo upload failed: ${error.message}`);
+				return;
+			}
+			const { data } = supabaseBrowser.storage.from("property-images").getPublicUrl(filePath);
+			updateTeamMember(index, { ...content.teamMembers[index], imageUrl: data.publicUrl });
+			setStatus("Photo uploaded. Save the About Us page to publish it.");
+		} catch {
+			setStatus("Photo upload failed. Check your connection and try again.");
+		} finally {
+			setUploadingMember(null);
+		}
 	}
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -129,6 +169,20 @@ export function AboutPageEditor({ row, canEdit, onSubmit, onDelete }: AboutPageE
 								<div className="mt-2 grid gap-3">
 									<TextField label="Name" value={member.name} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, name: value })} />
 									<TextField label="Role" value={member.role} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, role: value })} />
+									<div className="grid gap-3 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-end">
+										<div className="relative aspect-square w-28 overflow-hidden border border-black/10 bg-zinc-100">
+											<SafeImage src={member.imageUrl} fallbackSrc="/assets/bannerprofessional.webp" alt={member.name ? `${member.name} photo preview` : "Leadership photo preview"} fill className="object-cover" sizes="112px" />
+										</div>
+										<div className="space-y-2">
+											<TextField label="Photo URL" value={member.imageUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, imageUrl: value })} placeholder="Upload a photo or paste an image URL" />
+											<label className={`inline-flex h-9 cursor-pointer items-center gap-2 border border-black/10 bg-white px-3 text-xs font-semibold text-black/65 transition hover:bg-zinc-50 ${!canEdit || uploadingMember === index ? "pointer-events-none opacity-50" : ""}`}>
+												{uploadingMember === index ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+												{uploadingMember === index ? "Uploading..." : "Upload photo"}
+												<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={!canEdit || uploadingMember === index} onChange={(event) => void uploadTeamPhoto(index, event)} className="sr-only" />
+											</label>
+											<p className="text-[11px] text-black/45">JPG, PNG, WebP, or GIF · up to 10 MB</p>
+										</div>
+									</div>
 									<TextField label="Photo URL" value={member.imageUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, imageUrl: value })} placeholder="/assets/team-member.webp or https://..." />
 									<div className="grid gap-3 sm:grid-cols-3">
 										<TextField label="X / Twitter profile" type="url" value={member.twitterUrl} disabled={!canEdit} onChange={(value) => updateTeamMember(index, { ...member, twitterUrl: value })} placeholder="https://x.com/username" />

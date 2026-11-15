@@ -504,8 +504,8 @@ const { heroIndex, onPrevHero, onNextHero } = useHeroCarousel({
               <span className="w-[3px] bg-[#DE141C]" />
               <div className="relative">
                 <div>
-                <p className="text-[12px] font-bold leading-none tracking-[0.08em] text-[#5F5F63]">DISCOVER YOUR</p>
-                <h1 className="mt-1 max-w-[12ch] text-[clamp(28px,8vw,40px)] font-bold leading-[0.98] tracking-[-0.04em] text-white">J&apos;WELLZ REALTY LIFE CHANGING</h1>
+                <p className="text-[12px] font-bold leading-none tracking-[0.08em] text-[#7F7F7F]">J&apos;WELLZ REALTY</p>
+                <h1 className="mt-1 max-w-[11ch] text-[clamp(28px,8vw,40px)] font-bold leading-[0.98] tracking-[-0.04em] text-white"><span className="block">LIFE</span><span className="block">CHANGING</span></h1>
                 </div>
                 <SparkleSvg showExtra className="pointer-events-none absolute -right-[145px] top-1 h-auto w-[132px]" />
               </div>

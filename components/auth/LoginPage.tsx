@@ -315,13 +315,9 @@ function LoginForm() {
 	}
 
 	return (
-		<main className={`relative isolate flex min-h-screen items-center justify-center px-6 py-12 text-[#111111] ${isExpired ? "bg-white" : "bg-[radial-gradient(circle_at_top,_rgba(222,20,28,0.07),_transparent_35%),linear-gradient(180deg,#fdf5f5_0%,#ffffff_100%)]"}`}>
-			{isExpired ? (
-				<>
-					<div aria-hidden="true" className="absolute inset-0 z-0 bg-[url('/assets/session-timeout-bg.png')] bg-cover bg-center" />
-					<div aria-hidden="true" className="absolute inset-0 z-0 bg-white/70" />
-				</>
-			) : null}
+		<main className="relative isolate flex min-h-screen items-center justify-center bg-white px-6 py-12 text-[#111111]">
+			<div aria-hidden="true" className="absolute inset-0 z-0 bg-[url('/assets/session-timeout-bg.png')] bg-cover bg-center" />
+			<div aria-hidden="true" className="absolute inset-0 z-0 bg-white/70" />
 			<section className="relative z-10 flex h-[640px] max-h-[calc(100dvh-24px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[24px] border border-[#E5E5E7] bg-white p-5 shadow-[0_18px_50px_-38px_rgba(0,0,0,0.45)] sm:p-6">
 				<div className="relative z-10 flex min-h-0 flex-1 flex-col">
 				<div className="mt-1 flex h-10 shrink-0 items-center justify-between gap-3">
