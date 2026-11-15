@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LayoutGrid, List as ListIcon, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LayoutGrid, List as ListIcon, LogOut, MapPin, MessageSquare, MousePointerClick, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -192,10 +192,10 @@ function shiftUtcDayKey(dayKey: string, offsetDays: number) {
 	return date.toISOString().slice(0, 10);
 }
 
-function dailyEngagementRows(events: CmsRow[], days = 14) {
+function dailyEngagementRows(events: CmsRow[], days = 14, endDate = utcDayKey()) {
 	const buckets = new Map<string, { visitors: Set<string>; sessionViews: Map<string, number> }>();
 	for (let offset = -(days - 1); offset <= 0; offset += 1) {
-		buckets.set(utcDayKey(offset), { visitors: new Set<string>(), sessionViews: new Map<string, number>() });
+		buckets.set(shiftUtcDayKey(endDate, offset), { visitors: new Set<string>(), sessionViews: new Map<string, number>() });
 	}
 
 	for (const event of events) {
@@ -449,10 +449,10 @@ type AiAnalyticsReport = {
 type ModelReadoutCategory = "traffic" | "property" | "engagement" | "predictive";
 
 const narrativeHeadingByCategory: Record<ModelReadoutCategory, string> = {
-	traffic: "Traffic insights",
+	traffic: "Visitor insights",
 	property: "Listing insights",
-	predictive: "Predictive insights",
-	engagement: "Engagement insights",
+	predictive: "What may happen next",
+	engagement: "Visitor activity",
 };
 
 type ModelReadoutProps = {
@@ -509,25 +509,25 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 	}, [aiEnabled, loadReport]);
 
 	const report = aiEnabled ? state.report : undefined;
-	const sourceLabel = report?.narrativeSource === "ai" ? "AI narrative" : report?.narrativeSource === "deterministic" ? "Deterministic fallback" : "Stored report";
+	const sourceLabel = report?.narrativeSource === "ai" ? "AI summary" : report?.narrativeSource === "deterministic" ? "Basic summary" : "Saved summary";
 
 	return (
 		<div className="rounded-2xl border border-black/10 bg-[#111111] p-4 text-white">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Model readout</div>
+					<div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Insights and next steps</div>
 					<h4 className="mt-2 text-lg font-semibold tracking-[-0.03em]">{title}</h4>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					{report ? <span className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${report.narrativeSource === "ai" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>{sourceLabel}</span> : null}
-					{report ? <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">{report.confidence} confidence</span> : null}
+					{report ? <span title="How well the available data supports this summary." className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">Data reliability: {report.confidence}</span> : null}
 					<button
 						type="button"
 						onClick={toggleAi}
-						title={aiEnabled ? "Turn the AI narrative off to save AI tokens" : "Turn the AI narrative on (uses AI tokens)"}
+						title={aiEnabled ? "Turn the AI summary off to save AI tokens" : "Turn the AI summary on (uses AI tokens)"}
 						className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${aiEnabled ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" : "border-white/15 bg-white/10 text-white/70 hover:bg-white/20"}`}
 					>
-						AI narrative: {aiEnabled ? "ON" : "OFF"}
+						AI summary: {aiEnabled ? "ON" : "OFF"}
 					</button>
 					{aiEnabled ? (
 						<button
@@ -542,7 +542,7 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 				</div>
 			</div>
 
-			{!aiEnabled ? <p className="mt-2 text-[11px] text-white/45">AI narrative is off.</p> : null}
+			{!aiEnabled ? <p className="mt-2 text-[11px] text-white/45">AI summary is off.</p> : null}
 
 			<div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
 				{metrics.map((metric) => (
@@ -553,6 +553,7 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 					</div>
 				))}
 			</div>
+			<p className="mt-3 text-[11px] leading-5 text-white/50">A session is one website visit. Inquiry rate means inquiries per 100 listing views. A one-page visit means someone viewed one page, then left. Forecasts are estimates based on past activity and can change.</p>
 
 			{aiEnabled && state.loading ? <p className="mt-4 text-sm text-white/60">Generating report...</p> : null}
 			{aiEnabled && state.error ? <p className="mt-4 text-sm text-red-300">{state.error}</p> : null}
@@ -675,6 +676,7 @@ function AnalyticsVisualSuite({
 	trafficRows,
 	sessions,
 	events,
+	selectedDateFilter,
 	selectedProperty,
 	selectedPropertyPerformance,
 	selectedPropertyChartRows,
@@ -689,6 +691,7 @@ function AnalyticsVisualSuite({
 	trafficRows: Array<{ source: string; session_count: number; total_page_views: number; share_pct: number }>;
 	sessions: CmsRow[];
 	events: CmsRow[];
+	selectedDateFilter: string | null;
 	selectedProperty: CmsRow | null;
 	selectedPropertyPerformance: { total_views: number; detail_opens: number; total_interactions: number; total_inquiries: number; inquiry_rate_pct: number; avg_dwell_seconds: number } | null;
 	selectedPropertyChartRows: Array<{ label: string; value: number }>;
@@ -726,15 +729,13 @@ function AnalyticsVisualSuite({
 			})
 			.sort((a, b) => (b.performance?.total_views ?? 0) - (a.performance?.total_views ?? 0) || a.title.localeCompare(b.title));
 	}, [listingRows, properties, propertySearch, propertyCategoryFilter, propertyStatusFilter]);
-	const visitorsOverTime = dailyEngagementRows(events);
+	const visitorsOverTime = dailyEngagementRows(events, selectedDateFilter ? 1 : 14, selectedDateFilter ?? utcDayKey());
 	const visitorsAreLive = hasMeaningfulChartValue(visitorsOverTime, ["sessions", "visitors"]);
 	const trafficPieIsLive = hasMeaningfulChartValue(trafficRows, ["session_count"]);
 	const trafficPie = trafficRows.map((row) => ({ name: row.source || "Unknown", value: row.session_count }));
 	const mostViewedRaw = listingRows.slice().sort((a, b) => b.total_views - a.total_views).slice(0, 8);
 	const mostViewedIsLive = hasMeaningfulChartValue(mostViewedRaw, ["total_views"]);
 	const mostViewed = mostViewedRaw;
-	const bounceRows = visitorsOverTime;
-	const bounceIsLive = visitorsOverTime.some((row) => row.sessions > 0);
 	const priceByLocationRaw = Object.entries(groupByLabel(properties, locationLabel))
 		.map(([location, rows]) => ({ location, price: Math.round(numberAverage(rows.map(propertyPrice))) }))
 		.filter((row) => row.price > 0)
@@ -861,10 +862,33 @@ function AnalyticsVisualSuite({
 		.sort((first, second) => second.count - first.count)
 		.slice(0, 8);
 	const engagementActionTotal = Object.values(engagementActionCounts).reduce((total, count) => total + count, 0);
-	const totalSessions14d = visitorsOverTime.reduce((sum, row) => sum + row.sessions, 0);
+	const propertyInteractionLabels: Record<string, string> = {
+		detail_open: "Listing details opened",
+		property_map_open: "Property maps opened",
+		property_nearby_click: "Nearby places clicked",
+		property_gallery_open: "Photo galleries opened",
+		property_gallery_interaction: "Gallery interactions",
+		property_gallery_next: "Gallery next clicked",
+		property_gallery_previous: "Gallery previous clicked",
+		recommendation_click: "Recommendations clicked",
+	};
+	const propertyInteractionCounts = events.reduce<Record<string, number>>((counts, event) => {
+		const eventName = analyticsEventName(event);
+		const label = propertyInteractionLabels[eventName];
+		if (label) counts[label] = (counts[label] ?? 0) + 1;
+		return counts;
+	}, {});
+	const propertyInteractionRows = Object.entries(propertyInteractionCounts)
+		.map(([action, count]) => ({ action, count }))
+		.sort((first, second) => second.count - first.count);
+	const propertyInteractionTotal = propertyInteractionRows.reduce((sum, row) => sum + row.count, 0);
+	const trackedClickTotal = events.filter((event) => ["property_nearby_click", "recommendation_click"].includes(analyticsEventName(event))).length;
+	const mapOpenTotal = events.filter((event) => analyticsEventName(event) === "property_map_open").length;
+	const totalSessionsInWindow = visitorsOverTime.reduce((sum, row) => sum + row.sessions, 0);
 	const avgBounceRate = numberAverage(visitorsOverTime.filter((row) => row.sessions > 0).map((row) => row.bounceRate));
 	const sessionTrend = localRegression(visitorsOverTime.map((row) => row.sessions));
-	const windowStart = utcDayKey(-13);
+	const trendLabel = (trend: string) => trend === "up" ? "rising" : trend === "down" ? "falling" : "steady";
+	const windowStart = selectedDateFilter ?? utcDayKey(-13);
 	const visitorWindow = new Set<string>();
 	for (const event of events) {
 		if (analyticsEventName(event) !== "page_view") continue;
@@ -883,17 +907,19 @@ function AnalyticsVisualSuite({
 	const topTypePrice = averagePriceByType[0] ?? null;
 	const returningVisitorShare = totalVisitors ? Math.round((returningUsers / totalVisitors) * 100) : 0;
 	const trafficInsight = {
-		title: "Traffic & behavior readout",
+		title: "Visitor activity summary",
 		metrics: [
-			{ label: "Sessions (14d)", value: String(totalSessions14d), meta: `${visitorWindow.size} unique visitors` },
-			{ label: "Avg bounce rate", value: `${avgBounceRate.toFixed(0)}%`, meta: "single-view sessions" },
-			{ label: "Top source share", value: `${topSource?.share_pct ?? 0}%`, meta: topSource?.source || "No source yet" },
-			{ label: "Next-day sessions", value: String(sessionTrend.forecastNextPeriod), meta: `${sessionTrend.trend} trend · R2 ${sessionTrend.r2}` },
+			{ label: selectedDateFilter ? "Visits on selected date" : "Visits (last 14 days)", value: String(totalSessionsInWindow), meta: `${visitorWindow.size} distinct visitors` },
+			{ label: "Property actions", value: String(propertyInteractionTotal), meta: "Map, gallery, details, and recommendation activity" },
+			{ label: "Map opens", value: String(mapOpenTotal), meta: "Property location maps opened" },
+			{ label: "Top visitor source", value: `${topSource?.share_pct ?? 0}%`, meta: topSource?.source || "No source recorded" },
 		],
-		insight: topSource
-			? `${topSource.source || "Direct"} leads with ${topSource.share_pct}% of sessions and ${topSource.total_page_views} page views. Across the last 14 days the session trend is ${sessionTrend.trend} (R2 ${sessionTrend.r2}) with a next-day forecast of ${sessionTrend.forecastNextPeriod} sessions; average bounce is ${avgBounceRate.toFixed(0)}%.`
-			: `No session sources are recorded yet. The 14-day session trend is ${sessionTrend.trend} with a next-day forecast of ${sessionTrend.forecastNextPeriod} sessions — add UTM/referrer capture to unlock channel-level recommendations.`,
-		actions: ["Compare top source against inquiry quality.", "Watch high-bounce days before scaling campaigns.", "Keep UTM capture on all ads and social posts."],
+		insight: selectedDateFilter
+			? `For the selected date there were ${totalSessionsInWindow} visits from ${visitorWindow.size} distinct visitors. ${propertyInteractionTotal} property actions and ${mapOpenTotal} map opens were recorded. ${topSource ? `${topSource.source || "Direct"} is the leading source across the available traffic data.` : "Visitor source data is not recorded yet."}`
+			: topSource
+			? `${topSource.source || "Direct"} brought the most visitors, accounting for ${topSource.share_pct}% of sessions and ${topSource.total_page_views} page views. Visitor activity has been ${trendLabel(sessionTrend.trend)} recently. The current estimate is about ${sessionTrend.forecastNextPeriod} sessions tomorrow; treat it as a guide, not a guarantee.`
+			: `No visitor sources have been recorded yet. Sessions and property actions will appear as visitors browse the site. Add UTM tags to campaign links to tell which ads and social posts bring visitors.`,
+		actions: ["Compare visitor sources with the inquiries they bring.", "Check which listings get map, gallery, and detail activity.", "Use UTM tags on campaign links to identify their source."],
 	};
 	const totalListingViews = listingRows.reduce((sum, row) => sum + row.total_views, 0);
 	const totalListingInquiries = listingRows.reduce((sum, row) => sum + row.total_inquiries, 0);
@@ -904,43 +930,49 @@ function AnalyticsVisualSuite({
 		title: "Property performance readout",
 		metrics: [
 			{ label: "Total listing views", value: String(totalListingViews), meta: `${listingRows.length} listings tracked` },
-			{ label: "View → inquiry", value: `${listingConversionRate.toFixed(2)}%`, meta: `${totalListingInquiries} inquiries` },
-			{ label: "Avg dwell time", value: `${avgDwellSeconds.toFixed(0)}s`, meta: "recorded on property pages" },
-			{ label: "High-view, low-inquiry", value: String(lowViewNoInquiry), meta: "listings under 2% conversion" },
+			{ label: "Views followed by inquiries", value: `${listingConversionRate.toFixed(2)}%`, meta: `${totalListingInquiries} inquiries from listing views` },
+			{ label: "Average page viewing time", value: `${avgDwellSeconds.toFixed(0)}s`, meta: "on property pages" },
+			{ label: "Listings needing attention", value: String(lowViewNoInquiry), meta: "5+ views but fewer than 2 inquiries per 100 views" },
 		],
 		insight: mostViewed[0]
-			? `${mostViewed[0].title} leads with ${mostViewed[0].total_views} views and ${mostViewed[0].total_inquiries} inquiries (${mostViewed[0].inquiry_rate_pct}% conversion). Overall the catalog converts ${listingConversionRate.toFixed(2)}% of views to inquiries; ${lowViewNoInquiry} listing${lowViewNoInquiry === 1 ? " has" : "s have"} 5+ views but under 2% conversion — those are the pricing, gallery, or CTA candidates.`
+			? `${mostViewed[0].title} leads with ${mostViewed[0].total_views} views and ${mostViewed[0].total_inquiries} inquiries (${mostViewed[0].inquiry_rate_pct} inquiries per 100 views). Across all listings, ${listingConversionRate.toFixed(2)} inquiries were recorded per 100 views. ${lowViewNoInquiry} listing${lowViewNoInquiry === 1 ? " has" : "s have"} at least 5 views but fewer than 2 inquiries per 100 views and may need clearer pricing, photos, or inquiry buttons.`
 			: "Listing performance data is still sparse. Views and inquiries will sharpen this section.",
-		actions: ["Review high-view low-inquiry listings.", "Compare price per sqm by location.", "Improve galleries for listings with low engagement."],
+		actions: ["Review listings with many views but few inquiries.", "Compare average prices by location.", "Improve photos on listings with little gallery activity."],
 	};
 	const predictiveInsight = {
-		title: "Predictive readout",
-		insight: `The inquiry trend over the last ${demand.series.length} days is ${demandRegression.trend}; the next-day forecast is ${demandRegression.forecastNextPeriod} inquiries, with R2 ${demandRegression.r2}. The views-to-inquiry conversion rate has ${conversion.observations} observed days with traffic (trend ${conversion.regression.trend}, R2 ${conversion.regression.r2}); the next-period conversion forecast is ${conversion.forecast[0]?.value ?? 0}%. Treat low-R2 forecasts as directional only.`,
-		actions: ["Use forecasts as early warning, not certainty.", "Validate predicted demand against next report.", "Flag large price outliers for review."],
+		title: "What recent activity may indicate",
+		insight: `Daily inquiries have been ${trendLabel(demandRegression.trend)} over the last ${demand.series.length} days. The model estimates about ${demandRegression.forecastNextPeriod} inquiries tomorrow. The share of listing views followed by an inquiry was measurable on ${conversion.observations} days; the next-period estimate is ${conversion.forecast[0]?.value ?? 0}% — about ${(conversion.forecast[0]?.value ?? 0).toFixed(1)} inquiries per 100 listing views. These are estimates based on recent activity, not promises.`,
+		actions: ["Use estimates as planning guides, not guarantees.", "Compare estimates with actual inquiries next week.", "Review unusual price differences before acting."],
 	};
 	const predictiveMetrics: ReadoutMetric[] = [
-		{ label: "Next-day inquiries", value: String(demandRegression.forecastNextPeriod), meta: `${demandRegression.trend} trend · R2 ${demandRegression.r2}` },
-		{ label: "Next 7-day inquiries", value: demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1), meta: `${demandRegression.observations} observed days` },
-		{ label: "Conversion forecast", value: `${conversion.forecast[0]?.value ?? 0}%`, meta: `${conversion.observations} days with tracked views` },
-		{ label: "Conversion trend", value: conversion.regression.trend, meta: `R2 ${conversion.regression.r2} · ${conversion.observations} days` },
+		{ label: "Estimated inquiries tomorrow", value: String(demandRegression.forecastNextPeriod), meta: `Inquiry activity has been ${trendLabel(demandRegression.trend)}` },
+		{ label: "Estimated inquiries, next 7 days", value: demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1), meta: `Based on ${demandRegression.observations} days of inquiry records` },
+		{ label: "Estimated inquiries per 100 listing views", value: `${conversion.forecast[0]?.value ?? 0}%`, meta: `Based on ${conversion.observations} days with listing views` },
+		{ label: "Inquiry rate direction", value: trendLabel(conversion.regression.trend), meta: `Recent direction across ${conversion.observations} days with listing views` },
 	];
 	const engagementInsight = {
-		title: "Engagement readout",
+		title: "How visitors use the site",
 		metrics: [
-			{ label: "View → engagement", value: `${(totalViews ? (totalDetailOpens / totalViews) * 100 : 0).toFixed(1)}%`, meta: `${totalDetailOpens} detail/gallery/map actions` },
-			{ label: "Engagement → inquiry", value: `${(totalDetailOpens ? (totalInquiries / totalDetailOpens) * 100 : 0).toFixed(1)}%`, meta: `${totalInquiries} inquiries` },
-			{ label: "End-to-end funnel", value: `${(totalViews ? (totalInquiries / totalViews) * 100 : 0).toFixed(2)}%`, meta: "views to inquiries" },
-			{ label: "Returning / new", value: `${returningUsers} / ${newUsers}`, meta: "visitors in loaded window" },
+			{ label: "Views with a property action", value: `${(totalViews ? (totalDetailOpens / totalViews) * 100 : 0).toFixed(1)}%`, meta: `${totalDetailOpens} details, gallery, or map actions` },
+			{ label: "Actions followed by inquiries", value: `${(totalDetailOpens ? (totalInquiries / totalDetailOpens) * 100 : 0).toFixed(1)}%`, meta: `${totalInquiries} inquiries recorded` },
+			{ label: "Views followed by inquiries", value: `${(totalViews ? (totalInquiries / totalViews) * 100 : 0).toFixed(2)}%`, meta: "inquiries per listing view" },
+			{ label: "Returning / first-time visitors", value: `${returningUsers} / ${newUsers}`, meta: "in the loaded date range" },
 		],
-		insight: `The funnel recorded ${totalViews} views, ${totalDetailOpens} detail/gallery/map interactions, and ${totalInquiries} inquiries: ${(totalViews ? (totalDetailOpens / totalViews) * 100 : 0).toFixed(1)}% of views engage, ${(totalDetailOpens ? (totalInquiries / totalDetailOpens) * 100 : 0).toFixed(1)}% of engaged sessions inquire, and ${(totalViews ? (totalInquiries / totalViews) * 100 : 0).toFixed(2)}% convert end-to-end. Returning visitors: ${returningUsers} of ${totalVisitors}.`,
-		actions: ["Improve CTAs where views do not become inquiries.", "Use gallery and map interactions to find listing intent.", "Use dwell-time outliers to find strong listings."],
+		insight: `Visitors recorded ${totalViews} property views, ${totalDetailOpens} property actions (opening details, photos, or maps), and ${totalInquiries} inquiries. That is ${(totalViews ? (totalInquiries / totalViews) * 100 : 0).toFixed(2)} inquiries per 100 property views. ${returningUsers} visitors returned and ${newUsers} were first-time visitors in this date range.`,
+		actions: ["Make inquiry buttons clearer on popular listings.", "Use map and gallery activity to spot visitor interest.", "Compare returning and first-time visitor activity."],
 	};
 
 	return (
 		<div className="mt-5 space-y-5">
 			{category === "trafficBehavior" ? <div>
+				<div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+					<DashboardMetricCard compact Icon={Globe} label={selectedDateFilter ? "Visits (selected date)" : "Visits (last 14 days)"} value={totalSessionsInWindow.toLocaleString()} hint={`${visitorWindow.size.toLocaleString()} distinct visitors`} />
+					<DashboardMetricCard compact Icon={MousePointerClick} label="Tracked clicks" value={trackedClickTotal.toLocaleString()} hint="Nearby places and recommendations" />
+					<DashboardMetricCard compact Icon={MapPin} label="Map opens" value={mapOpenTotal.toLocaleString()} hint="Property location maps opened" />
+					<DashboardMetricCard compact Icon={Activity} label="One-page visits" value={`${avgBounceRate.toFixed(0)}%`} hint="Sessions with only one page viewed" />
+				</div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Sessions & visitors over time" description={visitorsAreLive ? `${totalSessions14d.toLocaleString()} sessions · ${visitorWindow.size.toLocaleString()} unique visitors in 14 days.` : "No sessions recorded yet."} isLive={visitorsAreLive}>
+					<AnalyticsChartCard title="Website visits and visitors" description={visitorsAreLive ? `${totalSessionsInWindow.toLocaleString()} visits from ${visitorWindow.size.toLocaleString()} distinct visitors ${selectedDateFilter ? "on the selected date" : "in the last 14 days"}.` : "No website visits recorded yet for this date range."} isLive={visitorsAreLive}>
 						{visitorsAreLive ? <ResponsiveContainer width="100%" height="100%">
 							<LineChart data={visitorsOverTime} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
@@ -952,7 +984,7 @@ function AnalyticsVisualSuite({
 							</LineChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No sessions have been recorded for the recent visitor window yet." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Traffic sources" description={trafficPieIsLive && topSource ? `${topSource.source || "Direct"} leads with ${topSource.share_pct}% of sessions.` : "No traffic sources recorded yet."} isLive={trafficPieIsLive}>
+					<AnalyticsChartCard title="Where visitors came from" description={trafficPieIsLive && topSource ? `${topSource.source || "Direct"} brought the most visitors (${topSource.share_pct}%).` : "No visitor sources recorded yet."} isLive={trafficPieIsLive}>
 						{trafficPieIsLive ? <ResponsiveContainer width="100%" height="100%">
 							<PieChart>
 								<Pie data={trafficPie} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
@@ -973,16 +1005,16 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No listing view counts yet. Property page tracking must write property_view events first." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Bounce rate over time" description={bounceIsLive ? `${avgBounceRate.toFixed(0)}% average bounce rate across tracked sessions.` : "No bounce data recorded yet."} isLive={bounceIsLive}>
-						{bounceIsLive ? <ResponsiveContainer width="100%" height="100%">
-							<LineChart data={bounceRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
-								<CartesianGrid vertical={false} stroke="#e8e8e8" />
-								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} unit="%" />
-								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="bounceRate" name="Bounce rate" stroke="#d97706" strokeWidth={2.5} dot={false} />
-							</LineChart>
-						</ResponsiveContainer> : <ChartEmptyState message="Bounce rate needs tracked sessions with page-view counts before it can be calculated." />}
+					<AnalyticsChartCard title="Property interactions" description={propertyInteractionTotal ? `${propertyInteractionTotal.toLocaleString()} tracked actions, including map opens, gallery use, and clicks.` : "Map, gallery, details, and recommendation actions will appear as visitors use them."} isLive={propertyInteractionTotal > 0}>
+						{propertyInteractionTotal ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={propertyInteractionRows} layout="vertical" margin={{ top: 6, right: 16, left: 8, bottom: 0 }}>
+								<CartesianGrid horizontal={false} stroke="#e8e8e8" />
+								<XAxis type="number" hide allowDecimals={false} />
+								<YAxis dataKey="action" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#52525b" }} width={158} />
+								<Tooltip content={<CmsChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.035)" }} />
+								<Bar dataKey="count" name="Actions" fill="#DE141C" radius={[0, 5, 5, 0]} maxBarSize={20} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="No property actions have been tracked in this date range yet." />}
 					</AnalyticsChartCard>
 				</div>
 				<div className="mt-4"><ModelReadout category="traffic" {...trafficInsight} /></div>
@@ -1136,27 +1168,27 @@ function AnalyticsVisualSuite({
 
 			{category === "predictiveAnalytics" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Conversion-rate forecast" description={conversionForecastIsLive ? `Next-period forecast: ${conversion.forecast[0]?.value ?? 0}% from ${conversion.observations} tracked days.` : `Preliminary forecast: ${conversion.forecast[0]?.value ?? 0}%; ${conversion.observations} of 3 tracked days.`} isLive={conversionForecastIsLive}>
+					<AnalyticsChartCard title="Estimated inquiries per 100 listing views" description={conversionForecastIsLive ? `About ${(conversion.forecast[0]?.value ?? 0).toFixed(1)} inquiries per 100 views, estimated from ${conversion.observations} days with listing views. Actual results may differ.` : `Early estimate: about ${(conversion.forecast[0]?.value ?? 0).toFixed(1)} inquiries per 100 views, based on ${conversion.observations} of 3 days with listing views.`} isLive={conversionForecastIsLive}>
 						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={conversionRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="rate" name="Actual conversion rate" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast conversion rate" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
+								<Line type="monotone" dataKey="rate" name="Actual inquiries per 100 views" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
+								<Line type="monotone" dataKey="forecast" name="Estimated inquiries per 100 views" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
 							</LineChart>
 						</ResponsiveContainer>
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Demand forecast" description={demandRowsAreLive ? `${demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1)} inquiries forecast over the next 7 days.` : "No recent inquiries; showing the 0-inquiry baseline forecast."} isLive={demandRowsAreLive}>
+					<AnalyticsChartCard title="Estimated inquiries" description={demandRowsAreLive ? `About ${demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1)} inquiries estimated over the next 7 days, based on recent activity.` : "No recent inquiries to guide an estimate yet; the chart shows a zero baseline."} isLive={demandRowsAreLive}>
 						<ResponsiveContainer width="100%" height="100%">
 							<LineChart data={demandRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
 								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => Number(value).toFixed(1)} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="demand" name="Actual inquiries" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 2, fill: "#DE141C" }} />
-								<Line type="monotone" dataKey="forecast" name="Forecast inquiries" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
+								<Line type="monotone" dataKey="demand" name="Recorded inquiries" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 2, fill: "#DE141C" }} />
+								<Line type="monotone" dataKey="forecast" name="Estimated inquiries" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
 							</LineChart>
 						</ResponsiveContainer>
 					</AnalyticsChartCard>
@@ -2584,7 +2616,7 @@ function AnalyticsPanel({
 		: normalizedAnalyticsReport === "propertyPerformance"
 			? "Property Performance"
 			: normalizedAnalyticsReport === "predictiveAnalytics"
-				? "Predictive Analytics"
+				? "Inquiries & Estimates"
 				: normalizedAnalyticsReport === "userEngagement"
 					? "User Engagement"
 		: activeReport === "agentPerformance"
@@ -2593,13 +2625,13 @@ function AnalyticsPanel({
 				? "Developer Portfolio"
 				: "Analytics Overview";
 	const reportDescription = normalizedAnalyticsReport === "trafficBehavior"
-		? "Visitor trends, traffic channels, listing visibility, and bounce indicators."
+		? "Visitor trends, visitor sources, listing views, and visits where only one page was viewed."
 		: normalizedAnalyticsReport === "propertyPerformance"
 			? "Listing price, location, view, inquiry, and price-per-sqm comparisons."
 			: normalizedAnalyticsReport === "predictiveAnalytics"
-				? "Forecasts, distributions, and property clusters for decision support."
+				? "Inquiry estimates based on recent activity, with notes about how much data supports them."
 				: normalizedAnalyticsReport === "userEngagement"
-					? "Funnel movement, property-page dwell time, and new versus returning behavior."
+					? "How listing views lead to inquiries, time spent on property pages, and repeat visits."
 		: activeReport === "agentPerformance"
 			? "Agent workload, response speed, and conversion performance."
 			: activeReport === "developerPortfolio"
@@ -2666,12 +2698,12 @@ function AnalyticsPanel({
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
 						<div>
 							<div className="flex items-center justify-between gap-2">
-								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><TrendingUp className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Next-Day Demand</span></span>
+								<span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center bg-[#DE141C] text-white"><TrendingUp className="h-3.5 w-3.5" /></span><span className="portal-stat-label truncate">Estimated Inquiries Tomorrow</span></span>
 								<ArrowUpRight className="h-4 w-4 shrink-0 text-black/55" aria-hidden="true" />
 							</div>
 							<div className="portal-stat-value">{nextDayForecast.toFixed(1)}</div>
 						</div>
-						<p className="portal-stat-hint mt-3">21-day forecast · {overviewDemand.regression.trend} trend.</p>
+						<p className="portal-stat-hint mt-3">Based on recent inquiries · {overviewDemand.regression.trend === "up" ? "rising" : overviewDemand.regression.trend === "down" ? "falling" : "steady"} activity.</p>
 					</div>
 
 					<div className="portal-stat-card group flex min-h-[132px] flex-col justify-between">
@@ -2714,6 +2746,7 @@ function AnalyticsPanel({
 						trafficRows={trafficChartRows}
 						sessions={sessions}
 						events={engagementEvents}
+						selectedDateFilter={_selectedDateFilter}
 						selectedProperty={selectedPortfolioProperty}
 						selectedPropertyPerformance={selectedPropertyPerformance}
 						selectedPropertyChartRows={selectedPropertyChartRows}
@@ -3403,8 +3436,8 @@ export default function AdminCms({
 						{ id: "analytics", label: "Overview", hint: "Performance summary", icon: BarChart3 },
 						{ id: "trafficBehavior", label: "Traffic & User Behavior", hint: "Visitors and sessions", icon: BarChart3 },
 						{ id: "propertyPerformance", label: "Property Performance", hint: "Listing KPIs", icon: Building2 },
-						{ id: "predictiveAnalytics", label: "Predictive Analytics", hint: "Forecasts and clusters", icon: BarChart3 },
-						{ id: "userEngagement", label: "User Engagement", hint: "Funnel and actions", icon: MessageSquare },
+						{ id: "predictiveAnalytics", label: "Inquiries & Estimates", hint: "Estimates from recent activity", icon: BarChart3 },
+						{ id: "userEngagement", label: "Visitor Activity", hint: "Listing actions and repeat visits", icon: MessageSquare },
 						{ id: "agentPerformance", label: "Agent Performance", hint: "Conversion rates", icon: Users },
 						{ id: "developerPortfolio", label: "Developer Portfolio", hint: "Portfolio KPIs", icon: Building2 },
 					],

@@ -85,10 +85,10 @@ function toCategory(value: string | null): ReportCategory {
 }
 
 function categoryFocus(category: ReportCategory) {
-	if (category === "traffic") return "traffic and visitor behavior: session volume, traffic sources, bounce/page-view depth, and where visitors come from";
-	if (category === "property") return "property performance: listing views, dwell time, inquiry conversion per listing, and which listings need pricing or gallery attention";
-	if (category === "engagement") return "user engagement: the view to engagement to inquiry funnel, dwell time, and returning vs new visitor behavior";
-	return "predictive analytics: demand forecasts, conversion-rate forecasts, and classification risks for listings and the lead pipeline";
+	if (category === "traffic") return "website visits, where visitors came from, single-page visits, and how often visitors open listing details, maps, galleries, or recommendations";
+	if (category === "property") return "listing views, time spent on property pages, inquiries per 100 views, and which listings may need clearer prices or photos";
+	if (category === "engagement") return "how visitors move from viewing listings to opening details, maps, or galleries, then sending inquiries; also compare first-time and returning visitors";
+	return "estimates of future inquiries, inquiries per 100 listing views, and listings that get views but few inquiries";
 }
 
 function historyDays(period: ReportPeriod) {
@@ -229,29 +229,30 @@ function fallbackReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary
 	const topListing = summary.topListings[0];
 	const topSource = summary.trafficSources[0];
 	const conversionRisks = summary.modelOutputs.classifications.filter((item) => item.label === "conversion_risk");
+	const inquiryTrend = summary.modelOutputs.regressions[0].trend === "up" ? "rising" : summary.modelOutputs.regressions[0].trend === "down" ? "falling" : "steady";
 
 	return {
-		title: `${summary.periodLabel} AI Analytics Report`,
-		executiveSummary: `${summary.periodLabel} analytics tracked ${summary.totals.inquiries} inquiries, ${summary.totals.properties} listings, and ${summary.totals.events} recent events. The next-day inquiry forecast is ${summary.modelOutputs.regressions[0].forecastNextPeriod} based on ${summary.modelOutputs.regressions[0].observations} days of inquiry history.`,
+		title: `${summary.periodLabel} activity summary`,
+		executiveSummary: `${summary.periodLabel}: ${summary.totals.inquiries} inquiries were received across ${summary.totals.properties} listings. Based on ${summary.modelOutputs.regressions[0].observations} days of recent inquiry activity, the estimate for tomorrow is about ${summary.modelOutputs.regressions[0].forecastNextPeriod} inquiries.`,
 		descriptiveFindings: [
 			topListing ? `${topListing.title} leads listing activity with ${topListing.total_views} views, ${topListing.total_interactions} interactions, and ${topListing.total_inquiries} inquiries.` : "No listing has enough activity to identify a clear leader yet.",
-			topSource ? `${topSource.source} is the leading traffic source with ${topSource.session_count} sessions.` : "Traffic source data is not yet populated.",
-			`Recommendation CTR is ${summary.recommendations.ctrPct}% and fallback rate is ${summary.recommendations.fallbackPct}%.`,
+			topSource ? `${topSource.source} brought the most visitors, with ${topSource.session_count} sessions.` : "Visitor source data is not recorded yet.",
+			`${summary.recommendations.ctrPct}% of property recommendations were clicked. ${summary.recommendations.fallbackPct}% used general matches because there was not a closer match.`,
 		],
 		predictiveInsights: [
-			`Linear regression forecasts ${summary.modelOutputs.regressions[0].forecastNextPeriod} inquiries for the next day.`,
-			`Inquiry trend is classified as ${summary.modelOutputs.regressions[0].trend} with R2 ${summary.modelOutputs.regressions[0].r2} across ${summary.modelOutputs.regressions[0].observations} observed days.`,
-			conversionRisks[0] ? `${conversionRisks[0].entityName} is classified as ${conversionRisks[0].label} with risk score ${conversionRisks[0].score}.` : "No severe conversion-risk classification was detected.",
+			`The estimate for tomorrow is about ${summary.modelOutputs.regressions[0].forecastNextPeriod} inquiries, based on recent records.`,
+			`Daily inquiries have been ${inquiryTrend} across ${summary.modelOutputs.regressions[0].observations} days of records.`,
+			conversionRisks[0] ? `${conversionRisks[0].entityName} gets visitor activity but few inquiries; review its price, photos, and inquiry button.` : "No listing currently stands out as getting views without inquiries.",
 		],
 		recommendedActions: [
-			"Review listings classified as conversion risk before increasing promotion spend.",
-			"Prioritize high-score and unassigned leads for same-day follow-up.",
-			"Compare forecasted inquiry volume against actual volume in the next report cycle.",
+			"Review popular listings that receive few inquiries before spending more to promote them.",
+			"Follow up with new and unassigned inquiries promptly.",
+			"Compare next week's actual inquiries with this estimate.",
 		],
 		riskFlags: [
-			summary.dataQuality.hasSparseData ? "Limited analytics volume means model outputs should be treated as early signals." : "",
-			summary.recommendations.fallbackPct > 60 ? "Recommendation fallback rate is high, which can weaken personalization." : "",
-			...conversionRisks.slice(0, 2).map((item) => `${item.entityName}: ${item.reason}`),
+			summary.dataQuality.hasSparseData ? "There is limited recent data, so these estimates may change as more visitors use the site." : "",
+			summary.recommendations.fallbackPct > 60 ? "Many recommendations use general matches; adding more property details may improve relevance." : "",
+			...conversionRisks.slice(0, 2).map((item) => `${item.entityName} gets views but few inquiries; check its price, photos, and inquiry button.`),
 		].filter(Boolean),
 		confidence: summary.dataQuality.hasSparseData ? "low" : summary.modelOutputs.regressions[0].observations >= 14 && summary.modelOutputs.regressions[0].r2 >= 0.45 ? "high" : "medium",
 		narrativeSource: "deterministic",
@@ -482,7 +483,7 @@ async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalytic
 			messages: [
 				{
 					role: "system",
-					content: "You are a real estate analytics analyst. Return strict JSON only. Interpret the supplied regression and classification outputs. Be practical and honest about sample-size limits. Do not invent numbers beyond the supplied summary.",
+					content: "You are a real estate analytics analyst writing for business owners who are not data specialists. Return strict JSON only. Use short, plain language. Avoid jargon and abbreviations, including regression, R2, bounce rate, CTR, conversion rate, and classification; explain the idea instead (for example, inquiries per 100 listing views, or visits where only one page was viewed). Call all future numbers estimates, explain the amount of recent data behind them, and be clear that estimates can be wrong. Do not invent numbers beyond the supplied summary.",
 				},
 				{
 					role: "user",
