@@ -5372,7 +5372,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (
-							<SettingsWorkspace rows={workspace.settings.filter((row) => asText(row.key) !== ABOUT_PAGE_CONTENT_KEY)} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} />
+							<SettingsWorkspace rows={workspace.settings.filter((row) => asText(row.key) !== ABOUT_PAGE_CONTENT_KEY)} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} onReload={reloadWorkspace} />
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (

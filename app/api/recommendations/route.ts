@@ -758,7 +758,7 @@ export async function POST(request: Request) {
 		? await getNearbySearchContext(candidates).catch(() => "")
 		: "";
 
-	if (hasAiConfigured()) {
+	if (await hasAiConfigured()) {
 		try {
 			const prompt = mode === "enhance"
 				? buildRerankPrompt(category, filters, numberedCandidates, nearbyContext)

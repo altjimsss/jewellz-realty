@@ -308,7 +308,7 @@ export async function POST(request: Request) {
 
 	const context = await buildAnalyticsContext();
 
-	if (!hasAiConfigured()) {
+	if (!await hasAiConfigured()) {
 		return NextResponse.json({
 			content: fallbackAnalyticsReply(context, message),
 			isFallback: true,

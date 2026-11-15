@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 		performance: performanceResult.data ?? null,
 	};
 
-	if (!hasAiConfigured()) return NextResponse.json({ content: `You currently have ${context.totalAssignedLeads} assigned leads. ${Object.entries(statusCounts).map(([status, count]) => `${count} ${status.replaceAll("_", " ")}`).join(", ") || "No lead status data is available yet"} across the latest ${context.leadBreakdownSampleSize} lead records.` }, { headers: rateLimitHeaders(limiter) });
+	if (!await hasAiConfigured()) return NextResponse.json({ content: `You currently have ${context.totalAssignedLeads} assigned leads. ${Object.entries(statusCounts).map(([status, count]) => `${count} ${status.replaceAll("_", " ")}`).join(", ") || "No lead status data is available yet"} across the latest ${context.leadBreakdownSampleSize} lead records.` }, { headers: rateLimitHeaders(limiter) });
 
 	try {
 		const completion = await runAiChatCompletion({

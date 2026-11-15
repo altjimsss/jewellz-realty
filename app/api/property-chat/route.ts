@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     ? buildPropertyChatPrompt(propertyContext, parsedBody.message, conversation)
     : await buildPropertyCatalogChatPrompt(parsedBody.message, conversation, listingQuery);
 
-  if (!hasAiConfigured()) {
+  if (!await hasAiConfigured()) {
     return NextResponse.json({ error: "AI provider is not configured." }, { status: 500, headers: rateLimitHeaders(limiter) });
   }
 

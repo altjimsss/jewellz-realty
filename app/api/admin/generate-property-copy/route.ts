@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 	if (source.length < 25) {
 		return NextResponse.json({ error: "Paste at least 25 characters of property information." }, { status: 400, headers: rateLimitHeaders(limiter) });
 	}
-	if (!hasAiConfigured()) {
+	if (!await hasAiConfigured()) {
 		return NextResponse.json({ error: "No AI provider is configured on the server." }, { status: 503, headers: rateLimitHeaders(limiter) });
 	}
 

@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { getSettingValues } from "@/lib/system-settings";
 import nodemailer from "nodemailer";
 
 const COMPANY = "J'WELLZ REALTY MARKETING AND DEVELOPMENT CORP.";
@@ -27,52 +28,128 @@ function renderDetail(label: string, value: string | null | undefined) {
 	return escapeHtml(value);
 }
 
+/**
+ * Resolves email credentials dynamically:
+ * Checks system_settings first, then falls back to environment variables.
+ */
+export async function getEmailCredentials() {
+	const credentials = await getSettingValues({
+		gmailUser: { dbKey: "gmail_user", envKey: "GMAIL_USER" },
+		gmailAppPassword: { dbKey: "gmail_app_password", envKey: "GMAIL_APP_PASSWORD" },
+		emailFrom: { dbKey: "email_from", envKey: "EMAIL_FROM" },
+		resendApiKey: { dbKey: "resend_api_key", envKey: "RESEND_API_KEY" },
+	});
+
+	let { gmailUser, gmailAppPassword, emailFrom, resendApiKey } = credentials;
+	gmailAppPassword = gmailAppPassword ? gmailAppPassword.replace(/\s/g, "") : "";
+
+	// If gmailUser is provided, ensure emailFrom is set up nicely
+	if (gmailUser && (!emailFrom || !emailFrom.includes(gmailUser))) {
+		emailFrom = `J'WELLZ REALTY <${gmailUser}>`;
+	}
+
+	return {
+		gmailUser,
+		gmailAppPassword,
+		emailFrom,
+		resendApiKey,
+	};
+}
+
+/**
+ * Tests Gmail SMTP connection using either provided or saved credentials.
+ */
+export async function verifyGmailCredentials(customUser?: string, customPassword?: string) {
+	let user = customUser?.trim();
+	let pass = customPassword ? customPassword.replace(/\s/g, "") : undefined;
+
+	if (!user || !pass) {
+		const creds = await getEmailCredentials();
+		user = user || creds.gmailUser;
+		pass = pass || creds.gmailAppPassword;
+	}
+
+	if (!user || !pass) {
+		return { success: false, error: "Gmail address and 16-character App Password are required." };
+	}
+
+	try {
+		const transporter = nodemailer.createTransport({
+			host: "smtp.gmail.com",
+			port: 465,
+			secure: true,
+			auth: { user, pass },
+		});
+		await transporter.verify();
+		return { success: true, message: `Successfully connected to Gmail SMTP as ${user}. Credentials are valid!` };
+	} catch (err: unknown) {
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		return { success: false, error: errorMessage };
+	}
+}
+
 export async function sendBrandedEmail(message: EmailMessage) {
-	const apiKey = process.env.RESEND_API_KEY;
-	const from = process.env.EMAIL_FROM;
+	const { gmailUser, gmailAppPassword, emailFrom, resendApiKey } = await getEmailCredentials();
+
+	const from = emailFrom;
 	if (!from) {
-		console.warn("[email notification] not sent: EMAIL_FROM is not configured");
+		console.warn("[email notification] not sent: EMAIL_FROM / gmail_user is not configured");
 		return false;
 	}
+
 	const senderAddress = from.match(/<([^>]+)>/)?.[1]?.trim() ?? from.trim();
-	if (/^[^\s@]+@gmail\.com$/i.test(senderAddress)) {
-		const gmailUser = process.env.GMAIL_USER?.trim();
-		const gmailAppPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
+	const isGmail = /^[^\s@]+@gmail\.com$/i.test(senderAddress) || Boolean(gmailUser);
+
+	if (isGmail) {
 		if (!gmailUser || !gmailAppPassword) {
-			console.warn("[email notification] Gmail sender selected but GMAIL_USER or GMAIL_APP_PASSWORD is missing");
+			console.warn("[email notification] Gmail sender selected but gmail_user or gmail_app_password is missing");
 			return false;
 		}
-		if (senderAddress.toLowerCase() !== gmailUser.toLowerCase()) {
-			console.error("[email notification] EMAIL_FROM Gmail address must match GMAIL_USER");
-			return false;
-		}
+
+		// Ensure the From header uses the configured Gmail address
+		const effectiveFrom = from.includes(gmailUser) ? from : `J'WELLZ REALTY <${gmailUser}>`;
+
 		try {
-			const transporter = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: gmailUser, pass: gmailAppPassword } });
-			await transporter.sendMail({ from, to: message.to, subject: message.subject, html: buildEmailHtml(message) });
+			const transporter = nodemailer.createTransport({
+				host: "smtp.gmail.com",
+				port: 465,
+				secure: true,
+				auth: { user: gmailUser, pass: gmailAppPassword },
+			});
+			await transporter.sendMail({
+				from: effectiveFrom,
+				to: message.to,
+				subject: message.subject,
+				html: buildEmailHtml(message),
+			});
 			return true;
 		} catch (error) {
 			console.error("[email notification] Gmail SMTP delivery failed", error);
 			return false;
 		}
 	}
-	if (!apiKey) {
+
+	if (!resendApiKey) {
 		console.warn("[email notification] not sent: configure Gmail credentials for a Gmail sender or RESEND_API_KEY for a verified Resend domain");
 		return false;
 	}
+
 	const html = buildEmailHtml(message);
 	const response = await fetch("https://api.resend.com/emails", {
 		method: "POST",
-		headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+		headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
 		body: JSON.stringify({ from, to: [message.to], subject: message.subject, html }),
 	});
+
 	if (!response.ok) {
 		console.error("[email notification] provider rejected message", response.status, await response.text().catch(() => ""));
 		return false;
 	}
+
 	return true;
 }
 
-function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage) {
+export function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage) {
 	const details = message.details.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;padding:9px;border-bottom:1px solid #eee">${escapeHtml(label)}</th><td style="padding:9px;border-bottom:1px solid #eee">${renderDetail(label, value)}</td></tr>`).join("");
 	let action = "";
 	if (message.action) {

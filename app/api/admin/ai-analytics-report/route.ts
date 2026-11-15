@@ -474,7 +474,7 @@ async function buildAnalyticsSummary(period: ReportPeriod) {
 }
 
 async function generateAiReport(summary: Awaited<ReturnType<typeof buildAnalyticsSummary>>, category: ReportCategory) {
-	if (!hasAiConfigured()) return fallbackReport(summary);
+	if (!await hasAiConfigured()) return fallbackReport(summary);
 
 	try {
 		const aiResult = await runAiChatCompletion({
