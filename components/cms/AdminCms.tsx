@@ -1644,29 +1644,18 @@ function OverviewTrafficChart({ rows }: { rows: Array<{ source: string; sessions
 	const colors = ["#DE141C", "#252525", "#71717a", "#a1a1aa", "#d4d4d8"];
 	const totalSessions = chartRows.reduce((sum, row) => sum + row.sessions, 0);
 	return (
-		<div className="grid h-44 grid-cols-[minmax(110px,0.9fr)_minmax(0,1fr)] items-center gap-2">
-			<div className="relative h-40 min-w-0">
-				<ResponsiveContainer width="100%" height="100%">
-					<PieChart>
-						<Pie data={chartRows} dataKey="sessions" nameKey="source" innerRadius="58%" outerRadius="82%" paddingAngle={3} stroke="none">
-							{chartRows.map((row, index) => <Cell key={row.source} fill={colors[index % colors.length]} />)}
-						</Pie>
-						<Tooltip content={<OverviewTrafficTooltip />} />
-					</PieChart>
-				</ResponsiveContainer>
-				<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-					<span className="text-lg font-semibold leading-none tabular-nums text-[#111111]">{totalSessions.toLocaleString()}</span>
-					<span className="mt-1 text-[9px] font-medium uppercase tracking-wide text-black/45">sessions</span>
-				</div>
-			</div>
-			<div className="min-w-0 space-y-2">
-				{chartRows.map((row, index) => (
-					<div key={row.source} className="flex min-w-0 items-center gap-2 text-[11px]">
-						<span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
-						<span className="min-w-0 flex-1 truncate text-black/60" title={row.source}>{row.source}</span>
-						<span className="shrink-0 font-semibold tabular-nums text-[#111111]">{row.sessions}</span>
-					</div>
-				))}
+		<div className="relative h-44 min-w-0">
+			<ResponsiveContainer width="100%" height="100%">
+				<PieChart>
+					<Pie data={chartRows} dataKey="sessions" nameKey="source" innerRadius="58%" outerRadius="78%" paddingAngle={3} stroke="none">
+						{chartRows.map((row, index) => <Cell key={row.source} fill={colors[index % colors.length]} />)}
+					</Pie>
+					<Tooltip content={<OverviewTrafficTooltip />} trigger="hover" />
+				</PieChart>
+			</ResponsiveContainer>
+			<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+				<span className="text-lg font-semibold leading-none tabular-nums text-[#111111]">{totalSessions.toLocaleString()}</span>
+				<span className="mt-1 text-[9px] font-medium uppercase tracking-wide text-black/45">sessions</span>
 			</div>
 		</div>
 	);
