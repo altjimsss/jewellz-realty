@@ -828,13 +828,22 @@ function AnalyticsVisualSuite({
 	let returningUsers = 0;
 	let newUsers = 0;
 	const sessionsByVisitor = new Map<string, Set<string>>();
-	for (const session of sessions) {
-		const visitorId = asText(session.anonymous_visitor_id);
-		const sessionId = asText(session.id);
-		if (!visitorId || !sessionId) continue;
+	const addVisitorSession = (visitorId: string, sessionId: string) => {
+		if (!visitorId || !sessionId) return;
 		const visitorSessions = sessionsByVisitor.get(visitorId) ?? new Set<string>();
 		visitorSessions.add(sessionId);
 		sessionsByVisitor.set(visitorId, visitorSessions);
+	};
+	for (const session of sessions) {
+		const visitorId = asText(session.anonymous_visitor_id);
+		const sessionId = asText(session.id);
+		addVisitorSession(visitorId, sessionId);
+	}
+	// Analytics events also carry visitor/session IDs and are reliably available
+	// when the sessions summary table is empty or restricted.
+	for (const event of engagementEvents) {
+		if (analyticsEventName(event) !== "page_view") continue;
+		addVisitorSession(analyticsVisitorId(event), asText(event.session_id));
 	}
 	for (const visitorSessions of sessionsByVisitor.values()) {
 		if (visitorSessions.size > 1) returningUsers += 1;
@@ -1193,7 +1202,7 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="This chart uses active time recorded on property pages; general session duration is not currently collected." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Returning vs new visitors" description={totalVisitors ? `${returningVisitorShare}% of tracked visitors returned.` : "No visitor sessions recorded yet."} isLive={totalVisitors > 0}>
+					<AnalyticsChartCard title="Returning vs new visitors" description={totalVisitors ? `${returningVisitorShare}% of tracked visitors returned.` : "Counts visits from this browser to distinguish first-time and repeat visitors."} isLive={totalVisitors > 0}>
 						{totalVisitors > 0 ? <ResponsiveContainer width="100%" height="100%">
 							<PieChart>
 								<Pie data={userTypeRows} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3}>
@@ -1201,7 +1210,7 @@ function AnalyticsVisualSuite({
 								</Pie>
 								<Tooltip content={<CmsChartTooltip />} />
 							</PieChart>
-						</ResponsiveContainer> : <ChartEmptyState message="New vs returning visitors needs tracked sessions with visitor IDs." />}
+						</ResponsiveContainer> : <ChartEmptyState message="No website visits have been recorded yet. Once visitors browse the site, this chart will show first-time and repeat visitors." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Most used engagement actions" description={engagementActionRows.length ? `${engagementActionTotal.toLocaleString()} tracked events across ${Object.keys(engagementActionCounts).length} action types.` : "No engagement actions recorded yet."} isLive={engagementActionRows.length > 0}>
 						{engagementActionRows.length ? <ResponsiveContainer width="100%" height="100%">
