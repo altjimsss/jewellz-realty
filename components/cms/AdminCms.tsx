@@ -841,7 +841,7 @@ function AnalyticsVisualSuite({
 	}
 	// Analytics events also carry visitor/session IDs and are reliably available
 	// when the sessions summary table is empty or restricted.
-	for (const event of engagementEvents) {
+	for (const event of events) {
 		if (analyticsEventName(event) !== "page_view") continue;
 		addVisitorSession(analyticsVisitorId(event), asText(event.session_id));
 	}
