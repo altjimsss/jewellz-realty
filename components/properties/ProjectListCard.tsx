@@ -14,6 +14,7 @@ type ProjectListCardProps = {
 	href?: string;
 	aiReason?: string;
 	aiConfidence?: number;
+	onRecommendationClick?: () => void;
 };
 
 function getSpecs(property: Property) {
@@ -49,7 +50,7 @@ function getSpecs(property: Property) {
 		.slice(0, 3);
 }
 
-export function ProjectListCard({ property, priceLabel, href, aiReason, aiConfidence }: ProjectListCardProps) {
+export function ProjectListCard({ property, priceLabel, href, aiReason, aiConfidence, onRecommendationClick }: ProjectListCardProps) {
 	const [showPendingDetail, setShowPendingDetail] = useState(false);
 	const [shouldLoadImage, setShouldLoadImage] = useState(false);
 	const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -126,6 +127,7 @@ export function ProjectListCard({ property, priceLabel, href, aiReason, aiConfid
 			className="block h-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DE141C]"
 			onClick={(event) => {
 				if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+				onRecommendationClick?.();
 				setShowPendingDetail(true);
 			}}
 		>

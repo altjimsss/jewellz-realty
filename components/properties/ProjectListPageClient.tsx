@@ -10,6 +10,7 @@ import { PropertyBanner } from "@/components/layout/PropertyBanner";
 import { RecommendationPanel, type AiRecommendedProperty } from "@/components/ai/RecommendationPanel";
 import { extractBasicSearchIntent } from "@/lib/ai/search-intent";
 import { getOrCreateSessionId } from "@/lib/session";
+import { trackEvent } from "@/lib/analytics";
 import { PropertyFilters, type PropertyFiltersState } from "@/components/properties/PropertyFilters";
 import dynamic from "next/dynamic";
 
@@ -482,7 +483,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 		[activeCategory, appliedFilters, filteredProperties.length, properties],
 	);
 	// AI-enhanced result cards: keyed by property.id → { reason, confidence }
-	const [aiEnhancedMap, setAiEnhancedMap] = useState<Map<string, { reason: string; confidence?: number }>>(new Map());
+	const [aiEnhancedMap, setAiEnhancedMap] = useState<Map<string, { reason: string; confidence?: number; recommendationId?: string }>>(new Map());
 	// AI "You might also like" extras (properties not in current results)
 	const [aiSuggestions, setAiSuggestions] = useState<AiRecommendedProperty[]>([]);
 	// AI fallback when 0 results
@@ -542,7 +543,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 
 				if (hasResults) {
 					// Build reason map for existing result cards
-					const newMap = new Map<string, { reason: string; confidence?: number }>();
+					const newMap = new Map<string, { reason: string; confidence?: number; recommendationId?: string }>();
 					const extras: AiRecommendedProperty[] = [];
 
 					recommendations.forEach((item) => {
@@ -551,10 +552,18 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 						if (!property) return;
 						const reason = typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : getRecommendationReason(property, activeCategory, appliedFilters);
 						const confidence = typeof item.confidence === "number" ? item.confidence : undefined;
+						const recommendationId = typeof item.recommendationId === "string" ? item.recommendationId : undefined;
 
 						if (filteredIds.has(id)) {
 							// Annotate existing result card
-							newMap.set(id, { reason, confidence });
+							newMap.set(id, { reason, confidence, recommendationId });
+							trackEvent("recommendation_impression", {
+								propertyId: id,
+								recommendationId,
+								recommendationSource: apiSource,
+								isFallback: apiSource !== "ai",
+								variant: "search-results",
+							});
 						} else {
 							// Extra property not in current results → "You might also like"
 							extras.push({
@@ -677,6 +686,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 											href={`/project-list/${property.slug}`}
 											aiReason={ai?.reason}
 											aiConfidence={categoryOnlySearch ? 100 : ai?.confidence}
+											onRecommendationClick={ai ? () => trackEvent("recommendation_click", { propertyId: property.id, recommendationId: ai.recommendationId, recommendationSource: "search-results" }) : undefined}
 										/>
 									);
 								})}
@@ -694,6 +704,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 													href={`/project-list/${property.slug}`}
 													aiReason={ai?.reason}
 													aiConfidence={categoryOnlySearch ? 100 : ai?.confidence}
+													onRecommendationClick={ai ? () => trackEvent("recommendation_click", { propertyId: property.id, recommendationId: ai.recommendationId, recommendationSource: "search-results" }) : undefined}
 												/>
 											);
 										})}
@@ -713,6 +724,7 @@ export function ProjectListPageClient({ properties, initialFilters = {}, locatio
 											href={`/project-list/${property.slug}`}
 											aiReason={ai?.reason}
 											aiConfidence={categoryOnlySearch ? 100 : ai?.confidence}
+											onRecommendationClick={ai ? () => trackEvent("recommendation_click", { propertyId: property.id, recommendationId: ai.recommendationId, recommendationSource: "search-results" }) : undefined}
 										/>
 									);
 								})}

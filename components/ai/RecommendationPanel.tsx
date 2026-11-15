@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ProjectListCard } from "@/components/properties/ProjectListCard";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import type { Property } from "@/types/property";
@@ -19,6 +20,23 @@ type RecommendationPanelProps = {
 
 export function RecommendationPanel({ recommendations, status, variant = "alternatives" }: RecommendationPanelProps) {
 	const { track } = useAnalytics();
+	const trackedImpressions = useRef(new Set<string>());
+
+	useEffect(() => {
+		for (const recommendation of recommendations) {
+			const { property, recommendationId, source } = recommendation;
+			const impressionKey = recommendationId || property.id;
+			if (trackedImpressions.current.has(impressionKey)) continue;
+			trackedImpressions.current.add(impressionKey);
+			track("recommendation_impression", {
+				propertyId: property.id,
+				recommendationId,
+				recommendationSource: source,
+				isFallback: source === "fallback",
+				variant,
+			});
+		}
+	}, [recommendations, track, variant]);
 
 	if (recommendations.length === 0) return null;
 

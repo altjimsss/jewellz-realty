@@ -2484,10 +2484,20 @@ function AnalyticsPanel({
 	}, {});
 
 	const recommendationStats = (() => {
-		if (!recommendations.length) return { total: 0, clicked: 0, fallback: 0 };
-		const total = recommendations.length;
-		const clicked = recommendations.filter((item) => item.was_clicked).length;
-		const fallback = recommendations.filter((item) => item.is_fallback).length;
+		const recommendationEvents = engagementEvents.filter((event) => {
+			const eventName = analyticsEventName(event);
+			return eventName === "recommendation_impression" || eventName === "recommendation_click";
+		});
+		const impressions = recommendationEvents.filter((event) => analyticsEventName(event) === "recommendation_impression");
+		const clicks = recommendationEvents.filter((event) => analyticsEventName(event) === "recommendation_click");
+		const total = impressions.length || recommendations.length;
+		const clicked = clicks.length || recommendations.filter((item) => item.was_clicked).length;
+		const fallback = impressions.length
+			? impressions.filter((event) => {
+				const metadata = analyticsEventMetadata(event);
+				return metadata.isFallback === true || asText(metadata.recommendationSource) === "fallback";
+			}).length
+			: recommendations.filter((item) => item.is_fallback).length;
 		return { total, clicked, fallback };
 	})();
 
