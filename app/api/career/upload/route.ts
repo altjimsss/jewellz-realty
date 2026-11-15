@@ -9,6 +9,9 @@ export async function POST(request: Request) {
 	if (!limiter.allowed) {
 		return NextResponse.json({ error: "Too many upload attempts. Please try again later." }, { status: 429, headers: rateLimitHeaders(limiter) });
 	}
+	if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+		return NextResponse.json({ error: "Resume uploads are not configured yet. Please contact the site administrator." }, { status: 503, headers: rateLimitHeaders(limiter) });
+	}
 
 	try {
 		const formData = await request.formData();
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
 		const filePath = `career-resumes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${cleanName}`;
 
 		const { error: uploadError } = await supabaseServer.storage
-			.from("property-images")
+			.from("career-resumes")
 			.upload(filePath, buffer, {
 				contentType: "application/pdf",
 				upsert: false,
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
 		}
 
 		const { data: publicUrlData } = supabaseServer.storage
-			.from("property-images")
+			.from("career-resumes")
 			.getPublicUrl(filePath);
 
 		if (!publicUrlData?.publicUrl) {
