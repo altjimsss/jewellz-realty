@@ -12,15 +12,15 @@ function slugify(value: string) {
 		.replace(/^-|-$/g, "");
 }
 
-export function SectionShell({ title, description, children }: SectionProps) {
+export function SectionShell({ title, description, children, hideHeader = false }: SectionProps) {
 	return (
 		<section className="overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-sm shadow-black/[0.025]">
-			<div className="border-b border-black/[0.07] bg-zinc-50 px-5 py-5 sm:px-6">
+			{!hideHeader ? <div className="border-b border-black/[0.07] bg-zinc-50 px-5 py-5 sm:px-6">
 				<div className="flex flex-col gap-1.5">
 					<h2 className="text-base font-semibold tracking-tight text-[#111111]">{title}</h2>
 					<p className="max-w-3xl text-sm leading-5 text-black/50">{description}</p>
 				</div>
-			</div>
+			</div> : null}
 			<div className="p-4 sm:p-5">{children}</div>
 		</section>
 	);

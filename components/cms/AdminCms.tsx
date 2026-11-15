@@ -1509,9 +1509,12 @@ function PeakEngagementChart({ events }: { events: CmsRow[] }) {
 	return (
 		<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs transition hover:shadow-sm">
 			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div>
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Peak Engagement Periods</div>
-					<p className="mt-1 text-sm text-black/55">Based on analytics event timestamps.</p>
+				<div className="flex items-center gap-3">
+					<span className="grid h-9 w-9 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><Activity className="h-4 w-4" /></span>
+					<div>
+						<div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">Peak Engagement Periods</div>
+						<p className="mt-1 text-sm text-black/55">Based on analytics event timestamps.</p>
+					</div>
 				</div>
 				<div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-black/70">
 					Peak: {peakDay.day}, {formatHour(peakHour.hour)}
@@ -2632,54 +2635,7 @@ function AnalyticsPanel({
 
 	return (
 		<div>
-		<SectionShell title={reportTitle} description={reportDescription}>
-			<div className="mb-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between border-b border-black/5 pb-4">
-				<div className="flex items-center gap-2.5">
-					<span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-black/70">
-						<span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-						Live Materialized Engine
-					</span>
-					<span className="hidden sm:inline text-xs text-black/40">Real-time sync with inquiry tables</span>
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					{showOverviewReport ? (
-						<button
-							type="button"
-							onClick={() => downloadCsv("jewellz-inquiries.csv", inquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])}
-							className="group inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-xs transition hover:border-black/25 hover:bg-zinc-50 active:scale-[0.98]"
-						>
-							<svg className="h-3.5 w-3.5 text-black/40 group-hover:text-black/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-							</svg>
-							<span>Export Inquiries</span>
-						</button>
-					) : null}
-					{showOverviewReport || showTrafficReport || showDeveloperReport ? (
-						<button
-							type="button"
-							onClick={() => downloadCsv("jewellz-listing-performance.csv", listingPerformance, ["property_id", "title", "total_views", "detail_opens", "total_interactions", "avg_dwell_seconds", "total_inquiries", "inquiry_rate_pct"])}
-							className="group inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-xs transition hover:border-black/25 hover:bg-zinc-50 active:scale-[0.98]"
-						>
-							<svg className="h-3.5 w-3.5 text-black/40 group-hover:text-black/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-							</svg>
-							<span>Listings Report</span>
-						</button>
-					) : null}
-					{showOverviewReport || showAgentReport ? (
-						<button
-							type="button"
-							onClick={() => downloadCsv("jewellz-agent-performance.csv", agentPerformance, ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"])}
-							className="group inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-xs transition hover:border-black/25 hover:bg-zinc-50 active:scale-[0.98]"
-						>
-							<svg className="h-3.5 w-3.5 text-black/40 group-hover:text-black/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-							</svg>
-							<span>Agent Report</span>
-						</button>
-					) : null}
-				</div>
-			</div>
+		<SectionShell title={reportTitle} description={reportDescription} hideHeader>
 
 			{showOverviewReport ? (
 				<div className="mb-6 grid auto-rows-fr gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
@@ -2790,10 +2746,11 @@ function AnalyticsPanel({
 
 					<div className="grid items-start gap-4">
 						<div className="min-w-0 rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
-							<div className="flex items-center justify-between">
-								<span className="text-sm font-semibold text-[#111111]">Recommendations</span>
+							<div className="mb-3 flex items-center gap-3 border-b border-black/[0.06] pb-3">
+								<span className="grid h-9 w-9 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><TrendingUp className="h-4 w-4" /></span>
+								<div className="text-sm font-semibold text-[#111111]">Recommendations</div>
 							</div>
-							<div className="mt-4 grid grid-cols-4 gap-2 overflow-x-auto">
+							<div className="grid grid-cols-4 gap-2 overflow-x-auto">
 								<InfoCard compact label="Total shown" value={recommendationStats.total} hint="Recommendations" />
 								<InfoCard compact label="Clicked" value={recommendationStats.clicked} hint="Recommendation clicks" />
 								<InfoCard compact label="CTR" value={`${clickThrough.toFixed(1)}%`} hint="Click-through rate" />
@@ -2803,7 +2760,10 @@ function AnalyticsPanel({
 
 						<div className="grid min-w-0 gap-4 lg:grid-cols-2">
 							<div className="rounded-xl border border-black/10 bg-white p-4 transition duration-200 hover:border-black/20">
-								<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
+								<div className="mb-3 flex items-center gap-3 border-b border-black/[0.06] pb-3">
+									<span className="grid h-9 w-9 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><BarChart3 className="h-4 w-4" /></span>
+									<div className="text-sm font-semibold text-[#111111]">Inquiry volume</div>
+								</div>
 								<div className="mt-3">
 									<InquiryVolumeChart rows={inquiryVolumeRows} />
 								</div>
@@ -2811,7 +2771,7 @@ function AnalyticsPanel({
 
 							<div className="portal-stat-card h-fit min-w-0 p-4">
 								<div className="flex items-center justify-between gap-3">
-									<span className="text-sm font-semibold text-[#111111]">Lead pipeline</span>
+									<span className="flex items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center bg-[#DE141C] text-white" aria-hidden="true"><TrendingUp className="h-4 w-4" /></span><span className="text-sm font-semibold text-[#111111]">Lead pipeline</span></span>
 									<span className="portal-stat-badge">{pipelineChartRows.reduce((sum, row) => sum + (Number(row.value) || 0), 0)} Total Leads</span>
 								</div>
 								<div className="relative mt-2 h-52">
@@ -3108,6 +3068,7 @@ export default function AdminCms({
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
+	const [showAnalyticsExportDialog, setShowAnalyticsExportDialog] = useState(false);
 	const [adminNotifications, setAdminNotifications] = useState<AdminLiveNotification[]>([]);
 	const [adminToast, setAdminToast] = useState<AdminLiveNotification | null>(null);
 	const [createdListingToast, setCreatedListingToast] = useState<CreatedListingToast | null>(null);
@@ -3494,6 +3455,7 @@ export default function AdminCms({
 	const analyticsChildItems = activeSidebarItems.filter((item) => analyticsChildSections.has(item.id));
 	const analyticsStandaloneItems = activeSidebarItems.filter((item) => item.id !== "analytics" && !analyticsChildSections.has(item.id));
 	const isAnalyticsChildSection = analyticsChildSections.has(currentSection);
+	const isAnalyticsSection = currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio";
 	const assistantContentOffset = isAdmin && showAnalyticsAssistant ? "xl:pr-[292px]" : "";
 	const selectedPortfolioDeveloperLabel = selectedPortfolioDeveloperId
 		? asText(workspace.developerPortfolio.find((row) => asText(row.developer_id) === selectedPortfolioDeveloperId)?.company_name)
@@ -3972,6 +3934,16 @@ export default function AdminCms({
 		if (!selectedDateFilter) return workspace.activityLogs;
 		return workspace.activityLogs.filter((item) => asText(item.created_at ?? item.occurred_at).slice(0, 10) === selectedDateFilter);
 	}, [workspace.activityLogs, selectedDateFilter]);
+	const analyticsExportOptions: Array<{ label: string; description: string; filename: string; rows: CmsRow[]; columns: string[] }> = [
+		{ label: "Inquiries", description: "Lead details and current status", filename: "jewellz-inquiries.csv", rows: filteredInquiries, columns: ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"] },
+		{ label: "Listing performance", description: "Views, interactions, and inquiry rates", filename: "jewellz-listing-performance.csv", rows: workspace.listingPerformance, columns: ["property_id", "title", "total_views", "detail_opens", "total_interactions", "avg_dwell_seconds", "total_inquiries", "inquiry_rate_pct"] },
+		{ label: "Agent performance", description: "Assignments, conversions, and response time", filename: "jewellz-agent-performance.csv", rows: workspace.agentPerformance, columns: ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"] },
+		{ label: "Traffic sources", description: "Sessions attributed to each source", filename: "jewellz-traffic-sources.csv", rows: workspace.trafficSources, columns: ["source", "session_count", "total_page_views", "share_pct"] },
+		{ label: "Daily inquiry volume", description: "Inquiry totals grouped by day", filename: "jewellz-daily-inquiries.csv", rows: workspace.dailyInquiryVolume, columns: ["inquiry_date", "total_inquiries"] },
+		{ label: "Recommendations", description: "Recommendation impressions and clicks", filename: "jewellz-recommendations.csv", rows: workspace.recommendations, columns: ["property_id", "reason", "confidence", "similarity_score", "source", "is_fallback", "was_clicked", "generated_at", "clicked_at"] },
+		{ label: "Visitor sessions", description: "Session source, device, and visit details", filename: "jewellz-visitor-sessions.csv", rows: workspace.sessions, columns: ["id", "anonymous_visitor_id", "source", "referrer", "utm_source", "utm_medium", "utm_campaign", "landing_path", "device_type", "browser", "os", "language", "page_view_count", "started_at", "last_seen_at"] },
+		{ label: "Engagement events", description: "Tracked events for the selected date", filename: "jewellz-engagement-events.csv", rows: filteredEngagementEvents, columns: ["event_type", "session_id", "property_id", "page_path", "source", "metadata", "created_at"] },
+	];
 
 	const stats = useMemo(() => ({
 		propertyCount: workspace.properties.length,
@@ -4864,7 +4836,7 @@ export default function AdminCms({
 								countsByDate={activityCountsByDate}
 							/>
 							{isAdmin ? (
-								<button type="button" onClick={() => downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111111] px-3 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+								<button type="button" onClick={() => isAnalyticsSection ? setShowAnalyticsExportDialog(true) : downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111111] px-3 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 									<Download className="h-3.5 w-3.5" />
 									Export CSV
 								</button>
@@ -5642,6 +5614,27 @@ export default function AdminCms({
 							</div>
 						) : null}
 					</div>
+				</div>
+			) : null}
+			{showAnalyticsExportDialog ? (
+				<div className="fixed inset-0 z-[70] grid place-items-center bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAnalyticsExportDialog(false); }}>
+					<section role="dialog" aria-modal="true" aria-labelledby="analytics-export-title" className="w-full max-w-xl border border-black/10 bg-white p-5 shadow-2xl sm:p-6">
+						<div className="flex items-start justify-between gap-4">
+							<div>
+								<h2 id="analytics-export-title" className="text-lg font-semibold tracking-tight text-[#111111]">Export an analytics report</h2>
+								<p className="mt-1 text-sm text-black/55">Choose the CSV you want to download.</p>
+							</div>
+							<button type="button" onClick={() => setShowAnalyticsExportDialog(false)} className="grid h-8 w-8 shrink-0 place-items-center text-black/50 transition hover:bg-zinc-100 hover:text-black" aria-label="Close export options"><X className="h-4 w-4" /></button>
+						</div>
+						<div className="mt-5 grid gap-2 sm:grid-cols-2">
+							{analyticsExportOptions.map((option) => (
+								<button key={option.filename} type="button" onClick={() => { downloadCsv(option.filename, option.rows, option.columns); setShowAnalyticsExportDialog(false); }} className="flex min-h-[68px] items-center gap-3 border border-black/[0.08] px-3 py-2.5 text-left transition hover:border-[#DE141C]/35 hover:bg-[#DE141C]/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30">
+									<span className="grid h-8 w-8 shrink-0 place-items-center bg-[#DE141C] text-white"><Download className="h-4 w-4" /></span>
+									<span className="min-w-0"><span className="block text-sm font-semibold text-[#111111]">{option.label}</span><span className="mt-0.5 block text-xs leading-4 text-black/50">{option.description}</span></span>
+								</button>
+							))}
+						</div>
+					</section>
 				</div>
 			) : null}
 		</main>

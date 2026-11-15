@@ -28,6 +28,7 @@ export type SectionProps = {
 	title: string;
 	description: string;
 	children: ReactNode;
+	hideHeader?: boolean;
 };
 
 export type EditorProps = {
