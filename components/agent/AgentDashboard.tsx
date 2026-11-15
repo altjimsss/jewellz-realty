@@ -45,6 +45,7 @@ import {
 	X,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { ConfirmActionDialog } from "@/components/ui/ConfirmActionDialog";
 import { compressImageForUpload } from "@/lib/media/compress-image";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
@@ -286,6 +287,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 	const [appointments, setAppointments] = useState<AgentAppointment[]>([]);
 	const [appointmentsError, setAppointmentsError] = useState("");
 	const [statusMessage, setStatusMessage] = useState("");
+	const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
 
 	const [activeSection, setActiveSection] = useState<SectionId>(() => (isAgentSection(initialSection) ? initialSection : "overview"));
 	const [showSidebar, setShowSidebar] = useState(true);
@@ -1107,7 +1109,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 						<button type="button" onClick={() => void reloadInquiries()} className="flex h-9 w-9 items-center justify-center text-white/55 transition hover:bg-white/10 hover:text-white" title="Refresh">
 							<RefreshCw className="h-4 w-4" />
 						</button>
-						<button type="button" onClick={handleSignOut} className="flex h-9 w-9 items-center justify-center text-white/55 transition hover:bg-white/10 hover:text-[#FF4B52]" title="Sign out to customer website">
+						<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="flex h-9 w-9 items-center justify-center text-white/55 transition hover:bg-white/10 hover:text-[#FF4B52]" title="Sign out to customer website">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -1155,7 +1157,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 						</div>
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={() => void reloadInquiries()} className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">Refresh</button>
-							<button type="button" onClick={handleSignOut} className="flex-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-semibold text-white">Sign out</button>
+							<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="flex-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-semibold text-white">Sign out</button>
 						</div>
 					</div>
 				</aside>
@@ -1275,7 +1277,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 											<span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-slate-400" />Customer Website</span>
 											<ArrowUpRight className="h-3 w-3 text-slate-400" />
 										</Link>
-										<button type="button" onClick={handleSignOut} className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#111111] px-3 py-2 text-xs font-semibold text-white transition hover:bg-black/85">
+										<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#111111] px-3 py-2 text-xs font-semibold text-white transition hover:bg-black/85">
 											<LogOut className="h-3.5 w-3.5" />
 											Sign out
 										</button>
@@ -1965,7 +1967,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 												Session secured by Supabase Auth.
 											</div>
 											<button type="button" onClick={handleSendPasswordReset} className="w-full rounded-lg border border-black/10 bg-zinc-50 py-2.5 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-100 hover:border-black/20 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Send password reset email</button>
-											<button type="button" onClick={handleSignOut} className="w-full rounded-lg bg-[#111111] py-2.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
+							<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="w-full rounded-lg bg-[#111111] py-2.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 										</div>
 									</div>
 									<div className="rounded-xl border border-black/10 bg-white p-5 shadow-xs">
@@ -2017,6 +2019,7 @@ export default function AgentDashboard({ initialSection, initialInquiryId }: { i
 					</div>
 				</div>
 			) : null}
+			<ConfirmActionDialog open={showSignOutConfirmation} title="Sign out?" description="You’ll need to sign in again to return to your agent workspace." confirmLabel="Sign out" onConfirm={handleSignOut} onCancel={() => setShowSignOutConfirmation(false)} />
 		</main>
 	);
 }

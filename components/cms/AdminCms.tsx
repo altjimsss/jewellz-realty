@@ -8,6 +8,7 @@ import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, 
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { ConfirmActionDialog } from "@/components/ui/ConfirmActionDialog";
 import { uploadFileWithProgress, UploadCancelledError } from "@/lib/supabase/upload-with-progress";
 import { convertHeicToJpeg } from "@/lib/media/convert-heic";
 import { compressImageForUpload } from "@/lib/media/compress-image";
@@ -3138,6 +3139,7 @@ export default function AdminCms({
 	const [dashboardSearch, setDashboardSearch] = useState("");
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
+	const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
 	const [adminNotifications, setAdminNotifications] = useState<AdminLiveNotification[]>([]);
 	const [adminToast, setAdminToast] = useState<AdminLiveNotification | null>(null);
 	const [createdListingToast, setCreatedListingToast] = useState<CreatedListingToast | null>(null);
@@ -3389,6 +3391,17 @@ export default function AdminCms({
 		setDestructiveAction(action);
 		setDestructivePassword("");
 		setDestructiveMessage("");
+	}
+
+	function requestAdminSignOut() {
+		setShowSignOutConfirmation(true);
+	}
+
+	async function confirmAdminSignOut() {
+		clearAnalyticsChatMessages(sessionUser?.id ?? null);
+		adminWorkspaceSnapshot = null;
+		await supabaseBrowser.auth.signOut();
+		window.location.href = "/";
 	}
 
 	async function confirmDestructiveAction() {
@@ -4723,7 +4736,7 @@ export default function AdminCms({
 						<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/65 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:opacity-50" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${isRefreshingWorkspace ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/65 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-500/15 hover:text-red-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
+						<button type="button" onClick={requestAdminSignOut} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/65 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-500/15 hover:text-red-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -4826,7 +4839,7 @@ export default function AdminCms({
 						)}
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={() => void reloadWorkspace()} disabled={isRefreshingWorkspace} className="flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">Refresh</button>
-							<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
+							<button type="button" onClick={requestAdminSignOut} className="flex-1 rounded-xl bg-[#111111] px-3 py-2 text-sm font-medium text-white">Sign out</button>
 						</div>
 					</div>
 				</aside>
@@ -4992,7 +5005,7 @@ export default function AdminCms({
 											<div className="font-medium text-[#111111]">{profile?.full_name ?? "CMS User"}</div>
 											<div className="mt-1 text-xs text-black/45">{profile?.email ?? sessionUser?.email ?? ""}</div>
 											<div className="mt-2 rounded-full bg-black/5 px-3 py-1 text-xs text-black/60">{role ?? "no role"}</div>
-											<button type="button" onClick={async () => { clearAnalyticsChatMessages(sessionUser?.id ?? null); adminWorkspaceSnapshot = null; await supabaseBrowser.auth.signOut(); window.location.href = "/"; }} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
+										<button type="button" onClick={requestAdminSignOut} className="mt-3 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 										</div>
 									</>
 								) : null}
@@ -5411,6 +5424,7 @@ export default function AdminCms({
 					{isAdmin && showAnalyticsAssistant ? <AnalyticsChatSidebar onAction={handleAnalyticsChatAction} messages={analyticsChatMessages} onMessagesChange={setAnalyticsChatMessages} isThinking={analyticsChatIsThinking} setIsThinking={setAnalyticsChatIsThinking} /> : null}
 				</section>
 			</div>
+			<ConfirmActionDialog open={showSignOutConfirmation} title="Sign out?" description="You’ll need to sign in again to return to the admin workspace." confirmLabel="Sign out" onConfirm={confirmAdminSignOut} onCancel={() => setShowSignOutConfirmation(false)} />
 			{destructiveAction ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
 					<div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">

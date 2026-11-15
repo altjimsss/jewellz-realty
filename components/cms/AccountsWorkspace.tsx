@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { ConfirmActionDialog } from "@/components/ui/ConfirmActionDialog";
 import type { CmsRow } from "./types";
 import { asText } from "./utils";
 
@@ -20,6 +21,7 @@ export function AccountsWorkspace({ rows, inquiries, currentUserId, onReload, on
 	const [busy, setBusy] = useState(false);
 	const [notice, setNotice] = useState("");
 	const [error, setError] = useState(false);
+	const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
 	async function sendRequest(method: "POST" | "DELETE", body: Record<string, string>) {
 		const token = (await supabaseBrowser.auth.getSession()).data.session?.access_token;
@@ -51,10 +53,9 @@ export function AccountsWorkspace({ rows, inquiries, currentUserId, onReload, on
 		}
 	}
 
-	async function deleteAccount(row: CmsRow) {
-		const id = asText(row.id);
-		const name = asText(row.full_name) || asText(row.email) || "this account";
-		if (!id || !window.confirm(`Permanently delete ${name}'s sign-in account? This cannot be undone.`)) return;
+	async function deleteAccount() {
+		if (!pendingDelete) return;
+		const { id, name } = pendingDelete;
 		setBusy(true);
 		setNotice("");
 		setError(false);
@@ -62,15 +63,18 @@ export function AccountsWorkspace({ rows, inquiries, currentUserId, onReload, on
 			await sendRequest("DELETE", { id });
 			setNotice(`Deleted ${name}'s account.`);
 			await onReload();
+			setPendingDelete(null);
 		} catch (cause) {
 			setError(true);
 			setNotice(cause instanceof Error ? cause.message : "Could not delete this account.");
+			setPendingDelete(null);
 		} finally {
 			setBusy(false);
 		}
 	}
 
 	return (
+		<>
 		<section className="space-y-5">
 			<div className="border border-black/10 bg-white p-4 sm:p-5">
 				<div className="mb-4 flex items-start gap-3">
@@ -104,7 +108,7 @@ export function AccountsWorkspace({ rows, inquiries, currentUserId, onReload, on
 									<td className="px-4 py-3"><span className={`px-2 py-1 text-[11px] font-medium ${asText(row.role) === "admin" ? "bg-red-50 text-[#B5121B]" : "bg-zinc-100 text-black/65"}`}>{asText(row.role) || "buyer"}</span></td>
 									<td className="px-4 py-3 text-black/60">{isActive ? "Active" : "Inactive"}</td>
 									<td className="px-4 py-3">{matching.length ? <button type="button" onClick={() => onViewInquiry(asText(matching[0].id))} className="font-semibold text-[#111111] underline decoration-black/20 underline-offset-2 hover:decoration-black">View {matching.length}</button> : <span className="text-black/35">None</span>}</td>
-									<td className="px-4 py-3 text-right"><button type="button" disabled={busy || isSelf} title={isSelf ? "You cannot delete your own account" : "Permanently delete account"} onClick={() => void deleteAccount(row)} className="inline-flex h-8 items-center gap-1.5 border border-black/10 px-2.5 text-xs font-medium text-black/65 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-35"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" />Delete</button></td>
+									<td className="px-4 py-3 text-right"><button type="button" disabled={busy || isSelf} title={isSelf ? "You cannot delete your own account" : "Permanently delete account"} onClick={() => { const id = asText(row.id); if (id) setPendingDelete({ id, name: asText(row.full_name) || asText(row.email) || "this account" }); }} className="inline-flex h-8 items-center gap-1.5 border border-black/10 px-2.5 text-xs font-medium text-black/65 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-35"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" />Delete</button></td>
 								</tr>;
 							})}
 						</tbody>
@@ -112,5 +116,7 @@ export function AccountsWorkspace({ rows, inquiries, currentUserId, onReload, on
 				</div>
 			</div>
 		</section>
+		<ConfirmActionDialog open={Boolean(pendingDelete)} title="Delete this account?" description={`Permanently remove ${pendingDelete?.name ?? "this account"}'s sign-in access? This can't be undone.`} confirmLabel="Delete account" pending={busy} onConfirm={deleteAccount} onCancel={() => setPendingDelete(null)} />
+		</>
 	);
 }

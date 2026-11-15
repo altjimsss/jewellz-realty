@@ -28,6 +28,7 @@ import { ListingPerformanceChart } from "@/components/dashboard/ListingPerforman
 import { PortalScorecard } from "@/components/dashboard/PortalScorecard";
 import { DashboardBarChart, DashboardDonut, DashboardTrendChart, type DashboardChartRow } from "@/components/dashboard/DashboardCharts";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { ConfirmActionDialog } from "@/components/ui/ConfirmActionDialog";
 
 type SectionId = "overview" | "properties" | "projects" | "performance" | "inquiries" | "profile" | "security";
 
@@ -256,6 +257,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 	const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
 	const [performance, setPerformance] = useState<ListingPerformanceItem[]>([]);
 	const [statusMessage, setStatusMessage] = useState("");
+	const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
 	const [showAccountMenu, setShowAccountMenu] = useState(false);
 
 	const [inquirySearch, setInquirySearch] = useState("");
@@ -515,10 +517,11 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					<p className="mt-2 text-xs leading-relaxed text-black/55">
 						Your account is not yet connected to a developer partner record. Please contact the J'WELLZ REALTY admin to link your company.
 					</p>
-					<button type="button" onClick={handleSignOut} className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#111111] px-5 text-xs font-semibold text-white transition hover:bg-black/85">
+					<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#111111] px-5 text-xs font-semibold text-white transition hover:bg-black/85">
 						Sign out
 					</button>
 				</div>
+				<ConfirmActionDialog open={showSignOutConfirmation} title="Sign out?" description="You’ll need to sign in again to return to your developer workspace." confirmLabel="Sign out" onConfirm={handleSignOut} onCancel={() => setShowSignOutConfirmation(false)} />
 			</main>
 		);
 	}
@@ -938,7 +941,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 				<div className="rounded-xl border border-black/10 bg-white p-6 shadow-xs">
 					<h2 className="text-sm font-semibold text-[#111111]">Session</h2>
 					<p className="mt-1 text-xs text-zinc-500">Sign out of the developer portal on this device.</p>
-					<button type="button" onClick={() => void handleSignOut()} className="mt-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
+					<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="mt-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 text-xs font-semibold text-[#111111] shadow-2xs transition hover:bg-zinc-50 hover:border-black/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 						<LogOut className="h-3.5 w-3.5" />
 						Sign out
 					</button>
@@ -988,7 +991,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						<button type="button" onClick={handleRefresh} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-white hover:text-[#111111] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20" title="Refresh">
 							<RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
 						</button>
-						<button type="button" onClick={() => void handleSignOut()} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/20" title="Sign out">
+						<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-50 hover:text-red-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/20" title="Sign out">
 							<LogOut className="h-4 w-4" />
 						</button>
 					</div>
@@ -1035,7 +1038,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 						</div>
 						<div className="mt-3 flex gap-2 lg:hidden">
 							<button type="button" onClick={handleRefresh} className="flex-1 rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-2xs active:scale-[0.98]">Refresh</button>
-							<button type="button" onClick={() => void handleSignOut()} className="flex-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs active:scale-[0.98]">Sign out</button>
+							<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="flex-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white shadow-2xs active:scale-[0.98]">Sign out</button>
 						</div>
 					</div>
 				</aside>
@@ -1066,7 +1069,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 									<div className="mt-1 truncate text-xs text-zinc-500">{userEmail}</div>
 									<div className="mt-2 inline-flex rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-medium text-zinc-600">Accredited Developer Partner</div>
 									<button type="button" onClick={() => { setShowAccountMenu(false); openSection("security"); }} className="mt-3 w-full rounded-lg border border-black/10 px-3 py-2 text-left text-xs font-medium text-[#111111] transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Account security</button>
-									<button type="button" onClick={() => void handleSignOut()} className="mt-2 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white transition hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
+									<button type="button" onClick={() => setShowSignOutConfirmation(true)} className="mt-2 w-full rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white transition hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">Sign out</button>
 								</div>
 							) : null}
 						</div>
@@ -1112,6 +1115,7 @@ export default function DeveloperDashboard({ initialSection }: { initialSection?
 					</div>
 				</section>
 			</div>
+			<ConfirmActionDialog open={showSignOutConfirmation} title="Sign out?" description="You’ll need to sign in again to return to your developer workspace." confirmLabel="Sign out" onConfirm={handleSignOut} onCancel={() => setShowSignOutConfirmation(false)} />
 		</main>
 	);
 }
