@@ -1,5 +1,6 @@
 import { normalizeImageUrl } from "@/lib/image-url";
 import { ABOUT_PAGE_CONTENT_KEY, DEFAULT_ABOUT_PAGE_CONTENT, parseAboutPageContent } from "@/lib/about-page-content";
+import { DEFAULT_FOOTER_CONTENT, FOOTER_CONTENT_KEY, parseFooterContent } from "@/lib/footer-content";
 import { supabaseServer } from "./server";
 
 export type PublicHeroBanner = {
@@ -72,6 +73,20 @@ export async function getPublicAboutPageContent() {
 		return parseAboutPageContent(data.value);
 	} catch {
 		return DEFAULT_ABOUT_PAGE_CONTENT;
+	}
+}
+
+export async function getPublicFooterContent() {
+	try {
+		const { data, error } = await supabaseServer
+			.from("system_settings")
+			.select("value")
+			.eq("key", FOOTER_CONTENT_KEY)
+			.maybeSingle();
+		if (error || !data?.value) return DEFAULT_FOOTER_CONTENT;
+		return parseFooterContent(data.value);
+	} catch {
+		return DEFAULT_FOOTER_CONTENT;
 	}
 }
 

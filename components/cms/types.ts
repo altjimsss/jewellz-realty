@@ -110,6 +110,7 @@ export type CmsSection =
 	| "developers"
 	| "profiles"
 	| "about"
+	| "footer"
 	| "gallery"
 	| "careerJobs"
 	| "careerApplications"

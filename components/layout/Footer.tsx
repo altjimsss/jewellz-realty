@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { PortalAuthModal, type PortalRole } from "@/components/auth/PortalAuthModal";
+import { DEFAULT_FOOTER_CONTENT, type FooterContent } from "@/lib/footer-content";
 
 const socialLinks = [
 	{
@@ -27,9 +28,35 @@ const socialLinks = [
 	},
 ];
 
+function safeExternalUrl(value: string) {
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "";
+	} catch {
+		return "";
+	}
+}
+
+function FooterLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+	const value = href.trim();
+	if (value.startsWith("/") && !value.startsWith("//")) return <Link href={value} className={className}>{children}</Link>;
+	const safeHref = safeExternalUrl(value);
+	return safeHref ? <a href={safeHref} target="_blank" rel="noopener noreferrer" className={className}>{children}</a> : null;
+}
+
 export function Footer() {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [initialRole, setInitialRole] = useState<PortalRole>("agent");
+	const [content, setContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
+
+	useEffect(() => {
+		let active = true;
+		fetch("/api/public/footer-content", { cache: "no-store" })
+			.then((response) => response.ok ? response.json() as Promise<FooterContent> : null)
+			.then((data) => { if (active && data) setContent(data); })
+			.catch(() => undefined);
+		return () => { active = false; };
+	}, []);
 
 	function handleOpenPortal(e: MouseEvent<HTMLAnchorElement>, role: PortalRole) {
 		// Prevent full page navigation on normal click so the modal appears in-place
@@ -42,58 +69,46 @@ export function Footer() {
 		<footer className="bg-[#0F0F10] px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-28">
 			<div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
 				<div className="col-span-2 min-w-0 md:col-span-1">
-					<h3 className="text-xl font-bold tracking-[-0.025em] sm:text-3xl">J&apos;WELLZ REALTY</h3>
-					<p className="mt-1 text-xs font-medium text-white/80">Marketing and development corporation</p>
+					<h3 className="text-xl font-bold tracking-[-0.025em] sm:text-3xl">{content.companyName}</h3>
+					<p className="mt-1 text-xs font-medium text-white/80">{content.tagline}</p>
 					<p className="mt-2 max-w-sm text-left text-xs leading-5 text-white/70 sm:mt-3 sm:text-sm sm:leading-6">
-						Your trusted real estate partner for buying, selling, and investing in premium but affordable properties.
+						{content.description}
 					</p>
 					<div className="mt-3 flex items-center gap-2 sm:mt-5">
 						<span className="h-2 w-2 rounded-full bg-[#DE141C]" />
-						<p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 sm:text-xs">Licensed Brokerage Team</p>
+						<p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 sm:text-xs">{content.credential}</p>
 					</div>
 				</div>
 
 				<div className="min-w-0">
-					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Quick Links</h4>
+					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">{content.quickLinksHeading}</h4>
 					<ul className="mt-2 space-y-1.5 text-xs text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
-						<li><Link href="/" className="transition-colors hover:text-[#DE141C]">Home</Link></li>
-						<li><Link href="/project-list" className="transition-colors hover:text-[#DE141C]">Project List</Link></li>
-						<li><Link href="/gallery" className="transition-colors hover:text-[#DE141C]">Gallery</Link></li>
-						<li><Link href="/about-us" className="transition-colors hover:text-[#DE141C]">About Us</Link></li>
-						<li><Link href="/career" className="transition-colors hover:text-[#DE141C]">Careers</Link></li>
-						<li><Link href="/contact" className="transition-colors hover:text-[#DE141C]">Contact</Link></li>
+						{content.quickLinks.map((item, index) => <li key={`${item.href}-${index}`}><FooterLink href={item.href} className="transition-colors hover:text-[#DE141C]">{item.label}</FooterLink></li>)}
 					</ul>
 				</div>
 
 				<div className="min-w-0">
-					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Contact</h4>
+					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">{content.contactHeading}</h4>
 					<ul className="mt-2 space-y-2 text-[11px] leading-[1.45] text-white/70 sm:mt-4 sm:space-y-2 sm:text-sm">
-						<li>Block 16 Lot 1 Maple St. Olivares Homes, Barangay Milagrosa, Calamba, Laguna</li>
-						<li><a href="tel:+639618738236" className="transition-colors hover:text-white">639618738236</a></li>
-						<li className="break-words"><a href="mailto:recruitment@jewellzrealty.ph" className="transition-colors hover:text-white">recruitment@jewellzrealty.ph</a></li>
+						<li>{content.address}</li>
+						<li><a href={`tel:${content.phone.replace(/[^\d+]/g, "")}`} className="transition-colors hover:text-white">{content.phone}</a></li>
+						<li className="break-words"><a href={`mailto:${content.email}`} className="transition-colors hover:text-white">{content.email}</a></li>
 					</ul>
 				</div>
 
 				<div className="col-span-2 md:col-span-1">
-					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">Follow Us</h4>
+					<h4 className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 sm:text-sm">{content.socialHeading}</h4>
 					<div className="mt-3 flex items-center gap-2 sm:mt-4">
-						{socialLinks.map((social) => (
-							<a
-								key={social.label}
-								href={social.href}
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={`J'WELLZ REALTY on ${social.label}`}
-								title={social.label}
-								className="grid h-8 w-8 place-items-center rounded-sm border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9"
-							>
-								<svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-									{social.icon}
-								</svg>
-							</a>
-						))}
+						{content.socialLinks.map((social, index) => {
+							const href = safeExternalUrl(social.href);
+							if (!href) return null;
+							const icon = socialLinks.find((item) => item.label.toLowerCase() === social.label.toLowerCase())?.icon ?? <path d="M10 13a5 5 0 007.1 0l2-2a5 5 0 00-7.1-7.1l-1.1 1.1m3.1 6a5 5 0 00-7.1 0l-2 2A5 5 0 0012 20l1.1-1.1" fill="none" stroke="currentColor" strokeWidth="2" />;
+							return <a key={`${social.label}-${index}`} href={href} target="_blank" rel="noopener noreferrer" aria-label={`J'WELLZ REALTY on ${social.label}`} title={social.label} className="grid h-8 w-8 place-items-center rounded-sm border border-white/20 text-white/85 transition-colors hover:border-[#DE141C] hover:bg-[#DE141C] hover:text-white sm:h-9 sm:w-9">
+								<svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">{icon}</svg>
+							</a>;
+						})}
 					</div>
-					<p className="mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm">Stay updated with listings, open houses, and real estate tips.</p>
+					<p className="mt-2 max-w-xs text-xs leading-5 text-white/65 sm:mt-4 sm:text-sm">{content.socialCaption}</p>
 				</div>
 			</div>
 
@@ -103,7 +118,7 @@ export function Footer() {
 				<div className="mb-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-xs backdrop-blur-sm sm:flex-row sm:items-center sm:rounded-xl sm:px-4 sm:py-2.5">
 					<div className="flex items-center gap-2 text-white/50">
 						<span className="h-1.5 w-1.5 rounded-full bg-[#DE141C]" />
-						<span className="text-[11px] font-semibold uppercase tracking-[0.08em]">Partner & Team Access</span>
+						<span className="text-[11px] font-semibold uppercase tracking-[0.08em]">{content.accessHeading}</span>
 					</div>
 					<div className="flex w-full flex-wrap items-center justify-start gap-x-4 gap-y-2 text-xs sm:w-auto sm:justify-center">
 						<Link
@@ -144,11 +159,9 @@ export function Footer() {
 
 				{/* Copyright & Legal */}
 				<div className="flex flex-col items-start gap-3 text-left text-[10px] leading-relaxed text-white/55 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
-					<p>© {new Date().getFullYear()} J&apos;WELLZ REALTY MARKETING AND DEVELOPMENT CORP. All rights reserved.</p>
+					<p>© {new Date().getFullYear()} {content.companyName} {content.copyright}</p>
 					<div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-white/50 sm:gap-4">
-						<Link href="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link>
-						<span className="text-white/20">•</span>
-						<Link href="/terms" className="transition-colors hover:text-white">Terms &amp; Conditions</Link>
+						{content.legalLinks.map((item, index) => <FooterLink key={`${item.href}-${index}`} href={item.href} className="transition-colors hover:text-white">{item.label}</FooterLink>)}
 					</div>
 				</div>
 			</div>

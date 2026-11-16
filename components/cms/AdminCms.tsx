@@ -34,9 +34,11 @@ import { AdminCalendarWidget } from "./AdminCalendarWidget";
 import { PropertyWizard } from "./PropertyWizard";
 import { InquiryWorkflowManager } from "./InquiryWorkflowManager";
 import { AboutPageEditor } from "./AboutPageEditor";
+import { FooterEditor } from "./FooterEditor";
 import { AccountsWorkspace } from "./AccountsWorkspace";
 import { categoryFromParam, primaryForSection, sectionFromParam } from "./routing";
 import { ABOUT_PAGE_CONTENT_KEY } from "@/lib/about-page-content";
+import { FOOTER_CONTENT_KEY } from "@/lib/footer-content";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -3334,6 +3336,7 @@ export default function AdminCms({
 	const selectedCareerApplicationId = selection.careerApplications ?? optionalId(workspace.careerApplications[0]);
 	const selectedGalleryItem = workspace.galleryItems.find((row) => asText(row.id) === asText(selection.galleryItems)) ?? null;
 	const aboutPageContentRow = workspace.settings.find((row) => asText(row.key) === ABOUT_PAGE_CONTENT_KEY) ?? null;
+	const footerContentRow = workspace.settings.find((row) => asText(row.key) === FOOTER_CONTENT_KEY) ?? null;
 	const selectedProperty = workspace.properties.find((row) => asText(row.id) === asText(selectedPropertyId)) ?? null;
 	const selectedPropertyImageUrls = useMemo(
 		() => selectedPropertyImages.map((image) => asText(image.storage_url).trim()).filter(Boolean),
@@ -3458,6 +3461,7 @@ export default function AdminCms({
 					icon: FileText,
 					items: [
 						{ id: "about", label: "About Us", hint: "Public page copy", icon: FileText },
+						{ id: "footer", label: "Website Footer", hint: "Footer text and links", icon: FileText },
 						{ id: "gallery", label: "Gallery", hint: `${workspace.galleryItems.length} items`, icon: FileText },
 						{ id: "careerJobs", label: "Career Cards", hint: `${workspace.careerJobs.length} roles`, icon: BriefcaseBusiness },
 						{ id: "careerApplications", label: "Applications", hint: `${workspace.careerApplications.length} received`, icon: Inbox },
@@ -5295,6 +5299,16 @@ export default function AdminCms({
 							/>
 						) : null}
 
+						{currentSection === "footer" && isAdmin ? (
+							<FooterEditor
+								key={footerContentRow ? `${asText(footerContentRow.updated_at)}-${asText(footerContentRow.value).length}` : "footer-default"}
+								row={footerContentRow}
+								canEdit={canEditSettings}
+								onSubmit={saveSetting}
+								onDelete={(row) => deleteEntity("system_settings", row, "key")}
+							/>
+						) : null}
+
 						{currentSection === "gallery" && isAdmin ? (
 						<EntityEditor title="Gallery Items" description="Add and organize the photos visitors see in your gallery. Choose a photo, add a caption, then publish it when it is ready." rows={workspace.galleryItems} selectedId={selection.galleryItems} fields={galleryFields} canEdit={canEditContent} rowLabel={(row) => asText(row.title) || "Untitled photo"} rowMeta={(row) => `${displayCategory(row.section)} · ${row.is_published ? "Published" : "Hidden"}`} onSelect={(row) => setSelection((current) => ({ ...current, galleryItems: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, galleryItems: null }))} onDelete={(row) => deleteEntity("gallery_items", row)} onSubmit={saveGalleryItem} saveLabel="Save photo" createLabel="Add a gallery photo" extra={<GalleryImageManager galleryItem={selectedGalleryItem} canEdit={canEditContent} onChanged={reloadWorkspace} onRequestDelete={requestDestructiveAction} />} />
 						) : null}
@@ -5356,7 +5370,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (
-							<SettingsWorkspace rows={workspace.settings.filter((row) => asText(row.key) !== ABOUT_PAGE_CONTENT_KEY)} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} onReload={reloadWorkspace} />
+							<SettingsWorkspace rows={workspace.settings.filter((row) => ![ABOUT_PAGE_CONTENT_KEY, FOOTER_CONTENT_KEY].includes(asText(row.key)))} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} onReload={reloadWorkspace} />
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
