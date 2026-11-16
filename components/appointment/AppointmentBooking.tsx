@@ -501,7 +501,7 @@ export function AppointmentBooking() {
               </div>
 
               <p className="mb-2 text-[18px] font-semibold text-black">
-                {isRescheduled ? "Appointment updated" : "You&apos;re all set!"}
+                {isRescheduled ? "Appointment updated" : "You’re all set!"}
               </p>
               <p className="max-w-xs text-[13.5px] leading-[1.7] text-black/50">
                 Your appointment request for <span className="font-medium text-black">{propertyLabel}</span> has been {isRescheduled ? "updated" : "received"}. Our team will follow up using <span className="font-medium text-[#DE141C]">{email}</span>.
