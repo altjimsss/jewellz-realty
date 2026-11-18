@@ -105,6 +105,23 @@ function reportSheetRows(report: AnalyticsPdfReport) {
 	return { summary, chartRows, details };
 }
 
+function chartSheetData(report: AnalyticsPdfReport) {
+	const rows: Array<Array<string | number>> = [];
+	const blocks: Array<{ chart: AnalyticsPdfReport["charts"][number]; headerRow: number; firstDataRow: number; lastDataRow: number }> = [];
+	for (const chart of report.charts) {
+		if (!chart.labels.length || !chart.series.length) continue;
+		rows.push([chart.title]);
+		const headerRow = rows.length + 1;
+		rows.push(["Category", ...chart.series.map((series) => series.name)]);
+		const firstDataRow = rows.length + 1;
+		chart.labels.forEach((label, index) => rows.push([label, ...chart.series.map((series) => series.values[index] ?? 0)]));
+		const lastDataRow = rows.length;
+		blocks.push({ chart, headerRow, firstDataRow, lastDataRow });
+		rows.push([]);
+	}
+	return { rows: rows.length ? rows : [["No chart data is available for this report."]], blocks };
+}
+
 function csvCell(value: unknown) {
 	const text = String(value ?? "");
 	const safe = /^[=+@\t\r]/.test(text) || /^-[^0-9.]/.test(text) ? `'${text}` : text;
@@ -127,12 +144,12 @@ function columnName(index: number) {
 	return name;
 }
 
-function worksheetXml(rows: Array<Array<string | number>>) {
+function worksheetXml(rows: Array<Array<string | number>>, hasDrawing = false) {
 	const body = rows.map((row, rowIndex) => `<row r="${rowIndex + 1}">${row.map((value, columnIndex) => {
 		const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
 		return typeof value === "number" && Number.isFinite(value) ? `<c r="${ref}"><v>${value}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
 	}).join("")}</row>`).join("");
-	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
+	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetData>${body}</sheetData>${hasDrawing ? '<drawing r:id="rId1"/>' : ""}</worksheet>`;
 }
 
 function crc32(bytes: Uint8Array) {
@@ -164,17 +181,46 @@ function createStoredZip(files: Array<{ name: string; text: string }>) {
 	return result;
 }
 
+function excelChartXml(chart: AnalyticsPdfReport["charts"][number], block: ReturnType<typeof chartSheetData>["blocks"][number], index: number) {
+	const catAxis = 500000 + index * 2; const valAxis = catAxis + 1;
+	const series = chart.series.map((item, seriesIndex) => {
+		const col = columnName(seriesIndex + 1); const color = item.color.replace(/^#/, "");
+		const titleRef = `'Chart Data'!$${col}$${block.headerRow}`;
+		const categoryRef = `'Chart Data'!$A$${block.firstDataRow}:$A$${block.lastDataRow}`;
+		const valuesRef = `'Chart Data'!$${col}$${block.firstDataRow}:$${col}$${block.lastDataRow}`;
+		const style = chart.type === "line"
+			? `<a:ln w="28575"><a:solidFill><a:srgbClr val="${color}"/></a:solidFill></a:ln>`
+			: `<a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:ln><a:noFill/></a:ln>`;
+		const marker = chart.type === "line" ? `<c:marker><c:symbol val="circle"/><c:size val="5"/><c:spPr><a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:ln><a:noFill/></a:ln></c:spPr></c:marker>` : "";
+		return `<c:ser><c:idx val="${seriesIndex}"/><c:order val="${seriesIndex}"/><c:tx><c:strRef><c:f>${titleRef}</c:f></c:strRef></c:tx><c:spPr>${style}</c:spPr>${marker}<c:cat><c:strRef><c:f>${categoryRef}</c:f></c:strRef></c:cat><c:val><c:numRef><c:f>${valuesRef}</c:f></c:numRef></c:val></c:ser>`;
+	}).join("");
+	const chartType = chart.type === "line"
+		? `<c:lineChart><c:grouping val="standard"/>${series}<c:marker val="1"/><c:smooth val="0"/><c:axId val="${catAxis}"/><c:axId val="${valAxis}"/></c:lineChart>`
+		: `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series}<c:overlap val="0"/><c:gapWidth val="65"/><c:axId val="${catAxis}"/><c:axId val="${valAxis}"/></c:barChart>`;
+	const axes = `<c:catAx><c:axId val="${catAxis}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:tickLblPos val="nextTo"/><c:crossAx val="${valAxis}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/></c:catAx><c:valAx><c:axId val="${valAxis}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines><c:spPr><a:ln><a:solidFill><a:srgbClr val="E7E7E7"/></a:solidFill></a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="General" sourceLinked="1"/><c:tickLblPos val="nextTo"/><c:crossAx val="${catAxis}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
+	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><c:lang val="en-US"/><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1400" b="1"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"/><a:t>${xmlEscape(chart.title)}</a:t></a:r><a:endParaRPr lang="en-US"/></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:plotArea><c:layout/>${chartType}${axes}</c:plotArea><c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:printSettings><c:headerFooter/><c:pageMargins b="0.75" l="0.7" r="0.7" t="0.75" header="0.3" footer="0.3"/><c:pageSetup/></c:printSettings></c:chartSpace>`;
+}
+
 function createReportXlsx(report: AnalyticsPdfReport) {
-	const rows = reportSheetRows(report); const names = ["Summary", "Chart Data", "Supporting Table"];
-	const sheets = [rows.summary, rows.chartRows, rows.details];
-	const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${names.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`;
-	const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${names.map((name, i) => `<sheet name="${name}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`;
+	const rows = reportSheetRows(report); const chartData = chartSheetData(report);
+	const names = ["Summary", "Chart Data", "Supporting Table", "Charts"];
+	const sheets = [rows.summary, chartData.rows, rows.details, []];
+	const chartParts = chartData.blocks.map((block, index) => ({ name: `xl/charts/chart${index + 1}.xml`, text: excelChartXml(block.chart, block, index) }));
+	const drawingAnchors = chartData.blocks.map((_, index) => `<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 18}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="11239500" cy="5200000"/><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${index + 2}" name="Chart ${index + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId${index + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:oneCellAnchor>`).join("");
+	const drawing = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">${drawingAnchors}</xdr:wsDr>`;
+	const drawingRelationships = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${chartData.blocks.map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${index + 1}.xml"/>`).join("")}</Relationships>`;
+	const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${names.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>${chartParts.map((chart) => `<Override PartName="/${chart.name}" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join("")}</Types>`;
+	const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${names.map((name, i) => `<sheet name="${name}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets><calcPr calcId="191029" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>`;
 	const relationships = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${names.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}</Relationships>`;
 	const files = [
 		{ name: "[Content_Types].xml", text: contentTypes },
 		{ name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
 		{ name: "xl/workbook.xml", text: workbook }, { name: "xl/_rels/workbook.xml.rels", text: relationships },
-		...sheets.map((sheet, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: worksheetXml(sheet) })),
+		...sheets.map((sheet, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: worksheetXml(sheet, i === 3) })),
+		{ name: "xl/worksheets/_rels/sheet4.xml.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>` },
+		{ name: "xl/drawings/drawing1.xml", text: drawing },
+		{ name: "xl/drawings/_rels/drawing1.xml.rels", text: drawingRelationships },
+		...chartParts,
 	];
 	return createStoredZip(files);
 }
@@ -248,7 +294,7 @@ export function AnalyticsExportDialog({ open, onClose, options, reports, onExpor
 		const buffer = new ArrayBuffer(bytes.byteLength);
 		new Uint8Array(buffer).set(bytes);
 		downloadBlob(`${filename}.xlsx`, new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
-		setStatus("Excel workbook downloaded with separate Summary, Chart Data, and Supporting Table sheets.");
+		setStatus("Excel workbook downloaded with native charts and separate Summary, Chart Data, Supporting Table, and Charts sheets.");
 	}
 
 	function updatePeriod(period: AnalyticsReportPeriod, updater: (current: AnalyticsReportSchedule["schedules"][AnalyticsReportPeriod]) => AnalyticsReportSchedule["schedules"][AnalyticsReportPeriod]) {
@@ -298,13 +344,13 @@ export function AnalyticsExportDialog({ open, onClose, options, reports, onExpor
 								</select>
 							</label>
 							<div className="mt-4 grid gap-2 sm:grid-cols-3" role="group" aria-label="Report file format">
-								{([{ id: "pdf", label: "PDF report", description: "Formatted pages with charts", icon: FileText }, { id: "xlsx", label: "Excel workbook", description: "Summary, chart data, table sheets", icon: FileSpreadsheet }, { id: "csv", label: "CSV report", description: "Labeled sections for spreadsheets", icon: Download }] as const).map((item) => { const Icon = item.icon; return <button key={item.id} type="button" aria-pressed={format === item.id} onClick={() => { setFormat(item.id); setStatus(""); }} className={`flex min-h-[72px] items-start gap-2.5 rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${format === item.id ? "border-[#DE141C]/50 bg-red-50/50" : "border-black/[0.08] bg-white hover:border-black/20 hover:bg-zinc-50"}`}><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${format === item.id ? "bg-[#DE141C] text-white" : "bg-zinc-100 text-black/65"}`}><Icon className="h-4 w-4" /></span><span><span className="block text-xs font-semibold text-[#111111]">{item.label}</span><span className="mt-1 block text-[10px] leading-4 text-black/50">{item.description}</span></span></button>; })}
+				{([{ id: "pdf", label: "PDF report", description: "Formatted pages with charts", icon: FileText }, { id: "xlsx", label: "Excel workbook", description: "Native charts and data sheets", icon: FileSpreadsheet }, { id: "csv", label: "CSV report", description: "Labeled sections for spreadsheets", icon: Download }] as const).map((item) => { const Icon = item.icon; return <button key={item.id} type="button" aria-pressed={format === item.id} onClick={() => { setFormat(item.id); setStatus(""); }} className={`flex min-h-[72px] items-start gap-2.5 rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${format === item.id ? "border-[#DE141C]/50 bg-red-50/50" : "border-black/[0.08] bg-white hover:border-black/20 hover:bg-zinc-50"}`}><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${format === item.id ? "bg-[#DE141C] text-white" : "bg-zinc-100 text-black/65"}`}><Icon className="h-4 w-4" /></span><span><span className="block text-xs font-semibold text-[#111111]">{item.label}</span><span className="mt-1 block text-[10px] leading-4 text-black/50">{item.description}</span></span></button>; })}
 							</div>
 							<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.07] pt-4">
 								<div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-black/50">{selectedReport ? <><span>{selectedReport.metrics.length} summary metrics</span><span>{selectedReport.charts.length} charts</span><span>{selectedReport.table ? "Supporting table included" : "No supporting table"}</span></> : <span>No Analytics tabs are available to export.</span>}</div>
 								<button type="button" onClick={exportReport} disabled={!selectedReport} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-[#DE141C] px-3.5 text-xs font-semibold text-white transition hover:bg-[#bd1118] disabled:opacity-50"><Download className="h-3.5 w-3.5" />Export {format.toUpperCase()}</button>
 							</div>
-							<p className="mt-2 text-[10px] leading-4 text-black/40">{format === "pdf" ? "PDF opens in print preview. Choose Save as PDF; enable background graphics to include brand colors." : format === "xlsx" ? "The workbook has separate Summary, Chart Data, and Supporting Table sheets." : "The CSV file contains labeled summary, chart-data, and supporting-table sections."}</p>
+							<p className="mt-2 text-[10px] leading-4 text-black/40">{format === "pdf" ? "PDF opens in print preview. Choose Save as PDF; enable background graphics to include brand colors." : format === "xlsx" ? "The workbook includes native charts plus separate Summary, Chart Data, and Supporting Table sheets." : "The CSV file contains labeled summary, chart-data, and supporting-table sections."}</p>
 							{status ? <p role="status" className="mt-2 text-xs font-medium text-emerald-700">{status}</p> : null}
 						</section>
 						<div className="mb-4"><h3 className="text-sm font-semibold text-[#111111]">Raw data exports</h3><p className="mt-1 text-xs text-black/50">Download an individual dataset as CSV for filtering or further analysis.</p></div>
