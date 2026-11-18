@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, Check, Download, FileSpreadsheet, Loader2, Mail, RefreshCw, X } from "lucide-react";
+import { CalendarClock, Check, Download, FileSpreadsheet, FileText, Loader2, Mail, RefreshCw, Sheet, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { DEFAULT_ANALYTICS_REPORT_SCHEDULE, type AnalyticsReportCategory, type AnalyticsReportPeriod, type AnalyticsReportSchedule, type AnalyticsReportSection } from "@/lib/analytics-report-schedule";
 import type { CmsRow } from "./types";
@@ -15,6 +15,8 @@ export type AnalyticsPdfReport = {
 	charts: Array<{ title: string; subtitle?: string; type: "bar" | "line"; labels: string[]; series: Array<{ name: string; color: string; values: number[] }> }>;
 	table?: { title: string; headers: string[]; rows: string[][] };
 };
+
+type ReportFormat = "pdf" | "xlsx" | "csv";
 
 const categoryOptions: Array<{ id: AnalyticsReportCategory; label: string; description: string }> = [
 	{ id: "traffic", label: "Visitor traffic", description: "Sessions, sources, and browsing activity" },
@@ -83,16 +85,107 @@ function renderPdfChart(chart: AnalyticsPdfReport["charts"][number]) {
 
 function createPdfHtml(report: AnalyticsPdfReport) {
 	const generated = new Intl.DateTimeFormat("en-PH", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date());
-	const metrics = report.metrics.map((item) => `<div class="metric"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`).join("");
-	const charts = report.charts.map(renderPdfChart).join("");
+	const metrics = `<div class="section-kicker">Executive summary | Key indicators</div>${report.metrics.map((item) => `<div class="metric"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`).join("")}`;
+	const charts = `<div class="section-kicker">Visual analysis | ${report.charts.length} charts</div>${report.charts.map(renderPdfChart).join("")}`;
 	const table = report.table ? `<section class="table-section"><h2>${escapeHtml(report.table.title)}</h2><table><thead><tr>${report.table.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${report.table.rows.length ? report.table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${report.table.headers.length}" class="empty">No report data is available for this table.</td></tr>`}</tbody></table></section>` : "";
 	return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(report.title)} · J'WELLZ REALTY</title><style>
-@page{size:A4;margin:14mm 13mm 17mm}*{box-sizing:border-box}body{margin:0;color:#171717;font:11px/1.5 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}.topline{height:6px;background:#DE141C;margin-bottom:24px}.brand{font-size:10px;letter-spacing:.19em;text-transform:uppercase;color:#DE141C;font-weight:700}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #dedede;padding-bottom:15px}.head h1{font-size:25px;line-height:1.15;letter-spacing:-.04em;margin:7px 0 4px}.head p{margin:0;color:#666;font-size:11px}.date{text-align:right;color:#666;font-size:10px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0}.metric{border:1px solid #e4e4e4;border-top:2px solid #DE141C;padding:10px 11px;min-height:58px}.metric span{display:block;color:#737373;font-size:9px;text-transform:uppercase;letter-spacing:.08em}.metric strong{display:block;margin-top:4px;font-size:18px;line-height:1.1}.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}.chart-card{border:1px solid #e5e5e5;padding:11px 10px;break-inside:avoid}.chart-card h2,.table-section h2{font-size:12px;margin:0;font-weight:700}.chart-card p{margin:2px 0 4px;color:#777;font-size:9px}.chart-card svg{display:block;width:100%;height:auto;max-height:205px}.empty-chart{display:grid;min-height:120px;place-items:center;margin-top:8px;padding:14px;border:1px dashed #ddd;background:#fafafa;color:#777;text-align:center;font-size:10px}.legend{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 0;color:#555;font-size:9px}.legend-item{display:inline-flex;align-items:center;gap:4px}.legend-item i{width:8px;height:8px;border-radius:2px}.table-section{margin-top:18px;break-inside:avoid}.table-section h2{margin-bottom:7px}.table-section table{width:100%;border-collapse:collapse;font-size:9px}.table-section th{background:#f3f3f3;text-align:left;color:#444;font-weight:700}.table-section th,.table-section td{border-bottom:1px solid #e6e6e6;padding:6px 7px;vertical-align:top}.table-section .empty{text-align:center;color:#888;padding:16px}.foot{margin-top:18px;border-top:1px solid #e5e5e5;padding-top:8px;color:#888;font-size:9px;display:flex;justify-content:space-between}.note{margin-top:13px;color:#777;font-size:9px}@media print{.chart-card{break-inside:avoid}.table-section{break-before:auto}}
+@page{size:A4;margin:14mm 13mm 17mm}*{box-sizing:border-box}body{margin:0;color:#171717;font:11px/1.5 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}.topline{height:6px;background:#DE141C;margin-bottom:24px}.brand{font-size:10px;letter-spacing:.19em;text-transform:uppercase;color:#DE141C;font-weight:700}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #dedede;padding-bottom:15px}.head h1{font-size:25px;line-height:1.15;letter-spacing:-.04em;margin:7px 0 4px}.head p{margin:0;color:#666;font-size:11px}.date{text-align:right;color:#666;font-size:10px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0}.section-kicker{grid-column:1/-1;margin-top:3px;color:#6f6f6f;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}.metric{border:1px solid #e4e4e4;border-top:2px solid #DE141C;padding:10px 11px;min-height:58px}.metric span{display:block;color:#737373;font-size:9px;text-transform:uppercase;letter-spacing:.08em}.metric strong{display:block;margin-top:4px;font-size:18px;line-height:1.1}.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}.chart-card{border:1px solid #e5e5e5;padding:11px 10px;break-inside:avoid}.chart-card h2,.table-section h2{font-size:12px;margin:0;font-weight:700}.chart-card p{margin:2px 0 4px;color:#777;font-size:9px}.chart-card svg{display:block;width:100%;height:auto;max-height:205px}.empty-chart{display:grid;min-height:120px;place-items:center;margin-top:8px;padding:14px;border:1px dashed #ddd;background:#fafafa;color:#777;text-align:center;font-size:10px}.legend{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 0;color:#555;font-size:9px}.legend-item{display:inline-flex;align-items:center;gap:4px}.legend-item i{width:8px;height:8px;border-radius:2px}.table-section{margin-top:18px;break-inside:avoid}.table-section h2{margin-bottom:7px}.table-section table{width:100%;border-collapse:collapse;font-size:9px}.table-section th{background:#f3f3f3;text-align:left;color:#444;font-weight:700}.table-section th,.table-section td{border-bottom:1px solid #e6e6e6;padding:6px 7px;vertical-align:top}.table-section .empty{text-align:center;color:#888;padding:16px}.foot{margin-top:18px;border-top:1px solid #e5e5e5;padding-top:8px;color:#888;font-size:9px;display:flex;justify-content:space-between}.note{margin-top:13px;color:#777;font-size:9px}@media print{.chart-card{break-inside:avoid}.table-section{break-before:auto}}
 </style></head><body><div class="topline"></div><header class="head"><div><div class="brand">J'WELLZ REALTY · ANALYTICS REPORT</div><h1>${escapeHtml(report.title)}</h1><p>${escapeHtml(report.description)}</p></div><div class="date">Generated<br><strong>${escapeHtml(generated)}</strong><br><span>Philippine Time</span></div></header><section class="metrics">${metrics}</section><section class="charts">${charts}</section>${table}<p class="note">Figures reflect the analytics data available when this report was generated. Forecasts are estimates and may differ from actual results.</p><footer class="foot"><span>Internal management report · J'WELLZ REALTY</span><span>${escapeHtml(report.id)} · ${escapeHtml(generated)}</span></footer></body></html>`;
+}
+
+function reportSheetRows(report: AnalyticsPdfReport) {
+	const generated = new Intl.DateTimeFormat("en-PH", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date());
+	const summary: Array<Array<string | number>> = [
+		["J'WELLZ REALTY | ANALYTICS REPORT"], ["Report", report.title], ["Description", report.description], ["Generated (Philippine Time)", generated], [], ["Executive summary"], [report.description], [], ["Summary metrics"], ["Metric", "Value"],
+		...report.metrics.map((metric) => [metric.label, metric.value]),
+	];
+	const chartRows: Array<Array<string | number>> = [["Chart", "Series", "Category", "Value"]];
+	for (const chart of report.charts) for (const series of chart.series) chart.labels.forEach((label, index) => chartRows.push([chart.title, series.name, label, series.values[index] ?? ""]));
+	const details: Array<Array<string | number>> = report.table ? [[report.table.title], report.table.headers, ...report.table.rows] : [["No supporting table is available for this report."]];
+	return { summary, chartRows, details };
+}
+
+function csvCell(value: unknown) {
+	const text = String(value ?? "");
+	const safe = /^[=+@\t\r]/.test(text) || /^-[^0-9.]/.test(text) ? `'${text}` : text;
+	return `"${safe.replace(/"/g, '""')}"`;
+}
+
+function createReportCsv(report: AnalyticsPdfReport) {
+	const { summary, chartRows, details } = reportSheetRows(report);
+	const rows: Array<Array<string | number>> = [...summary, [], ["Chart data"], ...chartRows, [], ["Supporting table"], ...details];
+	return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+}
+
+function xmlEscape(value: unknown) {
+	return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[char] ?? char);
+}
+
+function columnName(index: number) {
+	let name = "";
+	for (let value = index + 1; value > 0; value = Math.floor((value - 1) / 26)) name = String.fromCharCode(65 + ((value - 1) % 26)) + name;
+	return name;
+}
+
+function worksheetXml(rows: Array<Array<string | number>>) {
+	const body = rows.map((row, rowIndex) => `<row r="${rowIndex + 1}">${row.map((value, columnIndex) => {
+		const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
+		return typeof value === "number" && Number.isFinite(value) ? `<c r="${ref}"><v>${value}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+	}).join("")}</row>`).join("");
+	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
+}
+
+function crc32(bytes: Uint8Array) {
+	let crc = 0xffffffff;
+	for (const byte of bytes) { crc ^= byte; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); }
+	return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createStoredZip(files: Array<{ name: string; text: string }>) {
+	const encoder = new TextEncoder();
+	const chunks: Uint8Array[] = [];
+	const central: Uint8Array[] = [];
+	let offset = 0;
+	const u16 = (view: DataView, index: number, value: number) => view.setUint16(index, value, true);
+	const u32 = (view: DataView, index: number, value: number) => view.setUint32(index, value, true);
+	for (const file of files) {
+		const name = encoder.encode(file.name); const data = encoder.encode(file.text); const checksum = crc32(data);
+		const local = new Uint8Array(30); const localView = new DataView(local.buffer);
+		u32(localView, 0, 0x04034b50); u16(localView, 4, 20); u16(localView, 6, 0x0800); u16(localView, 8, 0); u16(localView, 10, 0); u16(localView, 12, 0x21); u32(localView, 14, checksum); u32(localView, 18, data.length); u32(localView, 22, data.length); u16(localView, 26, name.length); u16(localView, 28, 0);
+		chunks.push(local, name, data);
+		const header = new Uint8Array(46); const headerView = new DataView(header.buffer);
+		u32(headerView, 0, 0x02014b50); u16(headerView, 4, 20); u16(headerView, 6, 20); u16(headerView, 8, 0x0800); u16(headerView, 10, 0); u16(headerView, 12, 0); u16(headerView, 14, 0x21); u32(headerView, 16, checksum); u32(headerView, 20, data.length); u32(headerView, 24, data.length); u16(headerView, 28, name.length); u16(headerView, 30, 0); u16(headerView, 32, 0); u16(headerView, 34, 0); u16(headerView, 36, 0); u32(headerView, 38, 0); u32(headerView, 42, offset);
+		central.push(header, name); offset += local.length + name.length + data.length;
+	}
+	const centralSize = central.reduce((sum, chunk) => sum + chunk.length, 0); const end = new Uint8Array(22); const endView = new DataView(end.buffer);
+	u32(endView, 0, 0x06054b50); u16(endView, 4, 0); u16(endView, 6, 0); u16(endView, 8, files.length); u16(endView, 10, files.length); u32(endView, 12, centralSize); u32(endView, 16, offset); u16(endView, 20, 0);
+	const all = [...chunks, ...central, end]; const result = new Uint8Array(all.reduce((sum, chunk) => sum + chunk.length, 0)); let cursor = 0;
+	for (const chunk of all) { result.set(chunk, cursor); cursor += chunk.length; }
+	return result;
+}
+
+function createReportXlsx(report: AnalyticsPdfReport) {
+	const rows = reportSheetRows(report); const names = ["Summary", "Chart Data", "Supporting Table"];
+	const sheets = [rows.summary, rows.chartRows, rows.details];
+	const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${names.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`;
+	const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${names.map((name, i) => `<sheet name="${name}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`;
+	const relationships = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${names.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}</Relationships>`;
+	const files = [
+		{ name: "[Content_Types].xml", text: contentTypes },
+		{ name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+		{ name: "xl/workbook.xml", text: workbook }, { name: "xl/_rels/workbook.xml.rels", text: relationships },
+		...sheets.map((sheet, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: worksheetXml(sheet) })),
+	];
+	return createStoredZip(files);
+}
+
+function downloadBlob(filename: string, blob: Blob) {
+	const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function AnalyticsExportDialog({ open, onClose, options, reports, onExport }: { open: boolean; onClose: () => void; options: AnalyticsExportOption[]; reports: AnalyticsPdfReport[]; onExport: (filename: string, rows: CmsRow[], columns: string[]) => void }) {
 	const [tab, setTab] = useState<"download" | "schedule">("download");
+	const [format, setFormat] = useState<ReportFormat>("pdf");
 	const [selectedReportId, setSelectedReportId] = useState("");
 	const [schedule, setSchedule] = useState<AnalyticsReportSchedule>(DEFAULT_ANALYTICS_REPORT_SCHEDULE);
 	const [loading, setLoading] = useState(false);
@@ -140,6 +233,24 @@ export function AnalyticsExportDialog({ open, onClose, options, reports, onExpor
 		printWindow.setTimeout(() => printWindow.print(), 400);
 	}
 
+	function exportReport() {
+		if (!selectedReport) return;
+		setStatus("");
+		const date = new Date().toISOString().slice(0, 10);
+		const filename = `jwellz-${selectedReport.id}-${date}`;
+		if (format === "pdf") { exportPdf(); return; }
+		if (format === "csv") {
+			downloadBlob(`${filename}.csv`, new Blob([createReportCsv(selectedReport)], { type: "text/csv;charset=utf-8" }));
+			setStatus("Analytics report CSV downloaded.");
+			return;
+		}
+		const bytes = createReportXlsx(selectedReport);
+		const buffer = new ArrayBuffer(bytes.byteLength);
+		new Uint8Array(buffer).set(bytes);
+		downloadBlob(`${filename}.xlsx`, new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+		setStatus("Excel workbook downloaded with separate Summary, Chart Data, and Supporting Table sheets.");
+	}
+
 	function updatePeriod(period: AnalyticsReportPeriod, updater: (current: AnalyticsReportSchedule["schedules"][AnalyticsReportPeriod]) => AnalyticsReportSchedule["schedules"][AnalyticsReportPeriod]) {
 		setSchedule((current) => ({ ...current, schedules: { ...current.schedules, [period]: updater(current.schedules[period]) } }));
 	}
@@ -168,28 +279,35 @@ export function AnalyticsExportDialog({ open, onClose, options, reports, onExpor
 		<div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-3 sm:p-5" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
 			<section role="dialog" aria-modal="true" aria-labelledby="analytics-export-title" className="flex max-h-[min(90dvh,820px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-2xl">
 				<header className="flex items-start justify-between gap-4 border-b border-black/[0.08] px-5 py-4 sm:px-6">
-					<div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center bg-[#DE141C] text-white"><FileSpreadsheet className="h-5 w-5" /></span><div><h2 id="analytics-export-title" className="text-lg font-semibold tracking-tight text-[#111111]">Reports & exports</h2><p className="mt-1 text-sm text-black/55">Download a dataset now or configure an automatic AI report.</p></div></div>
+					<div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center bg-[#DE141C] text-white"><FileSpreadsheet className="h-5 w-5" /></span><div><h2 id="analytics-export-title" className="text-lg font-semibold tracking-tight text-[#111111]">Reports & exports</h2><p className="mt-1 text-sm text-black/55">Export a polished report, download raw data, or configure scheduled AI reports.</p></div></div>
 					<button type="button" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-black/50 transition hover:bg-zinc-100 hover:text-black" aria-label="Close reports and exports"><X className="h-4 w-4" /></button>
 				</header>
 				<div className="flex border-b border-black/[0.08] px-5 sm:px-6" role="tablist" aria-label="Report actions">
-					<button type="button" role="tab" aria-selected={tab === "download"} onClick={() => { setTab("download"); setStatus(""); }} className={`border-b-2 px-1 py-3 text-sm font-semibold ${tab === "download" ? "border-[#DE141C] text-[#DE141C]" : "border-transparent text-black/50 hover:text-black"}`}><span className="inline-flex items-center gap-2"><Download className="h-4 w-4" /> Download data</span></button>
+					<button type="button" role="tab" aria-selected={tab === "download"} onClick={() => { setTab("download"); setStatus(""); }} className={`border-b-2 px-1 py-3 text-sm font-semibold ${tab === "download" ? "border-[#DE141C] text-[#DE141C]" : "border-transparent text-black/50 hover:text-black"}`}><span className="inline-flex items-center gap-2"><Download className="h-4 w-4" /> Export report</span></button>
 					<button type="button" role="tab" aria-selected={tab === "schedule"} onClick={() => { setTab("schedule"); setStatus(""); }} className={`ml-6 border-b-2 px-1 py-3 text-sm font-semibold ${tab === "schedule" ? "border-[#DE141C] text-[#DE141C]" : "border-transparent text-black/50 hover:text-black"}`}><span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Scheduled reports</span></button>
 				</div>
 				<div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
 					{tab === "download" ? <>
 						<section className="mb-6 rounded-lg border border-[#DE141C]/20 bg-red-50/35 p-4 sm:p-5">
 							<div className="flex flex-wrap items-start justify-between gap-3">
-								<div><div className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111]"><FileSpreadsheet className="h-4 w-4 text-[#DE141C]" /> Export a formatted PDF report</div><p className="mt-1 text-xs leading-5 text-black/55">Choose an Analytics tab. The report includes KPI cards, charts, and a supporting data table where available.</p></div>
-								<button type="button" onClick={exportPdf} disabled={!selectedReport} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-[#DE141C] px-3.5 text-xs font-semibold text-white transition hover:bg-[#bd1118] disabled:opacity-50"><Download className="h-3.5 w-3.5" />Export selected tab as PDF</button>
+								<div><div className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111]"><FileSpreadsheet className="h-4 w-4 text-[#DE141C]" /> Build an Analytics report</div><p className="mt-1 text-xs leading-5 text-black/55">Choose an Analytics tab and file format. Reports include a summary, charts, and the tab's supporting table.</p></div>
 							</div>
 							<label className="mt-4 block max-w-lg text-xs font-semibold text-black/65">Analytics tab
 								<select value={selectedReport?.id ?? ""} onChange={(event) => setSelectedReportId(event.target.value)} className="mt-1.5 h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-medium text-[#111111] outline-none focus:border-[#DE141C]/50 focus:ring-2 focus:ring-[#DE141C]/10">
 									{reports.map((report) => <option key={report.id} value={report.id}>{report.title}</option>)}
 								</select>
 							</label>
-							{selectedReport ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-black/50"><span>{selectedReport.metrics.length} summary metrics</span><span>{selectedReport.charts.length} charts</span><span>{selectedReport.table ? "Supporting data table included" : "No supporting table"}</span><span className="text-black/40">PDF opens in print preview; choose “Save as PDF”.</span></div> : <p className="mt-3 text-xs text-black/50">No Analytics tabs are available to export.</p>}
+							<div className="mt-4 grid gap-2 sm:grid-cols-3" role="group" aria-label="Report file format">
+								{([{ id: "pdf", label: "PDF report", description: "Formatted pages with charts", icon: FileText }, { id: "xlsx", label: "Excel workbook", description: "Summary, chart data, table sheets", icon: FileSpreadsheet }, { id: "csv", label: "CSV report", description: "Labeled sections for spreadsheets", icon: Download }] as const).map((item) => { const Icon = item.icon; return <button key={item.id} type="button" aria-pressed={format === item.id} onClick={() => { setFormat(item.id); setStatus(""); }} className={`flex min-h-[72px] items-start gap-2.5 rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30 ${format === item.id ? "border-[#DE141C]/50 bg-red-50/50" : "border-black/[0.08] bg-white hover:border-black/20 hover:bg-zinc-50"}`}><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${format === item.id ? "bg-[#DE141C] text-white" : "bg-zinc-100 text-black/65"}`}><Icon className="h-4 w-4" /></span><span><span className="block text-xs font-semibold text-[#111111]">{item.label}</span><span className="mt-1 block text-[10px] leading-4 text-black/50">{item.description}</span></span></button>; })}
+							</div>
+							<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.07] pt-4">
+								<div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-black/50">{selectedReport ? <><span>{selectedReport.metrics.length} summary metrics</span><span>{selectedReport.charts.length} charts</span><span>{selectedReport.table ? "Supporting table included" : "No supporting table"}</span></> : <span>No Analytics tabs are available to export.</span>}</div>
+								<button type="button" onClick={exportReport} disabled={!selectedReport} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-[#DE141C] px-3.5 text-xs font-semibold text-white transition hover:bg-[#bd1118] disabled:opacity-50"><Download className="h-3.5 w-3.5" />Export {format.toUpperCase()}</button>
+							</div>
+							<p className="mt-2 text-[10px] leading-4 text-black/40">{format === "pdf" ? "PDF opens in print preview. Choose Save as PDF; enable background graphics to include brand colors." : format === "xlsx" ? "The workbook has separate Summary, Chart Data, and Supporting Table sheets." : "The CSV file contains labeled summary, chart-data, and supporting-table sections."}</p>
+							{status ? <p role="status" className="mt-2 text-xs font-medium text-emerald-700">{status}</p> : null}
 						</section>
-						<div className="mb-4"><h3 className="text-sm font-semibold text-[#111111]">Download a spreadsheet dataset</h3><p className="mt-1 text-xs text-black/50">CSV files open in Excel or Google Sheets. The row count helps you confirm the selection.</p></div>
+						<div className="mb-4"><h3 className="text-sm font-semibold text-[#111111]">Raw data exports</h3><p className="mt-1 text-xs text-black/50">Download an individual dataset as CSV for filtering or further analysis.</p></div>
 						<div className="grid gap-2 sm:grid-cols-2">
 							{options.map((option) => (
 								<button key={option.filename} type="button" onClick={() => onExport(option.filename, option.rows, option.columns)} className="group flex min-h-[90px] items-start gap-3 rounded-lg border border-black/[0.09] p-3.5 text-left transition hover:border-[#DE141C]/45 hover:bg-red-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30">
@@ -218,7 +336,7 @@ export function AnalyticsExportDialog({ open, onClose, options, reports, onExpor
 					</>}
 				</div>
 				<footer className="flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.08] bg-zinc-50 px-5 py-3.5 sm:px-6">
-					<p role="status" aria-live="polite" className="min-w-0 text-xs text-black/55">{status || (tab === "schedule" ? "Reports are delivered based on your selected frequency and categories." : "Choose a report to download it as a CSV file.")}</p>
+					<p role="status" aria-live="polite" className="min-w-0 text-xs text-black/55">{status || (tab === "schedule" ? "Reports are delivered based on your selected frequency and categories." : "Choose an Analytics tab and format, or download a raw dataset as CSV.")}</p>
 					{tab === "schedule" ? <button type="button" onClick={() => void saveSchedule()} disabled={saving || loading} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-[#DE141C] px-3.5 text-xs font-semibold text-white transition hover:bg-[#bd1118] disabled:opacity-50">{saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : status.includes("saved") ? <Check className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}{saving ? "Saving..." : "Save schedule"}</button> : <button type="button" onClick={onClose} className="h-9 shrink-0 rounded-md border border-black/10 bg-white px-3.5 text-xs font-semibold text-black/65 transition hover:bg-zinc-100">Done</button>}
 				</footer>
 			</section>

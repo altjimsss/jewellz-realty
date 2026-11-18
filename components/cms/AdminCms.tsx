@@ -5083,11 +5083,11 @@ export default function AdminCms({
 							{isAdmin ? (
 								<button type="button" onClick={() => isAnalyticsSection ? setShowAnalyticsExportDialog(true) : downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "status", "priority", "lead_score", "created_at"])} className="inline-flex h-8 items-center gap-1 rounded-lg bg-[#111111] px-3 text-xs font-medium text-white shadow-2xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
 									<Download className="h-3.5 w-3.5" />
-									Export CSV
+									{isAnalyticsSection ? "Export report" : "Export CSV"}
 								</button>
 							) : null}
 						</div>
-						{isAdmin ? <button type="button" onClick={() => isAnalyticsSection ? setShowAnalyticsExportDialog(true) : downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#111111] text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 md:hidden" aria-label={isAnalyticsSection ? "Reports and exports" : "Export inquiries as CSV"} title={isAnalyticsSection ? "Reports and exports" : "Export inquiries as CSV"}><Download className="h-4 w-4" /></button> : null}
+						{isAdmin ? <button type="button" onClick={() => isAnalyticsSection ? setShowAnalyticsExportDialog(true) : downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#111111] text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 md:hidden" aria-label={isAnalyticsSection ? "Export report" : "Export inquiries as CSV"} title={isAnalyticsSection ? "Export report" : "Export inquiries as CSV"}><Download className="h-4 w-4" /></button> : null}
 						<div className="relative ml-1 flex items-center gap-2 text-zinc-600">
 							{isAdmin ? (
 								<button
