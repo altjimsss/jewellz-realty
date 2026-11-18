@@ -35,10 +35,12 @@ import { PropertyWizard } from "./PropertyWizard";
 import { InquiryWorkflowManager } from "./InquiryWorkflowManager";
 import { AboutPageEditor } from "./AboutPageEditor";
 import { FooterEditor } from "./FooterEditor";
+import { AnalyticsExportDialog, type AnalyticsExportOption, type AnalyticsPdfReport } from "./AnalyticsExportDialog";
 import { AccountsWorkspace } from "./AccountsWorkspace";
 import { categoryFromParam, primaryForSection, sectionFromParam } from "./routing";
 import { ABOUT_PAGE_CONTENT_KEY } from "@/lib/about-page-content";
 import { FOOTER_CONTENT_KEY } from "@/lib/footer-content";
+import { ANALYTICS_REPORT_SCHEDULE_KEY } from "@/lib/analytics-report-schedule";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -92,22 +94,67 @@ function relativeAge(value: unknown) {
 
 
 function csvEscape(value: unknown) {
-	const textValue = asText(value);
-	return /[",\n\r]/.test(textValue) ? `"${textValue.replaceAll('"', '""')}"` : textValue;
+	let textValue = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
+	const formulaText = textValue.replace(/^[\u0000-\u0020]+/, "");
+	if (/^[=+@]/.test(formulaText) || formulaText.startsWith("-") && !/^-?\d+(\.\d+)?$/.test(formulaText)) textValue = `'${textValue}`;
+	return `"${textValue.replaceAll('"', '""')}"`;
+}
+
+function csvHeader(column: string) {
+	const labels: Record<string, string> = {
+		id: "Record ID",
+		buyer_name: "Customer name",
+		buyer_email: "Customer email",
+		buyer_phone: "Customer phone",
+		buyer_message: "Customer message",
+		property_id: "Property ID",
+		total_views: "Listing views",
+		detail_opens: "Detail opens",
+		total_interactions: "Interactions",
+		avg_dwell_seconds: "Average browse time (seconds)",
+		total_inquiries: "Inquiries",
+		inquiry_rate_pct: "Inquiries per 100 views (%)",
+		conversion_rate_pct: "Conversion rate (%)",
+		avg_response_time_hours: "Average response time (hours)",
+		session_count: "Sessions",
+		total_page_views: "Page views",
+		share_pct: "Share of sessions (%)",
+		was_clicked: "Clicked",
+		is_fallback: "General match used",
+		generated_at: "Generated at",
+		clicked_at: "Clicked at",
+		anonymous_visitor_id: "Anonymous visitor ID",
+		utm_source: "Campaign source",
+		utm_medium: "Campaign medium",
+		utm_campaign: "Campaign name",
+		landing_path: "Landing page",
+		device_type: "Device type",
+		page_view_count: "Page views",
+		started_at: "Session started",
+		last_seen_at: "Last activity",
+		event_type: "Activity type",
+		page_path: "Page",
+		created_at: "Created at",
+		lead_score: "Lead score",
+		assigned_agent_id: "Assigned agent ID",
+		first_contacted_at: "First contacted at",
+	};
+	return labels[column] ?? column.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function downloadCsv(filename: string, rows: CmsRow[], columns: string[]) {
 	const csv = [
-		columns.join(","),
+		columns.map((column) => csvEscape(csvHeader(column))).join(","),
 		...rows.map((row) => columns.map((column) => csvEscape(row[column])).join(",")),
-	].join("\n");
-	const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+	].join("\r\n");
+	const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
 	const url = URL.createObjectURL(blob);
 	const link = document.createElement("a");
 	link.href = url;
-	link.download = filename;
+	const stem = filename.replace(/\.csv$/i, "");
+	link.download = `${stem}-${new Date().toISOString().slice(0, 10)}.csv`;
 	link.click();
-	URL.revokeObjectURL(url);
+	window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 type AnalyticsCategory = "trafficBehavior" | "propertyPerformance" | "predictiveAnalytics" | "userEngagement";
@@ -3971,7 +4018,7 @@ export default function AdminCms({
 		if (!selectedDateFilter) return workspace.activityLogs;
 		return workspace.activityLogs.filter((item) => asText(item.created_at ?? item.occurred_at).slice(0, 10) === selectedDateFilter);
 	}, [workspace.activityLogs, selectedDateFilter]);
-	const analyticsExportOptions: Array<{ label: string; description: string; filename: string; rows: CmsRow[]; columns: string[] }> = [
+	const analyticsExportOptions: AnalyticsExportOption[] = [
 		{ label: "Inquiries", description: "Lead details and current status", filename: "jewellz-inquiries.csv", rows: filteredInquiries, columns: ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"] },
 		{ label: "Listing performance", description: "Views, interactions, and inquiry rates", filename: "jewellz-listing-performance.csv", rows: workspace.listingPerformance, columns: ["property_id", "title", "total_views", "detail_opens", "total_interactions", "avg_dwell_seconds", "total_inquiries", "inquiry_rate_pct"] },
 		{ label: "Agent performance", description: "Assignments, conversions, and response time", filename: "jewellz-agent-performance.csv", rows: workspace.agentPerformance, columns: ["agent_id", "agent_name", "total_assigned", "conversions", "conversion_rate_pct", "avg_response_time_hours"] },
@@ -3981,6 +4028,167 @@ export default function AdminCms({
 		{ label: "Visitor sessions", description: "Session source, device, and visit details", filename: "jewellz-visitor-sessions.csv", rows: workspace.sessions, columns: ["id", "anonymous_visitor_id", "source", "referrer", "utm_source", "utm_medium", "utm_campaign", "landing_path", "device_type", "browser", "os", "language", "page_view_count", "started_at", "last_seen_at"] },
 		{ label: "Engagement events", description: "Tracked events for the selected date", filename: "jewellz-engagement-events.csv", rows: filteredEngagementEvents, columns: ["event_type", "session_id", "property_id", "page_path", "source", "metadata", "created_at"] },
 	];
+	const analyticsPdfReports = useMemo<AnalyticsPdfReport[]>(() => {
+		const dailyRows = workspace.dailyInquiryVolume
+			.filter((row) => !selectedDateFilter || asText(row.inquiry_date).slice(0, 10) === selectedDateFilter)
+			.map((row) => ({ date: asText(row.inquiry_date).slice(0, 10), count: toNullableNumber(row.total_inquiries) ?? 0 }))
+			.sort((a, b) => a.date.localeCompare(b.date))
+			.slice(-14);
+		const dailyLabels = dailyRows.map((row) => row.date.slice(5));
+		const dailyValues = dailyRows.map((row) => row.count);
+		const listingRows = workspace.listingPerformance.map((row) => ({
+			name: asText(row.title) || "Untitled listing",
+			views: toNullableNumber(row.total_views) ?? 0,
+			inquiries: toNullableNumber(row.total_inquiries) ?? 0,
+			interactions: toNullableNumber(row.total_interactions) ?? toNullableNumber(row.detail_opens) ?? 0,
+			rate: toNullableNumber(row.inquiry_rate_pct) ?? 0,
+		})).sort((a, b) => b.views - a.views).slice(0, 10);
+		const sourceRows = workspace.trafficSources.map((row) => ({
+			name: asText(row.source) || "Other",
+			sessions: toNullableNumber(row.session_count) ?? 0,
+			views: toNullableNumber(row.total_page_views) ?? 0,
+		})).sort((a, b) => b.sessions - a.sessions).slice(0, 8);
+		const statuses = filteredInquiries.reduce<Record<string, number>>((acc, inquiry) => {
+			const status = asText(inquiry.status) || "new";
+			acc[status] = (acc[status] ?? 0) + 1;
+			return acc;
+		}, {});
+		const statusRows = Object.entries(statuses).sort((a, b) => b[1] - a[1]);
+		const eventCounts = filteredEngagementEvents.reduce<Record<string, number>>((acc, event) => {
+			const eventName = analyticsEventName(event) || "Other activity";
+			acc[eventName] = (acc[eventName] ?? 0) + 1;
+			return acc;
+		}, {});
+		const eventRows = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+		const recommendationClicks = workspace.recommendations.filter((row) => Boolean(row.was_clicked)).length;
+		const recommendationImpressions = workspace.recommendations.length;
+		const agentRows = workspace.agentPerformance.map((row) => ({
+			name: asText(row.agent_name) || "Agent",
+			assigned: toNullableNumber(row.total_assigned) ?? 0,
+			conversions: toNullableNumber(row.conversions) ?? 0,
+			rate: toNullableNumber(row.conversion_rate_pct) ?? 0,
+			response: toNullableNumber(row.avg_response_time_hours),
+		})).sort((a, b) => b.assigned - a.assigned).slice(0, 10);
+		const developerRows = workspace.developerPortfolio.map((row) => ({
+			name: asText(row.company_name) || "Developer",
+			listings: toNullableNumber(row.total_listings) ?? 0,
+			views: toNullableNumber(row.total_views) ?? 0,
+			conversions: toNullableNumber(row.total_conversions) ?? 0,
+		})).sort((a, b) => b.views - a.views).slice(0, 10);
+		const uniqueVisitors = new Set(workspace.sessions.map((row) => asText(row.anonymous_visitor_id)).filter(Boolean)).size;
+		const repeatVisitors = new Set(workspace.sessions.filter((row) => (toNullableNumber(row.page_view_count) ?? 0) > 1).map((row) => asText(row.anonymous_visitor_id)).filter(Boolean)).size;
+		const highPriority = filteredInquiries.filter((row) => asText(row.priority).toLowerCase() === "high").length;
+		const unassigned = filteredInquiries.filter((row) => !asText(row.assigned_agent_id)).length;
+		const averageLeadScore = filteredInquiries.length
+			? filteredInquiries.reduce((sum, row) => sum + (toNullableNumber(row.lead_score) ?? 0), 0) / filteredInquiries.length
+			: 0;
+
+		return [
+			{
+				id: "analytics",
+				title: "Analytics Overview",
+				description: "A management summary of inquiries, visitors, listing interest, and current portfolio activity.",
+				metrics: [
+					{ label: "Properties", value: workspace.properties.length.toLocaleString() },
+					{ label: "Inquiries", value: filteredInquiries.length.toLocaleString() },
+					{ label: "Visitor sessions", value: workspace.sessions.length.toLocaleString() },
+					{ label: "Agents", value: workspace.agents.length.toLocaleString() },
+				],
+				charts: [
+					{ title: "Daily inquiry activity", subtitle: "Most recent 14 available days", type: "line" as const, labels: dailyLabels, series: [{ name: "Inquiries", color: "#DE141C", values: dailyValues }] },
+					{ title: "Top listing interest", subtitle: "Views compared with submitted inquiries", type: "bar" as const, labels: listingRows.slice(0, 7).map((row) => row.name), series: [{ name: "Views", color: "#252525", values: listingRows.slice(0, 7).map((row) => row.views) }, { name: "Inquiries", color: "#DE141C", values: listingRows.slice(0, 7).map((row) => row.inquiries) }] },
+				],
+				table: { title: "Top listings by views", headers: ["Listing", "Views", "Interactions", "Inquiries", "Inquiry rate"], rows: listingRows.map((row) => [row.name, row.views.toLocaleString(), row.interactions.toLocaleString(), row.inquiries.toLocaleString(), `${row.rate.toFixed(2)}%`]) },
+			},
+			{
+				id: "trafficBehavior",
+				title: "Traffic & User Behavior",
+				description: "Visitor sessions, source mix, and the tracked actions visitors take on the site.",
+				metrics: [
+					{ label: "Sessions", value: workspace.sessions.length.toLocaleString() },
+					{ label: "Identified visitors", value: uniqueVisitors.toLocaleString() },
+					{ label: "Sources", value: sourceRows.length.toLocaleString() },
+					{ label: "Tracked actions", value: filteredEngagementEvents.length.toLocaleString() },
+				],
+				charts: [
+					{ title: "Traffic sources", subtitle: "Sessions by attributed source", type: "bar" as const, labels: sourceRows.map((row) => row.name), series: [{ name: "Sessions", color: "#DE141C", values: sourceRows.map((row) => row.sessions) }, { name: "Page views", color: "#252525", values: sourceRows.map((row) => row.views) }] },
+					{ title: "Visitor actions", subtitle: "Most frequently recorded event types", type: "bar" as const, labels: eventRows.map(([name]) => name), series: [{ name: "Events", color: "#DE141C", values: eventRows.map(([, count]) => count) }] },
+				],
+				table: { title: "Traffic source details", headers: ["Source", "Sessions", "Page views"], rows: sourceRows.map((row) => [row.name, row.sessions.toLocaleString(), row.views.toLocaleString()]) },
+			},
+			{
+				id: "propertyPerformance",
+				title: "Property Performance",
+				description: "A comparison of listing views, interactions, inquiries, and inquiry rate.",
+				metrics: [
+					{ label: "Published properties", value: workspace.properties.filter((row) => asText(row.status).toLowerCase() === "published").length.toLocaleString() },
+					{ label: "Listings with activity", value: listingRows.filter((row) => row.views > 0 || row.interactions > 0).length.toLocaleString() },
+					{ label: "Listing views", value: listingRows.reduce((sum, row) => sum + row.views, 0).toLocaleString() },
+					{ label: "Inquiries", value: listingRows.reduce((sum, row) => sum + row.inquiries, 0).toLocaleString() },
+				],
+				charts: [{ title: "Top property activity", subtitle: "Views and inquiries for the most viewed listings", type: "bar" as const, labels: listingRows.slice(0, 9).map((row) => row.name), series: [{ name: "Views", color: "#252525", values: listingRows.slice(0, 9).map((row) => row.views) }, { name: "Inquiries", color: "#DE141C", values: listingRows.slice(0, 9).map((row) => row.inquiries) }] }],
+				table: { title: "Listing performance detail", headers: ["Listing", "Views", "Interactions", "Inquiries", "Inquiry rate"], rows: listingRows.map((row) => [row.name, row.views.toLocaleString(), row.interactions.toLocaleString(), row.inquiries.toLocaleString(), `${row.rate.toFixed(2)}%`]) },
+			},
+			{
+				id: "predictiveAnalytics",
+				title: "Inquiries & Estimates",
+				description: "Recent inquiry volume and lead pipeline context. Any future-facing values are estimates, not guarantees.",
+				metrics: [
+					{ label: "Inquiries in view", value: filteredInquiries.length.toLocaleString() },
+					{ label: "High priority", value: highPriority.toLocaleString() },
+					{ label: "Unassigned", value: unassigned.toLocaleString() },
+					{ label: "Average lead score", value: averageLeadScore.toFixed(2) },
+				],
+				charts: [
+					{ title: "Daily inquiry volume", subtitle: "Recent recorded inquiry counts", type: "line" as const, labels: dailyLabels, series: [{ name: "Inquiries", color: "#DE141C", values: dailyValues }] },
+					{ title: "Current lead pipeline", subtitle: "Inquiry records grouped by current status", type: "bar" as const, labels: statusRows.map(([status]) => status.replace(/_/g, " ")), series: [{ name: "Inquiries", color: "#252525", values: statusRows.map(([, count]) => count) }] },
+				],
+				table: { title: "Inquiry status totals", headers: ["Current status", "Inquiries"], rows: statusRows.map(([status, count]) => [status.replace(/_/g, " "), count.toLocaleString()]) },
+			},
+			{
+				id: "userEngagement",
+				title: "Visitor Activity",
+				description: "Tracked site events and recommendation activity, including clicks and repeat visits where visitor IDs are available.",
+				metrics: [
+					{ label: "Tracked events", value: filteredEngagementEvents.length.toLocaleString() },
+					{ label: "Visitors with repeat page views", value: repeatVisitors.toLocaleString() },
+					{ label: "Recommendation clicks", value: recommendationClicks.toLocaleString() },
+					{ label: "Recommendation records", value: recommendationImpressions.toLocaleString() },
+				],
+				charts: [
+					{ title: "Tracked visitor actions", subtitle: "Event totals by action type", type: "bar" as const, labels: eventRows.map(([name]) => name), series: [{ name: "Events", color: "#DE141C", values: eventRows.map(([, count]) => count) }] },
+					{ title: "Recommendation activity", subtitle: "Recorded recommendations and clicked recommendations", type: "bar" as const, labels: ["Records", "Clicks"], series: [{ name: "Activity", color: "#252525", values: [recommendationImpressions, recommendationClicks] }] },
+				],
+				table: { title: "Event type totals", headers: ["Visitor action", "Events"], rows: eventRows.map(([name, count]) => [name.replace(/_/g, " "), count.toLocaleString()]) },
+			},
+			{
+				id: "agentPerformance",
+				title: "Agent Performance",
+				description: "Agent assignments, completed conversions, response speed, and conversion rate.",
+				metrics: [
+					{ label: "Agents reporting", value: agentRows.length.toLocaleString() },
+					{ label: "Assigned inquiries", value: agentRows.reduce((sum, row) => sum + row.assigned, 0).toLocaleString() },
+					{ label: "Conversions", value: agentRows.reduce((sum, row) => sum + row.conversions, 0).toLocaleString() },
+					{ label: "Average conversion rate", value: `${agentRows.length ? (agentRows.reduce((sum, row) => sum + row.rate, 0) / agentRows.length).toFixed(2) : "0.00"}%` },
+				],
+				charts: [{ title: "Agent workload and conversions", subtitle: "Assigned inquiries compared with converted leads", type: "bar" as const, labels: agentRows.slice(0, 8).map((row) => row.name), series: [{ name: "Assigned", color: "#252525", values: agentRows.slice(0, 8).map((row) => row.assigned) }, { name: "Conversions", color: "#DE141C", values: agentRows.slice(0, 8).map((row) => row.conversions) }] }],
+				table: { title: "Agent performance detail", headers: ["Agent", "Assigned", "Conversions", "Conversion rate", "Avg. response (hours)"], rows: agentRows.map((row) => [row.name, row.assigned.toLocaleString(), row.conversions.toLocaleString(), `${row.rate.toFixed(2)}%`, row.response == null ? "—" : row.response.toFixed(1)]) },
+			},
+			{
+				id: "developerPortfolio",
+				title: "Developer Portfolio",
+				description: "Developer portfolio totals and property engagement, based on available listing performance records.",
+				metrics: [
+					{ label: "Developer partners", value: developerRows.length.toLocaleString() },
+					{ label: "Listings", value: developerRows.reduce((sum, row) => sum + row.listings, 0).toLocaleString() },
+					{ label: "Listing views", value: developerRows.reduce((sum, row) => sum + row.views, 0).toLocaleString() },
+					{ label: "Conversions", value: developerRows.reduce((sum, row) => sum + row.conversions, 0).toLocaleString() },
+				],
+				charts: [{ title: "Developer portfolio activity", subtitle: "Listing views and conversions by partner", type: "bar" as const, labels: developerRows.slice(0, 8).map((row) => row.name), series: [{ name: "Views", color: "#252525", values: developerRows.slice(0, 8).map((row) => row.views) }, { name: "Conversions", color: "#DE141C", values: developerRows.slice(0, 8).map((row) => row.conversions) }] }],
+				table: { title: "Developer portfolio details", headers: ["Developer", "Listings", "Views", "Conversions"], rows: developerRows.map((row) => [row.name, row.listings.toLocaleString(), row.views.toLocaleString(), row.conversions.toLocaleString()]) },
+			},
+		];
+	}, [workspace.dailyInquiryVolume, workspace.properties, workspace.sessions, workspace.agents.length, workspace.listingPerformance, workspace.trafficSources, workspace.recommendations, workspace.agentPerformance, workspace.developerPortfolio, filteredInquiries, filteredEngagementEvents, selectedDateFilter]);
 
 	const stats = useMemo(() => ({
 		propertyCount: workspace.properties.length,
@@ -4879,6 +5087,7 @@ export default function AdminCms({
 								</button>
 							) : null}
 						</div>
+						{isAdmin ? <button type="button" onClick={() => isAnalyticsSection ? setShowAnalyticsExportDialog(true) : downloadCsv("jewellz-inquiries.csv", filteredInquiries, ["id", "buyer_name", "buyer_email", "buyer_phone", "status", "priority", "lead_score", "source", "created_at"])} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#111111] text-white shadow-2xs transition hover:bg-black/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 md:hidden" aria-label={isAnalyticsSection ? "Reports and exports" : "Export inquiries as CSV"} title={isAnalyticsSection ? "Reports and exports" : "Export inquiries as CSV"}><Download className="h-4 w-4" /></button> : null}
 						<div className="relative ml-1 flex items-center gap-2 text-zinc-600">
 							{isAdmin ? (
 								<button
@@ -5370,7 +5579,7 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "settings" && isAdmin ? (
-							<SettingsWorkspace rows={workspace.settings.filter((row) => ![ABOUT_PAGE_CONTENT_KEY, FOOTER_CONTENT_KEY].includes(asText(row.key)))} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} onReload={reloadWorkspace} />
+							<SettingsWorkspace rows={workspace.settings.filter((row) => ![ABOUT_PAGE_CONTENT_KEY, FOOTER_CONTENT_KEY, ANALYTICS_REPORT_SCHEDULE_KEY].includes(asText(row.key)))} selectedId={selection.settings} canEdit={canEditSettings} onSelect={(row) => setSelection((current) => ({ ...current, settings: row ? asText(row.key) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, settings: null }))} onDelete={(row) => deleteEntity("system_settings", row, "key")} onSubmit={async (payload, currentRow) => { await saveSetting(payload, currentRow); }} onReload={reloadWorkspace} />
 						) : null}
 
 						{(currentSection === "analytics" || analyticsChildSections.has(currentSection) || currentSection === "traffic" || currentSection === "agentPerformance" || currentSection === "developerPortfolio") && isAdmin ? (
@@ -5663,27 +5872,13 @@ export default function AdminCms({
 					</div>
 				</div>
 			) : null}
-			{showAnalyticsExportDialog ? (
-				<div className="fixed inset-0 z-[70] grid place-items-center bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAnalyticsExportDialog(false); }}>
-					<section role="dialog" aria-modal="true" aria-labelledby="analytics-export-title" className="w-full max-w-xl border border-black/10 bg-white p-5 shadow-2xl sm:p-6">
-						<div className="flex items-start justify-between gap-4">
-							<div>
-								<h2 id="analytics-export-title" className="text-lg font-semibold tracking-tight text-[#111111]">Export an analytics report</h2>
-								<p className="mt-1 text-sm text-black/55">Choose the CSV you want to download.</p>
-							</div>
-							<button type="button" onClick={() => setShowAnalyticsExportDialog(false)} className="grid h-8 w-8 shrink-0 place-items-center text-black/50 transition hover:bg-zinc-100 hover:text-black" aria-label="Close export options"><X className="h-4 w-4" /></button>
-						</div>
-						<div className="mt-5 grid gap-2 sm:grid-cols-2">
-							{analyticsExportOptions.map((option) => (
-								<button key={option.filename} type="button" onClick={() => { downloadCsv(option.filename, option.rows, option.columns); setShowAnalyticsExportDialog(false); }} className="flex min-h-[68px] items-center gap-3 border border-black/[0.08] px-3 py-2.5 text-left transition hover:border-[#DE141C]/35 hover:bg-[#DE141C]/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DE141C]/30">
-									<span className="grid h-8 w-8 shrink-0 place-items-center bg-[#DE141C] text-white"><Download className="h-4 w-4" /></span>
-									<span className="min-w-0"><span className="block text-sm font-semibold text-[#111111]">{option.label}</span><span className="mt-0.5 block text-xs leading-4 text-black/50">{option.description}</span></span>
-								</button>
-							))}
-						</div>
-					</section>
-				</div>
-			) : null}
+			<AnalyticsExportDialog
+				open={showAnalyticsExportDialog}
+				onClose={() => setShowAnalyticsExportDialog(false)}
+				options={analyticsExportOptions}
+				reports={analyticsPdfReports}
+				onExport={(filename, rows, columns) => { downloadCsv(filename, rows, columns); setShowAnalyticsExportDialog(false); }}
+			/>
 		</main>
 	);
 }

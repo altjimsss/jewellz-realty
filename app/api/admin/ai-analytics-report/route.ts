@@ -4,6 +4,10 @@ import { createServerClient } from "@supabase/ssr";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { supabaseServer } from "@/lib/supabase/server";
 import { hasAiConfigured, runAiChatCompletion } from "@/lib/ai/client";
+import { sendActiveAdminNotification } from "@/lib/email-notifications";
+import { ANALYTICS_REPORT_SCHEDULE_KEY, parseAnalyticsReportSchedule, type AnalyticsReportCategory, type AnalyticsReportSection } from "@/lib/analytics-report-schedule";
+
+export const maxDuration = 60;
 
 type ReportPeriod = "daily" | "weekly" | "monthly";
 type ReportCategory = "traffic" | "property" | "engagement" | "predictive";
@@ -546,7 +550,60 @@ export async function GET(request: Request) {
 	if (run) {
 		const cron = requireCron(request);
 		if ("error" in cron) return NextResponse.json({ error: cron.error }, { status: cron.status });
-		return NextResponse.json(await createReport(period, null, category));
+		const { data: scheduleRow, error: scheduleError } = await supabaseServer.from("system_settings").select("value").eq("key", ANALYTICS_REPORT_SCHEDULE_KEY).maybeSingle();
+		if (scheduleError) return NextResponse.json({ error: `Could not load scheduled report settings: ${scheduleError.message}` }, { status: 500 });
+		const schedule = parseAnalyticsReportSchedule(scheduleRow?.value);
+		const periodSchedule = schedule.schedules[period];
+		if (!schedule.enabled || !periodSchedule.enabled || periodSchedule.categories.length === 0) {
+			return NextResponse.json({ ok: true, skipped: true, reason: "No report is scheduled for this period." });
+		}
+
+		try {
+			const summary = await buildAnalyticsSummary(period);
+			const reports = await Promise.all(periodSchedule.categories.map(async (reportCategory) => {
+				const report = await generateAiReport(summary, reportCategory);
+				await storeReport(report, summary, null, reportCategory).catch((error) => console.error("[scheduled analytics] report could not be stored", error));
+				return { category: reportCategory, report };
+			}));
+			let emailSent = false;
+			if (schedule.sendEmail) {
+				const categoryNames: Record<AnalyticsReportCategory, string> = { traffic: "Visitor traffic", property: "Listing performance", engagement: "Visitor activity", predictive: "Inquiries and estimates" };
+				const sectionNames: Record<AnalyticsReportSection, string> = {
+					executiveSummary: "Executive summary",
+					descriptiveFindings: "Findings",
+					predictiveInsights: "Estimates",
+					riskFlags: "Items to review",
+					recommendedActions: "Recommended actions",
+				};
+				const details: Array<[string, string]> = [["Report period", `${summary.periodStart.slice(0, 10)} to ${summary.periodEnd.slice(0, 10)}`]];
+				for (const { category: reportCategory, report } of reports) {
+					details.push([`${categoryNames[reportCategory]} · Narrative source`, report.narrativeSource === "ai" ? "AI-generated" : "Basic summary"]);
+					details.push([`${categoryNames[reportCategory]} · Data reliability`, report.confidence]);
+					const contents: Partial<Record<AnalyticsReportSection, string | string[]>> = {
+						executiveSummary: report.executiveSummary,
+						descriptiveFindings: report.descriptiveFindings,
+						predictiveInsights: report.predictiveInsights,
+						riskFlags: report.riskFlags,
+						recommendedActions: report.recommendedActions,
+					};
+					for (const section of Object.keys(sectionNames) as AnalyticsReportSection[]) {
+						if (!schedule.sections[section]) continue;
+						const value = contents[section];
+						if (typeof value === "string" ? value.trim() : value?.length) details.push([`${categoryNames[reportCategory]} · ${sectionNames[section]}`, Array.isArray(value) ? value.map((item) => `• ${item}`).join("\n") : value ?? ""]);
+					}
+				}
+				emailSent = await sendActiveAdminNotification({
+					subject: `Scheduled ${period} analytics report – J'WELLZ REALTY`,
+					heading: `${period.charAt(0).toUpperCase()}${period.slice(1)} analytics report`,
+					details,
+					action: { label: "Open analytics dashboard", url: `${(process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "")}/admin/analytics` },
+				});
+			}
+			return NextResponse.json({ ok: true, period, categories: periodSchedule.categories, stored: reports.length, emailSent });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Unable to generate scheduled analytics reports.";
+			return NextResponse.json({ error: message }, { status: 500 });
+		}
 	}
 
 	const admin = await requireAdmin(request);

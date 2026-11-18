@@ -168,7 +168,7 @@ export function buildEmailText(message: Omit<EmailMessage, "to"> | EmailMessage)
 }
 
 export function buildEmailHtml(message: Omit<EmailMessage, "to"> | EmailMessage, includeBanner = false) {
-	const details = message.details.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;padding:9px;border-bottom:1px solid #eee">${escapeHtml(label)}</th><td style="padding:9px;border-bottom:1px solid #eee">${renderDetail(label, value)}</td></tr>`).join("");
+	const details = message.details.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;padding:9px;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(label)}</th><td style="padding:9px;border-bottom:1px solid #eee;white-space:pre-line">${renderDetail(label, value)}</td></tr>`).join("");
 	let action = "";
 	if (message.action) {
 		try {
