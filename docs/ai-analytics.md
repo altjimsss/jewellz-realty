@@ -91,3 +91,11 @@ Cron-style local test:
 ```bash
 curl "http://localhost:3000/api/admin/ai-analytics-report?run=1&period=daily&secret=YOUR_CRON_SECRET"
 ```
+
+## CSV and PDF Exports
+
+From the CMS Analytics area, open **Reports & exports** from the top bar. CSV exports are available for inquiry, listing performance, agent performance, traffic, recommendations, visitor sessions, daily inquiry volume, and engagement event data.
+
+To create a PDF, select the Analytics tab to report on. The report includes its available summary metrics, charts, and supporting table. The browser print preview opens; choose **Save as PDF** to download it. Enable background graphics in print settings if you want the branded red header and chart colors included.
+
+Scheduled AI reports are configured separately in the **Scheduled reports** tab. Choose the report frequency, categories, sections, and whether reports should be emailed to active administrators.
