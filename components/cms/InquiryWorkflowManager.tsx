@@ -424,6 +424,11 @@ export function InquiryWorkflowManager({
 	// 1-Click Stage Transition Handler
 	async function handleAdvanceStage(inquiryId: string, currentStatus: string, nextStage?: string) {
 		const next = nextStage || NEXT_STAGE_MAP[currentStatus] || "contacted";
+		const inquiry = inquiries.find((item) => asText(item.id) === inquiryId);
+		if (next === "assigned" && !asText(inquiry?.assigned_agent_id)) {
+			setStatusBanner("Assign an agent before moving this lead to Assigned.");
+			return;
+		}
 		setSavingAction(true);
 		const now = new Date().toISOString();
 
@@ -518,6 +523,10 @@ export function InquiryWorkflowManager({
 	// Add Activity Note Handler
 	async function handleAddNote() {
 		if (!selectedInquiry || !noteText.trim()) return;
+		if (targetStatus === "assigned" && !asText(selectedInquiry.assigned_agent_id)) {
+			setStatusBanner("Assign an agent before setting this lead to Assigned.");
+			return;
+		}
 		setSavingAction(true);
 		const now = new Date().toISOString();
 
@@ -904,15 +913,15 @@ export function InquiryWorkflowManager({
 															{NEXT_STAGE_MAP[asText(inquiry.status || "new")] && canEdit ? (
 																<button
 																	type="button"
-																	disabled={savingAction}
+											disabled={savingAction || (NEXT_STAGE_MAP[asText(inquiry.status || "new")] === "assigned" && !asText(inquiry.assigned_agent_id))}
 																	onClick={() =>
 																		void handleAdvanceStage(
 																			asText(inquiry.id),
 																			asText(inquiry.status || "new")
 																		)
 																	}
-																	className="inline-flex items-center gap-1 rounded-lg bg-[#111111] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs transition hover:bg-black/85"
-																	title={`Advance to ${NEXT_STAGE_MAP[asText(inquiry.status || "new")].replace("_", " ")}`}
+												className="inline-flex items-center gap-1 rounded-lg bg-[#111111] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-45"
+												title={NEXT_STAGE_MAP[asText(inquiry.status || "new")] === "assigned" && !asText(inquiry.assigned_agent_id) ? "Assign an agent before moving this lead to Assigned" : `Advance to ${NEXT_STAGE_MAP[asText(inquiry.status || "new")].replace("_", " ")}`}
 																>
 																	<span>Advance</span>
 																	<ArrowRight className="h-3 w-3" />
@@ -1027,11 +1036,12 @@ export function InquiryWorkflowManager({
 											{nextStage && canEdit ? (
 												<button
 													type="button"
-													disabled={savingAction}
+												disabled={savingAction || (nextStage === "assigned" && !asText(inquiry.assigned_agent_id))}
 													onClick={() => void handleAdvanceStage(asText(inquiry.id), asText(inquiry.status || "new"), nextStage)}
-													className="inline-flex items-center gap-1 rounded-lg bg-[#111111] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs transition hover:bg-black/85"
+												className="inline-flex items-center gap-1 rounded-lg bg-[#111111] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-45"
+												title={nextStage === "assigned" && !asText(inquiry.assigned_agent_id) ? "Assign an agent before moving this lead to Assigned" : undefined}
 												>
-													<span>Move to {STAGE_CONFIGS[nextStage]?.label || nextStage}</span>
+												<span>{nextStage === "assigned" && !asText(inquiry.assigned_agent_id) ? "Assign an agent first" : `Move to ${STAGE_CONFIGS[nextStage]?.label || nextStage}`}</span>
 													<ArrowRight className="h-3 w-3" />
 												</button>
 											) : null}
@@ -1829,8 +1839,8 @@ function LeadInspectorDrawer({
 							className="h-8 rounded-lg border border-black/10 bg-white px-2 text-xs font-medium text-black/75 outline-none"
 						>
 							{inquiryStatusOptions.map((opt) => (
-								<option key={opt.value} value={opt.value}>
-									Set status: {opt.label}
+								<option key={opt.value} value={opt.value} disabled={opt.value === "assigned" && !asText(selectedInquiry.assigned_agent_id)}>
+									Set status: {opt.value === "assigned" && !asText(selectedInquiry.assigned_agent_id) ? "Assigned (assign an agent first)" : opt.label}
 								</option>
 							))}
 						</select>
