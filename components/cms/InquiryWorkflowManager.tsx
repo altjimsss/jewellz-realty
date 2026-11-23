@@ -1620,6 +1620,13 @@ function LeadInspectorDrawer({
 	const maxDwellSeconds = Math.max(0, ...dwellSeconds);
 	const totalDwellSeconds = dwellSeconds.reduce((sum, seconds) => sum + seconds, 0);
 	const formatDuration = (seconds: number) => seconds < 60 ? `${Math.round(seconds)} sec` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`;
+	const storedPriority = asText(selectedInquiry.priority).toLowerCase();
+	const backfillPhoneContribution = selectedInquiry.buyer_phone ? 0.7 : 0;
+	const backfillPriorityContribution = storedPriority === "high" ? 1.1 : storedPriority === "low" ? -0.6 : 0;
+	const backfillRawScore = -2 + backfillPhoneContribution + backfillPriorityContribution;
+	const backfillScoreEstimate = 1 / (1 + Math.exp(-backfillRawScore));
+	const hasTrackedScoreActivity = scoreViewEvents.length > 0 || scoreInteractionEvents.length > 0 || dwellSeconds.length > 0;
+	const matchesHistoricalBackfill = score !== null && !hasTrackedScoreActivity && Math.abs(score - backfillScoreEstimate) < 0.002;
 
 	return (
 		<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-5 animate-in fade-in">
@@ -1786,11 +1793,15 @@ function LeadInspectorDrawer({
 								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{formatDuration(maxDwellSeconds)}</strong>
 							</div>
 							<div className="rounded-md border border-black/[0.06] bg-white p-2">
-								<span className="block text-[10px] font-medium text-black/45">Contact details</span>
+								<span className="block text-[10px] font-medium text-black/45">Submitted contact info</span>
 								<strong className="mt-0.5 block text-xs text-[#111111]">{selectedInquiry.buyer_phone ? "Phone" : "No phone"} · {selectedInquiry.buyer_message ? "Message" : "No message"}</strong>
 							</div>
 						</div>
-						{!selectedInquiry.session_id ? (
+						{matchesHistoricalBackfill ? (
+							<p className="mt-2 rounded-md border border-[#DE141C]/10 bg-white px-2.5 py-2 text-[10px] leading-4 text-black/65">
+								This matches the historical backfill: baseline −2.00, phone {backfillPhoneContribution >= 0 ? "+" : ""}{backfillPhoneContribution.toFixed(2)}, {storedPriority || "no"} priority {backfillPriorityContribution >= 0 ? "+" : ""}{backfillPriorityContribution.toFixed(2)} = {backfillRawScore.toFixed(2)}; sigmoid({backfillRawScore.toFixed(2)}) ≈ {Math.round(backfillScoreEstimate * 100)}%. The backfill did not use message content, and no browsing activity was recorded.
+							</p>
+						) : !selectedInquiry.session_id ? (
 							<p className="mt-2 text-[10px] leading-4 text-amber-800">No linked browsing session was saved, so this score uses the inquiry details available.</p>
 						) : inquiryVisitorEvents.length === 0 ? (
 							<p className="mt-2 text-[10px] leading-4 text-black/45">No matching property activity was recorded for the linked session.</p>
