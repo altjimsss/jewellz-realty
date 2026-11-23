@@ -150,9 +150,10 @@ export async function POST(request: Request) {
 
 	let insertResult = await supabaseServer.from("inquiries").insert(payload).select("id").single();
 
-	if (insertResult.error) {
+	if (insertResult.error && /buyer_message|column .*message/i.test(insertResult.error.message)) {
 		console.error("[inquiries POST error]", insertResult.error);
-		// Try fallback if column name mismatch (e.g. message vs buyer_message, or missing lead_score)
+		// Support databases that use `message` instead of `buyer_message`, while
+		// preserving the score so fallback inserts are never silently unscored.
 		const fallbackPayload: Record<string, unknown> = {
 			property_id: propertyId || null,
 			buyer_name: buyerName,
@@ -161,7 +162,8 @@ export async function POST(request: Request) {
 			session_id: sessionId || null,
 			source: databaseSource(source),
 			status: "new",
-			priority: requestedPriority || "medium",
+			priority: requestedPriority || priorityFromLeadScore(leadScore),
+			lead_score: leadScore,
 		};
 		if (insertResult.error.message.includes("buyer_message")) {
 			fallbackPayload.message = buyerMessage || null;
@@ -169,9 +171,7 @@ export async function POST(request: Request) {
 			fallbackPayload.buyer_message = buyerMessage || null;
 		}
 		const secondTry = await supabaseServer.from("inquiries").insert(fallbackPayload).select("id").single();
-		if (!secondTry.error) {
-			insertResult = secondTry;
-		}
+		insertResult = secondTry;
 	}
 
 	if (insertResult.error) {

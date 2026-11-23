@@ -3128,6 +3128,7 @@ export default function AdminCms({
 	const [authChecked, setAuthChecked] = useState(false);
 	const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
 	const [message, setMessage] = useState("");
+	const [leadScoringWarning, setLeadScoringWarning] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [savingProject, setSavingProject] = useState(false);
 	const projectSaveInFlight = useRef(false);
@@ -3665,6 +3666,32 @@ export default function AdminCms({
 		const activeIsAdmin = activeRole === "admin";
 		const activeIsAgent = activeRole === "agent";
 		const activeIsDeveloper = activeRole === "developer_partner";
+
+		if (activeIsAdmin) {
+			try {
+				const { data: sessionData } = await supabaseBrowser.auth.getSession();
+				const accessToken = sessionData.session?.access_token;
+				if (accessToken) {
+					const scoreResponse = await fetch("/api/admin/lead-scoring/backfill", {
+						method: "POST",
+						headers: { Authorization: `Bearer ${accessToken}` },
+					});
+					const scoreResult = await scoreResponse.json().catch(() => null);
+					if (!scoreResponse.ok) {
+						const error = typeof scoreResult?.error === "string" ? scoreResult.error : "Unable to score unscored inquiries.";
+						console.warn("[lead scoring backfill]", error);
+						setLeadScoringWarning(`Lead scores could not be updated: ${error}`);
+					} else if (Number(scoreResult?.remainingUnscored ?? 0) > 0) {
+						setLeadScoringWarning(`${scoreResult.remainingUnscored} inquiries still need scoring. Refresh this page to continue.`);
+					} else {
+						setLeadScoringWarning("");
+					}
+				}
+			} catch (error) {
+				console.warn("[lead scoring backfill]", error);
+				setLeadScoringWarning("Lead scores could not be updated. Check your connection and refresh the inquiry list.");
+			}
+		}
 
 		const propertyQuery = activeIsAgent && agentId
 			? supabaseBrowser.from("properties").select("*").eq("assigned_agent_id", agentId).order("created_at", { ascending: false })
@@ -5478,6 +5505,12 @@ export default function AdminCms({
 						) : null}
 
 						{currentSection === "inquiries" || currentSection === "pipeline" || currentSection === "timeline" ? (
+			<>
+				{isAdmin && leadScoringWarning ? (
+					<div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+						{leadScoringWarning}
+					</div>
+				) : null}
 							<InquiryWorkflowManager
 								activeView={currentSection as "inquiries" | "pipeline" | "timeline"}
 								inquiries={filteredInquiries}
@@ -5494,8 +5527,9 @@ export default function AdminCms({
 									setActivePrimary("inquiries");
 									setActiveSection(view);
 									syncAdminUrl(`/admin/inquiries${view === "inquiries" ? "" : `?section=${view}`}`);
-								}}
-							/>
+					}}
+				/>
+			</>
 						) : null}
 
 						{currentSection === "about" && isAdmin ? (
