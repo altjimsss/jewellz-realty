@@ -1778,7 +1778,9 @@ function LeadInspectorDrawer({
 						<ChevronDown className="h-4 w-4 shrink-0 text-black/45 transition-transform group-open:rotate-180" />
 					</summary>
 					<div className="mt-2 rounded-lg border border-black/[0.06] bg-zinc-50 p-3">
-						<p className="text-[11px] leading-4 text-black/55">A heuristic score from contact details, available property activity, and inquiry source or priority when supplied. It is not a probability of purchase.</p>
+						<p className="text-[11px] leading-4 text-black/55">
+							Current stored score: <strong className="text-[#111111]">{score === null ? "Unscored" : `${Math.round(score * 100)}%`}</strong>. This is a heuristic, not a probability of purchase.
+						</p>
 						<div className="mt-3 grid grid-cols-2 gap-2">
 							<div className="rounded-md border border-black/[0.06] bg-white p-2">
 								<span className="block text-[10px] font-medium text-black/45">Listing views</span>
@@ -1802,7 +1804,10 @@ function LeadInspectorDrawer({
 								This matches the historical backfill: baseline −2.00, phone {backfillPhoneContribution >= 0 ? "+" : ""}{backfillPhoneContribution.toFixed(2)}, {storedPriority || "no"} priority {backfillPriorityContribution >= 0 ? "+" : ""}{backfillPriorityContribution.toFixed(2)} = {backfillRawScore.toFixed(2)}; sigmoid({backfillRawScore.toFixed(2)}) ≈ {Math.round(backfillScoreEstimate * 100)}%. The backfill did not use message content, and no browsing activity was recorded.
 							</p>
 						) : !selectedInquiry.session_id ? (
-							<p className="mt-2 text-[10px] leading-4 text-amber-800">No linked browsing session was saved, so this score uses the inquiry details available.</p>
+							<p className="mt-2 rounded-md border border-amber-200 bg-white px-2.5 py-2 text-[10px] leading-4 text-amber-900">
+								No browsing points were added: there is no linked session. Phone: {selectedInquiry.buyer_phone ? "provided" : "not provided"}; message: {selectedInquiry.buyer_message ? "provided" : "not provided"}; saved priority: {storedPriority || "not recorded"}; saved source: {asText(selectedInquiry.source) || "not recorded"}. This older record stores the final score but not a snapshot of the exact inputs used, so the individual source/priority contribution cannot be confirmed from this row.
+								{score !== null && score > 0 && score < 1 ? <> The stored {Math.round(score * 100)}% score corresponds to a net sigmoid input of {Math.log(score / (1 - score)).toFixed(2)}.</> : null}
+							</p>
 						) : inquiryVisitorEvents.length === 0 ? (
 							<p className="mt-2 text-[10px] leading-4 text-black/45">No matching property activity was recorded for the linked session.</p>
 						) : totalDwellSeconds > 0 ? (
