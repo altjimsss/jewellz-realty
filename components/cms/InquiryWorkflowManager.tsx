@@ -1595,6 +1595,31 @@ function LeadInspectorDrawer({
 	const visitorInteractionCount = visitorEvents.filter((event) =>
 		trackedEventName(event).includes("click") || trackedEventName(event).includes("open")
 	).length;
+	const inquiryVisitorEvents = selectedInquiry.property_id
+		? visitorEvents.filter((event) => asText(event.property_id) === asText(selectedInquiry.property_id))
+		: [];
+	const scoreViewEvents = inquiryVisitorEvents.filter((event) =>
+		["property_view", "page_view", "view", "listing_view"].includes(trackedEventName(event))
+	);
+	const scoreInteractionNames = new Set([
+		"detail_open", "property_detail_open", "property_open", "property_click", "property_gallery_interaction",
+		"property_gallery_open", "property_gallery_next", "property_gallery_previous", "property_map_open",
+		"property_nearby_click", "recommendation_click",
+	]);
+	const scoreInteractionEvents = inquiryVisitorEvents.filter((event) => {
+		const name = trackedEventName(event);
+		return scoreInteractionNames.has(name) || name.includes("click") || name.includes("open");
+	});
+	const dwellSeconds = inquiryVisitorEvents
+		.filter((event) => trackedEventName(event) === "property_dwell_time")
+		.map((event) => {
+			const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
+			const seconds = Number(metadata.durationSeconds);
+			return Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+		});
+	const maxDwellSeconds = Math.max(0, ...dwellSeconds);
+	const totalDwellSeconds = dwellSeconds.reduce((sum, seconds) => sum + seconds, 0);
+	const formatDuration = (seconds: number) => seconds < 60 ? `${Math.round(seconds)} sec` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`;
 
 	return (
 		<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-5 animate-in fade-in">
@@ -1736,6 +1761,46 @@ function LeadInspectorDrawer({
 					<span className="font-semibold text-black/50">Lead Score</span>
 					<LeadScoreBadge score={score} />
 				</div>
+
+				<details className="group border-t border-black/5 pt-2">
+					<summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-1 text-left [&::-webkit-details-marker]:hidden">
+						<span className="inline-flex items-center gap-2 font-semibold text-[#111111]">
+							<Sparkles className="h-3.5 w-3.5 text-[#DE141C]" />
+							How this score was formed
+						</span>
+						<ChevronDown className="h-4 w-4 shrink-0 text-black/45 transition-transform group-open:rotate-180" />
+					</summary>
+					<div className="mt-2 rounded-lg border border-black/[0.06] bg-zinc-50 p-3">
+						<p className="text-[11px] leading-4 text-black/55">A heuristic score from contact details, available property activity, and inquiry source or priority when supplied. It is not a probability of purchase.</p>
+						<div className="mt-3 grid grid-cols-2 gap-2">
+							<div className="rounded-md border border-black/[0.06] bg-white p-2">
+								<span className="block text-[10px] font-medium text-black/45">Listing views</span>
+								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{scoreViewEvents.length}</strong>
+							</div>
+							<div className="rounded-md border border-black/[0.06] bg-white p-2">
+								<span className="block text-[10px] font-medium text-black/45">Property actions</span>
+								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{scoreInteractionEvents.length}</strong>
+							</div>
+							<div className="rounded-md border border-black/[0.06] bg-white p-2">
+								<span className="block text-[10px] font-medium text-black/45">Longest listing view</span>
+								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{formatDuration(maxDwellSeconds)}</strong>
+							</div>
+							<div className="rounded-md border border-black/[0.06] bg-white p-2">
+								<span className="block text-[10px] font-medium text-black/45">Contact details</span>
+								<strong className="mt-0.5 block text-xs text-[#111111]">{selectedInquiry.buyer_phone ? "Phone" : "No phone"} · {selectedInquiry.buyer_message ? "Message" : "No message"}</strong>
+							</div>
+						</div>
+						{!selectedInquiry.session_id ? (
+							<p className="mt-2 text-[10px] leading-4 text-amber-800">No linked browsing session was saved, so this score uses the inquiry details available.</p>
+						) : inquiryVisitorEvents.length === 0 ? (
+							<p className="mt-2 text-[10px] leading-4 text-black/45">No matching property activity was recorded for the linked session.</p>
+						) : totalDwellSeconds > 0 ? (
+							<p className="mt-2 text-[10px] leading-4 text-black/45">Recorded listing time: {formatDuration(totalDwellSeconds)} total. More views, actions, and time can raise the score.</p>
+						) : (
+							<p className="mt-2 text-[10px] leading-4 text-black/45">More recorded views, actions, and time on the listing can raise the score.</p>
+						)}
+					</div>
+				</details>
 
 				<div className="border-t border-black/5 pt-2">
 					<span className="font-semibold text-black/50">Message</span>
