@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, clientKey, rateLimitHeaders } from "@/lib/rate-limit";
 import { verifyRecaptchaToken } from "@/lib/recaptcha";
+import { computeLeadScore } from "@/lib/lead-scoring";
+import { getLeadBehaviorSignals } from "@/lib/lead-scoring-behavior";
 import { supabaseServer } from "@/lib/supabase/server";
 import { sendActiveAdminNotification } from "@/lib/email-notifications";
 import { emailValidationMessage, phoneValidationMessage } from "@/lib/validation";
@@ -62,14 +64,18 @@ async function insertInquiry(payload: {
 	buyerEmail: string;
 	buyerPhone: string;
 	message: string;
+	sessionId: string;
+	leadScore: number;
 }) {
 	const base = {
 		property_id: payload.propertyId,
 		buyer_name: payload.buyerName,
 		buyer_email: payload.buyerEmail,
 		buyer_phone: payload.buyerPhone || null,
+		session_id: payload.sessionId || null,
 		status: "new",
 		priority: "high",
+		lead_score: payload.leadScore,
 	};
 
 	// Older deployments have `message` and no `source` column; newer ones use
@@ -107,6 +113,7 @@ export async function POST(request: Request) {
 	const buyerName = text(body?.buyerName);
 	const buyerEmail = text(body?.buyerEmail).toLowerCase();
 	const buyerPhone = text(body?.buyerPhone);
+	const sessionId = text(body?.sessionId);
 	const propertySlug = text(body?.propertySlug);
 	const propertyTitle = text(body?.propertyTitle);
 	const scheduledAt = parseScheduledAt(text(body?.date), text(body?.time));
@@ -412,12 +419,22 @@ export async function POST(request: Request) {
 		);
 	}
 
+	const behaviorSignals = await getLeadBehaviorSignals(propertyId || "", sessionId);
+	const leadScore = computeLeadScore({
+		...behaviorSignals,
+		hasPhone: Boolean(buyerPhone),
+		hasMessage: Boolean(appointmentMessage),
+		source: "appointment",
+		priority: "high",
+	});
 	const { inquiry, error: inquiryError } = await insertInquiry({
 		propertyId,
 		buyerName,
 		buyerEmail,
 		buyerPhone,
 		message: appointmentMessage,
+		sessionId,
+		leadScore,
 	});
 
 	if (inquiryError || !inquiry) {

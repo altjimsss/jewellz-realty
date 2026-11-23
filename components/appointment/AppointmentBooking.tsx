@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ReCaptcha } from "@/components/security/ReCaptcha";
+import { getOrCreateSessionId } from "@/lib/session";
 
 const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const timeSlots = [
@@ -246,6 +247,7 @@ export function AppointmentBooking() {
         time: selectedTime,
         propertySlug,
         propertyTitle: propertyLabel,
+        sessionId: getOrCreateSessionId(),
         captchaToken,
       }),
     });
