@@ -1595,38 +1595,6 @@ function LeadInspectorDrawer({
 	const visitorInteractionCount = visitorEvents.filter((event) =>
 		trackedEventName(event).includes("click") || trackedEventName(event).includes("open")
 	).length;
-	const inquiryVisitorEvents = selectedInquiry.property_id
-		? visitorEvents.filter((event) => asText(event.property_id) === asText(selectedInquiry.property_id))
-		: [];
-	const scoreViewEvents = inquiryVisitorEvents.filter((event) =>
-		["property_view", "page_view", "view", "listing_view"].includes(trackedEventName(event))
-	);
-	const scoreInteractionNames = new Set([
-		"detail_open", "property_detail_open", "property_open", "property_click", "property_gallery_interaction",
-		"property_gallery_open", "property_gallery_next", "property_gallery_previous", "property_map_open",
-		"property_nearby_click", "recommendation_click",
-	]);
-	const scoreInteractionEvents = inquiryVisitorEvents.filter((event) => {
-		const name = trackedEventName(event);
-		return scoreInteractionNames.has(name) || name.includes("click") || name.includes("open");
-	});
-	const dwellSeconds = inquiryVisitorEvents
-		.filter((event) => trackedEventName(event) === "property_dwell_time")
-		.map((event) => {
-			const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
-			const seconds = Number(metadata.durationSeconds);
-			return Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
-		});
-	const maxDwellSeconds = Math.max(0, ...dwellSeconds);
-	const totalDwellSeconds = dwellSeconds.reduce((sum, seconds) => sum + seconds, 0);
-	const formatDuration = (seconds: number) => seconds < 60 ? `${Math.round(seconds)} sec` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`;
-	const storedPriority = asText(selectedInquiry.priority).toLowerCase();
-	const backfillPhoneContribution = selectedInquiry.buyer_phone ? 0.7 : 0;
-	const backfillPriorityContribution = storedPriority === "high" ? 1.1 : storedPriority === "low" ? -0.6 : 0;
-	const backfillRawScore = -2 + backfillPhoneContribution + backfillPriorityContribution;
-	const backfillScoreEstimate = 1 / (1 + Math.exp(-backfillRawScore));
-	const hasTrackedScoreActivity = scoreViewEvents.length > 0 || scoreInteractionEvents.length > 0 || dwellSeconds.length > 0;
-	const matchesHistoricalBackfill = score !== null && !hasTrackedScoreActivity && Math.abs(score - backfillScoreEstimate) < 0.002;
 
 	return (
 		<div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-5 animate-in fade-in">
@@ -1768,55 +1736,6 @@ function LeadInspectorDrawer({
 					<span className="font-semibold text-black/50">Lead Score</span>
 					<LeadScoreBadge score={score} />
 				</div>
-
-				<details className="group border-t border-black/5 pt-2">
-					<summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-1 text-left [&::-webkit-details-marker]:hidden">
-						<span className="inline-flex items-center gap-2 font-semibold text-[#111111]">
-							<Sparkles className="h-3.5 w-3.5 text-[#DE141C]" />
-							How this score was formed
-						</span>
-						<ChevronDown className="h-4 w-4 shrink-0 text-black/45 transition-transform group-open:rotate-180" />
-					</summary>
-					<div className="mt-2 rounded-lg border border-black/[0.06] bg-zinc-50 p-3">
-						<p className="text-[11px] leading-4 text-black/55">
-							Current stored score: <strong className="text-[#111111]">{score === null ? "Unscored" : `${Math.round(score * 100)}%`}</strong>. This is a heuristic, not a probability of purchase.
-						</p>
-						<div className="mt-3 grid grid-cols-2 gap-2">
-							<div className="rounded-md border border-black/[0.06] bg-white p-2">
-								<span className="block text-[10px] font-medium text-black/45">Listing views</span>
-								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{scoreViewEvents.length}</strong>
-							</div>
-							<div className="rounded-md border border-black/[0.06] bg-white p-2">
-								<span className="block text-[10px] font-medium text-black/45">Property actions</span>
-								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{scoreInteractionEvents.length}</strong>
-							</div>
-							<div className="rounded-md border border-black/[0.06] bg-white p-2">
-								<span className="block text-[10px] font-medium text-black/45">Longest listing view</span>
-								<strong className="mt-0.5 block text-sm tabular-nums text-[#111111]">{formatDuration(maxDwellSeconds)}</strong>
-							</div>
-							<div className="rounded-md border border-black/[0.06] bg-white p-2">
-								<span className="block text-[10px] font-medium text-black/45">Submitted contact info</span>
-								<strong className="mt-0.5 block text-xs text-[#111111]">{selectedInquiry.buyer_phone ? "Phone" : "No phone"} · {selectedInquiry.buyer_message ? "Message" : "No message"}</strong>
-							</div>
-						</div>
-						{matchesHistoricalBackfill ? (
-							<p className="mt-2 rounded-md border border-[#DE141C]/10 bg-white px-2.5 py-2 text-[10px] leading-4 text-black/65">
-								This matches the historical backfill: baseline −2.00, phone {backfillPhoneContribution >= 0 ? "+" : ""}{backfillPhoneContribution.toFixed(2)}, {storedPriority || "no"} priority {backfillPriorityContribution >= 0 ? "+" : ""}{backfillPriorityContribution.toFixed(2)} = {backfillRawScore.toFixed(2)}; sigmoid({backfillRawScore.toFixed(2)}) ≈ {Math.round(backfillScoreEstimate * 100)}%. The backfill did not use message content, and no browsing activity was recorded.
-							</p>
-						) : !selectedInquiry.session_id ? (
-							<p className="mt-2 rounded-md border border-amber-200 bg-white px-2.5 py-2 text-[10px] leading-4 text-amber-900">
-								No browsing points were added: there is no linked session. Phone: {selectedInquiry.buyer_phone ? "provided" : "not provided"}; message: {selectedInquiry.buyer_message ? "provided" : "not provided"}; saved priority: {storedPriority || "not recorded"}; saved source: {asText(selectedInquiry.source) || "not recorded"}. This older record stores the final score but not a snapshot of the exact inputs used, so the individual source/priority contribution cannot be confirmed from this row.
-								{score !== null && score > 0 && score < 1 ? <> The stored {Math.round(score * 100)}% score corresponds to a net sigmoid input of {Math.log(score / (1 - score)).toFixed(2)}.</> : null}
-							</p>
-						) : inquiryVisitorEvents.length === 0 ? (
-							<p className="mt-2 text-[10px] leading-4 text-black/45">No matching property activity was recorded for the linked session.</p>
-						) : totalDwellSeconds > 0 ? (
-							<p className="mt-2 text-[10px] leading-4 text-black/45">Recorded listing time: {formatDuration(totalDwellSeconds)} total. More views, actions, and time can raise the score.</p>
-						) : (
-							<p className="mt-2 text-[10px] leading-4 text-black/45">More recorded views, actions, and time on the listing can raise the score.</p>
-						)}
-					</div>
-				</details>
 
 				<div className="border-t border-black/5 pt-2">
 					<span className="font-semibold text-black/50">Message</span>
