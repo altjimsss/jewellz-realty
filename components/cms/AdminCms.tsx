@@ -849,9 +849,9 @@ function AnalyticsVisualSuite({
 	const totalInquiries = inquiries.length;
 	const funnelRowsAreLive = totalViews > 0 || totalDetailOpens > 0 || totalInquiries > 0;
 	const funnelRows = [
-		{ label: "Viewed", value: totalViews },
-		{ label: "Saved", value: Math.max(0, totalDetailOpens) },
-		{ label: "Inquired", value: totalInquiries },
+		{ label: "Listing views", value: totalViews },
+		{ label: "Property actions", value: Math.max(0, totalDetailOpens) },
+		{ label: "Inquiries", value: totalInquiries },
 	];
 	const funnelOption = {
 		tooltip: { trigger: "item", formatter: "{b}: {c}" },
