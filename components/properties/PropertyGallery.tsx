@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SafeImage } from "@/components/ui/SafeImage";
 
 type PropertyGalleryProps = {
@@ -48,6 +48,8 @@ export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBAC
   const mediaCount = galleryImages.length + (hasVideo ? 1 : 0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeClickGuard = useRef(false);
   const currentIndex = mediaCount > 1 ? activeIndex % mediaCount : 0;
   const isVideoActive = hasVideo && currentIndex === 0;
   const imageIndex = hasVideo ? Math.max(0, currentIndex - 1) : currentIndex;
@@ -59,6 +61,33 @@ export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBAC
     if (mediaCount <= 1) return;
     setActiveIndex((current) => (current + direction + mediaCount) % mediaCount);
     onInteraction?.(direction > 0 ? "property_gallery_next" : "property_gallery_previous", { imageCount: mediaCount });
+  };
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      touchStart.current = null;
+      return;
+    }
+    touchStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || event.changedTouches.length !== 1 || mediaCount <= 1) return;
+    const deltaX = event.changedTouches[0].clientX - start.x;
+    const deltaY = event.changedTouches[0].clientY - start.y;
+    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+
+    swipeClickGuard.current = true;
+    changeImage(deltaX < 0 ? 1 : -1);
+    window.setTimeout(() => { swipeClickGuard.current = false; }, 500);
+  };
+
+  const openLightbox = () => {
+    if (swipeClickGuard.current) return;
+    setIsLightboxOpen(true);
+    onInteraction?.("property_gallery_open", { imageCount: mediaCount });
   };
 
   useEffect(() => {
@@ -109,12 +138,14 @@ export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBAC
         })}
       </div>
 
-      <div className="order-1 relative aspect-[4/3] overflow-hidden bg-black/5 shadow-sm md:aspect-auto md:h-80 lg:h-96">
+      <div
+        className="order-1 relative aspect-[4/3] touch-pan-y overflow-hidden bg-black/5 shadow-sm md:aspect-auto md:h-80 lg:h-96"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => { touchStart.current = null; }}
+      >
         {renderActiveMedia()}
-        <button type="button" onClick={() => {
-          setIsLightboxOpen(true);
-          onInteraction?.("property_gallery_open", { imageCount: mediaCount });
-        }} className="absolute inset-0 z-[1] cursor-pointer md:hidden" aria-label="Show all photos and videos" />
+        <button type="button" onClick={openLightbox} className="absolute inset-0 z-[1] cursor-pointer md:hidden" aria-label="Show all photos and videos" />
         {mediaCount > 1 ? <span className="pointer-events-none absolute bottom-3 right-3 z-10 text-[10px] font-semibold tabular-nums text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]">{currentIndex + 1}/{mediaCount}</span> : null}
         <div className="absolute inset-y-0 left-0 z-10 flex items-center pl-3"><button type="button" aria-label="Previous photo or video" onClick={() => changeImage(-1)} className="grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/55"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true"><path d="M14.5 6.5L9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button></div>
         <div className="absolute inset-y-0 right-0 z-10 flex items-center pr-3"><button type="button" aria-label="Next photo or video" onClick={() => changeImage(1)} className="grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/55"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true"><path d="M9.5 6.5L15 12l-5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button></div>
@@ -124,7 +155,12 @@ export function PropertyGallery({ images, title, fallbackImage = DEFAULT_FALLBAC
         <div className="fixed inset-0 z-[6000] bg-black/80 p-4 backdrop-blur-sm" role="dialog" tabIndex={-1} aria-modal="true" aria-label={`${title} photo and video gallery`} onClick={() => setIsLightboxOpen(false)} onKeyDown={(event) => { if (event.key === "Escape") setIsLightboxOpen(false); }}>
           <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-3 pt-12 sm:pt-16 lg:pt-20" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between text-white"><div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-white/70">{currentIndex + 1} of {mediaCount}</p></div><button type="button" aria-label="Close gallery" onClick={() => { setIsLightboxOpen(false); onInteraction?.("property_gallery_close", { imageCount: mediaCount }); }} className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button></div>
-            <div className="relative mx-auto flex h-[56vh] w-full max-w-5xl overflow-hidden rounded-[18px] bg-black">{renderActiveMedia(true)}
+            <div
+              className="relative mx-auto flex h-[56vh] w-full max-w-5xl touch-pan-y overflow-hidden rounded-[18px] bg-black"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={() => { touchStart.current = null; }}
+            >{renderActiveMedia(true)}
               <div className="absolute inset-y-0 left-0 z-10 flex items-center pl-3"><button type="button" aria-label="Previous photo or video" onClick={() => changeImage(-1)} className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true"><path d="M14.5 6.5L9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button></div>
               <div className="absolute inset-y-0 right-0 z-10 flex items-center pr-3"><button type="button" aria-label="Next photo or video" onClick={() => changeImage(1)} className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true"><path d="M9.5 6.5L15 12l-5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button></div>
             </div>
