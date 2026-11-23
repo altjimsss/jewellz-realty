@@ -215,10 +215,6 @@ function propertyPrice(row: CmsRow) {
 	return toNullableNumber(row.price) ?? toNullableNumber(row.starting_price) ?? 0;
 }
 
-function propertyArea(row: CmsRow) {
-	return toNullableNumber(row.lot_area_sqm) ?? toNullableNumber(row.floor_area_sqm) ?? toNullableNumber(row.area_sqm) ?? 0;
-}
-
 function groupByLabel<T>(rows: T[], getLabel: (row: T) => string) {
 	return rows.reduce((acc: Record<string, T[]>, row) => {
 		const label = getLabel(row) || "Unknown";
@@ -290,6 +286,10 @@ function isPropertyViewEvent(event: CmsRow) {
 	return eventName === "property_view" || eventName === "listing_view" || eventName === "property_impression" || eventName === "view";
 }
 
+function EChart({ option }: { option: Record<string, unknown> }) {
+	return <ReactECharts option={option} style={{ height: "100%", width: "100%" }} notMerge lazyUpdate />;
+}
+
 function dailyInquirySeries(rows: CmsRow[], days = 21) {
 	const counts = new Map<string, number>();
 	for (const row of rows) {
@@ -315,41 +315,27 @@ function buildDemandForecast(rows: CmsRow[], historyDays = 21, forecastDays = 7)
 	return { series, forecast, regression };
 }
 
-function buildConversionForecast(events: CmsRow[], inquiryVolumeRows: CmsRow[], days = 21, forecastDays = 7) {
+function buildPropertyViewForecast(events: CmsRow[], days = 21, forecastDays = 7) {
 	const viewsByDay = new Map<string, number>();
 	for (const event of events) {
-		if (!isPropertyViewEvent(event) && !(analyticsEventName(event) === "page_view" && Boolean(event.property_id))) continue;
-		const key = asText(event.created_at).slice(0, 10);
-		viewsByDay.set(key, (viewsByDay.get(key) ?? 0) + 1);
-	}
-
-	const inquiryCounts = new Map<string, number>();
-	for (const row of inquiryVolumeRows) {
-		const key = asText(row.inquiry_date).slice(0, 10);
-		if (!key) continue;
-		inquiryCounts.set(key, (inquiryCounts.get(key) ?? 0) + (toNullableNumber(row.total_inquiries) ?? 0));
+		if (!isPropertyViewEvent(event)) continue;
+		const date = asText(event.created_at).slice(0, 10);
+		if (!date) continue;
+		viewsByDay.set(date, (viewsByDay.get(date) ?? 0) + 1);
 	}
 
 	const series = Array.from({ length: days }, (_, index) => {
 		const date = utcDayKey(-(days - 1 - index));
-		const views = viewsByDay.get(date) ?? 0;
-		const inquiries = inquiryCounts.get(date) ?? 0;
-		return {
-			date,
-			views,
-			inquiries,
-			rate: views > 0 ? Number(((inquiries / views) * 100).toFixed(2)) : null,
-		};
+		return { date: date.slice(5), views: viewsByDay.get(date) ?? 0 };
 	});
+	const regression = localRegression(series.map((row) => row.views));
+	const forecast = Array.from({ length: forecastDays }, (_, index) => ({
+		date: utcDayKey(index + 1).slice(5),
+		value: Math.max(0, Number((regression.intercept + regression.slope * (days + index + 1)).toFixed(1))),
+	}));
+	const observations = series.filter((row) => row.views > 0).length;
 
-	const observedRates = series.map((row) => row.rate).filter((rate): rate is number => rate !== null);
-	const regression = localRegression(observedRates);
-	const forecast = Array.from({ length: forecastDays }, (_, index) => {
-		const raw = regression.intercept + regression.slope * (observedRates.length + index + 1);
-		return { date: utcDayKey(index + 1), value: Number(Math.max(0, Math.min(100, raw)).toFixed(2)) };
-	});
-
-	return { series, forecast, regression, observations: observedRates.length };
+	return { series, forecast, regression, observations };
 }
 
 function monthlyPriceSeries(properties: CmsRow[]) {
@@ -647,75 +633,6 @@ function ModelReadout({ category, title, insight, actions, metrics }: ModelReado
 	);
 }
 
-function EChart({ option }: { option: Record<string, unknown> }) {
-	return <ReactECharts option={option} style={{ height: "100%", width: "100%" }} notMerge lazyUpdate />;
-}
-
-function pricePerSqmByLocation(properties: CmsRow[]) {
-	return Object.entries(groupByLabel(properties, locationLabel))
-		.map(([location, rows]) => {
-			const values = rows.map((row) => {
-				const area = propertyArea(row);
-				const price = propertyPrice(row);
-				return area > 0 && price > 0 ? price / area : 0;
-			}).filter((value) => value > 0);
-			return { location, avgPricePerSqm: numberAverage(values) };
-		})
-		.filter((row) => row.avgPricePerSqm > 0)
-		.sort((a, b) => b.avgPricePerSqm - a.avgPricePerSqm)
-		.slice(0, 12);
-}
-
-function PricePerSqmHeatmap({ properties }: { properties: CmsRow[] }) {
-	const grouped = pricePerSqmByLocation(properties);
-	if (!grouped.length) return <ChartEmptyState message="Price-per-sqm data will appear when listings have a price and area." />;
-	const max = Math.max(...grouped.map((row) => row.avgPricePerSqm), 1);
-	const xLabels = grouped.map((row) => row.location);
-	const option = {
-		grid: { top: 8, right: 14, bottom: 68, left: 18 },
-		tooltip: {
-			formatter: (params: { data?: [number, number, number] }) => {
-				const data = params.data;
-				if (!data) return "";
-				return `${xLabels[data[0]]}<br/>PHP ${Math.round(data[2]).toLocaleString()} / sqm`;
-			},
-		},
-		xAxis: {
-			type: "category",
-			data: xLabels,
-			axisLabel: { rotate: 28, color: "#71717a", fontSize: 10 },
-			axisLine: { lineStyle: { color: "#e5e7eb" } },
-			axisTick: { show: false },
-		},
-		yAxis: {
-			type: "category",
-			data: ["PHP/sqm"],
-			axisLabel: { color: "#71717a", fontSize: 11 },
-			axisLine: { show: false },
-			axisTick: { show: false },
-		},
-		visualMap: {
-			min: 0,
-			max,
-			show: false,
-			inRange: { color: ["#f4f4f5", "#d4d4d8", "#71717a", "#111111"] },
-		},
-		series: [{
-			type: "heatmap",
-			data: grouped.map((row, index) => [index, 0, Math.round(row.avgPricePerSqm)]),
-			itemStyle: { borderRadius: 6, borderWidth: 2, borderColor: "#ffffff" },
-			label: {
-				show: true,
-				color: "#111111",
-				fontSize: 10,
-				formatter: (params: { data?: [number, number, number] }) => params.data ? `${Math.round(params.data[2] / 1000)}k` : "",
-			},
-		}],
-	};
-
-	return grouped.length ? <EChart option={option} /> : <p className="text-sm text-black/45">Add prices and area values to populate the heatmap.</p>;
-}
-
 function AnalyticsVisualSuite({
 	category,
 	properties,
@@ -821,17 +738,15 @@ function AnalyticsVisualSuite({
 		...demand.forecast.map((row) => ({ date: row.date, demand: null, forecast: row.value })),
 	];
 	const demandRowsAreLive = demand.series.some((row) => row.value > 0);
-	const conversion = buildConversionForecast(events, inquiryVolumeRows, 21, 7);
-	const conversionForecastIsLive = conversion.observations >= 3;
-	let observedConversionIndex = 0;
-	const conversionRows = [
-		...conversion.series.map((row) => {
-			const forecast = row.rate === null
-				? null
-				: Number(Math.max(0, Math.min(100, conversion.regression.intercept + conversion.regression.slope * (++observedConversionIndex))).toFixed(2));
-			return { date: row.date, rate: row.rate, forecast };
-		}),
-		...conversion.forecast.map((row) => ({ date: row.date, rate: null, forecast: row.value })),
+	const propertyViewForecast = buildPropertyViewForecast(events, 21, 7);
+	const propertyViewForecastIsLive = propertyViewForecast.observations >= 3;
+	const propertyViewForecastRows = [
+		...propertyViewForecast.series.map((row, index) => ({
+			date: row.date,
+			actualViews: row.views,
+			estimatedViews: Math.max(0, Number((propertyViewForecast.regression.intercept + propertyViewForecast.regression.slope * (index + 1)).toFixed(1))),
+		})),
+		...propertyViewForecast.forecast.map((row) => ({ date: row.date, actualViews: null, estimatedViews: row.value })),
 	];
 	const priceHistogramRaw = histogram(properties.map(propertyPrice));
 	const priceHistogramIsLive = hasMeaningfulChartValue(priceHistogramRaw, ["count"]);
@@ -902,12 +817,14 @@ function AnalyticsVisualSuite({
 	const totalVisitors = newUsers + returningUsers;
 	const userTypeRows = totalVisitors ? [{ name: "New", value: newUsers }, { name: "Returning", value: returningUsers }] : [];
 	const engagementActionCounts = events.reduce<Record<string, number>>((counts, event) => {
-		const action = asText(event.event_type).trim();
-		if (action) counts[action] = (counts[action] ?? 0) + 1;
+		// event_type is often the generic `page_view`; metadata.event stores the
+		// specific action (gallery, map, detail, recommendation, etc.).
+		const action = analyticsEventName(event).trim();
+		if (action && action !== "page_view") counts[action] = (counts[action] ?? 0) + 1;
 		return counts;
 	}, {});
 	const engagementActionRows = Object.entries(engagementActionCounts)
-		.map(([action, count]) => ({ action: titleCase(action), count }))
+		.map(([action, count]) => ({ action: titleCase(action.replace(/[_-]+/g, " ")), count }))
 		.sort((first, second) => second.count - first.count)
 		.slice(0, 8);
 	const engagementActionTotal = Object.values(engagementActionCounts).reduce((total, count) => total + count, 0);
@@ -950,7 +867,17 @@ function AnalyticsVisualSuite({
 	const topPriceLocation = priceByLocation[0] ?? null;
 	const topViewedInquiryListing = viewsVsInquiries[0] ?? null;
 	const latestMonthlyPrice = monthlyPrices[monthlyPrices.length - 1] ?? null;
-	const topPricePerSqmLocation = pricePerSqmByLocation(properties)[0] ?? null;
+	const listingActionRates = listingRows
+		.filter((row) => row.total_views >= 5)
+		.map((row) => ({
+			title: row.title,
+			total_views: row.total_views,
+			total_interactions: row.total_interactions + row.detail_opens,
+			actions_per_100_views: Number((((row.total_interactions + row.detail_opens) / row.total_views) * 100).toFixed(1)),
+		}))
+		.sort((first, second) => second.actions_per_100_views - first.actions_per_100_views)
+		.slice(0, 8);
+	const listingActionRatesAreLive = listingActionRates.length > 0;
 	const mostCommonPriceRange = priceHistogram.slice().sort((first, second) => second.count - first.count)[0] ?? null;
 	const mostCommonPropertyDwell = durationRows.slice().sort((first, second) => second.count - first.count)[0] ?? null;
 	const topTypePrice = averagePriceByType[0] ?? null;
@@ -989,15 +916,15 @@ function AnalyticsVisualSuite({
 		actions: ["Review listings with many views but few inquiries.", "Compare average prices by location.", "Improve photos on listings with little gallery activity."],
 	};
 	const predictiveInsight = {
-		title: "What recent activity may indicate",
-		insight: `Daily inquiries have been ${trendLabel(demandRegression.trend)} over the last ${demand.series.length} days. The model estimates about ${demandRegression.forecastNextPeriod} inquiries tomorrow. The share of listing views followed by an inquiry was measurable on ${conversion.observations} days; the next-period estimate is ${conversion.forecast[0]?.value ?? 0}% — about ${(conversion.forecast[0]?.value ?? 0).toFixed(1)} inquiries per 100 listing views. These are estimates based on recent activity, not promises.`,
-		actions: ["Use estimates as planning guides, not guarantees.", "Compare estimates with actual inquiries next week.", "Review unusual price differences before acting."],
+		title: "Inquiry and listing traffic outlook",
+		insight: `Daily inquiries have been ${trendLabel(demandRegression.trend)} over the last ${demand.series.length} days. The model estimates about ${demandRegression.forecastNextPeriod} inquiries tomorrow and ${demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1)} over the next 7 days. Property-page views have been ${trendLabel(propertyViewForecast.regression.trend)}; the model estimates ${Math.round(propertyViewForecast.forecast[0]?.value ?? 0)} listing views tomorrow and ${Math.round(propertyViewForecast.forecast.reduce((sum, row) => sum + row.value, 0))} over 7 days. These are trend-based estimates, not guarantees.`,
+		actions: ["Compare next week's actual inquiries and listing views with these estimates.", "Promote listings if projected views are low.", "Review which listings attract views before changing their marketing."],
 	};
 	const predictiveMetrics: ReadoutMetric[] = [
 		{ label: "Estimated inquiries tomorrow", value: String(demandRegression.forecastNextPeriod), meta: `Inquiry activity has been ${trendLabel(demandRegression.trend)}` },
 		{ label: "Estimated inquiries, next 7 days", value: demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1), meta: `Based on ${demandRegression.observations} days of inquiry records` },
-		{ label: "Estimated inquiries per 100 listing views", value: `${conversion.forecast[0]?.value ?? 0}%`, meta: `Based on ${conversion.observations} days with listing views` },
-		{ label: "Inquiry rate direction", value: trendLabel(conversion.regression.trend), meta: `Recent direction across ${conversion.observations} days with listing views` },
+		{ label: "Estimated listing views, next 7 days", value: String(Math.round(propertyViewForecast.forecast.reduce((sum, row) => sum + row.value, 0))), meta: `Based on ${propertyViewForecast.observations} days with property views` },
+		{ label: "Listing view direction", value: trendLabel(propertyViewForecast.regression.trend), meta: "Recent property-page views" },
 	];
 	const engagementInsight = {
 		title: "How visitors use the site",
@@ -1208,8 +1135,16 @@ function AnalyticsVisualSuite({
 							</BarChart>
 						</ResponsiveContainer> : <ChartEmptyState message="No property views or inquiry totals are available in mv_listing_performance yet." />}
 					</AnalyticsChartCard>
-					<AnalyticsChartCard title="Price per sqm by area" description={topPricePerSqmLocation ? `${topPricePerSqmLocation.location} leads at PHP ${Math.round(topPricePerSqmLocation.avgPricePerSqm).toLocaleString()} per sqm.` : "No price-per-sqm data available yet."} isLive={Boolean(topPricePerSqmLocation)}>
-						<PricePerSqmHeatmap properties={properties} />
+					<AnalyticsChartCard title="Listing actions per 100 views" description={listingActionRatesAreLive ? "Compares recorded property detail and interaction actions with listing views. Listings need at least 5 views to reduce small-sample spikes." : "No listings with at least 5 tracked views are available yet."} isLive={listingActionRatesAreLive}>
+						{listingActionRatesAreLive ? <ResponsiveContainer width="100%" height="100%">
+							<BarChart data={listingActionRates} layout="vertical" margin={{ top: 6, right: 20, left: 10, bottom: 0 }}>
+								<CartesianGrid horizontal={false} stroke="#e8e8e8" />
+								<XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} tickFormatter={(value) => `${value}`} />
+								<YAxis dataKey="title" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#71717a" }} width={138} />
+								<Tooltip content={<CmsChartTooltip />} formatter={(value, _name, item) => [`${Number(value).toFixed(1)} actions per 100 views (${item.payload.total_interactions.toLocaleString()} actions / ${item.payload.total_views.toLocaleString()} views)`, "Listing activity"]} />
+								<Bar dataKey="actions_per_100_views" name="Actions per 100 views" fill="#DE141C" radius={[0, 6, 6, 0]} maxBarSize={18} />
+							</BarChart>
+						</ResponsiveContainer> : <ChartEmptyState message="This comparison appears after a listing has at least 5 tracked views." />}
 					</AnalyticsChartCard>
 				</div>
 				<div className="mt-4"><ModelReadout category="property" {...propertyInsight} /></div>
@@ -1217,17 +1152,17 @@ function AnalyticsVisualSuite({
 
 			{category === "predictiveAnalytics" ? <div>
 				<div className="grid gap-4 xl:grid-cols-2">
-					<AnalyticsChartCard title="Estimated inquiries per 100 listing views" description={conversionForecastIsLive ? `About ${(conversion.forecast[0]?.value ?? 0).toFixed(1)} inquiries per 100 views, estimated from ${conversion.observations} days with listing views. Actual results may differ.` : `Early estimate: about ${(conversion.forecast[0]?.value ?? 0).toFixed(1)} inquiries per 100 views, based on ${conversion.observations} of 3 days with listing views.`} isLive={conversionForecastIsLive}>
-						<ResponsiveContainer width="100%" height="100%">
-							<LineChart data={conversionRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+					<AnalyticsChartCard title="Projected property-page views" description={propertyViewForecastIsLive ? `About ${Math.round(propertyViewForecast.forecast.reduce((sum, row) => sum + row.value, 0))} listing views estimated over the next 7 days, based on ${propertyViewForecast.observations} days with views. Actual results may differ.` : `More tracked listing visits are needed. The estimate becomes available after property views are recorded on at least 3 days.`} isLive={propertyViewForecastIsLive}>
+						{propertyViewForecastIsLive ? <ResponsiveContainer width="100%" height="100%">
+							<LineChart data={propertyViewForecastRows} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
 								<CartesianGrid vertical={false} stroke="#e8e8e8" />
 								<XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} />
-								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} tickFormatter={(value) => `${value}%`} />
+								<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#71717a" }} allowDecimals={false} />
 								<Tooltip content={<CmsChartTooltip />} />
-								<Line type="monotone" dataKey="rate" name="Actual inquiries per 100 views" stroke="#059669" strokeWidth={2.5} dot={{ r: 3, fill: "#059669" }} />
-								<Line type="monotone" dataKey="forecast" name="Estimated inquiries per 100 views" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} />
+								<Line type="monotone" dataKey="actualViews" name="Recorded property-page views" stroke="#DE141C" strokeWidth={2.5} dot={{ r: 3, fill: "#DE141C" }} connectNulls />
+								<Line type="monotone" dataKey="estimatedViews" name="Estimated property-page views" stroke="#71717a" strokeWidth={2.5} strokeDasharray="5 4" dot={{ r: 2, fill: "#71717a" }} connectNulls />
 							</LineChart>
-						</ResponsiveContainer>
+						</ResponsiveContainer> : <ChartEmptyState message="The forecast needs property views recorded on at least 3 days. Once enough listing visits are tracked, this chart will project the next 7 days." />}
 					</AnalyticsChartCard>
 					<AnalyticsChartCard title="Estimated inquiries" description={demandRowsAreLive ? `About ${demand.forecast.reduce((sum, row) => sum + row.value, 0).toFixed(1)} inquiries estimated over the next 7 days, based on recent activity.` : "No recent inquiries to guide an estimate yet; the chart shows a zero baseline."} isLive={demandRowsAreLive}>
 						<ResponsiveContainer width="100%" height="100%">
