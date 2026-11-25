@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, Home, ImagePlus, Inbox, LayoutDashboard, LayoutGrid, List as ListIcon, LogOut, MapPin, MessageSquare, MousePointerClick, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, Bot, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Eye, FileText, FolderTree, Globe, History, Home, ImagePlus, Inbox, LayoutDashboard, LayoutGrid, List as ListIcon, LogOut, MapPin, MessageSquare, MousePointerClick, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Settings, TrendingUp, UploadCloud, UserCheck, UserCircle, Users, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -41,6 +41,7 @@ import { categoryFromParam, primaryForSection, sectionFromParam } from "./routin
 import { ABOUT_PAGE_CONTENT_KEY } from "@/lib/about-page-content";
 import { FOOTER_CONTENT_KEY } from "@/lib/footer-content";
 import { ANALYTICS_REPORT_SCHEDULE_KEY } from "@/lib/analytics-report-schedule";
+import { PropertyAuditTrail } from "./PropertyAuditTrail";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -3097,6 +3098,8 @@ export default function AdminCms({
 	const [activePrimary, setActivePrimary] = useState<CmsPrimary>(initialPrimary);
 	const [activeSection, setActiveSection] = useState<CmsSection>(initialSection);
 	const [propertyCategoryFilter, setPropertyCategoryFilter] = useState(initialPropertyCategory);
+	const [propertiesView, setPropertiesView] = useState<"listings" | "audit">("listings");
+	const [propertyAuditError, setPropertyAuditError] = useState("");
 	const [showSecondarySidebar, setShowSecondarySidebar] = useState(true);
 	const [showAnalyticsAssistant, setShowAnalyticsAssistant] = useState(true);
 	const [selectedPortfolioDeveloperId, setSelectedPortfolioDeveloperId] = useState<string | null>(null);
@@ -3550,6 +3553,7 @@ export default function AdminCms({
 	function openPropertyCategory(category: string) {
 		setActivePrimary("listings");
 		setActiveSection("properties");
+		setPropertiesView("listings");
 		setPropertyCategoryFilter(category);
 		setSelection((current) => ({ ...current, properties: null }));
 		syncAdminUrl(category === "all" ? "/admin/listings" : `/admin/listings?category=${category}`);
@@ -3671,6 +3675,7 @@ export default function AdminCms({
 				engagementEventsResult,
 				profilesResult,
 				activityLogsResult,
+				propertyRevisionsResult,
 			] = await Promise.all([
 				supabaseBrowser.from("developer_partners").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("agents").select("*").order("created_at", { ascending: false }),
@@ -3688,6 +3693,7 @@ export default function AdminCms({
 				supabaseBrowser.from("analytics_events").select("id, event_type, session_id, property_id, metadata, created_at").order("created_at", { ascending: false }).limit(1000),
 				supabaseBrowser.from("profiles").select("*").order("created_at", { ascending: false }),
 				supabaseBrowser.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100),
+				supabaseBrowser.from("cms_content_revisions").select("*").in("table_name", ["properties", "property_images"]).order("created_at", { ascending: false }).limit(200),
 			]);
 
 			nextWorkspace.developers = developersResult.data ?? [];
@@ -3706,6 +3712,8 @@ export default function AdminCms({
 			nextWorkspace.engagementEvents = engagementEventsResult.data ?? [];
 			nextWorkspace.profiles = profilesResult.data ?? [];
 			nextWorkspace.activityLogs = activityLogsResult.data ?? [];
+			nextWorkspace.propertyRevisions = (propertyRevisionsResult.data ?? []) as Workspace["propertyRevisions"];
+			setPropertyAuditError(propertyRevisionsResult.error?.message ?? "");
 		} else if (activeIsDeveloper && developerId) {
 			const [developerResult, recommendationsResult] = await Promise.all([
 				supabaseBrowser.from("developer_partners").select("*").eq("id", developerId).maybeSingle(),
@@ -5305,8 +5313,13 @@ export default function AdminCms({
 							</>
 						) : null}
 
-						{currentSection === "properties" ? (
-							canEditCatalog ? (
+		{currentSection === "properties" ? (
+			<div>
+				{isAdmin ? <div role="tablist" aria-label="Property views" className="mb-4 inline-flex border border-black/10 bg-white p-1">
+					<button type="button" role="tab" aria-selected={propertiesView === "listings"} onClick={() => setPropertiesView("listings")} className={`inline-flex h-9 items-center gap-2 px-3 text-xs font-semibold transition ${propertiesView === "listings" ? "bg-[#DE141C] text-white" : "text-black/55 hover:bg-zinc-50 hover:text-black"}`}><Building2 className="h-3.5 w-3.5" />Listings</button>
+					<button type="button" role="tab" aria-selected={propertiesView === "audit"} onClick={() => setPropertiesView("audit")} className={`inline-flex h-9 items-center gap-2 px-3 text-xs font-semibold transition ${propertiesView === "audit" ? "bg-[#DE141C] text-white" : "text-black/55 hover:bg-zinc-50 hover:text-black"}`}><History className="h-3.5 w-3.5" />Activity & audit</button>
+				</div> : null}
+				{isAdmin && propertiesView === "audit" ? <PropertyAuditTrail revisions={workspace.propertyRevisions} profiles={workspace.profiles} error={propertyAuditError} /> : canEditCatalog ? (
 								propertyCategoryFilter === "all" ? (
 									<PropertyWizard
 										rows={workspace.properties}
@@ -5399,7 +5412,9 @@ export default function AdminCms({
 									</div>
 								</SectionShell>
 							)
-						) : null}
+						}
+			</div>
+		) : null}
 
 						{currentSection === "projects" && isAdmin ? (
 							<EntityEditor title="Projects" description="Developer project portfolios. Choose the developer by company name; the CMS stores the ID automatically." rows={workspace.projects} selectedId={selectedProjectId} fields={projectEditorFields} canEdit={isAdmin} isSaving={savingProject} rowLabel={labelForRow} rowMeta={(row) => `${row.location_city ?? ""} ${row.location_province ?? ""}`} onSelect={(row) => setSelection((current) => ({ ...current, projects: row ? asText(row.id) : null }))} onCreateNew={() => setSelection((current) => ({ ...current, projects: NEW_RECORD_ID }))} onDelete={(row) => deleteEntity("projects", row)} onSubmit={saveProject} />

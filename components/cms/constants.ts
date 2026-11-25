@@ -21,6 +21,7 @@ export const emptyWorkspace: Workspace = {
 	sessions: [],
 	profiles: [],
 	activityLogs: [],
+	propertyRevisions: [],
 };
 
 export const emptySelection: SelectionState = {

@@ -8,6 +8,16 @@ export type FieldOption = { label: string; value: string; meta?: Record<string, 
 export type CmsValue = string | number | null | undefined;
 export type CmsRow = Record<string, CmsValue>;
 export type CmsPayload = Record<string, CmsValue | boolean | string[]>;
+export type CmsRevision = {
+	id: string;
+	table_name: string;
+	row_id: string;
+	changed_by: string | null;
+	action: "insert" | "update" | "delete";
+	old_data: Record<string, unknown> | null;
+	new_data: Record<string, unknown> | null;
+	created_at: string;
+};
 
 export type FieldSpec = {
 	name: string;
@@ -76,6 +86,7 @@ export type Workspace = {
 	sessions: CmsRow[];
 	profiles: CmsRow[];
 	activityLogs: CmsRow[];
+	propertyRevisions: CmsRevision[];
 };
 
 export type SelectionState = {
