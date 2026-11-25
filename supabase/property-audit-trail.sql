@@ -46,6 +46,17 @@ BEGIN
     affected_property_id := COALESCE(old_snapshot ->> 'property_id', old_snapshot ->> 'id');
   END IF;
 
+  -- Embedding generation uses the service role to update AI-only columns.
+  -- Keep these maintenance writes out of the human-facing property audit trail.
+  IF TG_OP = 'UPDATE'
+    AND TG_TABLE_NAME = 'properties'
+    AND (to_jsonb(NEW) - ARRAY['updated_at', 'updated_by', 'embedding', 'embedding_text', 'embedding_updated_at'])
+      IS NOT DISTINCT FROM
+        (to_jsonb(OLD) - ARRAY['updated_at', 'updated_by', 'embedding', 'embedding_text', 'embedding_updated_at'])
+  THEN
+    RETURN NEW;
+  END IF;
+
   INSERT INTO public.cms_content_revisions (
     table_name,
     row_id,

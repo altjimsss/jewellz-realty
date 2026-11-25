@@ -19,7 +19,7 @@ function readableValue(value: unknown) {
 function changedFields(revision: CmsRevision) {
 	const before = revision.old_data ?? {};
 	const after = revision.new_data ?? {};
-	const ignored = new Set(["id", "created_at", "updated_at", "created_by", "updated_by"]);
+	const ignored = new Set(["id", "created_at", "updated_at", "created_by", "updated_by", "embedding", "embedding_text", "embedding_updated_at"]);
 	return Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
 		.filter((key) => !ignored.has(key) && JSON.stringify(before[key] ?? null) !== JSON.stringify(after[key] ?? null))
 		.map((key) => ({ key, before: before[key], after: after[key] }));
@@ -33,7 +33,13 @@ function actionPresentation(revision: CmsRevision) {
 }
 
 export function PropertyAuditTrail({ revisions, profiles, error }: PropertyAuditTrailProps) {
-	const previousTitles = new Map(revisions
+	const visibleRevisions = revisions.filter((revision) => {
+		if (revision.table_name !== "properties" || revision.action !== "update") return true;
+		// Embedding generation updates internal AI fields using the service role.
+		// Those are system maintenance, not edits made to the listing itself.
+		return changedFields(revision).length > 0;
+	});
+	const previousTitles = new Map(visibleRevisions
 		.filter((row) => row.table_name === "properties")
 		.map((row) => [row.row_id, asText(row.new_data?.title ?? row.old_data?.title)])
 		.filter(([, title]) => Boolean(title)) as Array<[string, string]>);
@@ -48,14 +54,14 @@ export function PropertyAuditTrail({ revisions, profiles, error }: PropertyAudit
 						<p className="mt-0.5 text-xs text-black/50">Property and photo additions, edits, and deletions.</p>
 					</div>
 				</div>
-				<span className="text-xs tabular-nums text-black/45">{revisions.length} recent changes</span>
+				<span className="text-xs tabular-nums text-black/45">{visibleRevisions.length} recent changes</span>
 			</header>
 			{error ? (
 				<div className="m-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:m-5">
 					<p className="font-semibold">Audit history isn’t available yet.</p>
 					<p className="mt-1 text-xs leading-5">Run <code className="rounded bg-white px-1.5 py-0.5">supabase/property-audit-trail.sql</code> in the Supabase SQL Editor, then refresh this page. {error}</p>
 				</div>
-			) : revisions.length === 0 ? (
+			) : visibleRevisions.length === 0 ? (
 				<div className="px-5 py-12 text-center">
 					<Clock3 className="mx-auto h-6 w-6 text-black/30" />
 					<p className="mt-3 text-sm font-medium text-black/65">No property changes recorded yet.</p>
@@ -63,7 +69,7 @@ export function PropertyAuditTrail({ revisions, profiles, error }: PropertyAudit
 				</div>
 			) : (
 				<div className="divide-y divide-black/[0.06]">
-					{revisions.map((revision) => {
+					{visibleRevisions.map((revision) => {
 						const presentation = actionPresentation(revision);
 						const ActionIcon = presentation.icon;
 						const snapshot = revision.new_data ?? revision.old_data ?? {};
